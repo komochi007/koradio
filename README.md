@@ -40,8 +40,10 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 目标系统架构已定义
 - [x] 视觉设计系统已定义
 - [x] 15 个高保真页面状态已有参考图
+- [x] 开发前视觉设计资产任务与裁决机制已定义
 - [x] AI 工作规范与工程规则已建立
 - [x] Git 仓库已初始化并关联 GitHub 远端
+- [ ] HTML 视觉设计主源尚未建立
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
@@ -202,6 +204,8 @@ Koradio/
 └── design/
     ├── design.md
     ├── prompt.md
+    ├── tasks/
+    │   └── visual-assets.md
     └── references/
         ├── 01-service-offline.png
         ├── 02-profile-select.png
@@ -305,6 +309,7 @@ packages/
 | 模块、状态归属、API、数据或安全 | [architecture.md](architecture.md) |
 | UI、组件、token、响应式或无障碍 | [design/design.md](design/design.md) |
 | 高保真原型生成 | [design/prompt.md](design/prompt.md) + [design/references/](design/references/) |
+| 开发前视觉设计资产沉淀 | [design/tasks/visual-assets.md](design/tasks/visual-assets.md) |
 | 工程实现或代码审查 | [AI_RULES.md](AI_RULES.md) |
 | Agent 执行与协作 | [AGENTS.md](AGENTS.md) |
 | 快速恢复项目认知 | [context.md](context.md) |

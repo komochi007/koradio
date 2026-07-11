@@ -67,8 +67,9 @@
 | 文档名称 | 链接/说明 |
 |----------|-----------|
 | 竞品参考 | `design/references/source/AI音乐电台结构图.jpg`、`design/references/source/AI音乐电台施工图.jpg` |
-| 原型地址 | 暂无原型，本 PRD 基于用户提供的参考图和需求讨论整理 |
+| 原型参考 | `design/references/` 中已有 15 张高保真页面状态参考图；当前 PNG 为视觉参考，尚未形成可执行 HTML 设计主源 |
 | 设计规范 | `design.md`，用于约束视觉系统、组件细节、原型画布和页面状态 |
+| 视觉资产任务 | `design/tasks/visual-assets.md`，用于管理开发前视觉设计资产沉淀、差异裁决与验收 |
 
 ### 5. 产品体验与视觉原则
 
