@@ -40,11 +40,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 目标系统架构已定义
 - [x] 视觉设计系统已定义
 - [x] 15 个高保真页面状态已有参考图
-- [x] 开发前视觉资产契约与 `VDA-*` 任务清单已建立
 - [x] AI 工作规范与工程规则已建立
-- [ ] `960 × 1600px` Dark 归一化基线尚未生成
-- [ ] 30 张 Dark / Light Figma 页面尚未创建
-- [ ] HTML 视觉原型与视觉 QA 证据尚未创建
 - [x] Git 仓库已初始化并关联 GitHub 远端
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
@@ -64,7 +60,6 @@ AI Agent **不得**：
 - 把目标技术栈描述成已安装依赖。
 - 猜测包管理器、Node.js 版本、端口或脚本名。
 - 声称应用、测试、构建或数据库可以运行。
-- 把 `VDA-*` 任务中的目标 Figma、HTML、组件或 QA 证据描述为当前已有资产。
 - 从参考图推断尚未写入权威文档的业务规则。
 
 ## 3. 产品快照
@@ -205,12 +200,8 @@ Koradio/
 │   ├── prd.md
 │   └── user-flow.md
 └── design/
-    ├── assets/
-    │   └── README.md
     ├── design.md
     ├── prompt.md
-    ├── tasks/
-    │   └── visual-assets.md
     └── references/
         ├── 01-service-offline.png
         ├── 02-profile-select.png
@@ -314,7 +305,6 @@ packages/
 | 模块、状态归属、API、数据或安全 | [architecture.md](architecture.md) |
 | UI、组件、token、响应式或无障碍 | [design/design.md](design/design.md) |
 | 高保真原型生成 | [design/prompt.md](design/prompt.md) + [design/references/](design/references/) |
-| 开发前视觉资产制作或验收 | [design/assets/README.md](design/assets/README.md) + [design/tasks/visual-assets.md](design/tasks/visual-assets.md) + [design/design.md](design/design.md) |
 | 工程实现或代码审查 | [AI_RULES.md](AI_RULES.md) |
 | Agent 执行与协作 | [AGENTS.md](AGENTS.md) |
 | 快速恢复项目认知 | [context.md](context.md) |
@@ -328,7 +318,6 @@ packages/
 | 系统边界、所有权与目标架构 | `architecture.md` |
 | UI、动效和无障碍 | `design/design.md` |
 | 原型生成约束 | `design/prompt.md` |
-| 视觉资产契约与任务状态 | `design/assets/README.md`、`design/tasks/visual-assets.md` |
 | 工程实施规则 | `AI_RULES.md` |
 | Agent 工作方式 | `AGENTS.md` |
 
@@ -361,7 +350,6 @@ packages/
 - [ ] 修改 MVP 范围或优先级。
 - [ ] 新增环境变量、端口或本地服务要求。
 - [ ] 修改 Context 文件路径或权威关系。
-- [ ] 修改视觉资产契约、VDA 任务入口或实际资产状态。
 
 同时检查：
 

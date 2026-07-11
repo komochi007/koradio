@@ -31,7 +31,6 @@
 | 系统边界、模块、数据和安全 | `architecture.md` |
 | UI、动效和无障碍 | `design/design.md` |
 | 高保真原型生成 | `design/prompt.md` 与 `design/references/` |
-| 开发前视觉资产制作与验收 | `design/assets/README.md`、`design/tasks/visual-assets.md` 与 `design/design.md` |
 
 不得只依赖摘要文件完成需要精确规则的实现。
 
@@ -42,7 +41,6 @@
 - 不得声称尚不存在的代码、脚本、端口或依赖已经可用。
 - 不得把 `architecture.md` 的目标目录当作真实目录。
 - 不得虚构包管理器、版本或运行命令。
-- 不得把 `VDA-*` 中的计划产物描述为已经存在的 Figma、HTML、组件或 QA 证据。
 - 脚手架出现后必须重新核对 README 的状态描述。
 
 ## 4. 标准执行闭环
@@ -76,9 +74,6 @@
 - 每个任务必须有独立、可检查的完成条件。
 - 计划必须明确创建、修改和保持不变的文件。
 - 不把无关重构混入当前任务。
-- 开发前视觉资产任务只使用 `VDA-*` 编号，并在 `design/tasks/visual-assets.md` 维护状态和证据。
-- 后续正式开发任务使用独立的 `DEV-*` 编号和开发任务文档，不得混入 VDA 清单。
-- `context.md` 只记录稳定阶段事实和任务入口，不记录 VDA 动态进度。
 
 ### 4.4 修改
 
