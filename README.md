@@ -41,6 +41,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 视觉设计系统已定义
 - [x] 15 个高保真页面状态已有参考图
 - [x] 开发前视觉设计资产任务与裁决机制已定义
+- [x] VDA-00 资产盘点与差距审计已完成，A / B / C 级裁决已记录
 - [x] AI 工作规范与工程规则已建立
 - [x] Git 仓库已初始化并关联 GitHub 远端
 - [ ] HTML 视觉设计主源尚未建立
@@ -204,6 +205,12 @@ Koradio/
 └── design/
     ├── design.md
     ├── prompt.md
+    ├── assets/
+    │   └── reports/
+    │       ├── visual-audit.md
+    │       ├── visual-decisions.md
+    │       └── evidence/
+    │           └── vda-00-*.png
     ├── tasks/
     │   └── visual-assets.md
     └── references/
@@ -310,6 +317,7 @@ packages/
 | UI、组件、token、响应式或无障碍 | [design/design.md](design/design.md) |
 | 高保真原型生成 | [design/prompt.md](design/prompt.md) + [design/references/](design/references/) |
 | 开发前视觉设计资产沉淀 | [design/tasks/visual-assets.md](design/tasks/visual-assets.md) |
+| 视觉资产审计与裁决 | [design/assets/reports/visual-audit.md](design/assets/reports/visual-audit.md) + [design/assets/reports/visual-decisions.md](design/assets/reports/visual-decisions.md) |
 | 工程实现或代码审查 | [AI_RULES.md](AI_RULES.md) |
 | Agent 执行与协作 | [AGENTS.md](AGENTS.md) |
 | 快速恢复项目认知 | [context.md](context.md) |
