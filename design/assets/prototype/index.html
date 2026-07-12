@@ -8,6 +8,7 @@
       content="Koradio 开发前视觉设计资产预览。该页面不是可运行产品。"
     />
     <title>Koradio · Visual Asset Preview</title>
+    <link rel="stylesheet" href="./tokens.css" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -51,7 +52,10 @@
           <div><dt>Reference</dt><dd><a id="reference-link">查看 PNG</a></dd></div>
         </dl>
 
-        <button class="preview-copy" id="copy-link" type="button">复制当前定位链接</button>
+        <div class="preview-panel__actions">
+          <a class="preview-catalog" href="./catalog.html?theme=dark">查看 Tokens 与组件目录</a>
+          <button class="preview-copy" id="copy-link" type="button">复制当前定位链接</button>
+        </div>
 
         <p class="preview-disclaimer">
           仅用于开发前视觉设计资产预览。此处没有 Backend、Provider、数据库或真实播放能力，也不代表 Koradio 产品当前可运行。

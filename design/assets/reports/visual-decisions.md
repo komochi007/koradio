@@ -218,6 +218,19 @@
 - 最终决定：已自动裁决。
 - 证据截图：对应原始 PNG。
 
+### C-006
+
+- 编号：C-006
+- 页面与区域：共享底部 Tab Bar 内部几何
+- 差异类别：普通间距 / 固定尺寸协调
+- PNG 表现：原始参考图的导航整体明显大于规范，无法作为内部间距基准。
+- 规范要求：Tab Bar `360 × 64px`、五个 slot 各 `72 × 64px`、选中底 `56 × 48px`，同时在示例 CSS 中给出 `8px` 内边距。
+- 严重级别：C
+- 推荐裁决：严格保持总尺寸、slot 和选中底的固定几何；不再让 `8px` 成为增加组件外尺寸的布局内边距，视觉内收由居中的 `56 × 48px` 选中底表达。
+- 影响页面：所有使用底部 Tab Bar 的一级页面与组件目录。
+- 最终决定：已自动裁决；固定组件几何优先，未改变导航结构、层级或交互语义。
+- 证据截图：[底部导航跨页对比](evidence/vda-00-navigation-comparison.png)；VDA-02 浏览器几何检查实测 Tab Bar `360 × 64px`、slot `72 × 64px`、选中底 `56 × 48px`。
+
 ## 后续执行约束
 
 1. 核心体验骨架按 A-001、A-002 执行。
@@ -236,3 +249,12 @@
 - 不适用项：C-002 的媒体裁切与 C-003 的波形细节尚未进入 VDA-01 页面占位，留待对应页面族与组件任务执行。
 - 证据：`design/assets/prototype/index.html`、`design/assets/prototype/styles.css`、`design/assets/prototype/app.js` 与 `design/assets/fixtures/pages.js`。
 - 自动验收：5 个交付文件、15 个页面状态、3 个主题、4 个 viewport、180 条唯一定位组合和 15 张参考图路径全部通过；浏览器验证代表状态、无效参数回退、参考 PNG `971 × 1619px` 与控制台无错误。
+
+## VDA-02 执行记录
+
+- 状态：已于 2026-07-12 通过自动验收并完成，共享组件确认门通过。
+- 范围：建立 `tokens.css`、`components.css` 与 Dark / Light 组件目录，展示品牌区、顶部工具、导航、按钮、输入、卡片、状态、固定比例媒体、播放器、队列、排版、波形和 Focus；不实现 15 页完整视觉。
+- A / B 级差异：A-003、A-007 与 B-001–B-003 按 VDA-00 已确认方案执行；没有新增或未关闭的 A / B 级差异。
+- C 级裁决：C-001 统一表面、边框和弱阴影，并让 Light 状态色只用于状态点、状态文字使用满足 AA 的 Secondary 文本色；C-002 使用固定比例媒体容器；C-003 建立共享模拟波形并支持 Reduce Motion；C-004 使用 4px 网格和统一卡片内边距；C-005 使用统一系统字体与线性 SVG 图标；新增 C-006 协调底部导航固定几何与内部间距。
+- 证据：`design/assets/prototype/tokens.css`、`design/assets/prototype/components.css`、`design/assets/prototype/catalog.html`、`design/assets/prototype/catalog.css`、`design/assets/prototype/catalog.js` 与原型定位器中的目录入口。
+- 自动验收：JavaScript 语法与 Git whitespace 检查通过；浏览器验证 Dark / Light 主题切换、7 类目录、15 页定位器回归、无控制台错误、无画布横向溢出、交互命中区均不小于 `44 × 44px`；Light 主题主要/次要文字对背景对比度为 `15.99:1` / `5.27:1`，Dark 为 `18.12:1` / `9.06:1`；实测画布 `960px`、品牌图标 `36 × 36px`、Tab Bar `360 × 64px`、slot `72 × 64px`、选中底 `56 × 48px`。

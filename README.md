@@ -45,6 +45,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] AI 工作规范与工程规则已建立
 - [x] Git 仓库已初始化并关联 GitHub 远端
 - [x] HTML 视觉设计主源骨架已建立（VDA-01 已完成）
+- [x] CSS Variables、共享组件与 Dark / Light 组件目录已建立（VDA-02 已完成）
 - [ ] 15 个页面的完整 HTML 视觉基线尚未建立
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
@@ -212,6 +213,11 @@ Koradio/
     │   ├── prototype/
     │   │   ├── README.md
     │   │   ├── index.html
+    │   │   ├── catalog.html
+    │   │   ├── catalog.css
+    │   │   ├── catalog.js
+    │   │   ├── tokens.css
+    │   │   ├── components.css
     │   │   ├── styles.css
     │   │   └── app.js
     │   └── reports/

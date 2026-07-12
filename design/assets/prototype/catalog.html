@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Koradio VDA-02 Tokens 与共享组件目录。" />
+    <title>VDA-02 · Tokens 与组件目录 · Koradio</title>
+    <link rel="stylesheet" href="./tokens.css?v=vda-02" />
+    <link rel="stylesheet" href="./components.css?v=vda-02" />
+    <link rel="stylesheet" href="./catalog.css?v=vda-02" />
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true">
+      <symbol id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"></path></symbol>
+      <symbol id="icon-radio" viewBox="0 0 24 24"><path d="M8 18h8M12 18v-5M9.5 10.5a3.5 3.5 0 0 1 5 0M7 8a7 7 0 0 1 10 0M4.5 5.5a10.5 10.5 0 0 1 15 0"></path><circle cx="12" cy="12" r="1.5"></circle></symbol>
+      <symbol id="icon-library" viewBox="0 0 24 24"><path d="M5 4h12v15H5zM8 7h12v13H8"></path><path d="M13 10v5.5a2 2 0 1 1-1.2-1.8l4.2-1V9z"></path></symbol>
+      <symbol id="icon-heart" viewBox="0 0 24 24"><path d="M20.8 5.7c-2-2.1-5.3-2.1-7.3 0L12 7.3l-1.5-1.6c-2-2.1-5.3-2.1-7.3 0s-2 5.5 0 7.6L12 22l8.8-8.7c2-2.1 2-5.5 0-7.6z"></path></symbol>
+      <symbol id="icon-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM8 3v6M16 3v6M4 10h16"></path><path d="M8 14h.1M12 14h.1M16 14h.1M8 17h.1M12 17h.1"></path></symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19 13.5v-3l-2-.7a7 7 0 0 0-.7-1.7l.9-1.9-2.1-2.1-1.9.9a7 7 0 0 0-1.7-.7l-.7-2h-3l-.7 2a7 7 0 0 0-1.7.7l-1.9-.9-2.1 2.1.9 1.9a7 7 0 0 0-.7 1.7l-2 .7v3l2 .7a7 7 0 0 0 .7 1.7l-.9 1.9 2.1 2.1 1.9-.9a7 7 0 0 0 1.7.7l.7 2h3l.7-2a7 7 0 0 0 1.7-.7l1.9.9 2.1-2.1-.9-1.9a7 7 0 0 0 .7-1.7z"></path></symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6z"></path></symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M9 7v10M15 7v10"></path></symbol>
+      <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+    </svg>
+
+    <div class="catalog-frame">
+      <nav class="catalog-toolbar" aria-label="组件目录工具栏">
+        <div class="catalog-toolbar__title"><strong>KORADIO</strong><span>VDA-02 · COMPONENT DIRECTORY</span></div>
+        <div class="catalog-toolbar__actions">
+          <a href="./index.html">页面定位器</a>
+          <button type="button" data-catalog-theme="dark">Dark</button>
+          <button type="button" data-catalog-theme="light">Light</button>
+        </div>
+      </nav>
+
+      <main class="catalog-board kr-surface" id="catalog-board" data-theme="dark">
+        <div class="kr-topbar">
+          <a class="kr-brand" href="./catalog.html" aria-label="Koradio 组件目录首页">
+            <span class="kr-brand__mark" aria-hidden="true"></span>
+            <span class="kr-brand__wordmark">KORADIO</span>
+          </a>
+          <div class="kr-topbar__tools">
+            <span class="kr-avatar kr-avatar--top kr-square-media kr-circle-media" aria-label="顶部用户头像示例"></span>
+            <button class="kr-icon-button" type="button" aria-label="切换主题"><svg class="kr-icon" aria-hidden="true"><use href="#icon-sun"></use></svg></button>
+          </div>
+        </div>
+
+        <header class="catalog-hero">
+          <div class="catalog-hero__copy">
+            <p class="kr-label kr-text-tertiary">FOUNDATION / SHARED COMPONENTS</p>
+            <h1 class="kr-h1">Tokens 与组件目录</h1>
+            <p class="kr-body">Koradio 视觉资产的唯一基准规格。克制的暗房材质、编辑式排版与安静的广播状态，共同服务于私人电台体验。</p>
+          </div>
+          <span class="catalog-hero__index" aria-hidden="true">02</span>
+        </header>
+
+        <section class="catalog-section" aria-labelledby="color-title">
+          <div class="catalog-section__heading"><h2 class="kr-label" id="color-title">01 / COLOR</h2><p class="kr-body-small">主题语义色统一由 CSS Variables 提供。绿色只表达在线、播放、成功与 Focus，不承担主按钮填充。</p></div>
+          <div class="catalog-swatch-grid">
+            <div class="catalog-swatch" style="--swatch: var(--kr-color-bg)"><span>Background</span><code>--kr-color-bg</code></div>
+            <div class="catalog-swatch" style="--swatch: var(--kr-color-surface)"><span>Surface</span><code>--kr-color-surface</code></div>
+            <div class="catalog-swatch" style="--swatch: var(--kr-color-surface-elevated)"><span>Elevated</span><code>--kr-color-surface-elevated</code></div>
+            <div class="catalog-swatch" style="--swatch: var(--kr-color-primary); --swatch-text: var(--kr-color-on-primary)"><span>Primary</span><code>--kr-color-primary</code></div>
+            <div class="catalog-swatch" style="--swatch: var(--kr-color-accent); --swatch-text: var(--kr-color-detail-text)"><span>Accent</span><code>--kr-color-accent</code></div>
+            <div class="catalog-swatch" style="--swatch: var(--kr-color-info); --swatch-text: var(--kr-color-detail-paper)"><span>Information</span><code>--kr-color-info</code></div>
+            <div class="catalog-swatch" style="--swatch: var(--kr-color-warning); --swatch-text: var(--kr-color-detail-text)"><span>Warning</span><code>--kr-color-warning</code></div>
+            <div class="catalog-swatch" style="--swatch: var(--kr-color-error); --swatch-text: var(--kr-color-detail-paper)"><span>Error</span><code>--kr-color-error</code></div>
+          </div>
+        </section>
+
+        <section class="catalog-section" aria-labelledby="type-title">
+          <div class="catalog-section__heading"><h2 class="kr-label" id="type-title">02 / TYPE</h2><p class="kr-body-small">系统无衬线承载正文，等宽字体仅用于时间、数字与广播状态。DJ 内容使用节目正文，不做聊天气泡。</p></div>
+          <div class="catalog-type-list">
+            <div class="catalog-type-row"><span>Display Time · 56/56</span><p class="kr-display-time">22:47</p></div>
+            <div class="catalog-type-row"><span>H1 · 32/40</span><p class="kr-h1">After Hours, Soft Focus</p></div>
+            <div class="catalog-type-row"><span>H2 · 24/32</span><p class="kr-h2">今晚不必急着找到答案</p></div>
+            <div class="catalog-type-row"><span>Body Large · 17/26</span><p class="kr-body-large">先让房间里的声音慢下来，但别完全睡着。</p></div>
+            <div class="catalog-type-row"><span>Body · 15/23</span><p class="kr-body">正文用于表单、说明和常规界面内容。</p></div>
+            <div class="catalog-type-row"><span>Label Mono · 11/16</span><p class="kr-label">● ON AIR · QUEUE · PLAYING</p></div>
+          </div>
+        </section>
+
+        <section class="catalog-section" aria-labelledby="identity-title">
+          <div class="catalog-section__heading"><h2 class="kr-label" id="identity-title">03 / IDENTITY</h2><p class="kr-body-small">品牌 lockup、顶部工具与导航只保留一套基准尺寸；页面只改变组合与选中项。</p></div>
+          <div class="catalog-grid">
+            <div class="kr-card">
+              <p class="catalog-card-title">Brand / Top tools</p>
+              <div class="kr-topbar">
+                <span class="kr-brand"><span class="kr-brand__mark" aria-hidden="true"></span><span class="kr-brand__wordmark">KORADIO</span></span>
+                <div class="kr-topbar__tools"><span class="kr-avatar kr-avatar--top kr-square-media kr-circle-media" aria-hidden="true"></span><button class="kr-icon-button" type="button" aria-label="设置"><svg class="kr-icon" aria-hidden="true"><use href="#icon-settings"></use></svg></button></div>
+              </div>
+            </div>
+            <div class="kr-card">
+              <p class="catalog-card-title">Fixed media</p>
+              <div class="catalog-media-row">
+                <span class="catalog-media-item"><i class="kr-avatar kr-avatar--profile kr-square-media kr-circle-media"></i>64 avatar</span>
+                <span class="catalog-media-item"><i class="kr-avatar kr-avatar--upload kr-square-media kr-circle-media"></i>88 upload</span>
+                <span class="catalog-media-item"><i class="kr-cover kr-cover--list kr-square-media"></i>48 cover</span>
+                <span class="catalog-media-item"><i class="kr-cover kr-cover--current kr-square-media"></i>56 cover</span>
+              </div>
+            </div>
+            <div class="kr-card catalog-span-2">
+              <p class="catalog-card-title">Bottom navigation · 360 × 64</p>
+              <nav class="kr-nav" aria-label="主导航组件示例">
+                <button class="kr-nav__item kr-nav__item--active" type="button" data-tooltip="Radio" aria-label="Radio，当前页面"><svg class="kr-icon kr-icon--prototype" aria-hidden="true"><use href="#icon-radio"></use></svg></button>
+                <button class="kr-nav__item" type="button" data-tooltip="Library" aria-label="Library"><svg class="kr-icon kr-icon--prototype" aria-hidden="true"><use href="#icon-library"></use></svg></button>
+                <button class="kr-nav__item" type="button" data-tooltip="Taste" aria-label="Taste"><svg class="kr-icon kr-icon--prototype" aria-hidden="true"><use href="#icon-heart"></use></svg></button>
+                <button class="kr-nav__item" type="button" data-tooltip="Programs" aria-label="Programs"><svg class="kr-icon kr-icon--prototype" aria-hidden="true"><use href="#icon-calendar"></use></svg></button>
+                <button class="kr-nav__item" type="button" data-tooltip="Settings" aria-label="Settings"><svg class="kr-icon kr-icon--prototype" aria-hidden="true"><use href="#icon-settings"></use></svg></button>
+              </nav>
+            </div>
+          </div>
+        </section>
+
+        <section class="catalog-section" aria-labelledby="controls-title">
+          <div class="catalog-section__heading"><h2 class="kr-label" id="controls-title">04 / CONTROLS</h2><p class="kr-body-small">主操作使用黑白高对比。所有正式交互提供至少 44 × 44px 命中区、可见 Focus、Hover、Active 与 Disabled。</p></div>
+          <div class="catalog-grid">
+            <div class="kr-card">
+              <p class="catalog-card-title">Buttons</p>
+              <div class="catalog-actions">
+                <button class="kr-button kr-button--primary kr-button--large" type="button">保存并继续</button>
+                <button class="kr-button kr-button--secondary" type="button">测试连接</button>
+                <button class="kr-button kr-button--ghost" type="button">取消</button>
+                <button class="kr-button kr-button--primary" type="button" disabled>Generating...</button>
+                <button class="kr-play-button" type="button" aria-label="暂停"><svg class="kr-icon" aria-hidden="true"><use href="#icon-pause"></use></svg></button>
+              </div>
+            </div>
+            <div class="kr-card">
+              <p class="catalog-card-title">Focus visible</p>
+              <div class="kr-focus-demo">
+                <button class="kr-button kr-button--primary kr-is-focus-visible" type="button">键盘焦点</button>
+                <button class="kr-icon-button kr-is-focus-visible" type="button" aria-label="播放"><svg class="kr-icon" aria-hidden="true"><use href="#icon-play"></use></svg></button>
+                <span class="kr-body-small kr-text-secondary">双层绿色 Focus Ring 不表示成功。</span>
+              </div>
+            </div>
+            <div class="kr-card catalog-span-2">
+              <p class="catalog-card-title">Inputs</p>
+              <div class="catalog-grid catalog-fields">
+                <label class="kr-field"><span class="kr-field__label">Default</span><input class="kr-input" value="今晚写东西，想要安静但不死板的 BGM。" /></label>
+                <label class="kr-field"><span class="kr-field__label">Focus</span><input class="kr-input kr-input--focus" value="British Soft Radio" /></label>
+                <label class="kr-field"><span class="kr-field__label">Error</span><input class="kr-input kr-input--error" value="无效的服务地址" aria-invalid="true" /><span class="kr-field__message kr-field__message--error">请检查地址后重试。</span></label>
+                <label class="kr-field"><span class="kr-field__label">Disabled</span><input class="kr-input" value="Generating..." disabled /></label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="catalog-section" aria-labelledby="status-title">
+          <div class="catalog-section__heading"><h2 class="kr-label" id="status-title">05 / STATUS</h2><p class="kr-body-small">颜色始终与明确文字配对。THINKING 使用 Information，DEGRADED 使用 Warning，阻断失败使用 Error。</p></div>
+          <div class="catalog-grid">
+            <div class="kr-card">
+              <p class="catalog-card-title">State language</p>
+              <div class="catalog-statuses">
+                <span class="kr-status kr-status--success"><i class="kr-status__dot"></i><span class="kr-label">ON AIR</span></span>
+                <span class="kr-status kr-status--info"><i class="kr-status__dot"></i><span class="kr-label">THINKING</span></span>
+                <span class="kr-status kr-status--warning"><i class="kr-status__dot"></i><span class="kr-label">DEGRADED</span></span>
+                <span class="kr-status kr-status--error"><i class="kr-status__dot"></i><span class="kr-label">ERROR</span></span>
+                <span class="kr-status kr-status--neutral kr-status--offline"><i class="kr-status__dot"></i><span class="kr-label">OFFLINE</span></span>
+              </div>
+            </div>
+            <div class="kr-card">
+              <p class="catalog-card-title">Waveform / simulated state</p>
+              <div class="kr-waveform" aria-label="PLAYING，模拟波形">
+                <span style="--kr-wave-height: 42%; --kr-wave-index: 1"></span><span style="--kr-wave-height: 74%; --kr-wave-index: 2"></span><span style="--kr-wave-height: 56%; --kr-wave-index: 3"></span><span style="--kr-wave-height: 88%; --kr-wave-index: 4"></span><span style="--kr-wave-height: 62%; --kr-wave-index: 5"></span><span style="--kr-wave-height: 36%; --kr-wave-index: 6"></span><span style="--kr-wave-height: 68%; --kr-wave-index: 7"></span><span style="--kr-wave-height: 48%; --kr-wave-index: 8"></span><span style="--kr-wave-height: 82%; --kr-wave-index: 9"></span><span style="--kr-wave-height: 54%; --kr-wave-index: 10"></span><span style="--kr-wave-height: 72%; --kr-wave-index: 11"></span><span style="--kr-wave-height: 40%; --kr-wave-index: 12"></span>
+              </div>
+              <p class="kr-label kr-text-secondary">● PLAYING · SIMULATED WAVEFORM</p>
+            </div>
+            <div class="catalog-span-2">
+              <button class="kr-dj-status" type="button"><span class="kr-h3">KORADIO</span><span class="kr-dj-status__state"><span class="kr-status kr-status--success"><i class="kr-status__dot"></i><span class="kr-label">PLAYING</span></span><span class="kr-dj-status__arrow" aria-hidden="true">›</span></span></button>
+            </div>
+          </div>
+        </section>
+
+        <section class="catalog-section" aria-labelledby="content-title">
+          <div class="catalog-section__heading"><h2 class="kr-label" id="content-title">06 / CONTENT</h2><p class="kr-body-small">普通管理卡片使用 20px 圆角；Radio 核心卡片使用 24px。媒体固定比例，当前曲目只用细线和文字层级表达。</p></div>
+          <div class="catalog-grid">
+            <article class="kr-card kr-card--interactive">
+              <p class="catalog-card-title">Management card · 20 radius</p>
+              <h3 class="kr-h3">夜晚写作</h3>
+              <p class="kr-body-small kr-text-secondary">安静、有呼吸感，但不要太催眠。</p>
+            </article>
+            <article class="kr-card kr-card--radio">
+              <p class="catalog-card-title">Radio player · 24 radius</p>
+              <div class="kr-player">
+                <span class="kr-cover kr-cover--current kr-square-media" aria-hidden="true"></span>
+                <div class="kr-player__meta"><p class="kr-h3">Space Song</p><p class="kr-body-small kr-text-secondary">Beach House</p></div>
+                <button class="kr-play-button" type="button" aria-label="暂停"><svg class="kr-icon" aria-hidden="true"><use href="#icon-pause"></use></svg></button>
+                <div class="kr-player__progress"><span>01:42</span><span class="kr-progress" style="--kr-progress: 66%"></span><span>02:35</span></div>
+              </div>
+            </article>
+            <article class="kr-card catalog-span-2">
+              <p class="catalog-card-title">Queue · editorial list</p>
+              <ol class="kr-queue">
+                <li class="kr-queue__item kr-queue__item--current"><span class="kr-label">01</span><span><strong>If</strong><small class="kr-body-small kr-text-secondary"> · Bread</small></span><span class="kr-caption-mono">02:35</span></li>
+                <li class="kr-queue__item"><span class="kr-label">02</span><span>Space Song <small class="kr-body-small kr-text-tertiary">· Beach House</small></span><span class="kr-caption-mono">05:20</span></li>
+                <li class="kr-queue__item"><span class="kr-label">03</span><span>Mystery of Love <small class="kr-body-small kr-text-tertiary">· Sufjan Stevens</small></span><span class="kr-caption-mono">04:08</span></li>
+              </ol>
+            </article>
+          </div>
+        </section>
+
+        <section class="catalog-section" aria-labelledby="foundation-title">
+          <div class="catalog-section__heading"><h2 class="kr-label" id="foundation-title">07 / FOUNDATION</h2><p class="kr-body-small">4px 基础网格、固定圆角、内容列与动效时间全部集中在 token 层，不允许页面私有体系。</p></div>
+          <div class="catalog-grid">
+            <div class="kr-card"><p class="catalog-card-title">Spacing</p><div class="catalog-token-strip"><span>4</span><span>8</span><span>12</span><span>16</span><span>20</span><span>24</span><span>32</span><span>40</span><span>48</span><span>64</span><span>80</span></div></div>
+            <div class="kr-card"><p class="catalog-card-title">Radius</p><div class="catalog-token-strip"><span>10 sm</span><span>14 md</span><span>20 lg</span><span>24 xl</span><span>32 2xl</span><span>56 3xl</span><span>999 full</span></div></div>
+            <div class="kr-card"><p class="catalog-card-title">Content widths</p><div class="catalog-token-strip"><span>560 Radio</span><span>720 Profile</span><span>800 Management</span><span>820 Settings</span><span>960 Detail</span></div></div>
+            <div class="kr-card"><p class="catalog-card-title">Motion</p><div class="catalog-token-strip"><span>100 instant</span><span>160 fast</span><span>220 base</span><span>320 slow</span><span>420 sheet</span></div></div>
+          </div>
+        </section>
+
+        <footer class="catalog-footer"><p>静态 HTML / CSS / JavaScript 视觉主源 · 不代表产品当前可运行</p><span class="kr-label">SHARED COMPONENT GATE · VDA-02</span></footer>
+      </main>
+    </div>
+    <script src="./catalog.js?v=vda-02"></script>
+  </body>
+</html>
