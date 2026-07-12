@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Koradio 开发前视觉设计资产预览。该页面不是可运行产品。"
+    />
+    <title>Koradio · Visual Asset Preview</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="preview-header">
+      <a class="preview-brand" href="./index.html" aria-label="返回默认视觉预览">
+        <span class="preview-mark" aria-hidden="true"><i></i></span>
+        <span>KORADIO</span>
+      </a>
+      <div class="preview-status">
+        <span class="preview-status__dot" aria-hidden="true"></span>
+        VDA-01 · SKELETON
+      </div>
+    </header>
+
+    <main class="preview-layout">
+      <aside class="preview-panel" aria-label="视觉预览定位器">
+        <div class="preview-panel__intro">
+          <p class="preview-eyebrow">VISUAL ASSET INDEX</p>
+          <h1>原型定位器</h1>
+          <p>固定页面、主题与 viewport。每组选择都会生成唯一 URL。</p>
+        </div>
+
+        <form class="preview-controls" id="preview-controls">
+          <label>
+            <span>页面状态</span>
+            <select id="page-select" name="page"></select>
+          </label>
+          <label>
+            <span>主题</span>
+            <select id="theme-select" name="theme"></select>
+          </label>
+          <label>
+            <span>Viewport</span>
+            <select id="viewport-select" name="viewport"></select>
+          </label>
+        </form>
+
+        <dl class="preview-meta">
+          <div><dt>Family</dt><dd id="page-family"></dd></div>
+          <div><dt>State</dt><dd id="page-state"></dd></div>
+          <div><dt>Reference</dt><dd><a id="reference-link">查看 PNG</a></dd></div>
+        </dl>
+
+        <button class="preview-copy" id="copy-link" type="button">复制当前定位链接</button>
+
+        <p class="preview-disclaimer">
+          仅用于开发前视觉设计资产预览。此处没有 Backend、Provider、数据库或真实播放能力，也不代表 Koradio 产品当前可运行。
+        </p>
+      </aside>
+
+      <section class="preview-stage" aria-labelledby="stage-title">
+        <div class="preview-stage__topline">
+          <div>
+            <p class="preview-eyebrow">CANONICAL PREVIEW TARGET</p>
+            <h2 id="stage-title"></h2>
+          </div>
+          <output id="viewport-output"></output>
+        </div>
+
+        <div class="preview-viewport" id="preview-viewport">
+          <article class="prototype-canvas" id="prototype-canvas" aria-live="polite">
+            <div class="prototype-placeholder">
+              <p class="prototype-number" id="prototype-number"></p>
+              <p class="prototype-kicker">HTML PROTOTYPE SKELETON</p>
+              <h3 id="prototype-title"></h3>
+              <div class="prototype-rule"></div>
+              <p>
+                页面视觉与共享组件将在对应 VDA 页面族任务中落地。当前画布只验证路由、主题、viewport 与 fixture 映射。
+              </p>
+              <dl>
+                <div><dt>Theme</dt><dd id="prototype-theme"></dd></div>
+                <div><dt>Viewport</dt><dd id="prototype-viewport"></dd></div>
+              </dl>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="../fixtures/pages.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

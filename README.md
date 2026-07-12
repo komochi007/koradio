@@ -44,7 +44,8 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] VDA-00 资产盘点与差距审计已完成，A / B / C 级裁决已记录
 - [x] AI 工作规范与工程规则已建立
 - [x] Git 仓库已初始化并关联 GitHub 远端
-- [ ] HTML 视觉设计主源尚未建立
+- [x] HTML 视觉设计主源骨架已建立（VDA-01 已完成）
+- [ ] 15 个页面的完整 HTML 视觉基线尚未建立
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
@@ -206,6 +207,13 @@ Koradio/
     ├── design.md
     ├── prompt.md
     ├── assets/
+    │   ├── fixtures/
+    │   │   └── pages.js
+    │   ├── prototype/
+    │   │   ├── README.md
+    │   │   ├── index.html
+    │   │   ├── styles.css
+    │   │   └── app.js
     │   └── reports/
     │       ├── visual-audit.md
     │       ├── visual-decisions.md
@@ -267,6 +275,8 @@ packages/
 ### 当前可执行状态
 
 **当前不能安装、启动、测试或构建 Koradio。**
+
+`design/assets/prototype/index.html` 是可直接在浏览器打开的零构建设计预览骨架，不是 Koradio 产品运行入口。
 
 原因：
 
