@@ -499,9 +499,10 @@ a {
   width: var(--kr-avatar-profile-size);
   height: var(--kr-avatar-profile-size);
   overflow: hidden;
-  border: 1px solid var(--kr-color-border);
+  border: 1px solid var(--kr-color-border-strong);
   border-radius: 50%;
   background: var(--kr-color-surface-elevated);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kr-color-primary) 8%, transparent);
 }
 
 .profile-avatar::before,
@@ -513,8 +514,8 @@ a {
 
 .profile-avatar--night {
   background:
-    radial-gradient(circle at 64% 28%, #d8d2b6 0 3px, transparent 4px),
-    linear-gradient(180deg, #1b2530 0 45%, #26313b 46%, #111820 100%);
+    radial-gradient(circle at 64% 28%, #e2dcc1 0 4px, transparent 5px),
+    linear-gradient(180deg, #263747 0 45%, #344b5d 46%, #151f28 100%);
 }
 
 .profile-avatar--night::after {
@@ -567,6 +568,13 @@ a {
 
 .profile-card__content {
   min-width: 0;
+}
+
+.profile-card__content .kr-h3 {
+  font-size: 17px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  line-height: 24px;
 }
 
 .profile-card__content > p {
