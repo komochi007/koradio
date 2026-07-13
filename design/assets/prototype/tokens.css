@@ -114,6 +114,14 @@
   --kr-management-width: 840px;
   --kr-settings-width: 832px;
   --kr-detail-sheet-width: 960px;
+  --kr-detail-content-width: 800px;
+  --kr-detail-wave-height: 280px;
+  --kr-detail-paper-height: 1180px;
+  --kr-detail-copy-height: 560px;
+  --kr-detail-drag-width: 84px;
+  --kr-detail-drag-height: 6px;
+  --kr-detail-close-size: 64px;
+  --kr-detail-play-size: 56px;
   --kr-duration-instant: 100ms;
   --kr-duration-fast: 160ms;
   --kr-duration-base: 220ms;

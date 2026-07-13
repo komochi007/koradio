@@ -370,6 +370,78 @@
     `;
   };
 
+  const detailWaveHeights = [
+    28, 46, 62, 38, 54, 31, 68, 44, 57, 35, 51, 66,
+    40, 59, 33, 48, 64, 42, 55, 70, 37, 61, 45, 53,
+  ];
+  const detailTimelineBars = 88;
+
+  const detailWaveform = () => `
+    <div class="detail-waveform" aria-hidden="true">
+      ${detailWaveHeights.map((height, index) => `<span${[13, 17, 19].includes(index) ? ' class="detail-waveform__active"' : ""} style="--detail-wave-height: ${height}%"></span>`).join("")}
+    </div>
+  `;
+
+  const detailTimeline = (progress) => `
+    <div class="detail-program-progress" role="progressbar" aria-label="节目整体进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Number.parseInt(progress, 10)}">
+      ${Array.from({ length: detailTimelineBars }, (_, index) => {
+        const height = 24 + ((index * 17) % 58);
+        const played = index < Math.round(detailTimelineBars * Number.parseInt(progress, 10) / 100);
+        return `<span${played ? ' class="detail-program-progress__played"' : ""} style="--detail-timeline-height: ${height}%"></span>`;
+      }).join("")}
+    </div>
+  `;
+
+  const detailCopy = (content, mode) => {
+    if (mode === "speaking") {
+      return content.lines.map((line) => {
+        const copy = line.state === "current"
+          ? line.copy.replace("呼吸", '<span class="detail-copy__highlight">呼吸</span>')
+          : line.copy;
+        return `
+          <div class="detail-script-line detail-copy__line--${line.state}">
+            <p class="detail-script-line__meta">${line.meta}</p>
+            <p>${copy}</p>
+          </div>
+        `;
+      }).join("");
+    }
+
+    return content.lines.map((line) => {
+      const copy = line.state === "current"
+        ? line.copy.replace("light", '<span class="detail-copy__highlight">light</span>')
+        : line.copy;
+      return `<p class="detail-lyric-line detail-copy__line--${line.state}">${copy}</p>`;
+    }).join("");
+  };
+
+  const renderDetail = (mode) => {
+    const detail = fixtures.visualContent.detail;
+    const content = detail[mode];
+    return `
+      <div class="prototype-page prototype-page--detail prototype-page--detail-${mode}" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+        <span class="detail-drag-handle" aria-hidden="true"></span>
+        <button class="detail-close" type="button" aria-label="关闭节目详情，播放继续">${icon("close")}</button>
+        <p class="detail-status" aria-live="polite"><span aria-hidden="true"></span>${content.status}</p>
+        ${detailWaveform()}
+        <section class="detail-paper">
+          <h1 id="detail-title">${detail.title}</h1>
+          <p class="detail-track">${content.track}</p>
+          <div class="detail-track-progress" role="progressbar" aria-label="歌曲进度 ${content.elapsed} / ${content.duration}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Number.parseInt(content.trackProgress, 10)}">
+            <span>${content.elapsed}</span>
+            <i style="--detail-track-progress: ${content.trackProgress}"></i>
+            <span>${content.duration}</span>
+          </div>
+          <article class="detail-copy detail-copy--${mode}" aria-label="${mode === "speaking" ? "DJ 串讲词" : "跟随歌词"}">
+            ${detailCopy(content, mode)}
+          </article>
+          ${detailTimeline(content.programProgress)}
+          <button class="detail-play" type="button" aria-label="暂停当前节目">${icon("pause")}</button>
+        </section>
+      </div>
+    `;
+  };
+
   const renderSkeleton = (page, theme, viewport) => `
     <div class="prototype-placeholder">
       <p class="prototype-number">PAGE ${page.number}</p>
@@ -392,6 +464,8 @@
       "04-radio-empty": () => renderRadio("empty"),
       "05-radio-playing": () => renderRadio("playing"),
       "06-radio-generating": () => renderRadio("generating"),
+      "07-radio-detail-speaking": () => renderDetail("speaking"),
+      "08-radio-detail-lyrics": () => renderDetail("lyrics"),
     };
     const renderer = renderers[selection.page.id];
     return renderer ? renderer() : renderSkeleton(selection.page, selection.theme, selection.viewport);

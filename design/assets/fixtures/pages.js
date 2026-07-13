@@ -224,6 +224,41 @@
         input: "Generating...",
       },
     },
+    detail: {
+      title: "After Hours, Soft Focus",
+      speaking: {
+        status: "SPEAKING NOW",
+        track: "If · Bread",
+        elapsed: "00:18",
+        duration: "00:28",
+        trackProgress: "64%",
+        programProgress: "62%",
+        lines: [
+          { meta: "Koradio · 00:05", copy: "今晚不必急着找到答案。", state: "read" },
+          { meta: "Koradio · 00:11", copy: "先让声音替房间留一点呼吸。", state: "current" },
+          { meta: "Koradio · 00:14", copy: "这一首会慢慢展开，", state: "upcoming" },
+          { meta: "Koradio · 00:15", copy: "但不会把你带得太远。", state: "upcoming" },
+        ],
+      },
+      lyrics: {
+        status: "PLAYING",
+        track: "Space Song · Beach House",
+        elapsed: "02:16",
+        duration: "05:20",
+        trackProgress: "43%",
+        programProgress: "62%",
+        lines: [
+          { copy: "It was late at night", state: "read" },
+          { copy: "You held on to the silence", state: "read" },
+          { copy: "Somewhere in the room", state: "read" },
+          { copy: "A small light stayed awake", state: "current" },
+          { copy: "We let the hours move", state: "upcoming" },
+          { copy: "Without asking where they went", state: "upcoming" },
+          { copy: "Nothing had to change", state: "upcoming" },
+          { copy: "For the song to carry on", state: "upcoming" },
+        ],
+      },
+    },
   };
 
   const freezeItems = (items) => Object.freeze(items.map((item) => Object.freeze(item)));
@@ -256,6 +291,17 @@
           queue: freezeItems(visualContent.radio.playing.queue.map((item) => ({ ...item }))),
         }),
         generating: Object.freeze({ ...visualContent.radio.generating }),
+      }),
+      detail: Object.freeze({
+        ...visualContent.detail,
+        speaking: Object.freeze({
+          ...visualContent.detail.speaking,
+          lines: freezeItems(visualContent.detail.speaking.lines.map((line) => ({ ...line }))),
+        }),
+        lyrics: Object.freeze({
+          ...visualContent.detail.lyrics,
+          lines: freezeItems(visualContent.detail.lyrics.lines.map((line) => ({ ...line }))),
+        }),
       }),
     }),
   });
