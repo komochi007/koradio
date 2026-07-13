@@ -370,15 +370,15 @@
     `;
   };
 
-  const detailWaveHeights = [
-    28, 46, 62, 38, 54, 31, 68, 44, 57, 35, 51, 66,
-    40, 59, 33, 48, 64, 42, 55, 70, 37, 61, 45, 53,
-  ];
-  const detailTimelineBars = 88;
+  const detailWaveformBars = 64;
+  const detailTimelineBars = 96;
 
   const detailWaveform = () => `
     <div class="detail-waveform" aria-hidden="true">
-      ${detailWaveHeights.map((height, index) => `<span${[13, 17, 19].includes(index) ? ' class="detail-waveform__active"' : ""} style="--detail-wave-height: ${height}%"></span>`).join("")}
+      ${Array.from({ length: detailWaveformBars }, (_, index) => {
+        const height = 28 + ((index * 19) % 43);
+        return `<span${index % 2 === 1 ? ' class="detail-waveform__active"' : ""} style="--detail-wave-height: ${height}%"></span>`;
+      }).join("")}
     </div>
   `;
 

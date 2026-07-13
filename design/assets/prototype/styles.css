@@ -1731,7 +1731,7 @@ a {
   width: var(--kr-detail-sheet-width);
   height: var(--kr-detail-wave-height);
   align-items: flex-end;
-  justify-content: space-around;
+  justify-content: space-between;
   padding: 24px 18px 0;
   overflow: hidden;
 }
@@ -1792,9 +1792,9 @@ a {
   width: var(--kr-detail-content-width);
   margin: 0;
   color: var(--kr-color-detail-text);
-  font-size: 52px;
+  font-size: var(--kr-detail-title-size);
   font-weight: 650;
-  line-height: 58px;
+  line-height: var(--kr-detail-title-line);
   letter-spacing: -0.04em;
 }
 
@@ -1941,7 +1941,7 @@ a {
   top: 1036px;
   left: 80px;
   display: flex;
-  width: 680px;
+  width: var(--kr-detail-program-width);
   height: 48px;
   align-items: center;
   gap: 3px;
