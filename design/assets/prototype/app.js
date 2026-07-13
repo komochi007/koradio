@@ -772,6 +772,173 @@
     `;
   };
 
+  const programCover = (cover, className = "") => `
+    <span class="library-cover library-cover--${cover}${className ? ` ${className}` : ""}" aria-hidden="true"><i></i></span>
+  `;
+
+  const programsStatePanel = (variant) => {
+    const states = {
+      loading: {
+        symbol: '<span class="programs-state__pulse"></span>',
+        title: "正在读取节目历史...",
+        description: "正在整理当前档案保存在这台设备上的节目记录。",
+        action: "",
+      },
+      empty: {
+        symbol: icon("queue"),
+        title: "还没有节目",
+        description: "去 Radio 生成第一段电台，节目和场景会保存在这里。",
+        action: '<button class="kr-button kr-button--large kr-button--primary" type="button">去 Radio 生成第一段电台</button>',
+      },
+      "load-error": {
+        symbol: icon("alert"),
+        title: "节目历史暂时无法读取",
+        description: "当前档案的本地历史读取失败。你可以重试，或先回到 Radio。",
+        action: '<div><button class="kr-button kr-button--large kr-button--primary" type="button">重新读取</button><button class="kr-button kr-button--large kr-button--ghost" type="button">回到 Radio</button></div>',
+      },
+    };
+    const state = states[variant];
+    return `
+      <section class="programs-state programs-state--${variant}" aria-live="polite">
+        <span class="programs-state__symbol" aria-hidden="true">${state.symbol}</span>
+        <h2>${state.title}</h2>
+        <p>${state.description}</p>
+        ${state.action}
+        ${variant === "loading" ? '<div class="programs-state__skeleton" aria-hidden="true"><i></i><i></i><i></i></div>' : ""}
+      </section>
+    `;
+  };
+
+  const programsSummary = (summary) => `
+    <section class="programs-summary kr-card" aria-labelledby="programs-summary-title">
+      <h2 id="programs-summary-title">本周收听</h2>
+      <dl>
+        <div><dt>节目</dt><dd>${summary.count}</dd></div>
+        <div><dt>时长</dt><dd>${summary.duration}</dd></div>
+        <div><dt>歌曲</dt><dd>${summary.tracks}</dd></div>
+      </dl>
+      <div class="programs-summary__chart" aria-label="最近七日节目分布">
+        ${summary.days.map((day) => `<span><i style="--program-day-value: ${Math.max(3, Math.round(day.value * 0.52))}px"></i><small>${day.label}</small></span>`).join("")}
+      </div>
+    </section>
+  `;
+
+  const programCard = (program) => `
+    <article class="program-card kr-card">
+      <button class="program-card__open" type="button" aria-label="打开节目 ${program.title}">
+        <time>${program.date}</time>
+        <strong>${program.title}</strong>
+        <span>${program.scene}</span>
+        <small>${program.meta}</small>
+      </button>
+      <button class="program-card__favorite${program.favorite ? " program-card__favorite--active" : ""}" type="button" aria-label="${program.favorite ? "取消收藏" : "收藏"}节目 ${program.title}">${icon("bookmark")}</button>
+      <span class="program-card__covers" aria-hidden="true">
+        ${program.covers.map((cover) => programCover(cover, "program-card__cover")).join("")}
+      </span>
+    </article>
+  `;
+
+  const renderProgramsList = (variant = "list") => {
+    const content = fixtures.visualContent.programs;
+    return `
+      <div class="prototype-page prototype-page--programs prototype-page--programs-${variant}">
+        <header class="prototype-topbar programs-topbar kr-topbar">
+          ${brand()}
+          <button class="kr-icon-button" type="button" aria-label="搜索节目">${icon("search")}</button>
+        </header>
+        <main class="programs-main">
+          <header class="programs-heading">
+            <h1>节目</h1>
+            <div class="programs-segmented" role="group" aria-label="节目筛选">
+              <button class="programs-segmented__item programs-segmented__item--active" type="button" aria-pressed="true">All</button>
+              <button class="programs-segmented__item" type="button" aria-pressed="false">Favorites</button>
+            </div>
+          </header>
+          ${variant === "list" ? `
+            ${programsSummary(content.summary)}
+            <section class="programs-list" aria-label="节目历史列表">
+              ${content.items.map(programCard).join("")}
+            </section>
+          ` : programsStatePanel(variant)}
+        </main>
+        ${nav("programs")}
+      </div>
+    `;
+  };
+
+  const programDetailQueue = (queue) => `
+    <section class="program-detail-queue" aria-labelledby="program-detail-queue-title">
+      <h2 id="program-detail-queue-title">PROGRAM QUEUE · ${queue.length} TRACKS</h2>
+      <ol class="kr-card">
+        ${queue.map((track) => `
+          <li>
+            <span class="program-detail-track__number">${track.number}</span>
+            ${programCover(track.cover, "program-detail-track__cover")}
+            <span class="program-detail-track__copy"><strong>${track.title}</strong><small>${track.artist}</small></span>
+            <time>${track.duration}</time>
+            <button type="button" aria-label="更多操作：${track.title}">${icon("more")}</button>
+          </li>
+        `).join("")}
+      </ol>
+    </section>
+  `;
+
+  const programDetailFeedback = (feedback) => `
+    <section class="program-detail-feedback" aria-labelledby="program-detail-feedback-title">
+      <h2 id="program-detail-feedback-title">PROGRAM FEEDBACK</h2>
+      <dl class="kr-card">
+        ${feedback.map((item) => `<div><dt>${icon(item.icon)}<strong>${item.value}</strong></dt><dd>${item.label}</dd></div>`).join("")}
+      </dl>
+    </section>
+  `;
+
+  const renderProgramDetail = (variant = "detail") => {
+    const content = fixtures.visualContent.programs.detail;
+    const replaying = variant === "replaying";
+    const ttsMissing = variant === "tts-missing";
+    const reuseError = variant === "reuse-error";
+    return `
+      <div class="prototype-page prototype-page--program-detail prototype-page--program-detail-${variant}">
+        <header class="prototype-topbar program-detail-topbar kr-topbar">
+          <button class="kr-icon-button" type="button" aria-label="返回节目列表">${icon("back")}</button>
+          <div>
+            <button class="kr-icon-button program-detail-favorite" type="button" aria-label="取消收藏节目">${icon("heart")}</button>
+            <button class="kr-icon-button" type="button" aria-label="更多节目操作">${icon("more")}</button>
+          </div>
+        </header>
+        <main class="program-detail-main">
+          <header class="program-detail-heading">
+            <p>${content.label}</p>
+            <h1>${content.title}</h1>
+            <div>${content.metadata.map((item) => `<span>${item}</span>`).join("")}</div>
+          </header>
+          <section class="program-detail-scene kr-card" aria-labelledby="program-detail-scene-title">
+            <h2 id="program-detail-scene-title">YOUR SCENE</h2>
+            <p>${content.scene}</p>
+            ${reuseError ? '<p class="program-detail-inline program-detail-inline--error" aria-live="polite">Radio 未连接，暂时不能复用场景</p>' : ""}
+            <div>
+              <button class="kr-button kr-button--primary" type="button">复用场景</button>
+              <button class="kr-button kr-button--secondary" type="button">${replaying ? "正在重播" : "重播串讲"}</button>
+            </div>
+          </section>
+          <section class="program-detail-opening" aria-labelledby="program-detail-opening-title">
+            <h2 id="program-detail-opening-title">DJ OPENING</h2>
+            <p>${content.opening}</p>
+            <div class="program-detail-opening__play${replaying ? " program-detail-opening__play--active" : ""}">
+              <button type="button" aria-label="${replaying ? "暂停" : "播放"} DJ 开场">${icon(replaying ? "pause" : "play")}</button>
+              <span>${replaying ? "00:11 / " : ""}${content.openingDuration}</span>
+              ${replaying ? '<i role="progressbar" aria-label="串讲重播进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="39"><span></span></i>' : ""}
+            </div>
+            ${ttsMissing ? '<p class="program-detail-inline program-detail-inline--warning" aria-live="polite">串讲音频缺失，已显示文字版</p>' : ""}
+          </section>
+          ${programDetailQueue(content.queue)}
+          ${programDetailFeedback(content.feedback)}
+        </main>
+        ${nav("programs")}
+      </div>
+    `;
+  };
+
   const renderSkeleton = (page, theme, viewport) => `
     <div class="prototype-placeholder">
       <p class="prototype-number">PAGE ${page.number}</p>
@@ -799,6 +966,8 @@
       "09-library": () => renderLibrary(selection.variant?.id),
       "10-taste-overview": () => renderTasteOverview(selection.variant?.id),
       "11-taste-edit": () => renderTasteEdit(selection.variant?.id),
+      "12-programs-list": () => renderProgramsList(selection.variant?.id),
+      "13-program-detail": () => renderProgramDetail(selection.variant?.id),
     };
     const renderer = renderers[selection.page.id];
     return renderer ? renderer() : renderSkeleton(selection.page, selection.theme, selection.viewport);

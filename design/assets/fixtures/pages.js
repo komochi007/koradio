@@ -113,6 +113,12 @@
       family: "management",
       state: "list",
       reference: "../../references/12-programs-list.png",
+      variants: [
+        { id: "list", label: "节目列表" },
+        { id: "loading", label: "读取中" },
+        { id: "empty", label: "无历史" },
+        { id: "load-error", label: "读取失败" },
+      ],
     },
     {
       id: "13-program-detail",
@@ -121,6 +127,12 @@
       family: "management",
       state: "detail",
       reference: "../../references/13-program-detail.png",
+      variants: [
+        { id: "detail", label: "节目详情" },
+        { id: "replaying", label: "重播串讲" },
+        { id: "tts-missing", label: "串讲音频缺失" },
+        { id: "reuse-error", label: "场景复用失败" },
+      ],
     },
     {
       id: "14-settings-config",
@@ -326,6 +338,79 @@
         ],
       },
     },
+    programs: {
+      summary: {
+        count: "5 个节目",
+        duration: "2 小时 48 分钟",
+        tracks: "18 首不同歌曲",
+        days: [
+          { label: "MON", value: 58 },
+          { label: "TUE", value: 74 },
+          { label: "WED", value: 32 },
+          { label: "THU", value: 66 },
+          { label: "FRI", value: 82 },
+          { label: "SAT", value: 12 },
+          { label: "SUN", value: 0 },
+        ],
+      },
+      items: [
+        {
+          id: "after-hours",
+          date: "JUL 08 · 22:46",
+          title: "After Hours, Soft Focus",
+          scene: "今晚写东西，想要安静但不死板的 BGM。",
+          meta: "4 TRACKS · 18 MIN",
+          favorite: true,
+          covers: ["if", "space", "moon"],
+        },
+        {
+          id: "slow-start",
+          date: "JUL 07 · 08:12",
+          title: "Slow Start, Clear Head",
+          scene: "阴天早晨，需要慢一点进入工作。",
+          meta: "5 TRACKS · 24 MIN",
+          favorite: false,
+          covers: ["show", "if", "mystery"],
+        },
+        {
+          id: "windows-open",
+          date: "JUL 05 · 17:36",
+          title: "Windows Open",
+          scene: "周末整理房间，温暖、轻快，但不要太吵。",
+          meta: "6 TRACKS · 31 MIN",
+          favorite: false,
+          covers: ["mystery", "show", "moon"],
+        },
+        {
+          id: "blue-hour",
+          date: "JUL 03 · 23:08",
+          title: "Blue Hour Notes",
+          scene: "睡前阅读，不要人声太靠前。",
+          meta: "4 TRACKS · 21 MIN",
+          favorite: false,
+          covers: ["moon", "space", "if"],
+        },
+      ],
+      detail: {
+        label: "PROGRAM ARCHIVE",
+        title: "After Hours, Soft Focus",
+        metadata: ["JUL 08, 2026 · 22:46", "4 TRACKS · 18 MIN", "CHINESE DJ · BRITISH SOFT RADIO"],
+        scene: "今晚写东西，想要安静但不死板的 BGM。",
+        opening: "今晚不必急着找到答案。先从一首有点旧、有点温柔的歌开始，让房间里的声音慢下来，但别完全睡着。",
+        openingDuration: "00:28",
+        queue: [
+          { number: "01", title: "If", artist: "Bread", duration: "02:35", cover: "if" },
+          { number: "02", title: "Space Song", artist: "Beach House", duration: "05:20", cover: "space" },
+          { number: "03", title: "Mystery of Love", artist: "Sufjan Stevens", duration: "04:08", cover: "mystery" },
+          { number: "04", title: "Moon Song", artist: "Phoebe Bridgers", duration: "04:37", cover: "moon" },
+        ],
+        feedback: [
+          { icon: "heart", value: "2", label: "liked tracks" },
+          { icon: "bookmark", value: "1", label: "program favorite" },
+          { icon: "wave", value: "0", label: "playback errors" },
+        ],
+      },
+    },
   };
 
   const freezeItems = (items) => Object.freeze(items.map((item) => Object.freeze(item)));
@@ -393,6 +478,24 @@
           genres: Object.freeze([...visualContent.taste.edit.genres]),
           avoidRules: Object.freeze([...visualContent.taste.edit.avoidRules]),
           scenes: freezeItems(visualContent.taste.edit.scenes.map((scene) => ({ ...scene }))),
+        }),
+      }),
+      programs: Object.freeze({
+        summary: Object.freeze({
+          ...visualContent.programs.summary,
+          days: freezeItems(visualContent.programs.summary.days.map((day) => ({ ...day }))),
+        }),
+        items: freezeItems(
+          visualContent.programs.items.map((program) => ({
+            ...program,
+            covers: Object.freeze([...program.covers]),
+          })),
+        ),
+        detail: Object.freeze({
+          ...visualContent.programs.detail,
+          metadata: Object.freeze([...visualContent.programs.detail.metadata]),
+          queue: freezeItems(visualContent.programs.detail.queue.map((track) => ({ ...track }))),
+          feedback: freezeItems(visualContent.programs.detail.feedback.map((item) => ({ ...item }))),
         }),
       }),
     }),
