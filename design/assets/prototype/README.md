@@ -28,6 +28,7 @@ catalog.html?theme=light
 - `tokens.css`：Light / Dark 主题、排版、间距、圆角、组件尺寸、内容列和动效 Tokens。
 - `components.css`：品牌、顶部工具、导航、按钮、输入、卡片、状态、媒体、队列、播放器和 Focus 基准组件。
 - `catalog.html`、`catalog.css`、`catalog.js`：零构建组件目录与主题预览，不是产品页面。
+- `../icons/koradio-brand-mark.svg` 与 `../icons/tab-*.svg`：品牌和五个 Tab 的原型 SVG 图形主源；组件只按规范等比例缩放，不修改路径与描边细节。
 
 ## 边界
 

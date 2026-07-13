@@ -258,3 +258,12 @@
 - C 级裁决：C-001 统一表面、边框和弱阴影，并让 Light 状态色只用于状态点、状态文字使用满足 AA 的 Secondary 文本色；C-002 使用固定比例媒体容器；C-003 建立共享模拟波形并支持 Reduce Motion；C-004 使用 4px 网格和统一卡片内边距；C-005 使用统一系统字体与线性 SVG 图标；新增 C-006 协调底部导航固定几何与内部间距。
 - 证据：`design/assets/prototype/tokens.css`、`design/assets/prototype/components.css`、`design/assets/prototype/catalog.html`、`design/assets/prototype/catalog.css`、`design/assets/prototype/catalog.js` 与原型定位器中的目录入口。
 - 自动验收：JavaScript 语法与 Git whitespace 检查通过；浏览器验证 Dark / Light 主题切换、7 类目录、15 页定位器回归、无控制台错误、无画布横向溢出、交互命中区均不小于 `44 × 44px`；Light 主题主要/次要文字对背景对比度为 `15.99:1` / `5.27:1`，Dark 为 `18.12:1` / `9.06:1`；实测画布 `960px`、品牌图标 `36 × 36px`、Tab Bar `360 × 64px`、slot `72 × 64px`、选中底 `56 × 48px`。
+
+### 2026-07-13 图标资产更新
+
+- 用户确认采用 `design/assets/icons/` 中的原型 SVG，替换 VDA-02 组件目录内的 CSS 品牌图形与五个临时 Tab 图标。
+- `koradio-brand-mark.svg` 与五个 `tab-*.svg` 保持原始 `viewBox`、path、描边、填充和节点结构不变；共享组件通过外部资源引用，只将品牌容器设为 `36 × 36px`、Tab 图标容器设为 `24 × 24px`。
+- 主题、播放等其余工具图标不在本次替换范围内。
+- 自动验收：六个独立 SVG 均无嵌入位图、filter、mask、clipPath 或冗余分组；浏览器验证 Dark / Light 外部资源加载、品牌 `36 × 36px`、五个 Tab `24 × 24px`、选中/未选中颜色继承与控制台无错误。
+- 用户浏览器反馈后，顶部设置按钮同步使用 `tab-settings.svg` 造型，保持 `44 × 44px` 命中区和 `20 × 20px` 工具图标尺寸；Tab 选中底保持 `56 × 48px`，圆角调整为 `24px`，与外层 `64px` 高胶囊形成相差 `8px` 的同心弧线；导航边框改为不占布局空间的 `1px` 内描边，使首尾和上下视觉间距均精确为 `8px`。
+- 输入状态目录中，Error 辅助文案曾撑高同一 Grid 行，并使相邻 Disabled 输入框因内部 Grid 拉伸而高于 `48px`；共享 `.kr-field` 改为顶部对齐内容，四种输入状态恢复一致的 `48px` 控件高度。

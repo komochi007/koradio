@@ -6,17 +6,12 @@
     <meta name="description" content="Koradio VDA-02 Tokens 与共享组件目录。" />
     <title>VDA-02 · Tokens 与组件目录 · Koradio</title>
     <link rel="stylesheet" href="./tokens.css?v=vda-02" />
-    <link rel="stylesheet" href="./components.css?v=vda-02" />
+    <link rel="stylesheet" href="./components.css?v=vda-02-icons-5" />
     <link rel="stylesheet" href="./catalog.css?v=vda-02" />
   </head>
   <body>
     <svg width="0" height="0" aria-hidden="true">
       <symbol id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6"></path></symbol>
-      <symbol id="icon-radio" viewBox="0 0 24 24"><path d="M8 18h8M12 18v-5M9.5 10.5a3.5 3.5 0 0 1 5 0M7 8a7 7 0 0 1 10 0M4.5 5.5a10.5 10.5 0 0 1 15 0"></path><circle cx="12" cy="12" r="1.5"></circle></symbol>
-      <symbol id="icon-library" viewBox="0 0 24 24"><path d="M5 4h12v15H5zM8 7h12v13H8"></path><path d="M13 10v5.5a2 2 0 1 1-1.2-1.8l4.2-1V9z"></path></symbol>
-      <symbol id="icon-heart" viewBox="0 0 24 24"><path d="M20.8 5.7c-2-2.1-5.3-2.1-7.3 0L12 7.3l-1.5-1.6c-2-2.1-5.3-2.1-7.3 0s-2 5.5 0 7.6L12 22l8.8-8.7c2-2.1 2-5.5 0-7.6z"></path></symbol>
-      <symbol id="icon-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM8 3v6M16 3v6M4 10h16"></path><path d="M8 14h.1M12 14h.1M16 14h.1M8 17h.1M12 17h.1"></path></symbol>
-      <symbol id="icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19 13.5v-3l-2-.7a7 7 0 0 0-.7-1.7l.9-1.9-2.1-2.1-1.9.9a7 7 0 0 0-1.7-.7l-.7-2h-3l-.7 2a7 7 0 0 0-1.7.7l-1.9-.9-2.1 2.1.9 1.9a7 7 0 0 0-.7 1.7l-2 .7v3l2 .7a7 7 0 0 0 .7 1.7l-.9 1.9 2.1 2.1 1.9-.9a7 7 0 0 0 1.7.7l.7 2h3l.7-2a7 7 0 0 0 1.7-.7l1.9.9 2.1-2.1-.9-1.9a7 7 0 0 0 .7-1.7z"></path></symbol>
       <symbol id="icon-play" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6z"></path></symbol>
       <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M9 7v10M15 7v10"></path></symbol>
       <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
@@ -86,7 +81,7 @@
               <p class="catalog-card-title">Brand / Top tools</p>
               <div class="kr-topbar">
                 <span class="kr-brand"><span class="kr-brand__mark" aria-hidden="true"></span><span class="kr-brand__wordmark">KORADIO</span></span>
-                <div class="kr-topbar__tools"><span class="kr-avatar kr-avatar--top kr-square-media kr-circle-media" aria-hidden="true"></span><button class="kr-icon-button" type="button" aria-label="设置"><svg class="kr-icon" aria-hidden="true"><use href="#icon-settings"></use></svg></button></div>
+                <div class="kr-topbar__tools"><span class="kr-avatar kr-avatar--top kr-square-media kr-circle-media" aria-hidden="true"></span><button class="kr-icon-button" type="button" aria-label="设置"><span class="kr-tool-icon--settings" aria-hidden="true"></span></button></div>
               </div>
             </div>
             <div class="kr-card">
@@ -101,11 +96,11 @@
             <div class="kr-card catalog-span-2">
               <p class="catalog-card-title">Bottom navigation · 360 × 64</p>
               <nav class="kr-nav" aria-label="主导航组件示例">
-                <button class="kr-nav__item kr-nav__item--active" type="button" data-tooltip="Radio" aria-label="Radio，当前页面"><svg class="kr-icon kr-icon--prototype" aria-hidden="true"><use href="#icon-radio"></use></svg></button>
-                <button class="kr-nav__item" type="button" data-tooltip="Library" aria-label="Library"><svg class="kr-icon kr-icon--prototype" aria-hidden="true"><use href="#icon-library"></use></svg></button>
-                <button class="kr-nav__item" type="button" data-tooltip="Taste" aria-label="Taste"><svg class="kr-icon kr-icon--prototype" aria-hidden="true"><use href="#icon-heart"></use></svg></button>
-                <button class="kr-nav__item" type="button" data-tooltip="Programs" aria-label="Programs"><svg class="kr-icon kr-icon--prototype" aria-hidden="true"><use href="#icon-calendar"></use></svg></button>
-                <button class="kr-nav__item" type="button" data-tooltip="Settings" aria-label="Settings"><svg class="kr-icon kr-icon--prototype" aria-hidden="true"><use href="#icon-settings"></use></svg></button>
+                <button class="kr-nav__item kr-nav__item--active" type="button" data-tooltip="Radio" aria-label="Radio，当前页面"><span class="kr-tab-icon kr-tab-icon--radio" aria-hidden="true"></span></button>
+                <button class="kr-nav__item" type="button" data-tooltip="Library" aria-label="Library"><span class="kr-tab-icon kr-tab-icon--library" aria-hidden="true"></span></button>
+                <button class="kr-nav__item" type="button" data-tooltip="Taste" aria-label="Taste"><span class="kr-tab-icon kr-tab-icon--taste" aria-hidden="true"></span></button>
+                <button class="kr-nav__item" type="button" data-tooltip="Programs" aria-label="Programs"><span class="kr-tab-icon kr-tab-icon--programs" aria-hidden="true"></span></button>
+                <button class="kr-nav__item" type="button" data-tooltip="Settings" aria-label="Settings"><span class="kr-tab-icon kr-tab-icon--settings" aria-hidden="true"></span></button>
               </nav>
             </div>
           </div>
