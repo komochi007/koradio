@@ -9,6 +9,7 @@
     />
     <title>Koradio · Visual Asset Preview</title>
     <link rel="stylesheet" href="./tokens.css" />
+    <link rel="stylesheet" href="./components.css" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -19,7 +20,7 @@
       </a>
       <div class="preview-status">
         <span class="preview-status__dot" aria-hidden="true"></span>
-        VDA-01 · SKELETON
+        VDA-03 · PAGE FAMILY
       </div>
     </header>
 
@@ -72,21 +73,7 @@
         </div>
 
         <div class="preview-viewport" id="preview-viewport">
-          <article class="prototype-canvas" id="prototype-canvas" aria-live="polite">
-            <div class="prototype-placeholder">
-              <p class="prototype-number" id="prototype-number"></p>
-              <p class="prototype-kicker">HTML PROTOTYPE SKELETON</p>
-              <h3 id="prototype-title"></h3>
-              <div class="prototype-rule"></div>
-              <p>
-                页面视觉与共享组件将在对应 VDA 页面族任务中落地。当前画布只验证路由、主题、viewport 与 fixture 映射。
-              </p>
-              <dl>
-                <div><dt>Theme</dt><dd id="prototype-theme"></dd></div>
-                <div><dt>Viewport</dt><dd id="prototype-viewport"></dd></div>
-              </dl>
-            </div>
-          </article>
+          <article class="prototype-canvas kr-surface" id="prototype-canvas" aria-live="polite"></article>
         </div>
       </section>
     </main>

@@ -135,11 +135,70 @@
     { id: "desktop", label: "Desktop · 1440 × 1200", width: 1440, height: 1200 },
   ];
 
+  const visualContent = {
+    offline: {
+      status: "OFFLINE",
+      title: "Koradio 服务未连接",
+      description: "无法连接到本地 Koradio 服务。请确认服务已经启动，或前往设置检查运行配置。",
+      primaryAction: "重新连接",
+      secondaryAction: "前往 Settings",
+      diagnostics: ["LOCAL SERVICE · NOT RESPONDING", "http://localhost:4173", "Last attempt · 22:46:51"],
+    },
+    profiles: [
+      {
+        id: "after-midnight",
+        radioName: "After Midnight",
+        nickname: "komo",
+        genres: ["Dream Pop", "Indie Folk", "Ambient", "City Pop"],
+        current: true,
+        avatar: "night",
+      },
+      {
+        id: "sunday-stereo",
+        radioName: "Sunday Stereo",
+        nickname: "Mori",
+        genres: ["Jazz", "Soul", "Bossa Nova"],
+        current: false,
+        avatar: "sunday",
+      },
+      {
+        id: "quiet-frequency",
+        radioName: "Quiet Frequency",
+        nickname: "Guest",
+        genres: ["Classical", "Piano", "Soundtrack"],
+        current: false,
+        avatar: "forest",
+      },
+    ],
+    profileDraft: {
+      radioName: "After Midnight",
+      nickname: "komo",
+      genres: ["Dream Pop", "Indie Folk", "Ambient", "Alternative", "City Pop"],
+      scene: "夜晚写作或整理思绪时，希望音乐安静、有呼吸感，但不要太催眠。",
+    },
+  };
+
   const freezeItems = (items) => Object.freeze(items.map((item) => Object.freeze(item)));
 
   global.KORADIO_FIXTURES = Object.freeze({
     pages: freezeItems(pages),
     themes: freezeItems(themes),
     viewports: freezeItems(viewports),
+    visualContent: Object.freeze({
+      offline: Object.freeze({
+        ...visualContent.offline,
+        diagnostics: Object.freeze([...visualContent.offline.diagnostics]),
+      }),
+      profiles: freezeItems(
+        visualContent.profiles.map((profile) => ({
+          ...profile,
+          genres: Object.freeze([...profile.genres]),
+        })),
+      ),
+      profileDraft: Object.freeze({
+        ...visualContent.profileDraft,
+        genres: Object.freeze([...visualContent.profileDraft.genres]),
+      }),
+    }),
   });
 })(window);
