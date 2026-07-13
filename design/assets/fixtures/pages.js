@@ -86,6 +86,12 @@
       family: "management",
       state: "overview",
       reference: "../../references/10-taste-overview.png",
+      variants: [
+        { id: "formed", label: "已形成" },
+        { id: "loading", label: "读取中" },
+        { id: "empty", label: "尚未形成" },
+        { id: "load-error", label: "读取失败" },
+      ],
     },
     {
       id: "11-taste-edit",
@@ -94,6 +100,11 @@
       family: "management",
       state: "edit",
       reference: "../../references/11-taste-edit.png",
+      variants: [
+        { id: "editing", label: "编辑中" },
+        { id: "saving", label: "保存中" },
+        { id: "save-error", label: "保存失败" },
+      ],
     },
     {
       id: "12-programs-list",
@@ -283,6 +294,38 @@
       ],
       importValue: "https://music.163.com/playlist?id=40112818",
     },
+    taste: {
+      summary: "你偏爱低至中等能量、空间感明显、不过度侵入注意力的声音。夜晚与独处场景中，你更常选择缓慢展开的人声和温和器乐。",
+      traits: [
+        { label: "Calm", value: 82, highest: true },
+        { label: "Warm", value: 68, highest: false },
+        { label: "Acoustic", value: 57, highest: false },
+        { label: "Electronic", value: 42, highest: false },
+      ],
+      genres: ["Dream Pop", "Indie Folk", "Ambient", "City Pop", "Alternative", "Soft Rock", "Singer-Songwriter", "Bossa Nova", "Neo Soul", "Piano", "Film Score", "Lo-fi"],
+      sounds: ["温和、靠后的鼓点", "有空气感的女声", "缓慢推进的吉他与钢琴", "带少量年代质感的录音"],
+      avoidRules: ["避免高频刺耳的人声", "工作场景减少强烈鼓点", "连续播放时不要突然切换到高能舞曲"],
+      scenes: [
+        { id: "night", name: "夜晚写作", description: "安静、有呼吸感、不催眠" },
+        { id: "commute", name: "通勤", description: "节奏稳定、减少抒情慢歌" },
+        { id: "weekend", name: "周末整理房间", description: "温暖、轻快、允许熟悉旋律" },
+      ],
+      feedback: [
+        { type: "like", label: "喜欢 · Space Song", time: "2 小时前" },
+        { type: "skip", label: "跳过 · 高能电子曲目", time: "6 小时前" },
+        { type: "favorite", label: "收藏节目 · After Hours, Soft Focus", time: "1 天前" },
+      ],
+      edit: {
+        updatedAt: "上次更新 · 今天 21:18",
+        genres: ["Dream Pop", "Indie Folk", "Ambient", "City Pop", "Alternative", "Soft Rock", "Bossa Nova", "Piano"],
+        avoidRules: ["避免高频刺耳的人声", "工作时减少过强鼓点", "不要连续推荐同一位歌手"],
+        scenes: [
+          { name: "夜晚写作", description: "安静、有呼吸感，但不要太催眠", focused: true },
+          { name: "通勤", description: "节奏稳定，减少过长前奏", focused: false },
+          { name: "周末整理房间", description: "温暖轻快，可以出现熟悉旋律", focused: false },
+        ],
+      },
+    },
   };
 
   const freezeItems = (items) => Object.freeze(items.map((item) => Object.freeze(item)));
@@ -336,6 +379,21 @@
         ...visualContent.library,
         tracks: freezeItems(visualContent.library.tracks.map((track) => ({ ...track }))),
         sources: freezeItems(visualContent.library.sources.map((source) => ({ ...source }))),
+      }),
+      taste: Object.freeze({
+        ...visualContent.taste,
+        traits: freezeItems(visualContent.taste.traits.map((trait) => ({ ...trait }))),
+        genres: Object.freeze([...visualContent.taste.genres]),
+        sounds: Object.freeze([...visualContent.taste.sounds]),
+        avoidRules: Object.freeze([...visualContent.taste.avoidRules]),
+        scenes: freezeItems(visualContent.taste.scenes.map((scene) => ({ ...scene }))),
+        feedback: freezeItems(visualContent.taste.feedback.map((item) => ({ ...item }))),
+        edit: Object.freeze({
+          ...visualContent.taste.edit,
+          genres: Object.freeze([...visualContent.taste.edit.genres]),
+          avoidRules: Object.freeze([...visualContent.taste.edit.avoidRules]),
+          scenes: freezeItems(visualContent.taste.edit.scenes.map((scene) => ({ ...scene }))),
+        }),
       }),
     }),
   });

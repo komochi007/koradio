@@ -54,6 +54,16 @@
       check: '<path d="m5 12 4 4L19 6"/>',
       list: '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
       retry: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+      edit: '<path d="m4 20 4.2-1 10.5-10.5a2.1 2.1 0 0 0-3-3L5.2 16 4 20Z"/><path d="m14.5 6.7 2.8 2.8"/>',
+      wave: '<path d="M4 12h2l2-6 4 12 3-9 2 6h3"/>',
+      minus: '<path d="M5 12h14"/>',
+      train: '<path d="M7 3h10a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z"/><path d="M4 9h16M8 21l2-3M16 21l-2-3"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/>',
+      lamp: '<path d="M8 3h8l3 8H5l3-8ZM12 11v7M8 21h8"/>',
+      skip: '<path d="m5 5 10 7L5 19V5ZM19 5v14"/>',
+      bookmark: '<path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-4-6 4V4Z"/>',
+      grip: '<circle cx="9" cy="7" r="1"/><circle cx="15" cy="7" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="17" r="1"/><circle cx="15" cy="17" r="1"/>',
+      trash: '<path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/>',
+      alert: '<path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5M12 17h.01"/>',
     };
 
     return `<svg class="kr-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
@@ -578,6 +588,190 @@
     `;
   };
 
+  const tasteSectionHeading = (id, title, meta = "") => `
+    <header class="taste-section-heading">
+      <h2 id="${id}">${title}</h2>
+      ${meta ? `<p>${meta}</p>` : ""}
+    </header>
+  `;
+
+  const tasteOverviewHeading = () => `
+    <header class="taste-heading">
+      <div>
+        <h1 class="kr-h1">你的音乐品味</h1>
+        <p>由播放、跳过、喜欢和导入来源逐步形成。</p>
+      </div>
+      <button class="kr-button kr-button--secondary taste-edit-button" type="button">${icon("edit")}<span>编辑品味</span></button>
+    </header>
+  `;
+
+  const tasteStatePanel = (variant) => {
+    const states = {
+      loading: {
+        symbol: icon("wave"),
+        title: "正在读取音乐品味",
+        copy: "正在整理播放、反馈和导入来源。",
+      },
+      empty: {
+        symbol: icon("plus"),
+        title: "播放和反馈后会在这里形成你的音乐品味",
+        copy: "从一段符合当下场景的节目开始，Koradio 会逐步整理你的偏好。",
+        action: "去 Radio 开始播放",
+      },
+      "load-error": {
+        symbol: icon("alert"),
+        title: "无法读取当前档案的音乐品味",
+        copy: "档案内容没有被修改。请重新选择档案后再试。",
+        action: "重新选择档案",
+      },
+    };
+    const state = states[variant];
+    return `
+      <section class="taste-state taste-state--${variant}" aria-live="polite">
+        <span class="taste-state__symbol" aria-hidden="true">${state.symbol}</span>
+        <div>
+          <h2>${state.title}</h2>
+          <p>${state.copy}</p>
+        </div>
+        ${state.action ? `<button class="kr-button kr-button--secondary" type="button">${state.action}</button>` : ""}
+        ${variant === "loading" ? '<div class="taste-state__skeleton" aria-hidden="true"><i></i><i></i><i></i></div>' : ""}
+      </section>
+    `;
+  };
+
+  const tasteTrait = (trait) => `
+    <li class="taste-trait${trait.highest ? " taste-trait--highest" : ""}">
+      <span>${trait.label}</span>
+      <span class="taste-trait__track" aria-hidden="true"><i style="--taste-value: ${trait.value}%"></i></span>
+      <strong>${trait.value}%</strong>
+    </li>
+  `;
+
+  const tasteSceneIcon = (id) => ({ night: "moon", commute: "train", weekend: "lamp" }[id]);
+  const tasteFeedbackIcon = (type) => ({ like: "heart", skip: "skip", favorite: "bookmark" }[type]);
+
+  const renderTasteOverviewContent = (content) => `
+    <section class="taste-overview" aria-labelledby="taste-overview-title">
+      ${tasteSectionHeading("taste-overview-title", "品味概览")}
+      <article class="taste-overview-card kr-card">
+        <p>${content.summary}</p>
+        <ul>${content.traits.map(tasteTrait).join("")}</ul>
+      </article>
+    </section>
+    <section class="taste-genres" aria-labelledby="taste-genres-title">
+      ${tasteSectionHeading("taste-genres-title", "常听风格", `${content.genres.length} 个标签`)}
+      <div class="taste-tag-cloud">${content.genres.map((genre) => `<span>${genre}</span>`).join("")}</div>
+    </section>
+    <div class="taste-preference-grid">
+      <section aria-labelledby="taste-sounds-title">
+        ${tasteSectionHeading("taste-sounds-title", "喜欢的声音")}
+        <ul class="taste-rule-card taste-rule-card--positive">${content.sounds.map((sound) => `<li>${icon("wave")}<span>${sound}</span></li>`).join("")}</ul>
+      </section>
+      <section aria-labelledby="taste-avoid-title">
+        ${tasteSectionHeading("taste-avoid-title", "避雷规则")}
+        <ul class="taste-rule-card taste-rule-card--avoid">${content.avoidRules.map((rule) => `<li>${icon("minus")}<span>${rule}</span></li>`).join("")}</ul>
+      </section>
+    </div>
+    <section class="taste-scenes" aria-labelledby="taste-scenes-title">
+      ${tasteSectionHeading("taste-scenes-title", "场景偏好")}
+      <div class="taste-scene-grid">
+        ${content.scenes.map((scene) => `
+          <article>
+            <span aria-hidden="true">${icon(tasteSceneIcon(scene.id))}</span>
+            <div><h3>${scene.name}</h3><p>${scene.description}</p></div>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+    <section class="taste-feedback" aria-labelledby="taste-feedback-title">
+      ${tasteSectionHeading("taste-feedback-title", "最近反馈", "用于下一次节目")}
+      <ul>
+        ${content.feedback.map((item) => `
+          <li><span aria-hidden="true">${icon(tasteFeedbackIcon(item.type))}</span><strong>${item.label}</strong><time>${item.time}</time></li>
+        `).join("")}
+      </ul>
+    </section>
+  `;
+
+  const renderTasteOverview = (variant = "formed") => {
+    const content = fixtures.visualContent.taste;
+    return `
+      <div class="prototype-page prototype-page--taste prototype-page--taste-${variant}">
+        <header class="prototype-topbar taste-topbar kr-topbar">${brand()}${settingsButton()}</header>
+        <main class="taste-main">
+          ${tasteOverviewHeading()}
+          ${variant === "formed" ? renderTasteOverviewContent(content) : tasteStatePanel(variant)}
+        </main>
+        ${nav("taste")}
+      </div>
+    `;
+  };
+
+  const tasteEditTag = (genre) => `
+    <button class="taste-edit-tag" type="button" aria-label="移动或移除 ${genre}">
+      <span aria-hidden="true">${icon("grip")}</span><strong>${genre}</strong><span aria-hidden="true">${icon("close")}</span>
+    </button>
+  `;
+
+  const renderTasteEdit = (variant = "editing") => {
+    const content = fixtures.visualContent.taste.edit;
+    const saving = variant === "saving";
+    const saveError = variant === "save-error";
+    return `
+      <div class="prototype-page prototype-page--taste-edit prototype-page--taste-edit-${variant}">
+        <header class="prototype-topbar taste-edit-topbar kr-topbar">
+          <button class="kr-icon-button" type="button" aria-label="返回音乐品味">${icon("back")}</button>
+          ${brand({ mark: false })}
+        </header>
+        <main class="taste-edit-main">
+          <header class="taste-edit-heading">
+            <h1 class="kr-h1">编辑音乐品味</h1>
+            <p>${content.updatedAt}</p>
+          </header>
+          <section class="taste-edit-genres" aria-labelledby="taste-edit-genres-title">
+            ${tasteSectionHeading("taste-edit-genres-title", "常听风格", `${content.genres.length} / 30`)}
+            <p class="taste-edit-help">最多 30 个标签，可拖动调整优先级。</p>
+            <div class="taste-edit-tags">
+              ${content.genres.map(tasteEditTag).join("")}
+              <button class="taste-edit-tag taste-edit-tag--add" type="button">${icon("plus")}<strong>添加标签</strong></button>
+            </div>
+          </section>
+          <section class="taste-edit-avoid" aria-labelledby="taste-edit-avoid-title">
+            ${tasteSectionHeading("taste-edit-avoid-title", "避雷规则", `${content.avoidRules.length} / 20`)}
+            <div class="taste-edit-rule-list">
+              ${content.avoidRules.map((rule, index) => `
+                <label><span aria-hidden="true">${icon("grip")}</span><input value="${rule}" aria-label="避雷规则 ${index + 1}" readonly /><button type="button" aria-label="删除规则：${rule}">${icon("trash")}</button></label>
+              `).join("")}
+              <button class="taste-edit-add-row" type="button">${icon("plus")}<span>添加避雷规则</span><small>最多 120 字</small></button>
+            </div>
+          </section>
+          <section class="taste-edit-scenes" aria-labelledby="taste-edit-scenes-title">
+            ${tasteSectionHeading("taste-edit-scenes-title", "场景偏好", `${content.scenes.length} / 20`)}
+            <div class="taste-edit-scene-list">
+              ${content.scenes.map((scene) => `
+                <article class="taste-edit-scene${scene.focused ? " taste-edit-scene--focus" : ""}">
+                  <span aria-hidden="true">${icon("grip")}</span>
+                  <label><span>场景名称</span><input value="${scene.name}" readonly /></label>
+                  <label><span>偏好描述</span><textarea readonly>${scene.description}</textarea></label>
+                  <button type="button" aria-label="${scene.name} 更多操作">${icon("more")}</button>
+                </article>
+              `).join("")}
+            </div>
+          </section>
+        </main>
+        <footer class="taste-edit-action${saveError ? " taste-edit-action--error" : ""}">
+          <div class="taste-edit-action__inner">
+            <p aria-live="polite">${saveError ? `${icon("alert")}<span>保存失败，内容已保留</span>` : "修改将在下一次节目生成时生效"}</p>
+            <div>
+              <button class="kr-button kr-button--large kr-button--ghost" type="button"${saving ? " disabled" : ""}>取消</button>
+              <button class="kr-button kr-button--large kr-button--primary" type="button"${saving ? " disabled" : ""}>${saving ? "保存中…" : saveError ? "重新保存" : "保存品味"}</button>
+            </div>
+          </div>
+        </footer>
+      </div>
+    `;
+  };
+
   const renderSkeleton = (page, theme, viewport) => `
     <div class="prototype-placeholder">
       <p class="prototype-number">PAGE ${page.number}</p>
@@ -603,6 +797,8 @@
       "07-radio-detail-speaking": () => renderDetail("speaking"),
       "08-radio-detail-lyrics": () => renderDetail("lyrics"),
       "09-library": () => renderLibrary(selection.variant?.id),
+      "10-taste-overview": () => renderTasteOverview(selection.variant?.id),
+      "11-taste-edit": () => renderTasteEdit(selection.variant?.id),
     };
     const renderer = renderers[selection.page.id];
     return renderer ? renderer() : renderSkeleton(selection.page, selection.theme, selection.viewport);
