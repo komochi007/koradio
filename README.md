@@ -47,7 +47,8 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] HTML 视觉设计主源骨架已建立（VDA-01 已完成）
 - [x] CSS Variables、共享组件、原型 SVG 图标与 Dark / Light 组件目录已建立（VDA-02 已完成）
 - [x] 异常与 Profile 01–03 Dark HTML 视觉页面已建立（VDA-03 已完成）
-- [ ] 其余 12 个页面的完整 HTML 视觉基线尚未建立
+- [x] Radio 三态 04–06 Dark HTML 视觉页面已建立（VDA-04 已完成）
+- [ ] 其余 9 个页面的完整 HTML 视觉基线尚未建立
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现

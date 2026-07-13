@@ -1,6 +1,6 @@
 # Koradio HTML 视觉原型
 
-> 当前范围：VDA-01 HTML 原型骨架 + VDA-02 Tokens 与共享组件目录 + VDA-03 异常与 Profile 01–03
+> 当前范围：VDA-01 HTML 原型骨架 + VDA-02 Tokens 与共享组件目录 + VDA-03 异常与 Profile 01–03 + VDA-04 Radio 三态 04–06
 >
 > 性质：零构建、非生产的开发前视觉设计资产预览
 
@@ -35,5 +35,5 @@ catalog.html?theme=light
 - 不包含产品框架、包管理器或生产配置。
 - 不连接 Backend、Provider 或数据库。
 - 不模拟真实播放、生成、配置保存或健康检查。
-- 01–03 已由 VDA-03 建立 Dark HTML 视觉页面；04–15 仍是 VDA-01 定位占位。
+- 01–03 已由 VDA-03、04–06 已由 VDA-04 建立 Dark HTML 视觉页面；07–15 仍是 VDA-01 定位占位。
 - Tokens 与共享组件已由 VDA-02 建立；Light 校准、响应式规则、正式基线截图与其余页面族仍由后续任务建立。

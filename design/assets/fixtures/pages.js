@@ -176,6 +176,54 @@
       genres: ["Dream Pop", "Indie Folk", "Ambient", "Alternative", "City Pop"],
       scene: "夜晚写作或整理思绪时，希望音乐安静、有呼吸感，但不要太催眠。",
     },
+    radio: {
+      time: "22:47",
+      date: "WEDNESDAY · JUL 08",
+      userScene: "今晚写东西，想要安静但不死板的 BGM。",
+      empty: {
+        status: "LIVE",
+        eyebrow: "NOW PLAYING",
+        title: "NO SESSION ON AIR",
+        description: "告诉 DJ 你现在正在做什么，或者想让这一段时间听起来怎样。",
+        queueLabel: "QUEUE · 0 TRACKS",
+        queueAction: "LIST",
+        queueMessage: "Your next session will appear here.",
+        djStatus: "LIVE",
+        djCopy: "I’m here when you’re ready. Give me a mood, a task, or a little context.",
+        input: "Say something to the DJ...",
+      },
+      playing: {
+        status: "ON AIR",
+        track: {
+          title: "If",
+          subtitle: "Bread · Manna",
+          elapsed: "01:42",
+          duration: "02:35",
+        },
+        queueLabel: "QUEUE · 4 TRACKS",
+        queueAction: "HIDE",
+        queue: [
+          { number: "01", title: "If", artist: "Bread", duration: "02:35", current: true },
+          { number: "02", title: "Space Song", artist: "Beach House", duration: "05:20", current: false },
+          { number: "03", title: "Mystery of Love", artist: "Sufjan Stevens", duration: "04:08", current: false },
+          { number: "04", title: "Moon Song", artist: "Phoebe Bridgers", duration: "04:37", current: false },
+        ],
+        djStatus: "PLAYING",
+        djCopy: "今晚不必急着找到答案。先从一首有点旧、有点温柔的歌开始，让房间里的声音慢下来，但别完全睡着。",
+        djMeta: "22:46 · REPLAY",
+        input: "Say something else to the DJ...",
+      },
+      generating: {
+        status: "TUNING",
+        eyebrow: "PREPARING SESSION",
+        title: "TUNING YOUR STATION...",
+        description: "Reading your taste, searching for tracks, and preparing the opening.",
+        queueLabel: "QUEUE · PREPARING",
+        djStatus: "THINKING",
+        djCopy: "Tuning your station...",
+        input: "Generating...",
+      },
+    },
   };
 
   const freezeItems = (items) => Object.freeze(items.map((item) => Object.freeze(item)));
@@ -198,6 +246,16 @@
       profileDraft: Object.freeze({
         ...visualContent.profileDraft,
         genres: Object.freeze([...visualContent.profileDraft.genres]),
+      }),
+      radio: Object.freeze({
+        ...visualContent.radio,
+        empty: Object.freeze({ ...visualContent.radio.empty }),
+        playing: Object.freeze({
+          ...visualContent.radio.playing,
+          track: Object.freeze({ ...visualContent.radio.playing.track }),
+          queue: freezeItems(visualContent.radio.playing.queue.map((item) => ({ ...item }))),
+        }),
+        generating: Object.freeze({ ...visualContent.radio.generating }),
       }),
     }),
   });

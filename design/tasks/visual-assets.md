@@ -140,7 +140,7 @@ design/assets/
 | VDA-01 | 已完成 | HTML 原型骨架 | VDA-00 | 建立零构建、非生产的设计原型目录、页面路由与固定 fixture |
 | VDA-02 | 已完成 | Tokens 与组件目录 | VDA-01 | 沉淀 CSS Variables 和共享组件；通过共享组件确认门 |
 | VDA-03 | 已完成 | 异常与 Profile 01–03 | VDA-02 | 统一品牌、头像、表单、按钮和隐私说明 |
-| VDA-04 | 待开始 | Radio 三态 04–06 | VDA-02 | 三态复用同一骨架，固定区域无位移 |
+| VDA-04 | 已完成 | Radio 三态 04–06 | VDA-02 | 三态复用同一骨架，固定区域无位移 |
 | VDA-05 | 待开始 | Detail Sheet 07–08 | VDA-04 | 双状态复用同一全屏骨架；通过核心体验确认门 |
 | VDA-06 | 待开始 | Library 09 | VDA-02 | 完成列表、导入、空态、无结果和服务异常 |
 | VDA-07 | 待开始 | Taste 10–11 | VDA-02 | 完成概览、编辑、标签、规则和固定操作区 |
@@ -236,7 +236,8 @@ design/assets/
 - [x] 已建立 HTML 设计主源骨架、15 页固定 fixture 与页面 / 主题 / viewport 定位（VDA-01 已完成）。
 - [x] 已建立与视觉规范对应的 Tokens、共享组件 CSS 与 Dark / Light 组件目录（VDA-02 已完成）。
 - [x] 已建立异常与 Profile 01–03 的 Dark HTML 视觉页面（VDA-03 已完成）。
-- [ ] 尚未建立其余 12 个页面的完整 HTML 视觉基线。
+- [x] 已建立 Radio 三态 04–06 的 Dark HTML 视觉页面（VDA-04 已完成）。
+- [ ] 尚未建立其余 9 个页面的完整 HTML 视觉基线。
 - [ ] 尚未生成 Dark / Light 基线截图。
 - [ ] 尚未完成响应式、无障碍和视觉 QA。
 - [ ] 尚未建立 Figma 派生镜像和开发交接映射。
