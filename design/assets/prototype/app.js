@@ -16,8 +16,18 @@
     copyLink: document.querySelector("#copy-link"),
     stageTitle: document.querySelector("#stage-title"),
     viewportOutput: document.querySelector("#viewport-output"),
+    scaleOutput: document.querySelector("#scale-output"),
+    scaleButtons: [...document.querySelectorAll("[data-scale-mode]")],
+    overlayToggle: document.querySelector("#overlay-toggle"),
+    overlayOpacity: document.querySelector("#overlay-opacity"),
+    overlayHint: document.querySelector("#overlay-hint"),
     viewport: document.querySelector("#preview-viewport"),
     canvas: document.querySelector("#prototype-canvas"),
+  };
+
+  const previewState = {
+    scaleMode: "fit",
+    selection: null,
   };
 
   const icon = (name) => {
@@ -429,9 +439,37 @@
     window.history[mode](null, "", url);
   };
 
+  const applyScale = () => {
+    if (!previewState.selection) {
+      return;
+    }
+
+    const { viewport } = previewState.selection;
+    const stageWidth = elements.viewport.clientWidth - 64;
+    const stageHeight = elements.viewport.clientHeight - 64;
+    const scale = previewState.scaleMode === "actual" ? 1 : Math.min(1, stageWidth / viewport.width, stageHeight / viewport.height);
+    elements.canvas.style.zoom = scale;
+    elements.scaleOutput.value = `${Math.round(scale * 100)}%`;
+    elements.scaleButtons.forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.scaleMode === previewState.scaleMode));
+    });
+  };
+
+  const syncOverlayControls = (viewport) => {
+    const available = viewport.id === "prototype";
+    elements.overlayToggle.disabled = !available;
+    elements.overlayOpacity.disabled = !available || !elements.overlayToggle.checked;
+    elements.canvas.dataset.referenceOverlay = String(available && elements.overlayToggle.checked);
+    elements.canvas.style.setProperty("--reference-opacity", Number(elements.overlayOpacity.value) / 100);
+    elements.overlayHint.textContent = available
+      ? "参考图已归一化为 960 × 1600，可用透明度检查关键锚点。"
+      : "叠图仅用于 Prototype · 960 × 1600。";
+  };
+
   const render = (selection, mode = "replaceState") => {
     const resolvedTheme = resolveTheme(selection.theme);
     const { page, theme, viewport } = selection;
+    previewState.selection = selection;
 
     elements.pageSelect.value = page.id;
     elements.themeSelect.value = theme.id;
@@ -450,16 +488,13 @@
     elements.canvas.dataset.resolvedTheme = resolvedTheme;
     elements.canvas.dataset.theme = resolvedTheme;
     elements.canvas.dataset.viewport = viewport.id;
-    elements.canvas.innerHTML = renderPage(selection);
+    elements.canvas.innerHTML = `${renderPage(selection)}<img class="preview-reference-overlay" src="${page.reference}" alt="" aria-hidden="true" />`;
     document.title = `${page.number} ${page.title} · Koradio Visual Preview`;
 
     writeCanonicalUrl(selection, mode);
 
-    window.requestAnimationFrame(() => {
-      const stageWidth = elements.viewport.clientWidth - 64;
-      const scale = Math.min(1, stageWidth / viewport.width);
-      elements.canvas.style.zoom = scale;
-    });
+    syncOverlayControls(viewport);
+    window.requestAnimationFrame(applyScale);
   };
 
   const selectionFromControls = () => ({
@@ -468,7 +503,26 @@
     viewport: findById(fixtures.viewports, elements.viewportSelect.value),
   });
 
-  elements.controls.addEventListener("change", () => render(selectionFromControls(), "pushState"));
+  elements.controls.addEventListener("change", (event) => {
+    if (event.target.matches("select")) {
+      render(selectionFromControls(), "pushState");
+    }
+  });
+
+  elements.scaleButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      previewState.scaleMode = button.dataset.scaleMode;
+      applyScale();
+    });
+  });
+
+  elements.overlayToggle.addEventListener("change", () => {
+    syncOverlayControls(previewState.selection.viewport);
+  });
+
+  elements.overlayOpacity.addEventListener("input", () => {
+    syncOverlayControls(previewState.selection.viewport);
+  });
 
   elements.copyLink.addEventListener("click", async () => {
     try {
@@ -484,7 +538,8 @@
   });
 
   window.addEventListener("popstate", () => render(readSelection()));
-  window.addEventListener("resize", () => render(readSelection()));
+  window.addEventListener("resize", applyScale);
+  new ResizeObserver(applyScale).observe(elements.viewport);
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
     if (elements.themeSelect.value === "system") {
       render(readSelection());

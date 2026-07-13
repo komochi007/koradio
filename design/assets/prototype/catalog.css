@@ -85,6 +85,7 @@ body {
 }
 
 .catalog-board {
+  box-sizing: border-box;
   width: 960px;
   min-height: 1600px;
   margin: 0 auto;
@@ -229,6 +230,7 @@ body {
   display: flex;
   min-height: 112px;
   align-items: center;
+  flex-wrap: wrap;
   gap: 24px;
 }
 
@@ -237,7 +239,7 @@ body {
   justify-items: center;
   gap: 8px;
   color: var(--kr-color-text-tertiary);
-  font: 500 10px / 1 var(--kr-font-mono);
+  font: 500 var(--kr-type-caption-size) / var(--kr-type-caption-line) var(--kr-font-mono);
 }
 
 .catalog-token-strip {

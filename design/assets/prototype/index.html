@@ -7,6 +7,7 @@
       name="description"
       content="Koradio 开发前视觉设计资产预览。该页面不是可运行产品。"
     />
+    <link rel="icon" href="data:," />
     <title>Koradio · Visual Asset Preview</title>
     <link rel="stylesheet" href="./tokens.css" />
     <link rel="stylesheet" href="./components.css" />
@@ -45,6 +46,23 @@
             <span>Viewport</span>
             <select id="viewport-select" name="viewport"></select>
           </label>
+          <fieldset class="preview-qa">
+            <legend>视觉校准</legend>
+            <div class="preview-scale-control" aria-label="预览缩放模式">
+              <button type="button" data-scale-mode="fit" aria-pressed="true">Fit</button>
+              <button type="button" data-scale-mode="actual" aria-pressed="false">1:1</button>
+              <output id="scale-output">100%</output>
+            </div>
+            <label class="preview-overlay-toggle">
+              <input id="overlay-toggle" type="checkbox" />
+              <span>叠加参考 PNG</span>
+            </label>
+            <label class="preview-overlay-opacity">
+              <span>叠图透明度</span>
+              <input id="overlay-opacity" type="range" min="10" max="90" value="50" step="5" disabled />
+            </label>
+            <p id="overlay-hint">叠图仅用于 Prototype · 960 × 1600。</p>
+          </fieldset>
         </form>
 
         <dl class="preview-meta">
