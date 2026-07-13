@@ -379,3 +379,13 @@
 - 自动验收：JavaScript 语法、Git whitespace、文件格式和 PNG `960 × 1600px` 检查通过；浏览器验证两态的 Detail 专属内容列、标题、歌曲信息、歌曲进度、主卡、节目进度和播放按钮均与规范一致；64 根波形柱、32 根绿色柱逐根交替与单一播放控制保持不变，无禁用组件、无画布溢出，两态共享锚点差为 `0px`。既有 `dialog` / `aria-modal` / `aria-live` / progressbar 与 Reduce Motion 结构保持不变。标题、歌曲信息、当前行和未播放行对比度分别为 `18.11:1`、`4.78:1`、`16.42:1`、`3.91:1`。
 - QA 证据：[07 DJ 串讲](evidence/vda-05-detail-speaking.png)、[08 歌词跟随](evidence/vda-05-detail-lyrics.png)。两张图是自动验收派生产物，不是 VDA-14 正式基线。
 - 已知后续范围：规范指定的已读文本 `#A8A7A1` 在 `#F5F3F6` 上实测 `2.19:1`；VDA-05 保持明确视觉规范，不在页面族任务中静默改色，最终 WCAG 处理纳入 VDA-13。Light 独立校准属于 VDA-10，Detail 响应式代表页属于 VDA-12，正式 Dark / Light 基线与逐页视觉 QA 属于 VDA-14。
+
+## VDA-06 执行记录
+
+- 状态：2026-07-13 已完成 HTML、CSS、固定 fixture、自动检查与用户视觉验收，任务为“已完成”。
+- 范围：建立 09 Library 音乐库 Dark HTML 页面；默认结果页包含搜索、五条歌曲、试听、加入候选池、导入网易云歌单、连接状态与已导入来源，并通过 `variant` 固定定位 `results`、`importing`、`empty`、`no-results`、`service-error` 五种视觉状态。10–15 保持 VDA-01 骨架，不生成 Light、响应式或正式基线截图。
+- A / B 级差异：没有新增未决 A / B 级差异。页面结构、材质与单列密度沿用已确认 B-002；Management 内容列使用 2026-07-13 尺度校准后的 `840px`。用户在本任务方案确认中同意歌曲行以 `64px` 固定封面和 `16px` 内边距形成 `96px` 行高，不采用 `design/prompt.md` 中无法同时容纳该封面与统一内边距的旧 `72px` 描述。
+- C 级裁决：C-001 使用共享 Surface、Border 与极弱阴影；C-002 使用五种固定 `64 × 64px` 低饱和抽象封面，不追随 PNG 随机裁切；C-004 使用 4px 网格、普通卡片 `20px` 圆角、导入卡 `24px` 内边距和统一分割线；C-005 复用系统字体、品牌 SVG、Settings SVG、Tab SVG 与线性试听、搜索、列表、重试图标。状态色同时配有 `CONNECTED`、`IMPORTING`、`OFFLINE` 或错误文案，不以颜色单独表达语义。
+- 结构检查：画布目标保持 `960 × 1600px`；顶部工具 `x 60 / y 40 / w 840 / h 64px`；Management 主列 `x 60 / y 144 / w 840px`；搜索框 `840 × 80px`；歌曲封面 `64 × 64px`；五条结果各 `96px`；底部导航复用共享 `x 170 / y 1480 / 620 × 88px`。静态几何公式计算最长的 `importing` 变体内容底边为 `y 1380`，与导航顶边保留 `100px`。
+- 自动检查：JavaScript 语法、fixture 冻结、15 页 / 3 主题 / 4 viewport 回归、五种 Library 变体、五首歌曲、两条来源、关键 CSS 几何、参考 PNG `971 × 1619px`、Git whitespace 与禁止目录范围均通过。Dark 主题主要文字、次要文字、Error、Success、Information 在对应背景上的对比度分别不低于 `18.12:1`、`8.51:1`、`5.60:1`、`7.61:1`、`5.91:1`。
+- 视觉验收：浏览器安全策略拒绝 Agent 读取本地 `file://` 页的 DOM 或截图，因此未生成 VDA-06 QA 派生截图，也未取得真实 computed geometry、控制台与 PNG 叠图自动证据；用户在 Codex 应用内打开 Dark Library 页面并检查五种变体后明确确认“视觉通过”，关闭 VDA-06 视觉验收门。Light 校准属于 VDA-11，Management 响应式代表页属于 VDA-12，完整交互与无障碍属于 VDA-13，正式 Dark / Light 基线属于 VDA-14。

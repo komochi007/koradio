@@ -71,6 +71,13 @@
       family: "management",
       state: "default",
       reference: "../../references/09-library.png",
+      variants: [
+        { id: "results", label: "搜索结果" },
+        { id: "importing", label: "歌单导入中" },
+        { id: "empty", label: "空音乐库" },
+        { id: "no-results", label: "搜索无结果" },
+        { id: "service-error", label: "服务异常" },
+      ],
     },
     {
       id: "10-taste-overview",
@@ -259,12 +266,34 @@
         ],
       },
     },
+    library: {
+      localCount: "128 TRACKS",
+      query: "搜索歌曲、歌手或专辑",
+      noResultsQuery: "雨夜爵士钢琴",
+      tracks: [
+        { title: "If", artist: "Bread", album: "Manna", duration: "02:35", cover: "if", added: false },
+        { title: "Space Song", artist: "Beach House", album: "Depression Cherry", duration: "05:20", cover: "space", added: false },
+        { title: "Mystery of Love", artist: "Sufjan Stevens", album: "Call Me by Your Name", duration: "04:08", cover: "mystery", added: false },
+        { title: "Moon Song", artist: "Phoebe Bridgers", album: "Punisher", duration: "04:37", cover: "moon", added: true },
+        { title: "Show Me How", artist: "Men I Trust", album: "Oncle Jazz", duration: "03:35", cover: "show", added: false },
+      ],
+      sources: [
+        { name: "深夜写作歌单", count: "46 tracks", updatedAt: "更新于 2024-07-06 22:13" },
+        { name: "周日慢速播放", count: "31 tracks", updatedAt: "更新于 2024-07-05 16:48" },
+      ],
+      importValue: "https://music.163.com/playlist?id=40112818",
+    },
   };
 
   const freezeItems = (items) => Object.freeze(items.map((item) => Object.freeze(item)));
 
   global.KORADIO_FIXTURES = Object.freeze({
-    pages: freezeItems(pages),
+    pages: freezeItems(
+      pages.map((page) => ({
+        ...page,
+        ...(page.variants ? { variants: freezeItems(page.variants) } : {}),
+      })),
+    ),
     themes: freezeItems(themes),
     viewports: freezeItems(viewports),
     visualContent: Object.freeze({
@@ -302,6 +331,11 @@
           ...visualContent.detail.lyrics,
           lines: freezeItems(visualContent.detail.lyrics.lines.map((line) => ({ ...line }))),
         }),
+      }),
+      library: Object.freeze({
+        ...visualContent.library,
+        tracks: freezeItems(visualContent.library.tracks.map((track) => ({ ...track }))),
+        sources: freezeItems(visualContent.library.sources.map((source) => ({ ...source }))),
       }),
     }),
   });

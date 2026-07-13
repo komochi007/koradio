@@ -8,6 +8,8 @@
   const elements = {
     controls: document.querySelector("#preview-controls"),
     pageSelect: document.querySelector("#page-select"),
+    variantControl: document.querySelector("#variant-control"),
+    variantSelect: document.querySelector("#variant-select"),
     themeSelect: document.querySelector("#theme-select"),
     viewportSelect: document.querySelector("#viewport-select"),
     pageFamily: document.querySelector("#page-family"),
@@ -47,6 +49,11 @@
       pause: '<path d="M9 5v14M15 5v14"/>',
       volume: '<path d="M11 5 6.5 9H3v6h3.5L11 19V5ZM15 9a4 4 0 0 1 0 6M17.5 6.5a7.5 7.5 0 0 1 0 11"/>',
       queue: '<path d="M4 6h12M4 12h12M4 18h8M18 15l3 3-3 3"/>',
+      search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+      play: '<path d="m9 6 9 6-9 6V6Z"/>',
+      check: '<path d="m5 12 4 4L19 6"/>',
+      list: '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+      retry: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
     };
 
     return `<svg class="kr-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
@@ -442,6 +449,135 @@
     `;
   };
 
+  const libraryTrack = (track) => `
+    <li class="library-track">
+      <span class="library-cover library-cover--${track.cover}" aria-hidden="true"><i></i></span>
+      <span class="library-track__meta">
+        <strong>${track.title}</strong>
+        <small>${track.artist} · ${track.album}</small>
+      </span>
+      <span class="library-track__duration">${track.duration}</span>
+      <button class="library-track__play" type="button" aria-label="试听 ${track.title}">${icon("play")}</button>
+      ${track.added
+        ? `<span class="library-track__added"><i aria-hidden="true">${icon("check")}</i>已加入</span>`
+        : `<button class="kr-button kr-button--compact kr-button--secondary library-track__add" type="button">加入候选池</button>`}
+    </li>
+  `;
+
+  const libraryStatePanel = (variant) => {
+    const states = {
+      empty: {
+        symbol: icon("list"),
+        title: "还没有导入音乐",
+        copy: "可以先搜索一首歌，或导入你的网易云歌单。",
+        action: "搜索一首歌",
+      },
+      "no-results": {
+        symbol: icon("search"),
+        title: "没有找到相关歌曲",
+        copy: "换个关键词试试，也可以直接导入熟悉的网易云歌单。",
+        action: "清除关键词",
+      },
+      "service-error": {
+        symbol: icon("retry"),
+        title: "网易云 API 暂不可用",
+        copy: "搜索内容已保留。请稍后重试，或前往 Settings 检查服务配置。",
+        action: "重新搜索",
+      },
+    };
+    const state = states[variant];
+    return `
+      <section class="library-state library-state--${variant}" aria-live="polite">
+        <span class="library-state__symbol" aria-hidden="true">${state.symbol}</span>
+        <div>
+          <h2>${state.title}</h2>
+          <p>${state.copy}</p>
+        </div>
+        <button class="kr-button kr-button--secondary" type="button">${state.action}</button>
+        ${variant === "service-error" ? '<button class="kr-button kr-button--ghost" type="button">前往 Settings</button>' : ""}
+      </section>
+    `;
+  };
+
+  const libraryImportCard = (content, variant) => {
+    const importing = variant === "importing";
+    const serviceError = variant === "service-error";
+    const status = serviceError ? "OFFLINE" : importing ? "IMPORTING" : "CONNECTED";
+    return `
+      <section class="library-import kr-card library-import--${serviceError ? "error" : importing ? "importing" : "ready"}" aria-labelledby="library-import-title">
+        <header>
+          <div>
+            <h2 id="library-import-title">导入网易云歌单</h2>
+            <p>粘贴歌单链接或 ID，将可用歌曲加入本地候选池。</p>
+          </div>
+          <p class="kr-status ${serviceError ? "kr-status--error" : importing ? "kr-status--info" : "kr-status--success"}">
+            <span class="kr-status__dot" aria-hidden="true"></span><span>${status}</span>
+          </p>
+        </header>
+        <div class="library-import__controls">
+          <input class="kr-input${serviceError ? " kr-input--error" : ""}" value="${importing || serviceError ? content.importValue : ""}" placeholder="粘贴歌单链接或 ID" aria-label="网易云歌单链接或 ID" readonly${importing ? " disabled" : ""} />
+          <button class="kr-button kr-button--large kr-button--secondary" type="button"${importing || serviceError ? " disabled" : ""}>${importing ? "正在导入" : "导入歌单"}</button>
+        </div>
+        ${importing ? '<div class="library-import__progress" aria-live="polite"><span class="library-import__progress-line"><i></i></span><p>正在从网易云获取音乐… · 已写入 18 / 46</p></div>' : ""}
+        ${serviceError ? '<p class="library-import__message">网易云连接失败，请稍后重试。输入内容已保留。</p>' : ""}
+      </section>
+    `;
+  };
+
+  const librarySources = (sources) => `
+    <section class="library-sources" aria-labelledby="library-sources-title">
+      <h2 id="library-sources-title">已导入来源</h2>
+      <ul>
+        ${sources.map((source) => `
+          <li>
+            <span class="library-source__icon" aria-hidden="true">${icon("list")}</span>
+            <strong>${source.name} · <small>${source.count}</small></strong>
+            <span>${source.updatedAt}</span>
+            <button type="button" aria-label="${source.name} 更多操作">${icon("more")}</button>
+          </li>
+        `).join("")}
+      </ul>
+    </section>
+  `;
+
+  const renderLibrary = (variant = "results") => {
+    const content = fixtures.visualContent.library;
+    const showResults = variant === "results" || variant === "importing";
+    const showSources = variant !== "empty";
+    const searchValue = variant === "no-results" ? content.noResultsQuery : variant === "service-error" ? "Beach House" : "";
+    return `
+      <div class="prototype-page prototype-page--library prototype-page--library-${variant}">
+        <header class="prototype-topbar library-topbar kr-topbar">
+          ${brand()}
+          ${settingsButton()}
+        </header>
+        <main class="library-main">
+          <header class="library-heading">
+            <div>
+              <h1 class="kr-h1">音乐库</h1>
+              <p class="kr-body kr-text-secondary">管理 Koradio 可以搜索、试播和用于节目策展的音乐来源。</p>
+            </div>
+            <p>${variant === "empty" ? "0 TRACKS" : content.localCount}</p>
+          </header>
+          <label class="library-search${variant === "service-error" ? " library-search--error" : ""}">
+            <span aria-hidden="true">${icon("search")}</span>
+            <input value="${searchValue}" placeholder="${content.query}" aria-label="搜索歌曲、歌手或专辑" readonly />
+            ${searchValue ? '<button type="button" aria-label="清除搜索">×</button>' : '<kbd>⌘ K</kbd>'}
+          </label>
+          <section class="library-results" aria-labelledby="library-results-title">
+            <h2 id="library-results-title">${showResults ? `搜索结果 · ${content.tracks.length}` : variant === "empty" ? "本地音乐" : "搜索结果"}</h2>
+            ${showResults
+              ? `<ol>${content.tracks.map(libraryTrack).join("")}</ol>`
+              : libraryStatePanel(variant)}
+          </section>
+          ${libraryImportCard(content, variant)}
+          ${showSources ? librarySources(content.sources) : ""}
+        </main>
+        ${nav("library")}
+      </div>
+    `;
+  };
+
   const renderSkeleton = (page, theme, viewport) => `
     <div class="prototype-placeholder">
       <p class="prototype-number">PAGE ${page.number}</p>
@@ -466,6 +602,7 @@
       "06-radio-generating": () => renderRadio("generating"),
       "07-radio-detail-speaking": () => renderDetail("speaking"),
       "08-radio-detail-lyrics": () => renderDetail("lyrics"),
+      "09-library": () => renderLibrary(selection.variant?.id),
     };
     const renderer = renderers[selection.page.id];
     return renderer ? renderer() : renderSkeleton(selection.page, selection.theme, selection.viewport);
@@ -486,10 +623,14 @@
 
   const findById = (items, id) => items.find((item) => item.id === id) || items[0];
 
+  const findVariant = (page, id) => page.variants ? findById(page.variants, id) : null;
+
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
+    const page = findById(fixtures.pages, params.get("page"));
     return {
-      page: findById(fixtures.pages, params.get("page")),
+      page,
+      variant: findVariant(page, params.get("variant")),
       theme: findById(fixtures.themes, params.get("theme")),
       viewport: findById(fixtures.viewports, params.get("viewport")),
     };
@@ -505,11 +646,15 @@
 
   const writeCanonicalUrl = (selection, mode) => {
     const url = new URL(window.location.href);
-    url.search = new URLSearchParams({
+    const params = {
       page: selection.page.id,
       theme: selection.theme.id,
       viewport: selection.viewport.id,
-    }).toString();
+    };
+    if (selection.variant) {
+      params.variant = selection.variant.id;
+    }
+    url.search = new URLSearchParams(params).toString();
     window.history[mode](null, "", url);
   };
 
@@ -546,13 +691,19 @@
     previewState.selection = selection;
 
     elements.pageSelect.value = page.id;
+    elements.variantControl.hidden = !page.variants;
+    elements.variantSelect.replaceChildren();
+    if (page.variants) {
+      addOptions(elements.variantSelect, page.variants, (variant) => variant.label);
+      elements.variantSelect.value = selection.variant.id;
+    }
     elements.themeSelect.value = theme.id;
     elements.viewportSelect.value = viewport.id;
     elements.pageFamily.textContent = page.family;
-    elements.pageState.textContent = page.state;
+    elements.pageState.textContent = selection.variant ? `${page.state} · ${selection.variant.id}` : page.state;
     elements.referenceLink.href = page.reference;
     elements.referenceLink.setAttribute("aria-label", `查看 ${page.title} 的 PNG 参考图`);
-    elements.stageTitle.textContent = `${page.number} · ${page.title}`;
+    elements.stageTitle.textContent = `${page.number} · ${page.title}${selection.variant ? ` · ${selection.variant.label}` : ""}`;
     elements.viewportOutput.value = `${viewport.width} × ${viewport.height}`;
     elements.canvas.style.setProperty("--canvas-width", `${viewport.width}px`);
     elements.canvas.style.setProperty("--canvas-height", `${viewport.height}px`);
@@ -571,11 +722,15 @@
     window.requestAnimationFrame(applyScale);
   };
 
-  const selectionFromControls = () => ({
-    page: findById(fixtures.pages, elements.pageSelect.value),
-    theme: findById(fixtures.themes, elements.themeSelect.value),
-    viewport: findById(fixtures.viewports, elements.viewportSelect.value),
-  });
+  const selectionFromControls = () => {
+    const page = findById(fixtures.pages, elements.pageSelect.value);
+    return {
+      page,
+      variant: findVariant(page, elements.variantSelect.value),
+      theme: findById(fixtures.themes, elements.themeSelect.value),
+      viewport: findById(fixtures.viewports, elements.viewportSelect.value),
+    };
+  };
 
   elements.controls.addEventListener("change", (event) => {
     if (event.target.matches("select")) {
