@@ -2901,22 +2901,22 @@ a {
 
 .programs-summary dl {
   display: grid;
-  grid-template-columns: repeat(3, max-content);
-  justify-content: space-between;
+  grid-template-columns: repeat(3, 1fr);
   margin: 12px 0 0;
 }
 
 .programs-summary dl > div {
   display: grid;
+  width: max-content;
   gap: 2px;
 }
 
 .programs-summary dl > div:nth-child(2) {
-  text-align: center;
+  justify-self: center;
 }
 
 .programs-summary dl > div:last-child {
-  text-align: right;
+  justify-self: end;
 }
 
 .programs-summary dt {
