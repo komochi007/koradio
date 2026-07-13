@@ -1787,8 +1787,8 @@ a {
 
 .detail-paper h1 {
   position: absolute;
-  top: 80px;
-  left: 80px;
+  top: 64px;
+  left: var(--kr-detail-content-offset);
   width: var(--kr-detail-content-width);
   margin: 0;
   color: var(--kr-color-detail-text);
@@ -1800,8 +1800,8 @@ a {
 
 .detail-track {
   position: absolute;
-  top: 220px;
-  left: 80px;
+  top: 164px;
+  left: var(--kr-detail-content-offset);
   width: var(--kr-detail-content-width);
   margin: 0;
   color: var(--kr-color-detail-text-secondary);
@@ -1811,8 +1811,8 @@ a {
 
 .detail-track-progress {
   position: absolute;
-  top: 280px;
-  left: 80px;
+  top: 216px;
+  left: var(--kr-detail-content-offset);
   display: grid;
   width: var(--kr-detail-content-width);
   height: 28px;
@@ -1847,8 +1847,8 @@ a {
 
 .detail-copy {
   position: absolute;
-  top: 340px;
-  left: 80px;
+  top: 280px;
+  left: var(--kr-detail-content-offset);
   display: grid;
   width: var(--kr-detail-content-width);
   height: var(--kr-detail-copy-height);
@@ -1871,6 +1871,7 @@ a {
 }
 
 .detail-copy--speaking {
+  align-content: space-evenly;
   gap: 22px;
 }
 
@@ -1892,6 +1893,7 @@ a {
 }
 
 .detail-copy--lyrics {
+  align-content: space-evenly;
   gap: 5px;
 }
 
@@ -1939,7 +1941,7 @@ a {
 .detail-program-progress {
   position: absolute;
   top: 1036px;
-  left: 80px;
+  left: var(--kr-detail-content-offset);
   display: flex;
   width: var(--kr-detail-program-width);
   height: 48px;
@@ -1964,7 +1966,7 @@ a {
 .detail-play {
   position: absolute;
   top: 1032px;
-  left: 824px;
+  left: var(--kr-detail-play-left);
   display: grid;
   width: var(--kr-detail-play-size);
   height: var(--kr-detail-play-size);

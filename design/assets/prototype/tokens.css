@@ -114,13 +114,15 @@
   --kr-management-width: 840px;
   --kr-settings-width: 832px;
   --kr-detail-sheet-width: 960px;
-  --kr-detail-content-width: 800px;
+  --kr-detail-content-offset: 56px;
+  --kr-detail-content-width: 848px;
   --kr-detail-wave-height: 280px;
   --kr-detail-paper-height: 1180px;
   --kr-detail-title-size: 60px;
   --kr-detail-title-line: 68px;
-  --kr-detail-copy-height: 620px;
-  --kr-detail-program-width: 720px;
+  --kr-detail-copy-height: 700px;
+  --kr-detail-program-width: 768px;
+  --kr-detail-play-left: 848px;
   --kr-detail-drag-width: 84px;
   --kr-detail-drag-height: 6px;
   --kr-detail-close-size: 64px;

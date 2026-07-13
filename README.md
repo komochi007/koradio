@@ -49,7 +49,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 异常与 Profile 01–03 Dark HTML 视觉页面已建立（VDA-03 已完成）
 - [x] Radio 三态 04–06 Dark HTML 视觉页面已建立（VDA-04 已完成）
 - [x] VDA-02–04 尺度补正已完成自动检查与用户视觉验收；共享组件尺度确认点已关闭
-- [x] Detail Sheet 07–08 Dark HTML 视觉页面已建立，并完成浏览器反馈视觉校准（VDA-05 已完成）
+- [x] Detail Sheet 07–08 Dark HTML 视觉页面已建立，并完成波形、专属内容列、卡片尺寸与间距的浏览器反馈视觉校准（VDA-05 已完成）
 - [x] 01–08、共享组件尺度与 Detail Sheet 双态已通过核心体验确认门
 - [ ] 其余 7 个页面的完整 HTML 视觉基线尚未建立
 - [ ] Monorepo 尚未创建
