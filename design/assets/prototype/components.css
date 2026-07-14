@@ -423,7 +423,7 @@
 .kr-card--radio {
   padding: var(--kr-space-6);
   border-radius: var(--kr-radius-xl);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)), var(--kr-color-surface);
+  background: linear-gradient(180deg, var(--kr-color-surface-sheen), transparent), var(--kr-color-surface);
 }
 
 .kr-card--interactive {

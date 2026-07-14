@@ -23,6 +23,9 @@
   --kr-color-warning: #a87824;
   --kr-color-error: #b94f55;
   --kr-color-info: #557da9;
+  --kr-color-ambient: rgba(79, 174, 107, 0.04);
+  --kr-color-radio-ambient: rgba(79, 174, 107, 0.07);
+  --kr-color-surface-sheen: rgba(23, 25, 29, 0.018);
   --kr-color-detail-field: #090a0c;
   --kr-color-detail-paper: #ffffff;
   --kr-color-detail-card: #f5f3f6;
@@ -171,6 +174,9 @@
   --kr-color-warning: #d3a653;
   --kr-color-error: #d76d72;
   --kr-color-info: #7294bc;
+  --kr-color-ambient: rgba(85, 185, 120, 0.05);
+  --kr-color-radio-ambient: rgba(85, 185, 120, 0.08);
+  --kr-color-surface-sheen: rgba(255, 255, 255, 0.025);
 }
 
 @media (max-width: 767px) {

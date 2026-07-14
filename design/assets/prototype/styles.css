@@ -403,6 +403,10 @@ a {
   pointer-events: none;
 }
 
+.prototype-canvas[data-theme="light"]:is([data-family="exception"], [data-family="profile"], [data-family="radio"], [data-family="detail"])::before {
+  background: radial-gradient(circle at 50% 36%, var(--kr-color-ambient), transparent 34%);
+}
+
 .preview-reference-overlay {
   position: absolute;
   z-index: 2;
@@ -1105,7 +1109,7 @@ a {
 
 .radio-main--empty {
   padding: 0 72px;
-  background: radial-gradient(circle at 50% 0, rgba(85, 185, 120, 0.08), transparent 42%), var(--kr-color-surface);
+  background: radial-gradient(circle at 50% 0, var(--kr-color-radio-ambient), transparent 42%), var(--kr-color-surface);
 }
 
 .radio-main .radio-eyebrow,
@@ -1497,7 +1501,7 @@ a {
   padding: 24px 28px;
   border: 1px solid var(--kr-color-border-subtle);
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 38%), var(--kr-color-surface);
+  background: linear-gradient(180deg, var(--kr-color-surface-sheen), transparent 38%), var(--kr-color-surface);
 }
 
 .radio-dialogue--empty {
