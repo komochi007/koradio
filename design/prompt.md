@@ -577,7 +577,7 @@ Dream Pop、Indie Folk、Ambient、City Pop、Alternative、Soft Rock、Bossa No
 
 所有服务配置输入框高度 `64 px`，圆角 14 px，背景 #111317，边框 #2A2F37。标签使用 14 px 次要文字。服务状态、服务配置、偏好设置、本地数据、固定操作区和底部导航之间统一保留 `24 px` 的纵向间距。
 
-接着显示“偏好设置”。Theme Mode 使用三段选择器“Dark / Light / System”，Dark 选中，选中态使用高对比中性色。DJ Language 使用选择器，当前为“中文”。DJ Voice Style 当前为“British Soft Radio”，选择框下方不显示额外说明文字。
+接着显示“偏好设置”。Theme Mode 使用三段选择器“Dark / Light / System”，Dark 选中，选中态使用高对比中性色。DJ Language 使用选择器，当前为“中文”。DJ Voice Style 当前为“British Soft Radio”，选择框下方不显示额外说明文字。三个控件均为 `44 px` 高，相邻行之间保留 `8 px` 间距，边框不得相接。
 
 再下方显示“本地数据”。包含数据路径“/Users/komo/Koradio”, “Change”按钮，缓存占用“1.8 GB”，以及一个弱危险操作“清理音频缓存”。不要使用红色大按钮。
 

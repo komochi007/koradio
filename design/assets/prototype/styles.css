@@ -3676,13 +3676,17 @@ a {
 
 .settings-preference-row {
   display: grid;
-  height: 48px;
+  height: var(--kr-settings-preference-control-height);
   grid-template-columns: 280px minmax(0, 1fr);
   align-items: center;
 }
 
 .settings-preference-row:first-of-type {
   margin-top: 12px;
+}
+
+.settings-preference-row + .settings-preference-row {
+  margin-top: var(--kr-settings-preference-gap);
 }
 
 .settings-preference-row > span {
@@ -3693,12 +3697,13 @@ a {
 
 .settings-segmented {
   display: grid;
-  height: 48px;
+  height: var(--kr-settings-preference-control-height);
   grid-template-columns: repeat(3, 1fr);
   overflow: hidden;
-  border: 1px solid var(--kr-color-border);
+  border: 0;
   border-radius: var(--kr-radius-md);
   background: var(--kr-color-surface);
+  box-shadow: inset 0 0 0 1px var(--kr-color-border);
 }
 
 .settings-segmented button {
@@ -3723,7 +3728,7 @@ a {
 .settings-select {
   display: flex;
   width: 100%;
-  height: 48px;
+  height: var(--kr-settings-preference-control-height);
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
@@ -3746,12 +3751,12 @@ a {
 }
 
 .settings-local-data {
-  top: 1064px;
+  top: 1068px;
 }
 
 .settings-data-card {
   height: 132px;
-  margin-top: 12px;
+  margin-top: 8px;
   padding: 0;
   overflow: hidden;
 }
