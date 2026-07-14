@@ -62,6 +62,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 组件目录与 01–15 HTML 视觉主源已补齐完整交互状态、键盘路径、Focus、状态播报、页面 / Detail 动效、200% zoom 与 Reduce Motion，并通过自动浏览器交互、无障碍结构、对比度和文件验收（VDA-13 已完成）
 - [x] 已从 HTML 视觉主源生成 15 张 Dark、15 张 Light 与 30 张响应式正式基线，并通过文字、裁切、几何、对比度、恢复入口、文件完整性和复渲染自动验收（VDA-14 已完成）
 - [x] 已从已验收 HTML / VDA-14 基线建立 `Koradio · Visual Baseline · MVP` Figma 派生镜像，包含来源版本、变量、样式、共享组件、60 张页面 Frame 与转换限制（VDA-15 已完成）
+- [x] 已建立 15 页、35 个固定状态、共享组件、Tokens、fixture、renderer 与 60 张正式基线的开发交接映射，并通过整体视觉冻结门（VDA-16 已完成）
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
@@ -254,6 +255,7 @@ Koradio/
     │   └── reports/
     │       ├── visual-audit.md
     │       ├── visual-decisions.md
+    │       ├── handoff-map.md
     │       └── evidence/
     │           └── vda-00-*.png
     ├── tasks/
@@ -365,6 +367,7 @@ packages/
 | 高保真原型生成 | [design/prompt.md](design/prompt.md) + [design/references/](design/references/) |
 | 开发前视觉设计资产沉淀 | [design/tasks/visual-assets.md](design/tasks/visual-assets.md) |
 | 视觉资产审计与裁决 | [design/assets/reports/visual-audit.md](design/assets/reports/visual-audit.md) + [design/assets/reports/visual-decisions.md](design/assets/reports/visual-decisions.md) |
+| 前端视觉实现与冻结版本追溯 | [design/assets/reports/handoff-map.md](design/assets/reports/handoff-map.md) |
 | 工程实现或代码审查 | [AI_RULES.md](AI_RULES.md) |
 | Agent 执行与协作 | [AGENTS.md](AGENTS.md) |
 | 快速恢复项目认知 | [context.md](context.md) |

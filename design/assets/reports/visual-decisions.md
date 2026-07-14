@@ -1,7 +1,7 @@
 # Koradio 视觉差异与裁决记录
 
 > 建立于 VDA-00
-> 状态：2026-07-12 的原始裁决保留为历史；2026-07-13 用户尺度校准已取代其中的缩小规格；2026-07-14 用户浏览器反馈进一步校准 Settings 配置页密度，VDA-14 已完成正式基线与视觉 QA
+> 状态：2026-07-12 的原始裁决保留为历史；2026-07-13 用户尺度校准已取代其中的缩小规格；2026-07-14 用户浏览器反馈进一步校准 Settings 配置页密度，VDA-16 已完成开发交接并通过整体视觉冻结门
 > 权威顺序：PRD / User Flow → `design/design.md` → 未覆盖细节对应 PNG
 
 ## 2026-07-13 用户尺度校准
@@ -425,6 +425,19 @@
 - 最终决定：已自动裁决；以保真、可追溯和主源单一性优先，不伪造可编辑页面结构。
 - 证据：[Koradio · Visual Baseline · MVP](https://www.figma.com/design/ZxAWTQW5aH3VMd9H3T8zcJ)
 
+### C-015
+
+- 编号：C-015
+- 页面与区域：VDA-16 页面 / 状态 / fixture / 基线开发交接映射
+- 差异类别：追溯粒度 / 非默认变体基线边界
+- 当前表现：VDA-14 的 60 张正式 PNG 覆盖 15 个默认页面状态与五类响应式代表页；09–15 另有 20 个非默认固定变体，已由 HTML 与既有自动验收覆盖但没有独立正式 PNG。页面元数据和主要固定内容位于 `pages.js`，部分变体专属状态文案固定在 `app.js` renderer helper。
+- 规范要求：VDA-16 建立页面、状态、组件、token、fixture 与基线映射；HTML / CSS / JavaScript 保持唯一主源，PNG 与 Figma 不得反向定义或扩展视觉规格。
+- 严重级别：C
+- 推荐裁决：在 `handoff-map.md` 中显式列出 35 个固定状态、默认基线覆盖、非默认变体边界及两处 JavaScript 固定内容位置；不为满足文档对称性额外生成未纳入 VDA-14 范围的 PNG，也不在冻结任务中机械迁移 renderer-local 文案。后续前端必须实现并验收全部 35 个状态，不能用默认截图替代非默认状态验收。
+- 影响页面：01–15 的开发追溯与视觉验收；不修改 HTML 主源、正式基线、Figma、布局、内容层级、产品行为或交互语义。
+- 最终决定：已自动裁决；优先保持已验收资产稳定并完整披露覆盖边界。
+- 证据：`design/assets/reports/handoff-map.md`、`design/assets/fixtures/pages.js`、`design/assets/prototype/app.js`、`design/assets/baselines/manifest.json`
+
 ## 后续执行约束
 
 1. 核心体验骨架：Radio 按 2026-07-13 用户尺度校准执行；Detail 继续按 A-002 执行。
@@ -615,3 +628,13 @@
 - C 级裁决：新增 C-014；以已验收 PNG 图像填充保证页面保真，以原生变量、样式和代表性共享组件承载可编辑设计规则，并记录 SF Pro、响应式计算和交互转换限制。未修改 HTML / CSS / JavaScript、正式基线、布局、内容层级或产品语义。
 - 自动验收：10 页顺序正确；209 个变量无断链别名、无 `ALL_SCOPES`、均有 Web code syntax；10 个文字样式、4 个效果样式存在；7 个组件集共 66 个变体，无未命名变体与重叠；Prototype 为 30 张且 Dark / Light 各 15 张，Responsive 为 30 张且 Mobile / Tablet / Desktop 各 10 张。Cover、Getting Started、Foundations、Components、Utilities & Limits 及两张页面联系表已人工复核，未见裁切、内容缺失或主题错位。
 - 已知后续范围：页面—状态—组件—token—fixture—基线的开发交接映射与整体视觉冻结门属于 VDA-16；VDA-15 完成不代表整体视觉冻结门已经通过。
+
+## VDA-16 执行记录
+
+- 状态：2026-07-14 已完成开发交接映射、前端视觉验收清单、冻结版本记录与自动验收，任务为“已完成”。
+- 冻结标识：`Koradio Visual Freeze · MVP · VDA-16 · 2026-07-14`；HTML / CSS / JavaScript 主源版本为 `325b604c5749594ebc89dd32526d52fd205a6936`，正式基线清单版本为 `5ffa59749d392faafd0d2a296e2579e56086f44c`。
+- 交付物：`design/assets/reports/handoff-map.md`，建立 15 页、35 个固定状态、12 个组件组、13 个 token 组、fixture / renderer、60 张正式基线和五类响应式继承规则的追溯关系，并形成前端实现视觉验收清单与冻结后变更流程。
+- A / B 级差异：未发现新增 A / B 级差异；A-001–A-012 与 B-001–B-004 保持已关闭状态。
+- C 级裁决：新增 C-015，显式记录 15 个默认页面正式基线、20 个非默认 HTML 变体、`pages.js` 主要固定内容与 `app.js` renderer-local 状态文案的覆盖边界；不修改已验收 HTML、PNG 或 Figma。
+- 自动验收：15 页、35 个状态、12 个组件组、13 个 token 组和 60 张正式基线映射通过；60 张基线 SHA-256 完整性通过；VDA-14 独立复渲染全部通过，最大像素差异率 `0.55%`；JavaScript 语法、JSON、Markdown 链接、Git whitespace 与禁止目录范围检查通过。
+- 门禁：VDA-14、VDA-15 依赖满足，整体视觉冻结门通过。后续视觉变化必须先更新相应权威文档和 HTML 主源，再重新生成正式基线与 Figma 派生物。
