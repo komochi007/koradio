@@ -1,6 +1,6 @@
 # Koradio HTML 视觉原型
 
-> 当前范围：VDA-01 HTML 原型骨架 + VDA-02 Tokens 与共享组件目录 + VDA-03 异常与 Profile 01–03 + VDA-04 Radio 三态 04–06 + VDA-05 Detail Sheet 07–08 + VDA-06 Library 09 + VDA-07 Taste 10–11 + VDA-08 Programs 12–13 + VDA-09 Settings 14–15 + VDA-10 Light 核心页 01–08 + VDA-11 Light 管理页 09–15 + VDA-12 响应式代表页 + VDA-13 交互与无障碍 + 已验收的尺度与核心体验确认门
+> 当前范围：VDA-01 HTML 原型骨架 + VDA-02 Tokens 与共享组件目录 + VDA-03 异常与 Profile 01–03 + VDA-04 Radio 三态 04–06 + VDA-05 Detail Sheet 07–08 + VDA-06 Library 09 + VDA-07 Taste 10–11 + VDA-08 Programs 12–13 + VDA-09 Settings 14–15 + VDA-10 Light 核心页 01–08 + VDA-11 Light 管理页 09–15 + VDA-12 响应式代表页 + VDA-13 交互与无障碍 + VDA-14 正式截图基线与视觉 QA + 已验收的尺度与核心体验确认门
 >
 > 性质：零构建、非生产的开发前视觉设计资产预览
 
@@ -23,6 +23,8 @@ VDA-12 使用 03、05、08、10、14 分别代表 Profile、Radio、Detail、Man
 
 VDA-13 为共享控件和页面补齐 Hover、Active、Focus、Disabled、Loading、Error 与键盘路径。主导航支持左右方向键、Home、End；页面切换后焦点进入主标题，Library 支持 `⌘/Ctrl+K` 聚焦搜索；Detail Sheet 使用 Modal 焦点循环、Escape 关闭和焦点回收。页面、Detail 和波形动效遵循 Reduce Motion，状态变化通过明确文字和 live region 同步，不只依赖颜色。
 
+VDA-14 已从本目录主源派生 60 张正式 PNG，存放于 `../baselines/`；生成与复渲染验证入口为 `../scripts/vda-14-baselines.cjs`。基线只用于视觉回归，不反向定义组件尺寸。
+
 所有展示数据来自 `../fixtures/pages.js`，固定且只用于视觉定位。
 
 共享设计资产入口：
@@ -43,4 +45,4 @@ catalog.html?theme=light
 - 不连接 Backend、Provider 或数据库。
 - 不模拟真实播放、生成、配置保存或健康检查。
 - 01–03 已由 VDA-03、04–06 已由 VDA-04、07–08 已由 VDA-05、09 已由 VDA-06、10–11 已由 VDA-07、12–13 已由 VDA-08、14–15 已由 VDA-09 建立 Dark HTML 视觉页面；Library 的五种、Taste 的七种、Programs 的八种和 Settings 的七种固定变体均已通过对应验收。
-- Tokens 与共享组件已由 VDA-02 建立，尺度补正和核心体验确认门均已通过；01–15 已完成 Light 独立材质校准，07–08 继续使用不随主题反转的 Detail 专属色面。03、05、08、10、14 已建立三组 viewport 的响应式代表布局；完整交互与无障碍资产已由 VDA-13 补齐，正式基线截图仍由 VDA-14 建立。
+- Tokens 与共享组件已由 VDA-02 建立，尺度补正和核心体验确认门均已通过；01–15 已完成 Light 独立材质校准，07–08 继续使用不随主题反转的 Detail 专属色面。03、05、08、10、14 已建立三组 viewport 的响应式代表布局；完整交互与无障碍资产已由 VDA-13 补齐，60 张正式基线与视觉 QA 已由 VDA-14 完成。

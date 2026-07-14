@@ -1,0 +1,757 @@
+{
+  "task": "VDA-14",
+  "generatedAt": "2026-07-14T13:10:15.205Z",
+  "source": "design/assets/prototype/index.html",
+  "sourceAuthority": "HTML/CSS/JavaScript",
+  "capturePolicy": {
+    "reducedMotion": true,
+    "deviceScaleFactor": 1,
+    "layoutStabilityWaitMs": 500,
+    "referenceOverlay": false,
+    "maxReRenderPixelMismatchRate": 0.006,
+    "fontAntialiasDifferencesIgnored": true
+  },
+  "browser": "Chrome 150.0.7871.115",
+  "counts": {
+    "prototypeDark": 15,
+    "prototypeLight": 15,
+    "responsive": 30,
+    "total": 60
+  },
+  "qa": {
+    "status": "passed",
+    "checks": [
+      "required text",
+      "canvas size and clipping",
+      "fixed aspect ratios",
+      "44px minimum targets",
+      "recovery entries",
+      "resource and runtime errors",
+      "Radio and Detail cross-state geometry",
+      "Dark and Light geometry parity",
+      "WCAG contrast samples",
+      "deterministic re-rendering when --verify is used"
+    ],
+    "contrast": [
+      {
+        "label": "dark Primary / Background",
+        "foreground": "#f3f5f7",
+        "background": "#090a0c",
+        "ratio": 18.12,
+        "minimum": 4.5
+      },
+      {
+        "label": "dark Secondary / Background",
+        "foreground": "#a9b0ba",
+        "background": "#090a0c",
+        "ratio": 9.06,
+        "minimum": 4.5
+      },
+      {
+        "label": "dark Primary button",
+        "foreground": "#111317",
+        "background": "#f2f4f7",
+        "ratio": 16.88,
+        "minimum": 4.5
+      },
+      {
+        "label": "Detail 已读大字",
+        "foreground": "rgb(137, 138, 134)",
+        "background": "rgb(245, 243, 246)",
+        "ratio": 3.15,
+        "minimum": 3
+      },
+      {
+        "label": "light Primary / Background",
+        "foreground": "#17191d",
+        "background": "#f3f4f6",
+        "ratio": 15.99,
+        "minimum": 4.5
+      },
+      {
+        "label": "light Secondary / Background",
+        "foreground": "#5f6670",
+        "background": "#f3f4f6",
+        "ratio": 5.27,
+        "minimum": 4.5
+      },
+      {
+        "label": "light Primary button",
+        "foreground": "#ffffff",
+        "background": "#191b1f",
+        "ratio": 17.24,
+        "minimum": 4.5
+      },
+      {
+        "label": "Detail 已读大字",
+        "foreground": "rgb(137, 138, 134)",
+        "background": "rgb(245, 243, 246)",
+        "ratio": 3.15,
+        "minimum": 3
+      }
+    ],
+    "failures": []
+  },
+  "captures": [
+    {
+      "file": "dark/01-service-offline.png",
+      "page": "01-service-offline",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 148927,
+      "sha256": "e88ab29c587f4e34439938642d8a5c09b436ef8419820ccf0c44c11167a2726a",
+      "query": "?page=01-service-offline&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/02-profile-select.png",
+      "page": "02-profile-select",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 122541,
+      "sha256": "39a94d46f1be0a6627e7c9d0130a154f8976db7fd51c10d8845a0a83b3a88c56",
+      "query": "?page=02-profile-select&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/03-profile-create.png",
+      "page": "03-profile-create",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 166789,
+      "sha256": "a94f293bbd3f447e3d7519ee695a2acd2651610686181642de1a3d38266b0094",
+      "query": "?page=03-profile-create&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/04-radio-empty.png",
+      "page": "04-radio-empty",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 114896,
+      "sha256": "83294e1f01c33165e13652b2c9b24c4312951e2431450689e90e62d8b6fed85c",
+      "query": "?page=04-radio-empty&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/05-radio-playing.png",
+      "page": "05-radio-playing",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 123625,
+      "sha256": "036bd6856a15c18723620126657c6e19053f555a2b9a4545009002fb699b83f5",
+      "query": "?page=05-radio-playing&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/06-radio-generating.png",
+      "page": "06-radio-generating",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 79084,
+      "sha256": "27a0e91d964548ce19319393166fc06aa6c13e5f8df3248b9b7fef5ceecacfde",
+      "query": "?page=06-radio-generating&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/07-radio-detail-speaking.png",
+      "page": "07-radio-detail-speaking",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 80386,
+      "sha256": "6614bb9faac1308f78c9d9ecd6a9aa88c26d4f18fd434063f1edb93b283ed6d2",
+      "query": "?page=07-radio-detail-speaking&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/08-radio-detail-lyrics.png",
+      "page": "08-radio-detail-lyrics",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 88787,
+      "sha256": "7bf388d81175b2f6c1ee6ef0fafc0b05bdc93f023a50ba9d46e7c3ec172621a5",
+      "query": "?page=08-radio-detail-lyrics&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/09-library.png",
+      "page": "09-library",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 169295,
+      "sha256": "192d6dbee9cd41386b8ccd0bca76ea313ee8183d6e4f0a50a7d461a7619d79c9",
+      "query": "?page=09-library&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/10-taste-overview.png",
+      "page": "10-taste-overview",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 158485,
+      "sha256": "426a5ea31f41c56b13a927b7d161391cc1f1681add1fed439f9731ecfa7c8ba4",
+      "query": "?page=10-taste-overview&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/11-taste-edit.png",
+      "page": "11-taste-edit",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 112722,
+      "sha256": "a898fde894e15a885c75449477636dba27f8d336bb93fb1719589947108b894f",
+      "query": "?page=11-taste-edit&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/12-programs-list.png",
+      "page": "12-programs-list",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 120864,
+      "sha256": "6640c1d26e48e55be5d252ecf487eb35dcd1b8d539b2d9ca4ee6a0cec2b3c7c5",
+      "query": "?page=12-programs-list&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/13-program-detail.png",
+      "page": "13-program-detail",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 123042,
+      "sha256": "a578f1cb9867e1c281c8af78f2c57376066961ada32270356cefba8ad02bb588",
+      "query": "?page=13-program-detail&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/14-settings-config.png",
+      "page": "14-settings-config",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 148399,
+      "sha256": "6a8c0db15c480e9029a65fc5de1aa56c5c8bc7745b0d358ec34b9bd78292dfc1",
+      "query": "?page=14-settings-config&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "dark/15-settings-diagnostics.png",
+      "page": "15-settings-diagnostics",
+      "theme": "dark",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 159581,
+      "sha256": "475bd49ca71437e30bbb427c89259f23092a2ef4d9bb3e6d1c9b4c8e4cc7bd03",
+      "query": "?page=15-settings-diagnostics&theme=dark&viewport=prototype"
+    },
+    {
+      "file": "responsive/dark-mobile-03-profile-create.png",
+      "page": "03-profile-create",
+      "theme": "dark",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "bytes": 79797,
+      "sha256": "da11cc047c3bd50b6076f0d7a9ecff15ffd59b48c1006ce5d17effec3c14be89",
+      "query": "?page=03-profile-create&theme=dark&viewport=mobile"
+    },
+    {
+      "file": "responsive/dark-mobile-05-radio-playing.png",
+      "page": "05-radio-playing",
+      "theme": "dark",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "bytes": 55737,
+      "sha256": "a29b9eddd7c5f4dad2960b71672e1eade6f0a8e3f9cf267ec0efce8551b2983c",
+      "query": "?page=05-radio-playing&theme=dark&viewport=mobile"
+    },
+    {
+      "file": "responsive/dark-mobile-08-radio-detail-lyrics.png",
+      "page": "08-radio-detail-lyrics",
+      "theme": "dark",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "bytes": 51645,
+      "sha256": "6e95587d3ffe9648d20473aacd2dad9ac1ea6de5dfb386749e3ca20ee777dc29",
+      "query": "?page=08-radio-detail-lyrics&theme=dark&viewport=mobile"
+    },
+    {
+      "file": "responsive/dark-mobile-10-taste-overview.png",
+      "page": "10-taste-overview",
+      "theme": "dark",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "bytes": 65845,
+      "sha256": "fd46a47e6f3cbd2b917de5a5b47d3674740d993142ce2ec2d75702ff4e060eff",
+      "query": "?page=10-taste-overview&theme=dark&viewport=mobile"
+    },
+    {
+      "file": "responsive/dark-mobile-14-settings-config.png",
+      "page": "14-settings-config",
+      "theme": "dark",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "bytes": 68364,
+      "sha256": "aa56093212cbb9e1162fd4909f66bf5497d9c5a1b369106115661b0fc643f6d5",
+      "query": "?page=14-settings-config&theme=dark&viewport=mobile"
+    },
+    {
+      "file": "responsive/dark-tablet-03-profile-create.png",
+      "page": "03-profile-create",
+      "theme": "dark",
+      "viewport": "tablet",
+      "width": 834,
+      "height": 1194,
+      "bytes": 135835,
+      "sha256": "2a5a3fbd35aea11847b647247a8eef241b09674dc857497ed7b6f38a00eef008",
+      "query": "?page=03-profile-create&theme=dark&viewport=tablet"
+    },
+    {
+      "file": "responsive/dark-tablet-05-radio-playing.png",
+      "page": "05-radio-playing",
+      "theme": "dark",
+      "viewport": "tablet",
+      "width": 834,
+      "height": 1194,
+      "bytes": 85392,
+      "sha256": "6ea94251109680f78a9b66d317919ad706b2237aac6c20272b07dae9a3dba35d",
+      "query": "?page=05-radio-playing&theme=dark&viewport=tablet"
+    },
+    {
+      "file": "responsive/dark-tablet-08-radio-detail-lyrics.png",
+      "page": "08-radio-detail-lyrics",
+      "theme": "dark",
+      "viewport": "tablet",
+      "width": 834,
+      "height": 1194,
+      "bytes": 84013,
+      "sha256": "d6095ac4f53a8d6520fa19df6b47dbc0c6f651a5af9ed9ef96f53bb6ec63eadd",
+      "query": "?page=08-radio-detail-lyrics&theme=dark&viewport=tablet"
+    },
+    {
+      "file": "responsive/dark-tablet-10-taste-overview.png",
+      "page": "10-taste-overview",
+      "theme": "dark",
+      "viewport": "tablet",
+      "width": 834,
+      "height": 1194,
+      "bytes": 132609,
+      "sha256": "c02a278779d58f72b1d8ba89dcfb28dbc2b6398bf72934be463fa9f158d1a36a",
+      "query": "?page=10-taste-overview&theme=dark&viewport=tablet"
+    },
+    {
+      "file": "responsive/dark-tablet-14-settings-config.png",
+      "page": "14-settings-config",
+      "theme": "dark",
+      "viewport": "tablet",
+      "width": 834,
+      "height": 1194,
+      "bytes": 109147,
+      "sha256": "9163e6df23731f8f6c67b1e54624d9607f1909a86c8e356b2e3a8140e46c8b22",
+      "query": "?page=14-settings-config&theme=dark&viewport=tablet"
+    },
+    {
+      "file": "responsive/dark-desktop-03-profile-create.png",
+      "page": "03-profile-create",
+      "theme": "dark",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1200,
+      "bytes": 165720,
+      "sha256": "f34f99d14ebe6eb8b2f2f5db639084ba8fd2303328c5ddab3a7d9fceb4bbd742",
+      "query": "?page=03-profile-create&theme=dark&viewport=desktop"
+    },
+    {
+      "file": "responsive/dark-desktop-05-radio-playing.png",
+      "page": "05-radio-playing",
+      "theme": "dark",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1200,
+      "bytes": 102064,
+      "sha256": "4a409326c2ccd2fff1601d3b24345fe39e23a034b4d3ff65d49ad34dcbe16600",
+      "query": "?page=05-radio-playing&theme=dark&viewport=desktop"
+    },
+    {
+      "file": "responsive/dark-desktop-08-radio-detail-lyrics.png",
+      "page": "08-radio-detail-lyrics",
+      "theme": "dark",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1200,
+      "bytes": 89940,
+      "sha256": "6011de273f2248cd4f477dbb9d123e79710bfb292ed5586b8f34ed5a01cc1b79",
+      "query": "?page=08-radio-detail-lyrics&theme=dark&viewport=desktop"
+    },
+    {
+      "file": "responsive/dark-desktop-10-taste-overview.png",
+      "page": "10-taste-overview",
+      "theme": "dark",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1200,
+      "bytes": 140491,
+      "sha256": "b1ff4c50f028fb5fb293684718a009356271e98f51111ab1d9b364f3b5462c78",
+      "query": "?page=10-taste-overview&theme=dark&viewport=desktop"
+    },
+    {
+      "file": "responsive/dark-desktop-14-settings-config.png",
+      "page": "14-settings-config",
+      "theme": "dark",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1200,
+      "bytes": 135811,
+      "sha256": "1a7e083613bfecc5d34c7ec6a838cd34d49004d6159783ce27816379f5a52b30",
+      "query": "?page=14-settings-config&theme=dark&viewport=desktop"
+    },
+    {
+      "file": "light/01-service-offline.png",
+      "page": "01-service-offline",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 140986,
+      "sha256": "eb952b2152b8b97262723645cecd8c19a2ad43b123aff31921b5c870de4e125d",
+      "query": "?page=01-service-offline&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/02-profile-select.png",
+      "page": "02-profile-select",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 120482,
+      "sha256": "e6a55f2e7d0af160857eee54a1f3a33a0590d5299aad45a561b5b2f55e370dc1",
+      "query": "?page=02-profile-select&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/03-profile-create.png",
+      "page": "03-profile-create",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 160798,
+      "sha256": "16f2eeabceacf93d25dbb9285fee0a814989952aa2fa9bf9cdb719ee0fe6ebad",
+      "query": "?page=03-profile-create&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/04-radio-empty.png",
+      "page": "04-radio-empty",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 119025,
+      "sha256": "a5ddddd360c03dfcf06b1f6c1bcfea61041a52e426c11fd0578cbffa4249d33a",
+      "query": "?page=04-radio-empty&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/05-radio-playing.png",
+      "page": "05-radio-playing",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 123708,
+      "sha256": "a4684843bdf0da765e2ad91e067bff487ee594daef72b08c00601a5764be4a24",
+      "query": "?page=05-radio-playing&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/06-radio-generating.png",
+      "page": "06-radio-generating",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 77204,
+      "sha256": "3b18d51d73723beece1bf75da3a9bf874262eaadb9c7ca0187ac5beb4baf1c9b",
+      "query": "?page=06-radio-generating&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/07-radio-detail-speaking.png",
+      "page": "07-radio-detail-speaking",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 80122,
+      "sha256": "12bbf891099e80360285410e446f6adc890f8ea5d928ae23d07f7605571873ad",
+      "query": "?page=07-radio-detail-speaking&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/08-radio-detail-lyrics.png",
+      "page": "08-radio-detail-lyrics",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 88537,
+      "sha256": "8c449565e7f876c289108352ffa514f76819bb98b28d969b1dfa2b500413e528",
+      "query": "?page=08-radio-detail-lyrics&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/09-library.png",
+      "page": "09-library",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 168970,
+      "sha256": "5f95f0039acc13c6e05d19043f60359d8cdc994fb5dadac7089acf37d0ab3365",
+      "query": "?page=09-library&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/10-taste-overview.png",
+      "page": "10-taste-overview",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 158644,
+      "sha256": "b395954524f900a626a43be44a8359e781c0997320f3c11a1ce76f488a23a161",
+      "query": "?page=10-taste-overview&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/11-taste-edit.png",
+      "page": "11-taste-edit",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 113062,
+      "sha256": "fc51e18d825a06d3437ea93bf2cb2aa314ab023aa843e77a4b1f545a33db642e",
+      "query": "?page=11-taste-edit&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/12-programs-list.png",
+      "page": "12-programs-list",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 121886,
+      "sha256": "9add92d87320ec34659bd86e5e8ec2ad240ff5e8a4079a816617c7d8e666d18a",
+      "query": "?page=12-programs-list&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/13-program-detail.png",
+      "page": "13-program-detail",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 124282,
+      "sha256": "c3516e2a39d69b984d9470a5fae1431458d1de2a14572fdf1c6b05be3b5c8ddd",
+      "query": "?page=13-program-detail&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/14-settings-config.png",
+      "page": "14-settings-config",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 144650,
+      "sha256": "58dad9de4f8a0c855d29f6b5e93fc21b56bffc98fc454becc00a6dbe70901c13",
+      "query": "?page=14-settings-config&theme=light&viewport=prototype"
+    },
+    {
+      "file": "light/15-settings-diagnostics.png",
+      "page": "15-settings-diagnostics",
+      "theme": "light",
+      "viewport": "prototype",
+      "width": 960,
+      "height": 1600,
+      "bytes": 157734,
+      "sha256": "c2f4c5d3a6e77c0e9692cccdafbb3d9d502e7b7f116ec1f32709a3046d7b0804",
+      "query": "?page=15-settings-diagnostics&theme=light&viewport=prototype"
+    },
+    {
+      "file": "responsive/light-mobile-03-profile-create.png",
+      "page": "03-profile-create",
+      "theme": "light",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "bytes": 78215,
+      "sha256": "45380b6ca3b77bf52da46f258166079731221a37efe1717c5b1a8c8559d10568",
+      "query": "?page=03-profile-create&theme=light&viewport=mobile"
+    },
+    {
+      "file": "responsive/light-mobile-05-radio-playing.png",
+      "page": "05-radio-playing",
+      "theme": "light",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "bytes": 54720,
+      "sha256": "b4510d330973f481bd8ff2401057f51f62129d4f609e199c96511b9825b36443",
+      "query": "?page=05-radio-playing&theme=light&viewport=mobile"
+    },
+    {
+      "file": "responsive/light-mobile-08-radio-detail-lyrics.png",
+      "page": "08-radio-detail-lyrics",
+      "theme": "light",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "bytes": 51521,
+      "sha256": "d44ec1ff35adc1dc8c3a4d0aec296ef3acccf9c5c79f2ba8b453af8e668a8815",
+      "query": "?page=08-radio-detail-lyrics&theme=light&viewport=mobile"
+    },
+    {
+      "file": "responsive/light-mobile-10-taste-overview.png",
+      "page": "10-taste-overview",
+      "theme": "light",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "bytes": 65271,
+      "sha256": "a7ed4ec8370b838bbaedfb213b1a2e39c10ae0d00ff314f045b4cd4a1f811398",
+      "query": "?page=10-taste-overview&theme=light&viewport=mobile"
+    },
+    {
+      "file": "responsive/light-mobile-14-settings-config.png",
+      "page": "14-settings-config",
+      "theme": "light",
+      "viewport": "mobile",
+      "width": 390,
+      "height": 844,
+      "bytes": 67799,
+      "sha256": "5f4747fb6e636c1c1e128328eef58ed4e3fa1fc706ded0ac5a3492b853975c51",
+      "query": "?page=14-settings-config&theme=light&viewport=mobile"
+    },
+    {
+      "file": "responsive/light-tablet-03-profile-create.png",
+      "page": "03-profile-create",
+      "theme": "light",
+      "viewport": "tablet",
+      "width": 834,
+      "height": 1194,
+      "bytes": 133621,
+      "sha256": "1213bd8aa2fab7ab1594d01b338b5bccecc4889e8b6465444470b7f7ef53b9fa",
+      "query": "?page=03-profile-create&theme=light&viewport=tablet"
+    },
+    {
+      "file": "responsive/light-tablet-05-radio-playing.png",
+      "page": "05-radio-playing",
+      "theme": "light",
+      "viewport": "tablet",
+      "width": 834,
+      "height": 1194,
+      "bytes": 83650,
+      "sha256": "77b33a79eb4cb9702fb1024799e327bfc9f2e55407a0522fcef88ecc5810f8f8",
+      "query": "?page=05-radio-playing&theme=light&viewport=tablet"
+    },
+    {
+      "file": "responsive/light-tablet-08-radio-detail-lyrics.png",
+      "page": "08-radio-detail-lyrics",
+      "theme": "light",
+      "viewport": "tablet",
+      "width": 834,
+      "height": 1194,
+      "bytes": 83767,
+      "sha256": "17878bbf4d8847887abdbfda5f8d342a7039649d0f97bc498f102fec15f8fb0f",
+      "query": "?page=08-radio-detail-lyrics&theme=light&viewport=tablet"
+    },
+    {
+      "file": "responsive/light-tablet-10-taste-overview.png",
+      "page": "10-taste-overview",
+      "theme": "light",
+      "viewport": "tablet",
+      "width": 834,
+      "height": 1194,
+      "bytes": 132071,
+      "sha256": "76ce3d74303896498293237a64cd482e0d2f83e75315be1deac67f9b72b90117",
+      "query": "?page=10-taste-overview&theme=light&viewport=tablet"
+    },
+    {
+      "file": "responsive/light-tablet-14-settings-config.png",
+      "page": "14-settings-config",
+      "theme": "light",
+      "viewport": "tablet",
+      "width": 834,
+      "height": 1194,
+      "bytes": 107206,
+      "sha256": "096c00a9ead9359a26fe0cc68a02cd118e6d8cd74b79734ed98d7dae41d0da9b",
+      "query": "?page=14-settings-config&theme=light&viewport=tablet"
+    },
+    {
+      "file": "responsive/light-desktop-03-profile-create.png",
+      "page": "03-profile-create",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1200,
+      "bytes": 160530,
+      "sha256": "a0b2604e2a0ea1f2d03049aa1461000098c42baee9789ef0f0b6911fc1eb96a5",
+      "query": "?page=03-profile-create&theme=light&viewport=desktop"
+    },
+    {
+      "file": "responsive/light-desktop-05-radio-playing.png",
+      "page": "05-radio-playing",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1200,
+      "bytes": 100114,
+      "sha256": "6dad64a3e960a91aa19ed28b386efc0818b59b5ff6aa5886c0dd2ff2b3a16e90",
+      "query": "?page=05-radio-playing&theme=light&viewport=desktop"
+    },
+    {
+      "file": "responsive/light-desktop-08-radio-detail-lyrics.png",
+      "page": "08-radio-detail-lyrics",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1200,
+      "bytes": 89683,
+      "sha256": "0095edf0a1de37a293448e501e1dc472031fd12b45292b56c9d7bb89db64e5f3",
+      "query": "?page=08-radio-detail-lyrics&theme=light&viewport=desktop"
+    },
+    {
+      "file": "responsive/light-desktop-10-taste-overview.png",
+      "page": "10-taste-overview",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1200,
+      "bytes": 140228,
+      "sha256": "274e58a08086aa23a85c5827132991a96c412f93fad662c7c49b732a0cdb3179",
+      "query": "?page=10-taste-overview&theme=light&viewport=desktop"
+    },
+    {
+      "file": "responsive/light-desktop-14-settings-config.png",
+      "page": "14-settings-config",
+      "theme": "light",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 1200,
+      "bytes": 132623,
+      "sha256": "dd879b391ad32e6314c4896857d274b905bdcd758a623e5cfb23087ec5495372",
+      "query": "?page=14-settings-config&theme=light&viewport=desktop"
+    }
+  ]
+}

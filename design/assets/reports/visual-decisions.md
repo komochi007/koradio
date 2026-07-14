@@ -1,7 +1,7 @@
 # Koradio 视觉差异与裁决记录
 
 > 建立于 VDA-00
-> 状态：2026-07-12 的原始裁决保留为历史；2026-07-13 用户尺度校准已取代其中的缩小规格；2026-07-14 用户浏览器反馈进一步校准 Settings 配置页密度
+> 状态：2026-07-12 的原始裁决保留为历史；2026-07-13 用户尺度校准已取代其中的缩小规格；2026-07-14 用户浏览器反馈进一步校准 Settings 配置页密度，VDA-14 已完成正式基线与视觉 QA
 > 权威顺序：PRD / User Flow → `design/design.md` → 未覆盖细节对应 PNG
 
 ## 2026-07-13 用户尺度校准
@@ -386,6 +386,19 @@
 - 最终决定：已自动裁决；状态继续保留明确文字和既有色彩语义，不新增布局层级、真实服务调用或生产行为。
 - 证据截图：[键盘 Focus](evidence/vda-13-keyboard-focus.png)、[200% Zoom](evidence/vda-13-zoom-200.png)
 
+### C-012
+
+- 编号：C-012
+- 页面与区域：01–15 Prototype 与五类响应式代表页的正式截图捕获
+- 差异类别：派生产物稳定性 / 字体渲染微差
+- PNG 表现：静态参考图不能定义浏览器捕获时机、设备像素比、动效帧、参考叠层或跨次字体抗锯齿差异。
+- 规范要求：HTML / CSS / JavaScript 是唯一主源；PNG 是派生视觉参考；字体抗锯齿不做逐像素追随，布局、尺寸、内容和固定几何必须稳定。
+- 严重级别：C
+- 推荐裁决：固定使用 `deviceScaleFactor: 1`、Reduce Motion、隐藏参考叠层，并等待字体、图像、`500ms` 布局稳定期与两次 animation frame 后捕获画布；SHA-256 只验证正式文件完整性，复渲染比较解码像素并忽略字体抗锯齿，允许不超过 `0.6%` 的像素差异率。临时 HTTP QA 服务使用系统分配端口，不构成产品运行入口或已确认端口。
+- 影响页面：60 张 VDA-14 正式基线及后续视觉回归。
+- 最终决定：已自动裁决；未改变布局、组件、内容层级、主题气质或交互语义。
+- 证据截图：[Dark Prototype 联系表](evidence/vda-14-dark-contact.png)、[Light Prototype 联系表](evidence/vda-14-light-contact.png)、[Dark 响应式联系表](evidence/vda-14-dark-responsive-contact.png)、[Light 响应式联系表](evidence/vda-14-light-responsive-contact.png)
+
 ## 后续执行约束
 
 1. 核心体验骨架：Radio 按 2026-07-13 用户尺度校准执行；Detail 继续按 A-002 执行。
@@ -552,3 +565,14 @@
 - 自动验收：JavaScript 语法与 Git whitespace 检查通过；本机 Chrome 150 经临时只读静态服务验证 15 页共 185 个可见可用控件，命中区均不小于 `44 × 44px`；方向键、Home / End、页面 H1 聚焦、Library `⌘/Ctrl+K`、Programs 场景复用到 Radio 待发送态及发送后进入生成态、Detail Tab / Shift+Tab 循环、Escape 关闭与焦点回收均通过。9 个 Loading / Error 代表状态具备对应 `role`、`aria-live` 或 `aria-busy`；暂停同步 `aria-pressed`、`PAUSED`、live region 与静止波形；浏览器无障碍树包含 heading、button、navigation、textbox 和 status 结构。200% 页面缩放下内容可滚动且导航保持可用；Reduce Motion 下页面、Detail、波形、骨架和状态脉冲停止。
 - QA 证据：[键盘 Focus](evidence/vda-13-keyboard-focus.png)、[Reduce Motion Detail](evidence/vda-13-reduced-motion.png)、[200% Zoom](evidence/vda-13-zoom-200.png)。三张图是 VDA-13 自动验收派生产物，不是 VDA-14 正式基线。
 - 已知后续范围：Dark / Light 各 15 张 `960 × 1600px` 正式基线、响应式正式基线和逐页视觉 QA 属于 VDA-14；Figma 派生镜像与开发交接映射分别属于 VDA-15、VDA-16。
+
+## VDA-14 执行记录
+
+- 状态：2026-07-14 已完成正式截图基线、自动视觉 / 结构 / 文件 QA、人工联系表复核与独立复渲染验证，任务为“已完成”。
+- 范围：从现有 HTML / CSS / JavaScript 主源派生 01–15 Dark 与 Light 各 15 张 `960 × 1600px` Prototype 基线，以及 03、05、08、10、14 在 Mobile `390 × 844px`、Tablet `834 × 1194px`、Desktop `1440 × 1200px` 下的 Dark / Light 基线 30 张，合计 60 张；同时建立清单、可复现生成 / 验证脚本与四张 QA 联系表。不修改产品源码、包管理器、生产配置、布局、fixture、交互语义或 Figma。
+- A / B 级差异：A-001–A-012 与 B-001–B-004 均保持已确认关闭状态；本次逐页、跨主题和跨 viewport 复核未发现新增 A / B 级差异。
+- C 级裁决：新增 C-012，固定设备像素比、Reduce Motion、参考叠层、资源与布局等待条件，并以文件 SHA-256 验证正式产物完整性；复渲染比较按既有字体抗锯齿容差使用解码像素差异率，不静默放宽布局、内容或几何标准。
+- 自动验收：60 张 PNG 均存在且尺寸与目标 viewport 一致；必需文字、画布裁切、固定比例、可用操作 `44 × 44px` 最小命中区、01 / 15 恢复入口、资源与运行时错误、Radio 04–06 与 Detail 07–08 跨状态几何、Dark / Light 几何零位移均通过。Dark 主要 / 次要文字和主要按钮对比度为 `18.12:1` / `9.06:1` / `16.88:1`，Light 为 `15.99:1` / `5.27:1` / `17.24:1`，Detail 已读大字为 `3.15:1`。提交前独立复渲染 60 张全部通过，最大解码像素差异率为 `0%`，低于 `0.6%` 字体抗锯齿容差。
+- 视觉验收：Dark / Light Prototype 联系表与两主题响应式联系表均已复核，并单独检查 07–08 Detail 及其代表性 Mobile / Desktop 渲染；结果保持已确认 PNG 的气质及既有规范几何，未见裁切、内容缺失、主题错位或响应式破坏。
+- 交付物：`design/assets/baselines/`、`design/assets/baselines/manifest.json`、`design/assets/scripts/vda-14-baselines.cjs` 与 `design/assets/reports/evidence/vda-14-*.png`。
+- 已知后续范围：Figma 派生镜像属于 VDA-15，页面—状态—组件—token—fixture—基线开发交接与整体冻结门属于 VDA-16；VDA-15 完成前不得把整体视觉冻结门描述为已通过。

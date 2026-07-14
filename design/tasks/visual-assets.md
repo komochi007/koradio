@@ -2,7 +2,7 @@
 
 > Phase: Pre-development visual design
 >
-> Status: VDA-12 已完成 03、05、08、10、14 响应式代表页与三组 viewport 自动浏览器验收；15 个 Dark / Light HTML 页面及五类响应式布局规则均已建立
+> Status: VDA-14 已完成 15 张 Dark、15 张 Light 与 30 张响应式正式基线，并通过自动视觉、结构、文件与复渲染验收；A / B 级差异均已关闭
 >
 > Scope: 设计资产沉淀与视觉验收，不包含产品开发
 >
@@ -151,7 +151,7 @@ design/assets/
 | VDA-11 | 已完成 | Light 管理页 09–15 | VDA-06、VDA-07、VDA-08、VDA-09 | 校准表单、列表、卡片和固定区域 |
 | VDA-12 | 已完成 | 响应式代表页 | VDA-10、VDA-11 | 用 03、05、08、10、14 验证手机、平板和宽屏布局族 |
 | VDA-13 | 已完成 | 交互与无障碍 | VDA-02、VDA-12 | 补齐交互状态、键盘、Focus、200% zoom 和 Reduce Motion |
-| VDA-14 | 待开始 | 截图基线与视觉 QA | VDA-13 | 输出规范尺寸基线并关闭所有 A / B 级未决差异 |
+| VDA-14 | 已完成 | 截图基线与视觉 QA | VDA-13 | 输出规范尺寸基线并关闭所有 A / B 级未决差异 |
 | VDA-15 | 待开始 | Figma 派生镜像 | VDA-14 | 从已验收 HTML 生成 Figma 页面和组件映射，不独立修改 |
 | VDA-16 | 待开始 | 视觉冻结与开发交接 | VDA-14、VDA-15 | 完成页面—组件—token—状态映射；通过整体冻结门 |
 
@@ -252,6 +252,6 @@ design/assets/
 - [x] 已完成 Light 管理页 09–15 的独立材质校准；27 个固定变体保持 Dark 结构零位移，表单、列表、卡片、状态文字和固定区域通过 `960 × 1600px` 自动浏览器视觉、结构、对比度和文件检查（VDA-11 已完成）。
 - [x] 已完成 03、05、08、10、14 的响应式代表页；Profile、Radio、Detail、Management、Settings 五类布局使用 `390 × 844px`、`834 × 1194px`、`1440 × 1200px` 三组 viewport，并通过 Dark / Light 自动浏览器视觉、滚动、固定区域、安全区、长文案、命中区和文件检查（VDA-12 已完成）。
 - [x] 已补齐组件目录和 01–15 HTML 主源的 Hover、Active、Focus、Disabled、Loading、Error、键盘路径、状态播报、页面 / Detail 动效、200% zoom 与 Reduce Motion；Detail 已读大字按 A-012 提升至 WCAG AA，并通过自动浏览器交互、结构、对比度和文件检查（VDA-13 已完成）。
-- [ ] 尚未生成 Dark / Light 基线截图。
-- [ ] 尚未完成正式视觉 QA。
+- [x] 已生成 15 张 Dark、15 张 Light `960 × 1600px` Prototype 基线，以及 30 张响应式代表页基线（VDA-14 已完成）。
+- [x] 已完成正式视觉 QA、文件清单与复渲染验证；所有 A / B 级差异均已关闭，C 级裁决可追溯。
 - [ ] 尚未建立 Figma 派生镜像和开发交接映射。
