@@ -321,6 +321,19 @@
 - 最终决定：已自动裁决；未改变布局、内容层级、组件结构或交互语义。
 - 证据截图：[VDA-10 Light 汇总](evidence/vda-10-light-contact.png)；[原始 PNG / Light 并排对照](evidence/vda-10-light-comparison.png)。
 
+### C-008
+
+- 编号：C-008
+- 页面与区域：Light 管理页 09–15 的环境光、成功 / 警告状态文字与小号错误文字
+- 差异类别：主题材质 / 状态可读性
+- PNG 表现：原始参考图只有 Dark 状态，无法直接给出 Light 环境光或状态文字色值；Dark 中成功、警告和错误文字依赖高对比深色表面。
+- 规范要求：Light 使用冷灰白背景和白色 Surface，状态不得只依赖颜色表达，文字需满足 WCAG AA；页面结构必须与 Dark 保持一致。
+- 严重级别：C
+- 推荐裁决：09–15 Light 环境光统一使用主题变量；成功 / 警告色保留在状态点、图标和边框，小号状态文字使用 Secondary；错误文字使用 Error 与 Text Primary 的主题混合色加深。Dark 取值和两主题几何保持不变。
+- 影响页面：09 Library、10–11 Taste、12–13 Programs、14–15 Settings 的 Light 渲染；System 解析为 Light 时继承相同规则。
+- 最终决定：已自动裁决；未改变产品行为、页面骨架、内容层级、组件结构、交互语义或 Dark 视觉。
+- 证据截图：[VDA-11 Light 汇总](evidence/vda-11-light-contact.png)；[原始 PNG / Light 并排对照](evidence/vda-11-light-comparison.png)。
+
 ## 后续执行约束
 
 1. 核心体验骨架：Radio 按 2026-07-13 用户尺度校准执行；Detail 继续按 A-002 执行。
@@ -455,3 +468,14 @@
 - 自动验收：本机 Chrome 150 通过临时只读静态服务逐页渲染 Light 01–08；八页均为 `960 × 1600px`，参考图资源全部加载，控制台与资源错误为 0，画布无溢出，可用控件最小命中区为 `48px`。Reduce Motion 条件下逐页对比 Dark / Light 的可见节点数量、顺序与几何，最大差为 `0px`。Light 主要 / 次要文字对页面背景为 `15.99:1` / `5.27:1`，主要按钮文字为 `17.24:1`；Detail 标题 / 白色节目面、次要文字 / 白色节目面、当前正文 / 内容卡分别为 `18.11:1`、`4.78:1`、`16.42:1`。
 - QA 证据：[Light 汇总](evidence/vda-10-light-contact.png)、[原始 PNG / Light 并排对照](evidence/vda-10-light-comparison.png) 与八张 `vda-10-light-01–08` 派生截图；它们不是 VDA-14 正式截图基线。
 - 已知后续范围：Detail 已读文本 `#A8A7A1` 在 `#F5F3F6` 上仍为 `2.19:1`，沿用 VDA-05 已记录的明确规范并留给 VDA-13 完整无障碍裁决。内置浏览器因运行时全局注入冲突未能建立连接，已按用户确认使用 Chrome 备用链路；页面验收本身已完成。09–15 Light 属于 VDA-11，响应式属于 VDA-12，正式基线属于 VDA-14。
+
+## VDA-11 执行记录
+
+- 状态：2026-07-14 已完成 HTML / CSS Light 独立材质校准、自动浏览器视觉验收与裁决记录，任务为“已完成”。
+- 范围：只校准 09 Library、10–11 Taste、12–13 Programs 与 14–15 Settings 的 Light 渲染，以及这些页面的 27 个固定视觉变体；不修改 fixture、产品行为、DOM 内容层级、响应式规则、Figma 或正式基线。
+- A / B 级差异：未发现新增或未关闭的 A / B 级差异。原始 PNG 只有 Dark 状态，Light 配色服从 `design/design.md`；PNG 继续作为结构、密度、组件比例与未被规范覆盖的观感参考。
+- C 级裁决：新增 C-008，将 09–15 Light 环境光统一到主题变量，并按既有 C-001 原则把成功 / 警告色限制在状态点、图标和边框，小号状态文字使用 Secondary，错误文字使用 Error 与 Text Primary 的主题混合色加深；Dark 视觉和两主题几何保持不变。
+- 自动验收：本机 Chrome 150 通过临时只读静态服务逐态渲染 09–15 Light 的 27 个固定变体；画布均为 `960 × 1600px`，7 张参考图全部以 `971 × 1619px` 成功加载，控制台、运行时与资源错误为 0，画布溢出为 `0px`，可用控件最小命中区为 `44px`。Reduce Motion 条件下逐态对比 Dark / Light 的可见节点数量、顺序与几何，最大差为 `0px`。
+- 对比度：Light 主要 / 次要文字对页面背景为 `15.99:1` / `5.27:1`，主要 / 次要文字对 Surface 为 `17.60:1` / `5.80:1`，主要按钮文字为 `17.24:1`；加深错误文字对页面背景和 Surface 分别为 `5.21:1` / `5.73:1`。Accent、Warning 与 Information 状态点 / Focus 图形对 Surface 分别为 `3.44:1`、`3.91:1`、`4.29:1`，满足非文本对比要求。
+- QA 证据：[Light 汇总](evidence/vda-11-light-contact.png)、[原始 PNG / Light 并排对照](evidence/vda-11-light-comparison.png) 与七张 `vda-11-light-09–15` 派生截图；它们不是 VDA-14 正式截图基线。
+- 已知后续范围：跨 viewport 响应式属于 VDA-12，完整键盘、200% zoom、Reduce Motion 行为和无障碍属于 VDA-13，正式 Dark / Light 基线属于 VDA-14。

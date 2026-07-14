@@ -1,6 +1,6 @@
 # Koradio HTML 视觉原型
 
-> 当前范围：VDA-01 HTML 原型骨架 + VDA-02 Tokens 与共享组件目录 + VDA-03 异常与 Profile 01–03 + VDA-04 Radio 三态 04–06 + VDA-05 Detail Sheet 07–08 + VDA-06 Library 09 + VDA-07 Taste 10–11 + VDA-08 Programs 12–13 + VDA-09 Settings 14–15 + VDA-10 Light 核心页 01–08 + 已验收的尺度与核心体验确认门
+> 当前范围：VDA-01 HTML 原型骨架 + VDA-02 Tokens 与共享组件目录 + VDA-03 异常与 Profile 01–03 + VDA-04 Radio 三态 04–06 + VDA-05 Detail Sheet 07–08 + VDA-06 Library 09 + VDA-07 Taste 10–11 + VDA-08 Programs 12–13 + VDA-09 Settings 14–15 + VDA-10 Light 核心页 01–08 + VDA-11 Light 管理页 09–15 + 已验收的尺度与核心体验确认门
 >
 > 性质：零构建、非生产的开发前视觉设计资产预览
 
@@ -39,4 +39,4 @@ catalog.html?theme=light
 - 不连接 Backend、Provider 或数据库。
 - 不模拟真实播放、生成、配置保存或健康检查。
 - 01–03 已由 VDA-03、04–06 已由 VDA-04、07–08 已由 VDA-05、09 已由 VDA-06、10–11 已由 VDA-07、12–13 已由 VDA-08、14–15 已由 VDA-09 建立 Dark HTML 视觉页面；Library 的五种、Taste 的七种、Programs 的八种和 Settings 的七种固定变体均已通过对应验收。
-- Tokens 与共享组件已由 VDA-02 建立，尺度补正和核心体验确认门均已通过；01–08 已完成 Light 独立材质校准，07–08 继续使用不随主题反转的 Detail 专属色面。09–15 Light、响应式规则与正式基线截图仍由后续任务建立。
+- Tokens 与共享组件已由 VDA-02 建立，尺度补正和核心体验确认门均已通过；01–15 已完成 Light 独立材质校准，07–08 继续使用不随主题反转的 Detail 专属色面。响应式规则与正式基线截图仍由后续任务建立。

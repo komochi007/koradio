@@ -398,13 +398,9 @@ a {
 .prototype-canvas::before {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 36%, rgba(85, 185, 120, 0.05), transparent 34%);
+  background: radial-gradient(circle at 50% 36%, var(--kr-color-ambient), transparent 34%);
   content: "";
   pointer-events: none;
-}
-
-.prototype-canvas[data-theme="light"]:is([data-family="exception"], [data-family="profile"], [data-family="radio"], [data-family="detail"])::before {
-  background: radial-gradient(circle at 50% 36%, var(--kr-color-ambient), transparent 34%);
 }
 
 .preview-reference-overlay {
@@ -4091,6 +4087,42 @@ a {
 @keyframes settings-pulse {
   0%, 100% { opacity: 0.45; transform: scale(0.84); }
   50% { opacity: 1; transform: scale(1); }
+}
+
+.prototype-canvas[data-resolved-theme="light"] .library-track__added,
+.prototype-canvas[data-resolved-theme="light"] .settings-online-status,
+.prototype-canvas[data-resolved-theme="light"] .settings-service-row__status,
+.prototype-canvas[data-resolved-theme="light"] .settings-diagnostic-card__copy strong,
+.prototype-canvas[data-resolved-theme="light"] .settings-cache-action,
+.prototype-canvas[data-resolved-theme="light"] .program-detail-inline--warning {
+  color: var(--kr-color-text-secondary);
+}
+
+.prototype-canvas[data-resolved-theme="light"] .settings-online-status i,
+.prototype-canvas[data-resolved-theme="light"] .settings-service-row__status i {
+  background: var(--kr-color-success);
+}
+
+.prototype-canvas[data-resolved-theme="light"] .settings-cache-action .kr-icon {
+  color: var(--kr-color-warning);
+}
+
+.prototype-canvas[data-resolved-theme="light"] .settings-online-status--warning i,
+.prototype-canvas[data-resolved-theme="light"] .settings-service-row--warning .settings-service-row__status i {
+  background: var(--kr-color-warning);
+}
+
+.prototype-canvas[data-resolved-theme="light"] .settings-service-row--info .settings-service-row__status i {
+  background: var(--kr-color-info);
+}
+
+.prototype-canvas[data-resolved-theme="light"] .library-import__message,
+.prototype-canvas[data-resolved-theme="light"] .taste-edit-action--error .taste-edit-action__inner > p,
+.prototype-canvas[data-resolved-theme="light"] .program-detail-inline--error,
+.prototype-canvas[data-resolved-theme="light"] .settings-field > span:first-child small,
+.prototype-canvas[data-resolved-theme="light"] .settings-data-card--error > div:last-child span,
+.prototype-canvas[data-resolved-theme="light"] .settings-data-card--error .settings-cache-action {
+  color: color-mix(in srgb, var(--kr-color-error) 88%, var(--kr-color-text-primary));
 }
 
 .prototype-page--detail {
