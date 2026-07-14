@@ -380,11 +380,13 @@
     return `
       <div class="prototype-page prototype-page--radio prototype-page--radio-${state}">
         ${radioTopbar()}
-        ${radioTime(content, state)}
-        ${main}
-        ${renderRadioQueue(content, state)}
-        ${renderRadioDjStatus(stateContent, state)}
-        ${renderRadioDialogue(content, stateContent, state)}
+        <div class="radio-scroll">
+          ${radioTime(content, state)}
+          ${main}
+          ${renderRadioQueue(content, state)}
+          ${renderRadioDjStatus(stateContent, state)}
+          ${renderRadioDialogue(content, stateContent, state)}
+        </div>
         ${renderRadioInput(stateContent, state)}
         ${nav("radio")}
       </div>

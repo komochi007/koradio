@@ -107,6 +107,12 @@
   --kr-prototype-padding-top: 40px;
   --kr-prototype-padding-bottom: 128px;
   --kr-prototype-nav-bottom: 32px;
+  --kr-responsive-gutter: 56px;
+  --kr-responsive-padding-top: 32px;
+  --kr-responsive-nav-bottom: 24px;
+  --kr-responsive-fixed-gap: 12px;
+  --kr-responsive-content-bottom: 24px;
+  --kr-responsive-radio-input-height: 88px;
   --kr-radio-width-mobile: 100%;
   --kr-radio-width-tablet: calc(100% - 56px);
   --kr-radio-width-desktop: 816px;
@@ -187,4 +193,44 @@
     --kr-type-h1-line: 36px;
     --kr-radio-width-mobile: calc(100% - 40px);
   }
+}
+
+.prototype-canvas[data-viewport="mobile"] {
+  --kr-responsive-gutter: 20px;
+  --kr-responsive-padding-top: 24px;
+  --kr-responsive-nav-bottom: 12px;
+  --kr-responsive-content-bottom: 20px;
+  --kr-responsive-radio-input-height: 72px;
+  --kr-type-display-size: 48px;
+  --kr-type-display-line: 48px;
+  --kr-type-h1-size: 28px;
+  --kr-type-h1-line: 36px;
+  --kr-logo-size: 36px;
+  --kr-wordmark-width: 120px;
+  --kr-wordmark-height: 28px;
+  --kr-wordmark-font-size: 18px;
+  --kr-topbar-height: 48px;
+  --kr-icon-button-size: 48px;
+  --kr-avatar-top-size: 48px;
+  --kr-avatar-upload-size: 112px;
+  --kr-input-height: 64px;
+  --kr-textarea-height: 132px;
+  --kr-control-default: 56px;
+  --kr-control-large: 64px;
+  --kr-play-button-size: 72px;
+  --kr-play-icon-size: 28px;
+  --kr-cover-current-size: 88px;
+  --kr-nav-width: calc(100% - 32px);
+  --kr-nav-height: 72px;
+  --kr-nav-slot-width: calc(100% / 5);
+  --kr-nav-active-width: 56px;
+  --kr-nav-active-height: 56px;
+  --kr-tab-icon-size: 32px;
+}
+
+.prototype-canvas[data-viewport="tablet"] {
+  --kr-responsive-gutter: 28px;
+  --kr-responsive-padding-top: 28px;
+  --kr-responsive-nav-bottom: 20px;
+  --kr-responsive-content-bottom: 24px;
 }

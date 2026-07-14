@@ -334,6 +334,19 @@
 - 最终决定：已自动裁决；未改变产品行为、页面骨架、内容层级、组件结构、交互语义或 Dark 视觉。
 - 证据截图：[VDA-11 Light 汇总](evidence/vda-11-light-contact.png)；[原始 PNG / Light 并排对照](evidence/vda-11-light-comparison.png)。
 
+### C-009
+
+- 编号：C-009
+- 页面与区域：03、05、08、10、14 的 Mobile / Tablet / Desktop 响应式边距、滚动层与固定区域
+- 差异类别：响应式微观几何 / 安全区协调
+- PNG 表现：原始参考图仅提供 `971 × 1619px` 竖版观感，没有手机、平板或宽屏状态，无法定义三组 viewport 的固定区间距与组件收敛比例。
+- 规范要求：响应式分别使用 `20px / 28px / 32–56px` 页面安全边距；Radio 宽屏保持中央单列；Detail 覆盖完整产品画布；管理页与 Settings 保持单列；底部内容预留导航和 safe area；所有可用操作命中区不小于 `44 × 44px`。
+- 严重级别：C
+- 推荐裁决：Profile 使用可滚动单列表单；Radio 固定顶部品牌、场景输入和导航，仅滚动中间节目内容；Detail 保持上下声场 / 节目面并在宽屏居中 `848px` 内容列；Management 固定顶部与导航并滚动单列内容；Settings 固定顶部、操作区和导航并滚动配置内容。Mobile 按共享比例将顶部工具收敛为 `48px`、导航收敛为 `72px` 高和 `56 × 56px` 选中底，H1 / 大号时间使用规范 `28px / 48px`，不隐藏字段、状态或操作。
+- 影响页面：03、05、08、10、14 的响应式代表状态；同族 02–03、04–06、07–08、09–13、14–15 继承对应 shell、滚动、安全区和单列规则。
+- 最终决定：已自动裁决；只处理规范未精确给出的响应式间距和比例，不改变产品行为、内容层级、主组件结构、主题气质或交互语义。
+- 证据截图：[Mobile Radio](evidence/vda-12-mobile-05-radio-playing.png)、[Tablet Detail](evidence/vda-12-tablet-08-radio-detail-lyrics.png)、[Desktop Taste](evidence/vda-12-desktop-10-taste-overview.png)；同目录另有其余 12 张代表页 / viewport 派生截图。
+
 ## 后续执行约束
 
 1. 核心体验骨架：Radio 按 2026-07-13 用户尺度校准执行；Detail 继续按 A-002 执行。
@@ -479,3 +492,14 @@
 - 对比度：Light 主要 / 次要文字对页面背景为 `15.99:1` / `5.27:1`，主要 / 次要文字对 Surface 为 `17.60:1` / `5.80:1`，主要按钮文字为 `17.24:1`；加深错误文字对页面背景和 Surface 分别为 `5.21:1` / `5.73:1`。Accent、Warning 与 Information 状态点 / Focus 图形对 Surface 分别为 `3.44:1`、`3.91:1`、`4.29:1`，满足非文本对比要求。
 - QA 证据：[Light 汇总](evidence/vda-11-light-contact.png)、[原始 PNG / Light 并排对照](evidence/vda-11-light-comparison.png) 与七张 `vda-11-light-09–15` 派生截图；它们不是 VDA-14 正式截图基线。
 - 已知后续范围：跨 viewport 响应式属于 VDA-12，完整键盘、200% zoom、Reduce Motion 行为和无障碍属于 VDA-13，正式 Dark / Light 基线属于 VDA-14。
+
+## VDA-12 执行记录
+
+- 状态：2026-07-14 已完成 HTML / CSS / JavaScript 响应式代表页、自动浏览器视觉与结构验收，任务为“已完成”。
+- 范围：使用 03、05、08、10、14 分别代表 Profile、Radio、Detail、Management、Settings，在 `390 × 844px`、`834 × 1194px`、`1440 × 1200px` 三组 viewport 下建立响应式布局；Dark / Light 使用同一 DOM 与几何。未复制页面 fixture，未修改产品源码、生产配置或 VDA-14 正式基线目录。
+- A / B 级差异：未发现新增或未关闭的 A / B 级差异。响应式保持已确认页面骨架、内容顺序、主组件结构、主题气质和交互语义；Radio 宽屏仍为中央单列，Detail 始终全画布覆盖，管理与 Settings 均未引入侧栏。
+- C 级裁决：新增 C-009，以共享 viewport tokens 统一三组安全边距、顶部间距、导航底部 safe area 与内容滚动边界；Mobile 共享顶部工具、导航、头像、封面和播放器控件按比例收敛但命中区不小于 `44px`，H1 与大号时间明确使用 `28px / 48px`；Radio 新增单一 `.radio-scroll` 供 04–06 继承，避免为 05 复制页面结构；Detail 继续保留 64 柱声波、完整歌词、节目进度与唯一播放控制。
+- 结构实测：Mobile 五类 shell 分别为 `350 / 350 / 390 / 350 / 350px`，Tablet 为 `778 / 778 / 834 / 778 / 778px`，Desktop 为 `848 / 816 / 1440 / 840 / 832px`；Profile、Radio、Management、Settings 内容层的 `scrollHeight` 均大于 `clientHeight`，滚动至底部后末项完整可达，顶部与底部固定区域无位移。15 个 Dark 场景均无横向溢出。
+- 自动验收：本机 Chrome 150 通过临时只读静态服务验证 5 页 × 3 viewport × 2 主题共 30 个场景；画布尺寸、shell 宽度、长文案、滚动边界、固定区域、安全区、横向溢出、可用操作 `44 × 44px` 最小命中区、Dark / Light 几何零位移、控制台与运行时错误均通过。另验证 5 个 Prototype 代表页原有固定锚点零回归，15 张 QA 派生截图尺寸均与对应 viewport 一致。
+- QA 证据：[Mobile Radio](evidence/vda-12-mobile-05-radio-playing.png)、[Tablet Detail](evidence/vda-12-tablet-08-radio-detail-lyrics.png)、[Desktop Taste](evidence/vda-12-desktop-10-taste-overview.png)；全部 15 张 `vda-12-{viewport}-{page}.png` 只作为 VDA-12 自动验收证据，不是 VDA-14 正式基线。
+- 已知后续范围：完整 hover / active / focus / disabled / loading / error、键盘路径、200% zoom、`aria-live`、Reduce Motion 与 Detail 已读歌词对比度属于 VDA-13；正式 Dark / Light 与响应式基线属于 VDA-14。
