@@ -465,6 +465,8 @@ Dream Pop、Indie Folk、Ambient、City Pop、Alternative、Soft Rock、Bossa No
 “18 首不同歌曲”
 数字使用等宽字体。可配一条非常简洁的七日线性刻度，不做统计仪表盘。
 
+三组信息在摘要卡片可用内容区内使用等宽三分网格定位：节目组靠左、时长组位于卡片内容区水平中心、歌曲组靠右。每组按自身最长一行内容收缩宽度，标签与数值上下两行统一左对齐；不得将时长组内部文字居中对齐，也不得将歌曲组内部文字右对齐。
+
 节目列表为单列纵向卡片，每张高度 `168 px`，圆角 20 px，表面 #111317，细边框。展示四张卡片，每张卡片内部使用统一 20 px 内边距，所有文字、图标和小封面都必须落在同一组内边距网格内。
 
 第一张：
@@ -528,7 +530,7 @@ Dream Pop、Indie Folk、Ambient、City Pop、Alternative、Soft Rock、Bossa No
 02 Space Song — Beach House — 05:20
 03 Mystery of Love — Sufjan Stevens — 04:08
 04 Moon Song — Phoebe Bridgers — 04:37
-每行高度 `64 px`，左侧序号使用等宽字体，中间歌曲信息，右侧时长和更多。封面使用 `64 × 64 px` 低饱和方形缩略图，但不要每行都有鲜艳色彩。
+每行高度 `96 px`，使用上下各 `16 px` 内边距容纳 `64 × 64 px` 低饱和方形缩略图；左侧序号使用等宽字体，中间歌曲信息，右侧时长和更多。不要让封面主导行高之外的页面配色，也不要每行使用鲜艳色彩。
 
 队列下方显示“PROGRAM FEEDBACK”摘要。用三项简洁信息：
 “2 liked tracks”
