@@ -147,10 +147,13 @@
   --kr-duration-base: 220ms;
   --kr-duration-slow: 320ms;
   --kr-duration-sheet: 420ms;
+  --kr-duration-detail-enter: 560ms;
+  --kr-duration-detail-exit: 440ms;
   --kr-ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --kr-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
   --kr-ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --kr-ease-spring-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --kr-motion-detail-offset: 160px;
   --kr-shadow-focus: 0 0 0 2px var(--kr-color-bg), 0 0 0 4px var(--kr-color-accent);
   --kr-shadow-card: 0 8px 24px rgba(0, 0, 0, 0.08);
   --kr-shadow-sheet: 0 -16px 48px rgba(0, 0, 0, 0.18);

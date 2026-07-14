@@ -433,11 +433,11 @@ a {
 }
 
 .prototype-page--detail.prototype-page--entering {
-  animation: prototype-detail-enter var(--kr-duration-sheet) var(--kr-ease-enter) both;
+  animation: prototype-detail-enter var(--kr-duration-detail-enter) var(--kr-ease-standard) both;
 }
 
 .prototype-page--detail-closing {
-  animation: prototype-detail-exit var(--kr-duration-slow) var(--kr-ease-exit) both !important;
+  animation: prototype-detail-exit var(--kr-duration-detail-exit) var(--kr-ease-exit) both !important;
 }
 
 .prototype-page :where(button, input, textarea, select, [tabindex]):focus-visible {
@@ -493,7 +493,7 @@ a {
 @keyframes prototype-detail-enter {
   from {
     opacity: 0;
-    transform: translateY(48px);
+    transform: translateY(var(--kr-motion-detail-offset));
   }
 
   to {
@@ -510,7 +510,7 @@ a {
 
   to {
     opacity: 0;
-    transform: translateY(48px);
+    transform: translateY(var(--kr-motion-detail-offset));
   }
 }
 

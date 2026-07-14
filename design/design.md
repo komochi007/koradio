@@ -1379,11 +1379,14 @@ Koradio 的动效不用于制造活跃感，而用于表达声音、状态和空
 --kr-duration-base: 220ms;
 --kr-duration-slow: 320ms;
 --kr-duration-sheet: 420ms;
+--kr-duration-detail-enter: 560ms;
+--kr-duration-detail-exit: 440ms;
 
 --kr-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 --kr-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
 --kr-ease-exit: cubic-bezier(0.4, 0, 1, 1);
 --kr-ease-spring-soft: cubic-bezier(0.22, 1, 0.36, 1);
+--kr-motion-detail-offset: 160px;
 ```
 
 常规 Hover 和颜色变化：
@@ -1404,13 +1407,19 @@ transition:
   filter 160ms var(--kr-ease-standard);
 ```
 
-Detail Sheet：
+Detail Sheet 使用比普通页面更长的独立节奏，避免在 Fit 缩放下像突然闪现：
 
 ```css
-transition:
-  transform 420ms var(--kr-ease-enter),
-  opacity 320ms var(--kr-ease-standard);
+.detail-sheet--entering {
+  animation: detail-enter 560ms var(--kr-ease-standard) both;
+}
+
+.detail-sheet--closing {
+  animation: detail-exit 440ms var(--kr-ease-exit) both;
+}
 ```
+
+进入与退出均使用 `160px` 垂直位移；进入时由下向上平缓减速停靠，退出时向下加速回收。不得使用弹跳、过冲或大幅缩放，关闭完成后再恢复 Radio 并回收焦点。
 
 ### 6.3 波形状态
 

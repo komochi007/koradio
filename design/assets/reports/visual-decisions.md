@@ -366,11 +366,11 @@
 - 页面与区域：01–15 页面切换、主导航键盘移动、Detail Sheet 开合与焦点回收
 - 差异类别：交互微观时序 / 焦点路径
 - PNG 表现：静态参考图无法定义页面进入、Sheet 开合、方向键顺序、焦点循环和关闭后的焦点位置。
-- 规范要求：页面过渡使用 `220ms`，Sheet 开合使用 `420ms / 320ms`；焦点必须可见且顺序与视觉一致，Modal 需限制焦点并支持 Escape；Reduce Motion 下停止非必要过渡。
+- 规范要求：页面过渡使用 `220ms`；Detail Sheet 使用专属开合节奏，焦点必须可见且顺序与视觉一致，Modal 需限制焦点并支持 Escape；Reduce Motion 下停止非必要过渡。
 - 严重级别：C
-- 推荐裁决：页面进入使用 `4px` 位移加淡入，Detail 进入使用 `48px` 下移回正；主导航支持左右方向键、Home、End；页面切换聚焦 H1，Detail 打开聚焦关闭按钮，Tab 在两个 Detail 控件间循环，Escape 或关闭后焦点回到 DJ 状态。Reduce Motion 下跳过开合延迟并移除上述动画。
+- 推荐裁决：页面进入使用 `4px` 位移加淡入；Detail 进入 / 退出分别使用 `560ms / 440ms` 与 `160px` 垂直位移，进入使用标准缓动平缓减速停靠，退出向下加速回收。主导航支持左右方向键、Home、End；页面切换聚焦 H1，Detail 打开聚焦关闭按钮，Tab 在两个 Detail 控件间循环，Escape 或关闭后焦点回到 DJ 状态。Reduce Motion 下跳过开合延迟并移除上述动画。
 - 影响页面：01–15 共享预览行为，重点影响 05、08、09 与底部导航。
-- 最终决定：已自动裁决；严格继承既有时长和交互语义，仅补齐规范未给出的位移幅度与焦点落点，不改变页面结构或产品行为。
+- 最终决定：已自动裁决；2026-07-14 用户浏览器反馈原 `420ms / 320ms`、`48px` 位移在 Fit 缩放下过快且近似闪现，因此改用上述 Detail 专属节奏。只调整视觉连续性与关闭完成机制，不改变页面结构、内容或产品行为。
 - 证据截图：[键盘 Focus](evidence/vda-13-keyboard-focus.png)、[Reduce Motion Detail](evidence/vda-13-reduced-motion.png)
 
 ### C-011
@@ -578,6 +578,7 @@
 - 自动验收：JavaScript 语法与 Git whitespace 检查通过；本机 Chrome 150 经临时只读静态服务验证 15 页共 185 个可见可用控件，命中区均不小于 `44 × 44px`；方向键、Home / End、页面 H1 聚焦、Library `⌘/Ctrl+K`、Programs 场景复用到 Radio 待发送态及发送后进入生成态、Detail Tab / Shift+Tab 循环、Escape 关闭与焦点回收均通过。9 个 Loading / Error 代表状态具备对应 `role`、`aria-live` 或 `aria-busy`；暂停同步 `aria-pressed`、`PAUSED`、live region 与静止波形；浏览器无障碍树包含 heading、button、navigation、textbox 和 status 结构。200% 页面缩放下内容可滚动且导航保持可用；Reduce Motion 下页面、Detail、波形、骨架和状态脉冲停止。
 - QA 证据：[键盘 Focus](evidence/vda-13-keyboard-focus.png)、[Reduce Motion Detail](evidence/vda-13-reduced-motion.png)、[200% Zoom](evidence/vda-13-zoom-200.png)。三张图是 VDA-13 自动验收派生产物，不是 VDA-14 正式基线。
 - 已知后续范围：Dark / Light 各 15 张 `960 × 1600px` 正式基线、响应式正式基线和逐页视觉 QA 属于 VDA-14；Figma 派生镜像与开发交接映射分别属于 VDA-15、VDA-16。
+- 浏览器反馈补正：2026-07-14 用户反馈 Detail 在 Fit 预览中开合过快、近似闪现；C-010 已改为 `560ms / 440ms`、`160px` 专属开合节奏，关闭由 `animationend` 驱动后再恢复 Radio。Chrome 150 实测进入 / 退出关键帧位移与透明度单调连续，关闭完成约 `540ms`（含页面切换），焦点返回 DJ 状态；Reduce Motion 下 `35ms` 内直接关闭且焦点保持正确。VDA-14 的 60 张正式基线复渲染全部通过，最大像素差异率仍为 `0.55%`。
 
 ## VDA-14 执行记录
 

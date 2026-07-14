@@ -1313,8 +1313,28 @@
       navigateToPage("05-radio-playing", ".radio-dj-status");
       return;
     }
+
+    let closingFinished = false;
+    let fallbackId = 0;
+    const finishClosing = () => {
+      if (closingFinished) {
+        return;
+      }
+      closingFinished = true;
+      detailPage.removeEventListener("animationend", handleAnimationEnd);
+      window.clearTimeout(fallbackId);
+      navigateToPage("05-radio-playing", ".radio-dj-status");
+    };
+    const handleAnimationEnd = (event) => {
+      if (event.target === detailPage && event.animationName === "prototype-detail-exit") {
+        finishClosing();
+      }
+    };
+    const duration = Number.parseFloat(window.getComputedStyle(detailPage).getPropertyValue("--kr-duration-detail-exit")) || 440;
+
+    detailPage.addEventListener("animationend", handleAnimationEnd);
     detailPage.classList.add("prototype-page--detail-closing");
-    window.setTimeout(() => navigateToPage("05-radio-playing", ".radio-dj-status"), 320);
+    fallbackId = window.setTimeout(finishClosing, duration + 160);
   };
 
   const togglePressed = (button) => {
