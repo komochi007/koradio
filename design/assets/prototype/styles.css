@@ -2687,6 +2687,10 @@ a {
   height: 16px;
 }
 
+.taste-edit-tag > span:last-child .kr-icon {
+  transform: translateY(1px);
+}
+
 .taste-edit-tag--add {
   border-style: dashed;
   background: transparent;
