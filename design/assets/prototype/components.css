@@ -261,6 +261,13 @@
   transform: none;
 }
 
+.kr-control--selected,
+.kr-icon-button[aria-pressed="true"] {
+  border-color: var(--kr-color-border-strong);
+  background: var(--kr-color-surface-active);
+  color: var(--kr-color-text-primary);
+}
+
 .kr-button:focus-visible,
 .kr-icon-button:focus-visible,
 .kr-play-button:focus-visible,
@@ -683,6 +690,17 @@
   padding: var(--kr-space-5);
   border: 1px dashed var(--kr-color-border-strong);
   border-radius: var(--kr-radius-lg);
+}
+
+.kr-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 @keyframes kr-wave {

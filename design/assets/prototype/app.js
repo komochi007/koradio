@@ -23,6 +23,7 @@
     overlayToggle: document.querySelector("#overlay-toggle"),
     overlayOpacity: document.querySelector("#overlay-opacity"),
     overlayHint: document.querySelector("#overlay-hint"),
+    announcer: document.querySelector("#prototype-announcer"),
     viewport: document.querySelector("#preview-viewport"),
     canvas: document.querySelector("#prototype-canvas"),
   };
@@ -30,6 +31,7 @@
   const previewState = {
     scaleMode: "fit",
     selection: null,
+    radioDraft: "",
   };
 
   const icon = (name) => {
@@ -81,26 +83,26 @@
   `;
 
   const settingsButton = () => `
-    <button class="kr-icon-button" type="button" aria-label="打开 Settings">
+    <button class="kr-icon-button" type="button" aria-label="打开 Settings" data-action="navigate" data-page="14-settings-config">
       <span class="kr-tool-icon--settings" aria-hidden="true"></span>
     </button>
   `;
 
   const nav = (active = "radio") => `
     <nav class="kr-nav prototype-nav" aria-label="主要导航">
-      <button class="kr-nav__item${active === "radio" ? " kr-nav__item--active" : ""}" type="button" data-tooltip="Radio" aria-label="Radio${active === "radio" ? "，当前页面" : ""}"${active === "radio" ? ' aria-current="page"' : ""}>
+      <button class="kr-nav__item${active === "radio" ? " kr-nav__item--active" : ""}" type="button" data-action="navigate" data-page="05-radio-playing" data-tooltip="Radio" aria-label="Radio${active === "radio" ? "，当前页面" : ""}"${active === "radio" ? ' aria-current="page"' : ""}>
         <span class="kr-tab-icon kr-tab-icon--radio" aria-hidden="true"></span>
       </button>
-      <button class="kr-nav__item${active === "library" ? " kr-nav__item--active" : ""}" type="button" data-tooltip="Library" aria-label="Library${active === "library" ? "，当前页面" : ""}"${active === "library" ? ' aria-current="page"' : ""}>
+      <button class="kr-nav__item${active === "library" ? " kr-nav__item--active" : ""}" type="button" data-action="navigate" data-page="09-library" data-tooltip="Library" aria-label="Library${active === "library" ? "，当前页面" : ""}"${active === "library" ? ' aria-current="page"' : ""}>
         <span class="kr-tab-icon kr-tab-icon--library" aria-hidden="true"></span>
       </button>
-      <button class="kr-nav__item${active === "taste" ? " kr-nav__item--active" : ""}" type="button" data-tooltip="Taste" aria-label="Taste${active === "taste" ? "，当前页面" : ""}"${active === "taste" ? ' aria-current="page"' : ""}>
+      <button class="kr-nav__item${active === "taste" ? " kr-nav__item--active" : ""}" type="button" data-action="navigate" data-page="10-taste-overview" data-tooltip="Taste" aria-label="Taste${active === "taste" ? "，当前页面" : ""}"${active === "taste" ? ' aria-current="page"' : ""}>
         <span class="kr-tab-icon kr-tab-icon--taste" aria-hidden="true"></span>
       </button>
-      <button class="kr-nav__item${active === "programs" ? " kr-nav__item--active" : ""}" type="button" data-tooltip="Programs" aria-label="Programs${active === "programs" ? "，当前页面" : ""}"${active === "programs" ? ' aria-current="page"' : ""}>
+      <button class="kr-nav__item${active === "programs" ? " kr-nav__item--active" : ""}" type="button" data-action="navigate" data-page="12-programs-list" data-tooltip="Programs" aria-label="Programs${active === "programs" ? "，当前页面" : ""}"${active === "programs" ? ' aria-current="page"' : ""}>
         <span class="kr-tab-icon kr-tab-icon--programs" aria-hidden="true"></span>
       </button>
-      <button class="kr-nav__item${active === "settings" ? " kr-nav__item--active" : ""}" type="button" data-tooltip="Settings" aria-label="Settings${active === "settings" ? "，当前页面" : ""}"${active === "settings" ? ' aria-current="page"' : ""}>
+      <button class="kr-nav__item${active === "settings" ? " kr-nav__item--active" : ""}" type="button" data-action="navigate" data-page="14-settings-config" data-tooltip="Settings" aria-label="Settings${active === "settings" ? "，当前页面" : ""}"${active === "settings" ? ' aria-current="page"' : ""}>
         <span class="kr-tab-icon kr-tab-icon--settings" aria-hidden="true"></span>
       </button>
     </nav>
@@ -112,7 +114,7 @@
       <div class="prototype-page prototype-page--offline">
         <header class="prototype-topbar prototype-topbar--wide kr-topbar">
           ${brand()}
-          <button class="kr-icon-button prototype-theme-button" type="button" aria-label="切换主题"><span aria-hidden="true">◐</span></button>
+          <button class="kr-icon-button prototype-theme-button" type="button" aria-label="切换主题" data-action="toggle-theme"><span aria-hidden="true">◐</span></button>
         </header>
         <main class="offline-panel">
           <div class="offline-signal" aria-hidden="true">
@@ -125,8 +127,8 @@
           <h1 class="kr-h1">${content.title}</h1>
           <p class="kr-body offline-description">${content.description}</p>
           <div class="offline-actions">
-            <button class="kr-button kr-button--large kr-button--primary" type="button">${content.primaryAction}</button>
-            <button class="kr-button kr-button--large kr-button--secondary" type="button">${content.secondaryAction}</button>
+            <button class="kr-button kr-button--large kr-button--primary" type="button" data-action="announce" data-message="当前为静态视觉资产，不连接真实本地服务。">${content.primaryAction}</button>
+            <button class="kr-button kr-button--large kr-button--secondary" type="button" data-action="navigate" data-page="14-settings-config">${content.secondaryAction}</button>
           </div>
           <div class="offline-diagnostics" aria-label="诊断信息">
             ${content.diagnostics.map((line) => `<p>${line}</p>`).join("")}
@@ -149,7 +151,7 @@
       </div>
       <div class="profile-card__action">
         ${profile.current ? '<p class="profile-current"><i aria-hidden="true"></i>CURRENT</p>' : ""}
-        <button class="profile-enter" type="button" aria-label="进入 ${profile.radioName}">${icon("arrow")}</button>
+        <button class="profile-enter" type="button" aria-label="进入 ${profile.radioName}" data-action="navigate" data-page="05-radio-playing">${icon("arrow")}</button>
       </div>
     </article>
   `;
@@ -168,7 +170,7 @@
         <div class="profile-list">
           ${fixtures.visualContent.profiles.map(profileCard).join("")}
         </div>
-        <button class="profile-create-card" type="button">
+        <button class="profile-create-card" type="button" data-action="navigate" data-page="03-profile-create">
           <span class="profile-create-card__icon" aria-hidden="true">${icon("plus")}</span>
           <span class="profile-create-card__copy"><strong>创建新的电台档案</strong><small>为另一位听众建立独立的本地空间</small></span>
         </button>
@@ -189,7 +191,7 @@
       <div class="prototype-page prototype-page--profile-create">
         <header class="prototype-topbar profile-create-topbar kr-topbar">
           <div class="profile-create-topbar__brand">
-            <button class="kr-icon-button" type="button" aria-label="返回档案选择">${icon("back")}</button>
+            <button class="kr-icon-button" type="button" aria-label="返回档案选择" data-action="navigate" data-page="02-profile-select">${icon("back")}</button>
             ${brand({ mark: false })}
           </div>
         </header>
@@ -229,8 +231,8 @@
             </label>
             <p class="profile-privacy profile-form__privacy kr-body-small kr-text-secondary">${icon("lock")}<span>档案、播放历史与音乐偏好将保存在本地数据目录中。</span></p>
             <div class="profile-form__actions">
-              <button class="kr-button kr-button--large kr-button--primary" type="button">保存并进入 Koradio</button>
-              <button class="kr-button kr-button--large kr-button--ghost" type="button">稍后设置偏好</button>
+              <button class="kr-button kr-button--large kr-button--primary" type="button" data-action="navigate" data-page="04-radio-empty">保存并进入 Koradio</button>
+              <button class="kr-button kr-button--large kr-button--ghost" type="button" data-action="navigate" data-page="04-radio-empty">稍后设置偏好</button>
             </div>
           </form>
         </main>
@@ -249,7 +251,7 @@
       ${brand()}
       <div class="radio-topbar__tools">
         <span class="radio-top-avatar" role="img" aria-label="After Midnight 档案头像"><i></i></span>
-        <button class="kr-icon-button" type="button" aria-label="切换主题">${icon("moon")}</button>
+        <button class="kr-icon-button" type="button" aria-label="切换主题" data-action="toggle-theme">${icon("moon")}</button>
       </div>
     </header>
   `;
@@ -283,7 +285,7 @@
             <p>${state.track.subtitle}</p>
           </div>
           <div class="radio-player__actions">
-            <button class="kr-icon-button" type="button" aria-label="收藏当前歌曲">${icon("heart")}</button>
+            <button class="kr-icon-button" type="button" aria-label="收藏当前歌曲" aria-pressed="false" data-action="toggle-pressed" data-label-on="取消收藏当前歌曲" data-label-off="收藏当前歌曲">${icon("heart")}</button>
             <button class="kr-icon-button" type="button" aria-label="更多播放操作">${icon("more")}</button>
           </div>
         </div>
@@ -293,7 +295,7 @@
         <div class="radio-player__controls" aria-label="播放控制">
           <button class="kr-icon-button" type="button" aria-label="音量">${icon("volume")}</button>
           <button class="kr-icon-button" type="button" aria-label="上一首">${icon("previous")}</button>
-          <button class="radio-player__pause" type="button" aria-label="暂停">${icon("pause")}</button>
+          <button class="radio-player__pause" type="button" aria-label="暂停" aria-pressed="false" data-action="toggle-radio-playback">${icon("pause")}</button>
           <button class="kr-icon-button" type="button" aria-label="下一首">${icon("next")}</button>
           <button class="kr-icon-button" type="button" aria-label="播放队列">${icon("queue")}</button>
         </div>
@@ -302,7 +304,7 @@
   `;
 
   const renderRadioGeneratingMain = (state) => `
-    <main class="radio-main radio-main--generating" aria-live="polite">
+    <main class="radio-main radio-main--generating" role="status" aria-live="polite" aria-busy="true">
       <p class="radio-eyebrow">${state.eyebrow}</p>
       <h1>${state.title}</h1>
       ${radioWaveform()}
@@ -339,7 +341,7 @@
   };
 
   const renderRadioDjStatus = (state, mode) => `
-    <button class="kr-dj-status radio-dj-status radio-dj-status--${mode}" type="button" aria-label="DJ 状态：${state.djStatus}">
+    <button class="kr-dj-status radio-dj-status radio-dj-status--${mode}" type="button" aria-label="DJ 状态：${state.djStatus}${mode === "playing" ? "，打开节目详情" : ""}" data-action="open-detail" data-detail-available="${mode === "playing"}">
       <span class="kr-dj-status__state"><i aria-hidden="true"></i><strong>DJ</strong><span>${state.djStatus}</span></span>
       <span class="kr-dj-status__arrow" aria-hidden="true">⌃</span>
     </button>
@@ -359,11 +361,12 @@
 
   const renderRadioInput = (state, mode) => {
     const disabled = mode === "generating" ? " disabled" : "";
+    const draft = mode === "empty" ? previewState.radioDraft : "";
     return `
       <div class="radio-scene-input${disabled ? " radio-scene-input--disabled" : ""}">
-        <input type="text" placeholder="${state.input}" aria-label="告诉 DJ 当前场景" readonly${disabled} />
+        <input type="text"${draft ? ` value="${draft}"` : ""} placeholder="${state.input}" aria-label="告诉 DJ 当前场景" readonly${disabled} />
         <button class="kr-icon-button" type="button" aria-label="使用语音输入"${disabled}>${icon("mic")}</button>
-        <button class="radio-scene-input__send" type="button" aria-label="发送给 DJ"${disabled}>${icon("send")}</button>
+        <button class="radio-scene-input__send" type="button" aria-label="发送给 DJ" data-action="navigate" data-page="06-radio-generating"${disabled}>${icon("send")}</button>
       </div>
     `;
   };
@@ -444,7 +447,7 @@
     return `
       <div class="prototype-page prototype-page--detail prototype-page--detail-${mode}" role="dialog" aria-modal="true" aria-labelledby="detail-title">
         <span class="detail-drag-handle" aria-hidden="true"></span>
-        <button class="detail-close" type="button" aria-label="关闭节目详情，播放继续">${icon("close")}</button>
+        <button class="detail-close" type="button" aria-label="关闭节目详情，播放继续" data-action="close-detail">${icon("close")}</button>
         <p class="detail-status" aria-live="polite"><span aria-hidden="true"></span>${content.status}</p>
         ${detailWaveform()}
         <section class="detail-paper">
@@ -459,7 +462,7 @@
             ${detailCopy(content, mode)}
           </article>
           ${detailTimeline(content.programProgress)}
-          <button class="detail-play" type="button" aria-label="暂停当前节目">${icon("pause")}</button>
+          <button class="detail-play" type="button" aria-label="暂停当前节目" aria-pressed="false" data-action="toggle-playback">${icon("pause")}</button>
         </section>
       </div>
     `;
@@ -503,14 +506,14 @@
     };
     const state = states[variant];
     return `
-      <section class="library-state library-state--${variant}" aria-live="polite">
+      <section class="library-state library-state--${variant}" role="${variant === "service-error" ? "alert" : "status"}" aria-live="${variant === "service-error" ? "assertive" : "polite"}">
         <span class="library-state__symbol" aria-hidden="true">${state.symbol}</span>
         <div>
           <h2>${state.title}</h2>
           <p>${state.copy}</p>
         </div>
         <button class="kr-button kr-button--secondary" type="button">${state.action}</button>
-        ${variant === "service-error" ? '<button class="kr-button kr-button--ghost" type="button">前往 Settings</button>' : ""}
+        ${variant === "service-error" ? '<button class="kr-button kr-button--ghost" type="button" data-action="navigate" data-page="14-settings-config">前往 Settings</button>' : ""}
       </section>
     `;
   };
@@ -520,7 +523,7 @@
     const serviceError = variant === "service-error";
     const status = serviceError ? "OFFLINE" : importing ? "IMPORTING" : "CONNECTED";
     return `
-      <section class="library-import kr-card library-import--${serviceError ? "error" : importing ? "importing" : "ready"}" aria-labelledby="library-import-title">
+      <section class="library-import kr-card library-import--${serviceError ? "error" : importing ? "importing" : "ready"}" aria-labelledby="library-import-title"${importing ? ' aria-busy="true"' : ""}>
         <header>
           <div>
             <h2 id="library-import-title">导入网易云歌单</h2>
@@ -531,11 +534,11 @@
           </p>
         </header>
         <div class="library-import__controls">
-          <input class="kr-input${serviceError ? " kr-input--error" : ""}" value="${importing || serviceError ? content.importValue : ""}" placeholder="粘贴歌单链接或 ID" aria-label="网易云歌单链接或 ID" readonly${importing ? " disabled" : ""} />
+          <input class="kr-input${serviceError ? " kr-input--error" : ""}" value="${importing || serviceError ? content.importValue : ""}" placeholder="粘贴歌单链接或 ID" aria-label="网易云歌单链接或 ID"${serviceError ? ' aria-invalid="true" aria-describedby="library-import-error"' : ""} readonly${importing ? " disabled" : ""} />
           <button class="kr-button kr-button--large kr-button--secondary" type="button"${importing || serviceError ? " disabled" : ""}>${importing ? "正在导入" : "导入歌单"}</button>
         </div>
-        ${importing ? '<div class="library-import__progress" aria-live="polite"><span class="library-import__progress-line"><i></i></span><p>正在从网易云获取音乐… · 已写入 18 / 46</p></div>' : ""}
-        ${serviceError ? '<p class="library-import__message">网易云连接失败，请稍后重试。输入内容已保留。</p>' : ""}
+        ${importing ? '<div class="library-import__progress" role="status" aria-live="polite"><span class="library-import__progress-line"><i></i></span><p>正在从网易云获取音乐… · 已写入 18 / 46</p></div>' : ""}
+        ${serviceError ? '<p class="library-import__message" id="library-import-error" role="alert">网易云连接失败，请稍后重试。输入内容已保留。</p>' : ""}
       </section>
     `;
   };
@@ -577,7 +580,7 @@
           </header>
           <label class="library-search${variant === "service-error" ? " library-search--error" : ""}">
             <span aria-hidden="true">${icon("search")}</span>
-            <input value="${searchValue}" placeholder="${content.query}" aria-label="搜索歌曲、歌手或专辑" readonly />
+            <input value="${searchValue}" placeholder="${content.query}" aria-label="搜索歌曲、歌手或专辑" aria-keyshortcuts="Meta+K Control+K" readonly />
             ${searchValue ? '<button type="button" aria-label="清除搜索">×</button>' : '<kbd>⌘ K</kbd>'}
           </label>
           <section class="library-results" aria-labelledby="library-results-title">
@@ -607,7 +610,7 @@
         <h1 class="kr-h1">你的音乐品味</h1>
         <p>由播放、跳过、喜欢和导入来源逐步形成。</p>
       </div>
-      <button class="kr-button kr-button--secondary taste-edit-button" type="button">${icon("edit")}<span>编辑品味</span></button>
+      <button class="kr-button kr-button--secondary taste-edit-button" type="button" data-action="navigate" data-page="11-taste-edit">${icon("edit")}<span>编辑品味</span></button>
     </header>
   `;
 
@@ -633,7 +636,7 @@
     };
     const state = states[variant];
     return `
-      <section class="taste-state taste-state--${variant}" aria-live="polite">
+      <section class="taste-state taste-state--${variant}" role="${variant === "load-error" ? "alert" : "status"}" aria-live="${variant === "load-error" ? "assertive" : "polite"}"${variant === "loading" ? ' aria-busy="true"' : ""}>
         <span class="taste-state__symbol" aria-hidden="true">${state.symbol}</span>
         <div>
           <h2>${state.title}</h2>
@@ -726,7 +729,7 @@
     return `
       <div class="prototype-page prototype-page--taste-edit prototype-page--taste-edit-${variant}">
         <header class="prototype-topbar taste-edit-topbar kr-topbar">
-          <button class="kr-icon-button" type="button" aria-label="返回音乐品味">${icon("back")}</button>
+          <button class="kr-icon-button" type="button" aria-label="返回音乐品味" data-action="navigate" data-page="10-taste-overview">${icon("back")}</button>
           ${brand({ mark: false })}
         </header>
         <main class="taste-edit-main">
@@ -767,7 +770,7 @@
         </main>
         <footer class="taste-edit-action${saveError ? " taste-edit-action--error" : ""}">
           <div class="taste-edit-action__inner">
-            <p aria-live="polite">${saveError ? `${icon("alert")}<span>保存失败，内容已保留</span>` : "修改将在下一次节目生成时生效"}</p>
+            <p role="${saveError ? "alert" : "status"}" aria-live="${saveError ? "assertive" : "polite"}">${saveError ? `${icon("alert")}<span>保存失败，内容已保留</span>` : "修改将在下一次节目生成时生效"}</p>
             <div>
               <button class="kr-button kr-button--large kr-button--ghost" type="button"${saving ? " disabled" : ""}>取消</button>
               <button class="kr-button kr-button--large kr-button--primary" type="button"${saving ? " disabled" : ""}>${saving ? "保存中…" : saveError ? "重新保存" : "保存品味"}</button>
@@ -794,18 +797,18 @@
         symbol: icon("queue"),
         title: "还没有节目",
         description: "去 Radio 生成第一段电台，节目和场景会保存在这里。",
-        action: '<button class="kr-button kr-button--large kr-button--primary" type="button">去 Radio 生成第一段电台</button>',
+        action: '<button class="kr-button kr-button--large kr-button--primary" type="button" data-action="navigate" data-page="04-radio-empty">去 Radio 生成第一段电台</button>',
       },
       "load-error": {
         symbol: icon("alert"),
         title: "节目历史暂时无法读取",
         description: "当前档案的本地历史读取失败。你可以重试，或先回到 Radio。",
-        action: '<div><button class="kr-button kr-button--large kr-button--primary" type="button">重新读取</button><button class="kr-button kr-button--large kr-button--ghost" type="button">回到 Radio</button></div>',
+        action: '<div><button class="kr-button kr-button--large kr-button--primary" type="button" data-action="announce" data-message="节目历史重新读取。">重新读取</button><button class="kr-button kr-button--large kr-button--ghost" type="button" data-action="navigate" data-page="05-radio-playing">回到 Radio</button></div>',
       },
     };
     const state = states[variant];
     return `
-      <section class="programs-state programs-state--${variant}" aria-live="polite">
+      <section class="programs-state programs-state--${variant}" role="${variant === "load-error" ? "alert" : "status"}" aria-live="${variant === "load-error" ? "assertive" : "polite"}"${variant === "loading" ? ' aria-busy="true"' : ""}>
         <span class="programs-state__symbol" aria-hidden="true">${state.symbol}</span>
         <h2>${state.title}</h2>
         <p>${state.description}</p>
@@ -831,13 +834,13 @@
 
   const programCard = (program) => `
     <article class="program-card kr-card">
-      <button class="program-card__open" type="button" aria-label="打开节目 ${program.title}">
+      <button class="program-card__open" type="button" aria-label="打开节目 ${program.title}" data-action="navigate" data-page="13-program-detail">
         <time>${program.date}</time>
         <strong>${program.title}</strong>
         <span>${program.scene}</span>
         <small>${program.meta}</small>
       </button>
-      <button class="program-card__favorite${program.favorite ? " program-card__favorite--active" : ""}" type="button" aria-label="${program.favorite ? "取消收藏" : "收藏"}节目 ${program.title}">${icon("bookmark")}</button>
+      <button class="program-card__favorite${program.favorite ? " program-card__favorite--active" : ""}" type="button" aria-label="${program.favorite ? "取消收藏" : "收藏"}节目 ${program.title}" aria-pressed="${program.favorite}" data-action="toggle-pressed" data-label-on="取消收藏节目 ${program.title}" data-label-off="收藏节目 ${program.title}">${icon("bookmark")}</button>
       <span class="program-card__covers" aria-hidden="true">
         ${program.covers.map((cover) => programCover(cover, "program-card__cover")).join("")}
       </span>
@@ -856,8 +859,8 @@
           <header class="programs-heading">
             <h1>节目</h1>
             <div class="programs-segmented" role="group" aria-label="节目筛选">
-              <button class="programs-segmented__item programs-segmented__item--active" type="button" aria-pressed="true">All</button>
-              <button class="programs-segmented__item" type="button" aria-pressed="false">Favorites</button>
+              <button class="programs-segmented__item programs-segmented__item--active" type="button" aria-pressed="true" data-action="select-segment">All</button>
+              <button class="programs-segmented__item" type="button" aria-pressed="false" data-action="select-segment">Favorites</button>
             </div>
           </header>
           ${variant === "list" ? `
@@ -906,7 +909,7 @@
     return `
       <div class="prototype-page prototype-page--program-detail prototype-page--program-detail-${variant}">
         <header class="prototype-topbar program-detail-topbar kr-topbar">
-          <button class="kr-icon-button" type="button" aria-label="返回节目列表">${icon("back")}</button>
+          <button class="kr-icon-button" type="button" aria-label="返回节目列表" data-action="navigate" data-page="12-programs-list">${icon("back")}</button>
           <div>
             <button class="kr-icon-button program-detail-favorite" type="button" aria-label="取消收藏节目">${icon("heart")}</button>
             <button class="kr-icon-button" type="button" aria-label="更多节目操作">${icon("more")}</button>
@@ -921,10 +924,10 @@
           <section class="program-detail-scene kr-card" aria-labelledby="program-detail-scene-title">
             <h2 id="program-detail-scene-title">YOUR SCENE</h2>
             <p>${content.scene}</p>
-            ${reuseError ? '<p class="program-detail-inline program-detail-inline--error" aria-live="polite">Radio 未连接，暂时不能复用场景</p>' : ""}
+            ${reuseError ? '<p class="program-detail-inline program-detail-inline--error" role="alert" aria-live="assertive">Radio 未连接，暂时不能复用场景</p>' : ""}
             <div>
-              <button class="kr-button kr-button--primary" type="button">复用场景</button>
-              <button class="kr-button kr-button--secondary" type="button">${replaying ? "正在重播" : "重播串讲"}</button>
+              <button class="kr-button kr-button--primary" type="button"${reuseError ? " disabled" : ` data-action="reuse-scene" data-scene="${content.scene}"`}>复用场景</button>
+              <button class="kr-button kr-button--secondary" type="button" data-action="announce" data-message="${replaying ? "串讲正在重播。" : "开始重播 DJ 串讲。"}">${replaying ? "正在重播" : "重播串讲"}</button>
             </div>
           </section>
           <section class="program-detail-opening" aria-labelledby="program-detail-opening-title">
@@ -935,7 +938,7 @@
               <span>${replaying ? "00:11 / " : ""}${content.openingDuration}</span>
               ${replaying ? '<i role="progressbar" aria-label="串讲重播进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="39"><span></span></i>' : ""}
             </div>
-            ${ttsMissing ? '<p class="program-detail-inline program-detail-inline--warning" aria-live="polite">串讲音频缺失，已显示文字版</p>' : ""}
+            ${ttsMissing ? '<p class="program-detail-inline program-detail-inline--warning" role="status" aria-live="polite">串讲音频缺失，已显示文字版</p>' : ""}
           </section>
           ${programDetailQueue(content.queue)}
           ${programDetailFeedback(content.feedback)}
@@ -950,7 +953,7 @@
       ${brand()}
       <div class="settings-topbar__tools">
         <span class="radio-top-avatar" role="img" aria-label="After Midnight 档案头像"><i></i></span>
-        <button class="kr-icon-button" type="button" aria-label="切换主题">${icon("moon")}</button>
+        <button class="kr-icon-button" type="button" aria-label="切换主题" data-action="toggle-theme">${icon("moon")}</button>
       </div>
     </header>
   `;
@@ -973,11 +976,11 @@
     `;
   }).join("");
 
-  const settingsField = ({ label, value, secret = false, error = "" }) => `
+  const settingsField = ({ id, label, value, secret = false, error = "" }) => `
     <label class="settings-field${error ? " settings-field--error" : ""}">
-      <span>${label}${error ? `<small>${error}</small>` : ""}</span>
+      <span>${label}${error ? `<small id="${id}-error" role="alert">${error}</small>` : ""}</span>
       <span class="settings-field__control">
-        <input class="kr-input${error ? " kr-input--error" : ""}" value="${value}" aria-label="${label}" readonly />
+        <input class="kr-input${error ? " kr-input--error" : ""}" value="${value}" aria-label="${label}"${error ? ` aria-invalid="true" aria-describedby="${id}-error"` : ""} readonly />
         ${secret ? `<button type="button" aria-label="显示 TTS API Key">${icon("eye")}</button>` : ""}
       </span>
     </label>
@@ -1004,10 +1007,10 @@
             <section class="settings-section settings-service-config" aria-labelledby="settings-service-config-title">
               ${settingsSectionTitle("settings-service-config-title", "服务配置")}
               <div class="settings-fields">
-                ${settingsField({ label: "Codex 命令路径", value: content.fields.codexCommand })}
-                ${settingsField({ label: "网易云 API 地址", value: incomplete ? "" : content.fields.neteaseApiUrl, error: incomplete ? "请输入有效地址" : "" })}
-                ${settingsField({ label: "TTS 服务地址", value: content.fields.ttsApiUrl })}
-                ${settingsField({ label: "TTS API Key", value: incomplete ? "" : content.fields.ttsApiKey, secret: true, error: incomplete ? "请输入 TTS API Key" : "" })}
+                ${settingsField({ id: "codex-command", label: "Codex 命令路径", value: content.fields.codexCommand })}
+                ${settingsField({ id: "netease-api", label: "网易云 API 地址", value: incomplete ? "" : content.fields.neteaseApiUrl, error: incomplete ? "请输入有效地址" : "" })}
+                ${settingsField({ id: "tts-api", label: "TTS 服务地址", value: content.fields.ttsApiUrl })}
+                ${settingsField({ id: "tts-key", label: "TTS API Key", value: incomplete ? "" : content.fields.ttsApiKey, secret: true, error: incomplete ? "请输入 TTS API Key" : "" })}
               </div>
             </section>
             <section class="settings-section settings-preferences" aria-labelledby="settings-preferences-title">
@@ -1015,7 +1018,11 @@
               <div class="settings-preference-row">
                 <span>Theme Mode</span>
                 <div class="settings-segmented" role="radiogroup" aria-label="Theme Mode">
-                  ${content.preferences.themeModes.map((mode, index) => `<button class="${index === 0 ? "settings-segmented__active" : ""}" type="button" role="radio" aria-checked="${index === 0}">${mode}</button>`).join("")}
+                  ${content.preferences.themeModes.map((mode) => {
+                    const value = mode.toLowerCase();
+                    const checked = value === previewState.selection.theme.id || previewState.selection.theme.id === "system" && value === "system";
+                    return `<button class="${checked ? "settings-segmented__active" : ""}" type="button" role="radio" aria-checked="${checked}" data-action="set-theme" data-theme="${value}">${mode}</button>`;
+                  }).join("")}
                 </div>
               </div>
               <div class="settings-preference-row">
@@ -1037,8 +1044,8 @@
             </section>
           </form>
         </main>
-        <footer class="settings-actions${saveError ? " settings-actions--error" : ""}" aria-live="polite">
-          <button class="kr-button kr-button--secondary" type="button"${detecting ? " disabled" : ""}>${detecting ? "正在检测服务连接..." : "测试连接"}</button>
+        <footer class="settings-actions${saveError ? " settings-actions--error" : ""}" role="${saveError ? "alert" : "status"}" aria-live="${saveError ? "assertive" : "polite"}"${detecting ? ' aria-busy="true"' : ""}>
+          <button class="kr-button kr-button--secondary" type="button" data-action="navigate" data-page="15-settings-diagnostics"${detecting ? " disabled" : ""}>${detecting ? "正在检测服务连接..." : "测试连接"}</button>
           <button class="kr-button kr-button--primary" type="button"${detecting || incomplete ? " disabled" : ""}>${saveError ? "重新保存" : "保存配置"}</button>
         </footer>
         ${nav("settings")}
@@ -1071,7 +1078,7 @@
     return `
       <div class="prototype-page prototype-page--settings prototype-page--settings-diagnostics prototype-page--settings-diagnostics-${variant}">
         <header class="settings-diagnostics-topbar">
-          <button class="kr-icon-button" type="button" aria-label="返回设置">${icon("back")}</button>
+          <button class="kr-icon-button" type="button" aria-label="返回设置" data-action="navigate" data-page="14-settings-config">${icon("back")}</button>
           <h1>服务检测</h1>
         </header>
         <main class="settings-diagnostics-main">
@@ -1082,13 +1089,13 @@
           <section class="settings-diagnostics-list" aria-label="服务检测结果">
             ${content.services.map((service) => diagnosticsCard(service, content.guidance)).join("")}
           </section>
-          <p class="settings-diagnostics-notice settings-diagnostics-notice--${noticeTone}" aria-live="polite">
+          <p class="settings-diagnostics-notice settings-diagnostics-notice--${noticeTone}" role="${noticeTone === "error" ? "alert" : "status"}" aria-live="${noticeTone === "error" ? "assertive" : "polite"}">
             <span aria-hidden="true">${noticeTone === "success" ? icon("check") : icon("alert")}</span>${content.notice}
           </p>
         </main>
         <footer class="settings-diagnostics-actions">
-          <button class="kr-button kr-button--large kr-button--primary" type="button">返回 Radio</button>
-          <button class="kr-button kr-button--large kr-button--secondary" type="button">修改配置</button>
+          <button class="kr-button kr-button--large kr-button--primary" type="button" data-action="navigate" data-page="05-radio-playing">返回 Radio</button>
+          <button class="kr-button kr-button--large kr-button--secondary" type="button" data-action="navigate" data-page="14-settings-config">修改配置</button>
         </footer>
         ${nav("settings")}
       </div>
@@ -1237,6 +1244,7 @@
     elements.canvas.dataset.theme = resolvedTheme;
     elements.canvas.dataset.viewport = viewport.id;
     elements.canvas.innerHTML = `${renderPage(selection)}<img class="preview-reference-overlay" src="${page.reference}" alt="" aria-hidden="true" />`;
+    elements.canvas.querySelector(".prototype-page")?.classList.add("prototype-page--entering");
     document.title = `${page.number} ${page.title} · Koradio Visual Preview`;
 
     writeCanonicalUrl(selection, mode);
@@ -1255,9 +1263,204 @@
     };
   };
 
+  const announce = (message) => {
+    elements.announcer.textContent = "";
+    window.requestAnimationFrame(() => {
+      elements.announcer.textContent = message;
+    });
+  };
+
+  const focusCanvasTarget = (selector) => {
+    window.requestAnimationFrame(() => {
+      const target = elements.canvas.querySelector(selector);
+      if (!target) {
+        return;
+      }
+      if (!target.matches("button, a, input, select, textarea, [tabindex]")) {
+        target.setAttribute("tabindex", "-1");
+      }
+      target.focus();
+    });
+  };
+
+  const navigateToPage = (pageId, focusSelector = "h1") => {
+    const page = findById(fixtures.pages, pageId);
+    const selection = {
+      ...previewState.selection,
+      page,
+      variant: findVariant(page, null),
+    };
+    render(selection, "pushState");
+    announce(`${page.title} 已打开`);
+    focusCanvasTarget(focusSelector);
+  };
+
+  const changeTheme = (themeId) => {
+    const theme = findById(fixtures.themes, themeId);
+    render({ ...previewState.selection, theme }, "pushState");
+    announce(`已切换为${theme.label}`);
+  };
+
+  const toggleTheme = () => {
+    const nextTheme = resolveTheme(previewState.selection.theme) === "dark" ? "light" : "dark";
+    changeTheme(nextTheme);
+  };
+
+  const closeDetail = () => {
+    const detailPage = elements.canvas.querySelector(".prototype-page--detail");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!detailPage || reducedMotion) {
+      navigateToPage("05-radio-playing", ".radio-dj-status");
+      return;
+    }
+    detailPage.classList.add("prototype-page--detail-closing");
+    window.setTimeout(() => navigateToPage("05-radio-playing", ".radio-dj-status"), 320);
+  };
+
+  const togglePressed = (button) => {
+    const pressed = button.getAttribute("aria-pressed") === "true";
+    button.setAttribute("aria-pressed", String(!pressed));
+    button.classList.toggle("kr-control--selected", !pressed);
+    button.classList.toggle("program-card__favorite--active", button.classList.contains("program-card__favorite") && !pressed);
+    button.setAttribute("aria-label", pressed ? button.dataset.labelOff : button.dataset.labelOn);
+    announce(button.getAttribute("aria-label"));
+  };
+
+  const selectSegment = (button) => {
+    const group = button.closest("[role='group'], [role='radiogroup']");
+    group.querySelectorAll("button").forEach((item) => {
+      const selected = item === button;
+      item.setAttribute(item.getAttribute("role") === "radio" ? "aria-checked" : "aria-pressed", String(selected));
+      item.classList.toggle("programs-segmented__item--active", selected && item.classList.contains("programs-segmented__item"));
+      item.classList.toggle("settings-segmented__active", selected && item.closest(".settings-segmented"));
+    });
+    announce(`已选择 ${button.textContent.trim()}`);
+  };
+
   elements.controls.addEventListener("change", (event) => {
     if (event.target.matches("select")) {
       render(selectionFromControls(), "pushState");
+    }
+  });
+
+  elements.canvas.addEventListener("click", (event) => {
+    const actionTarget = event.target.closest("[data-action]");
+    if (!actionTarget || actionTarget.disabled) {
+      return;
+    }
+
+    switch (actionTarget.dataset.action) {
+      case "navigate":
+        navigateToPage(actionTarget.dataset.page);
+        break;
+      case "toggle-theme":
+        toggleTheme();
+        break;
+      case "set-theme":
+        changeTheme(actionTarget.dataset.theme);
+        break;
+      case "open-detail":
+        if (actionTarget.dataset.detailAvailable === "true") {
+          navigateToPage("08-radio-detail-lyrics", ".detail-close");
+        } else {
+          announce("先生成一段电台，再查看节目详情");
+        }
+        break;
+      case "reuse-scene":
+        previewState.radioDraft = actionTarget.dataset.scene;
+        navigateToPage("04-radio-empty", ".radio-scene-input input");
+        announce("已带着这个场景回到 Radio");
+        break;
+      case "close-detail":
+        closeDetail();
+        break;
+      case "toggle-playback": {
+        const paused = actionTarget.getAttribute("aria-pressed") === "true";
+        actionTarget.setAttribute("aria-pressed", String(!paused));
+        actionTarget.setAttribute("aria-label", paused ? "暂停当前节目" : "继续播放当前节目");
+        actionTarget.innerHTML = icon(paused ? "pause" : "play");
+        const detail = actionTarget.closest(".prototype-page--detail");
+        const detailStatus = detail.querySelector(".detail-status");
+        detailStatus.dataset.activeStatus ||= detailStatus.textContent.trim();
+        detailStatus.lastChild.textContent = paused ? detailStatus.dataset.activeStatus : "PAUSED";
+        detail.classList.toggle("prototype-page--detail-paused", !paused);
+        announce(paused ? "节目继续播放" : "节目已暂停");
+        break;
+      }
+      case "toggle-radio-playback": {
+        const paused = actionTarget.getAttribute("aria-pressed") === "true";
+        actionTarget.setAttribute("aria-pressed", String(!paused));
+        actionTarget.setAttribute("aria-label", paused ? "暂停" : "继续播放");
+        actionTarget.innerHTML = icon(paused ? "pause" : "play");
+        const page = actionTarget.closest(".prototype-page--radio");
+        page.classList.toggle("prototype-page--radio-paused", !paused);
+        const status = page.querySelector(".radio-dj-status__state span");
+        status.textContent = paused ? "PLAYING" : "PAUSED";
+        announce(paused ? "播放继续" : "播放已暂停");
+        break;
+      }
+      case "toggle-pressed":
+        togglePressed(actionTarget);
+        break;
+      case "select-segment":
+        selectSegment(actionTarget);
+        break;
+      case "announce":
+        announce(actionTarget.dataset.message);
+        break;
+    }
+  });
+
+  elements.canvas.addEventListener("keydown", (event) => {
+    const navItem = event.target.closest(".kr-nav__item");
+    if (navItem && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+      const items = [...navItem.closest(".kr-nav").querySelectorAll(".kr-nav__item")];
+      const current = items.indexOf(navItem);
+      const next = event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? items.length - 1
+          : (current + (event.key === "ArrowRight" ? 1 : -1) + items.length) % items.length;
+      event.preventDefault();
+      items[next].focus();
+      return;
+    }
+
+    if (event.key === "Escape" && elements.canvas.querySelector(".prototype-page--detail")) {
+      event.preventDefault();
+      closeDetail();
+      return;
+    }
+
+    if (event.key === "Tab") {
+      const dialog = elements.canvas.querySelector("[role='dialog'][aria-modal='true']");
+      if (!dialog) {
+        return;
+      }
+      const focusable = [...dialog.querySelectorAll("button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex='-1'])")];
+      if (!focusable.length) {
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      const search = elements.canvas.querySelector(".library-search input");
+      if (search) {
+        event.preventDefault();
+        search.focus();
+        announce("音乐库搜索已聚焦");
+      }
     }
   });
 

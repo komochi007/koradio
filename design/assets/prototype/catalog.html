@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Koradio VDA-02 Tokens 与共享组件目录。" />
+    <meta name="description" content="Koradio VDA-02 Tokens、共享组件与 VDA-13 交互状态目录。" />
     <link rel="icon" href="data:," />
-    <title>VDA-02 · Tokens 与组件目录 · Koradio</title>
-    <link rel="stylesheet" href="./tokens.css?v=vda-02" />
-    <link rel="stylesheet" href="./components.css?v=vda-02-icons-5" />
-    <link rel="stylesheet" href="./catalog.css?v=vda-02" />
+    <title>VDA-02 / VDA-13 · Tokens、组件与交互状态 · Koradio</title>
+    <link rel="stylesheet" href="./tokens.css?v=vda-13" />
+    <link rel="stylesheet" href="./components.css?v=vda-13" />
+    <link rel="stylesheet" href="./catalog.css?v=vda-13" />
   </head>
   <body>
     <svg width="0" height="0" aria-hidden="true">
@@ -20,7 +20,7 @@
 
     <div class="catalog-frame">
       <nav class="catalog-toolbar" aria-label="组件目录工具栏">
-        <div class="catalog-toolbar__title"><strong>KORADIO</strong><span>VDA-02 · COMPONENT DIRECTORY</span></div>
+        <div class="catalog-toolbar__title"><strong>KORADIO</strong><span>VDA-02 / VDA-13 · COMPONENT STATES</span></div>
         <div class="catalog-toolbar__actions">
           <a href="./index.html">页面定位器</a>
           <button type="button" data-catalog-theme="dark">Dark</button>
@@ -116,7 +116,10 @@
                 <button class="kr-button kr-button--primary kr-button--large" type="button">保存并继续</button>
                 <button class="kr-button kr-button--secondary" type="button">测试连接</button>
                 <button class="kr-button kr-button--ghost" type="button">取消</button>
-                <button class="kr-button kr-button--primary" type="button" disabled>Generating...</button>
+                <button class="kr-button kr-button--secondary kr-state-demo--hover" type="button">Hover</button>
+                <button class="kr-button kr-button--secondary kr-state-demo--active" type="button">Active</button>
+                <button class="kr-button kr-button--primary kr-button--loading" type="button" aria-busy="true"><span class="kr-loading-dots" aria-hidden="true"><i></i><i></i><i></i></span>保存中…</button>
+                <button class="kr-button kr-button--primary" type="button" disabled>Disabled</button>
                 <button class="kr-play-button" type="button" aria-label="暂停"><svg class="kr-icon" aria-hidden="true"><use href="#icon-pause"></use></svg></button>
               </div>
             </div>
@@ -133,7 +136,7 @@
               <div class="catalog-grid catalog-fields">
                 <label class="kr-field"><span class="kr-field__label">Default</span><input class="kr-input" value="今晚写东西，想要安静但不死板的 BGM。" /></label>
                 <label class="kr-field"><span class="kr-field__label">Focus</span><input class="kr-input kr-input--focus" value="British Soft Radio" /></label>
-                <label class="kr-field"><span class="kr-field__label">Error</span><input class="kr-input kr-input--error" value="无效的服务地址" aria-invalid="true" /><span class="kr-field__message kr-field__message--error">请检查地址后重试。</span></label>
+                <label class="kr-field"><span class="kr-field__label">Error</span><input class="kr-input kr-input--error" value="无效的服务地址" aria-invalid="true" aria-describedby="catalog-input-error" /><span class="kr-field__message kr-field__message--error" id="catalog-input-error" role="alert">请检查地址后重试。</span></label>
                 <label class="kr-field"><span class="kr-field__label">Disabled</span><input class="kr-input" value="Generating..." disabled /></label>
               </div>
             </div>
@@ -204,9 +207,9 @@
           </div>
         </section>
 
-        <footer class="catalog-footer"><p>静态 HTML / CSS / JavaScript 视觉主源 · 不代表产品当前可运行</p><span class="kr-label">SHARED COMPONENT GATE · VDA-02</span></footer>
+        <footer class="catalog-footer"><p>静态 HTML / CSS / JavaScript 视觉主源 · 不代表产品当前可运行</p><span class="kr-label">COMPONENT & A11Y GATE · VDA-02 / VDA-13</span></footer>
       </main>
     </div>
-    <script src="./catalog.js?v=vda-02"></script>
+    <script src="./catalog.js?v=vda-13"></script>
   </body>
 </html>

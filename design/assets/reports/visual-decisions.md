@@ -171,6 +171,19 @@
 - 最终决定：已确认；用户通过浏览器评论明确限定这些标准仅对 Detail Sheet 生效，权威规范已先行同步（2026-07-13）。
 - 证据截图：[07 二次校准自动验收证据](evidence/vda-05-detail-speaking.png)、[08 二次校准自动验收证据](evidence/vda-05-detail-lyrics.png)
 
+### A-012
+
+- 编号：A-012
+- 页面与区域：07–08 Detail Sheet 串讲词 / 歌词卡片的已读大号正文
+- 差异类别：明确视觉色值 / WCAG AA 文本对比度
+- VDA-12 前表现：规范和 HTML 使用 `#A8A7A1`，在 `#F5F3F6` 内容卡上实测仅 `2.19:1`，未达到 29–30px 大号正文所需的 `3:1`。
+- 规范要求：已读内容需弱于当前句、强于不可辨识的装饰灰；文字必须满足 WCAG AA，状态层级不得只依赖颜色。
+- 严重级别：A
+- 推荐裁决：将已读正文统一改为 `#898A86`，在 `#F5F3F6` 内容卡上为 `3.15:1`；当前句继续使用 `#14161A`，未播放内容继续使用 `#767A80`，不改变字号、字重、行高、布局或三层语义。
+- 影响页面：07、08；同步 Detail token、`design/design.md` 与 `design/prompt.md`。
+- 最终决定：已确认；用户于 2026-07-14 明确确认推荐方案，VDA-13 已完成 HTML 主源和权威规范同步。
+- 证据截图：[Reduce Motion 下的 Detail](evidence/vda-13-reduced-motion.png)
+
 ## B 级｜按页面族批量确认
 
 ### B-001
@@ -347,6 +360,32 @@
 - 最终决定：已自动裁决；只处理规范未精确给出的响应式间距和比例，不改变产品行为、内容层级、主组件结构、主题气质或交互语义。
 - 证据截图：[Mobile Radio](evidence/vda-12-mobile-05-radio-playing.png)、[Tablet Detail](evidence/vda-12-tablet-08-radio-detail-lyrics.png)、[Desktop Taste](evidence/vda-12-desktop-10-taste-overview.png)；同目录另有其余 12 张代表页 / viewport 派生截图。
 
+### C-010
+
+- 编号：C-010
+- 页面与区域：01–15 页面切换、主导航键盘移动、Detail Sheet 开合与焦点回收
+- 差异类别：交互微观时序 / 焦点路径
+- PNG 表现：静态参考图无法定义页面进入、Sheet 开合、方向键顺序、焦点循环和关闭后的焦点位置。
+- 规范要求：页面过渡使用 `220ms`，Sheet 开合使用 `420ms / 320ms`；焦点必须可见且顺序与视觉一致，Modal 需限制焦点并支持 Escape；Reduce Motion 下停止非必要过渡。
+- 严重级别：C
+- 推荐裁决：页面进入使用 `4px` 位移加淡入，Detail 进入使用 `48px` 下移回正；主导航支持左右方向键、Home、End；页面切换聚焦 H1，Detail 打开聚焦关闭按钮，Tab 在两个 Detail 控件间循环，Escape 或关闭后焦点回到 DJ 状态。Reduce Motion 下跳过开合延迟并移除上述动画。
+- 影响页面：01–15 共享预览行为，重点影响 05、08、09 与底部导航。
+- 最终决定：已自动裁决；严格继承既有时长和交互语义，仅补齐规范未给出的位移幅度与焦点落点，不改变页面结构或产品行为。
+- 证据截图：[键盘 Focus](evidence/vda-13-keyboard-focus.png)、[Reduce Motion Detail](evidence/vda-13-reduced-motion.png)
+
+### C-011
+
+- 编号：C-011
+- 页面与区域：共享控件交互状态、播放波形暂停态与状态播报
+- 差异类别：状态可见性 / 非颜色反馈
+- PNG 表现：参考图只展示少量静态默认态，无法定义 Hover、Active、Loading、Disabled、错误关联、切换选中与暂停后的持续反馈。
+- 规范要求：所有正式交互覆盖 Hover、Active、Focus、Disabled、Loading、Error；状态不得只依赖颜色；加载和错误需适当使用 `aria-busy`、`role=status`、`role=alert` 与 `aria-live`；暂停或 Reduce Motion 时波形停止。
+- 严重级别：C
+- 推荐裁决：共享控件使用亮度、位移、缩放、透明度和双层 Focus Ring 表达状态；Loading 在保留文字的同时使用三点节奏，Reduce Motion 下变为静态三点；收藏、主题和筛选同步 `aria-pressed` / `aria-checked`；暂停同步按钮名称、`PAUSED` 文字、live region 与静止波形；字段错误通过 `aria-invalid` 和 `aria-describedby` 关联。
+- 影响页面：组件目录与 01–15 HTML 视觉主源。
+- 最终决定：已自动裁决；状态继续保留明确文字和既有色彩语义，不新增布局层级、真实服务调用或生产行为。
+- 证据截图：[键盘 Focus](evidence/vda-13-keyboard-focus.png)、[200% Zoom](evidence/vda-13-zoom-200.png)
+
 ## 后续执行约束
 
 1. 核心体验骨架：Radio 按 2026-07-13 用户尺度校准执行；Detail 继续按 A-002 执行。
@@ -503,3 +542,13 @@
 - 自动验收：本机 Chrome 150 通过临时只读静态服务验证 5 页 × 3 viewport × 2 主题共 30 个场景；画布尺寸、shell 宽度、长文案、滚动边界、固定区域、安全区、横向溢出、可用操作 `44 × 44px` 最小命中区、Dark / Light 几何零位移、控制台与运行时错误均通过。另验证 5 个 Prototype 代表页原有固定锚点零回归，15 张 QA 派生截图尺寸均与对应 viewport 一致。
 - QA 证据：[Mobile Radio](evidence/vda-12-mobile-05-radio-playing.png)、[Tablet Detail](evidence/vda-12-tablet-08-radio-detail-lyrics.png)、[Desktop Taste](evidence/vda-12-desktop-10-taste-overview.png)；全部 15 张 `vda-12-{viewport}-{page}.png` 只作为 VDA-12 自动验收证据，不是 VDA-14 正式基线。
 - 已知后续范围：完整 hover / active / focus / disabled / loading / error、键盘路径、200% zoom、`aria-live`、Reduce Motion 与 Detail 已读歌词对比度属于 VDA-13；正式 Dark / Light 与响应式基线属于 VDA-14。
+
+## VDA-13 执行记录
+
+- 状态：2026-07-14 已完成 HTML / CSS / JavaScript 交互与无障碍资产、自动浏览器验收与裁决记录，任务为“已完成”。
+- 范围：只补齐组件目录和 01–15 HTML 视觉主源的 Hover、Active、Focus、Disabled、Loading、Error、键盘路径、页面切换、Detail 开合、播放状态、live region、200% zoom 与 Reduce Motion；不修改 fixture、产品源码、生产配置、Figma 或 VDA-14 正式基线。
+- A / B 级差异：A-012 已按用户确认将 Detail 已读正文从 `#A8A7A1` 调整为 `#898A86`，在 `#F5F3F6` 内容卡上由 `2.19:1` 提升到 `3.15:1`；未发现新增或未关闭的 B 级差异。
+- C 级裁决：新增 C-010，使用共享时长完成页面淡入、Detail 位移开合、主导航方向键、Modal 焦点循环与关闭回收；新增 C-011，统一控件交互反馈、Loading 静态降级、错误字段关联、切换状态语义以及暂停后的文字 / 播报 / 波形同步。未改变布局、组件层级、内容层级或产品语义。
+- 自动验收：JavaScript 语法与 Git whitespace 检查通过；本机 Chrome 150 经临时只读静态服务验证 15 页共 185 个可见可用控件，命中区均不小于 `44 × 44px`；方向键、Home / End、页面 H1 聚焦、Library `⌘/Ctrl+K`、Programs 场景复用到 Radio 待发送态及发送后进入生成态、Detail Tab / Shift+Tab 循环、Escape 关闭与焦点回收均通过。9 个 Loading / Error 代表状态具备对应 `role`、`aria-live` 或 `aria-busy`；暂停同步 `aria-pressed`、`PAUSED`、live region 与静止波形；浏览器无障碍树包含 heading、button、navigation、textbox 和 status 结构。200% 页面缩放下内容可滚动且导航保持可用；Reduce Motion 下页面、Detail、波形、骨架和状态脉冲停止。
+- QA 证据：[键盘 Focus](evidence/vda-13-keyboard-focus.png)、[Reduce Motion Detail](evidence/vda-13-reduced-motion.png)、[200% Zoom](evidence/vda-13-zoom-200.png)。三张图是 VDA-13 自动验收派生产物，不是 VDA-14 正式基线。
+- 已知后续范围：Dark / Light 各 15 张 `960 × 1600px` 正式基线、响应式正式基线和逐页视觉 QA 属于 VDA-14；Figma 派生镜像与开发交接映射分别属于 VDA-15、VDA-16。
