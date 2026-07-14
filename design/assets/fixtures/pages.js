@@ -439,7 +439,6 @@
         themeModes: ["Dark", "Light", "System"],
         language: "中文",
         voiceStyle: "British Soft Radio",
-        voiceDescription: "柔和、有磁性、专业克制",
       },
       localData: {
         path: "/Users/komo/Koradio",

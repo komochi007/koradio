@@ -3606,18 +3606,18 @@ a {
 }
 
 .settings-service-config {
-  top: 388px;
+  top: 396px;
 }
 
 .settings-fields {
   display: grid;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .settings-field {
   display: grid;
-  height: 104px;
+  height: 88px;
   align-content: start;
   gap: 4px;
 }
@@ -3643,12 +3643,15 @@ a {
 }
 
 .settings-field__control .kr-input {
+  height: var(--kr-settings-input-height);
+  min-height: var(--kr-settings-input-height);
+  padding-block: 16px;
   padding-right: 68px;
 }
 
 .settings-field__control > button {
   position: absolute;
-  top: 18px;
+  top: 10px;
   right: 12px;
   display: grid;
   width: 44px;
@@ -3668,18 +3671,18 @@ a {
 }
 
 .settings-preferences {
-  top: 876px;
+  top: 852px;
 }
 
 .settings-preference-row {
   display: grid;
-  height: 52px;
+  height: 48px;
   grid-template-columns: 280px minmax(0, 1fr);
   align-items: center;
 }
 
 .settings-preference-row:first-of-type {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .settings-preference-row > span {
@@ -3742,28 +3745,13 @@ a {
   height: 22px;
 }
 
-.settings-preference-row--voice {
-  height: 68px;
-}
-
-.settings-preference-row--voice > div {
-  display: grid;
-  gap: 2px;
-}
-
-.settings-preference-row--voice small {
-  color: var(--kr-color-text-secondary);
-  font-size: 13px;
-  line-height: 16px;
-}
-
 .settings-local-data {
-  top: 1092px;
+  top: 1064px;
 }
 
 .settings-data-card {
   height: 132px;
-  margin-top: 8px;
+  margin-top: 12px;
   padding: 0;
   overflow: hidden;
 }
@@ -3840,7 +3828,7 @@ a {
 
 .settings-actions {
   position: absolute;
-  top: 1396px;
+  top: 1392px;
   left: 64px;
   display: grid;
   width: var(--kr-settings-width);

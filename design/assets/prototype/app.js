@@ -1020,9 +1020,9 @@
                 <span>DJ Language</span>
                 <button class="settings-select" type="button"><strong>${content.preferences.language}</strong>${icon("down")}</button>
               </div>
-              <div class="settings-preference-row settings-preference-row--voice">
+              <div class="settings-preference-row">
                 <span>DJ Voice Style</span>
-                <div><button class="settings-select" type="button"><strong>${content.preferences.voiceStyle}</strong>${icon("down")}</button><small>${content.preferences.voiceDescription}</small></div>
+                <button class="settings-select" type="button"><strong>${content.preferences.voiceStyle}</strong>${icon("down")}</button>
               </div>
             </section>
             <section class="settings-section settings-local-data" aria-labelledby="settings-local-data-title">
