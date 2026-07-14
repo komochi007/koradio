@@ -480,6 +480,8 @@ Radio 页面始终保持中央窄列，不在宽屏中拆分为多栏。
 --kr-settings-input-height: 64px;
 --kr-settings-preference-control-height: 44px;
 --kr-settings-preference-gap: 8px;
+--kr-settings-compact-action-target-height: 44px;
+--kr-settings-compact-action-frame-height: 32px;
 --kr-detail-sheet-width: 960px;
 ```
 
@@ -496,7 +498,7 @@ Radio 页面始终保持中央窄列，不在宽屏中拆分为多栏。
 
 这些视觉留白来自内容列居中，不替代 `56px` 页面安全边距。若某个页面有更窄的主任务区域，例如服务未连接页的错误恢复区域，应保持该区域居中并优先使用 `560px`。
 
-Settings 服务配置页的四个路径与密钥输入框固定为 `64px` 高；该规格只作用于 Settings 页面族，不取代 Profile 表单和组件目录使用的全局 `80px` 输入规格。偏好设置的 Theme Mode、DJ Language 和 DJ Voice Style 控件统一为 `44px` 高，三行之间保留 `8px` 间距，不得让相邻控件边框直接相接。服务状态、服务配置、偏好设置、本地数据、固定操作区和底部导航之间统一保留 `24px` 的纵向间距。DJ Voice Style 选择器只显示当前值，不在选择框下重复显示声音风格说明。
+Settings 服务配置页的四个路径与密钥输入框固定为 `64px` 高；该规格只作用于 Settings 页面族，不取代 Profile 表单和组件目录使用的全局 `80px` 输入规格。偏好设置的 Theme Mode、DJ Language 和 DJ Voice Style 控件统一为 `44px` 高，三行之间保留 `8px` 间距，不得让相邻控件边框直接相接。服务状态中的 Test 与本地数据中的 Change 使用同一紧凑操作规格：真实命中区保持 `44px` 高，可见边框内收为 `32px` 高并垂直居中，边框上下各保留 `6px`，不得与外层卡片边框或分割线重叠。服务状态、服务配置、偏好设置、本地数据、固定操作区和底部导航之间统一保留 `24px` 的纵向间距。DJ Voice Style 选择器只显示当前值，不在选择框下重复显示声音风格说明。
 
 桌面端 Radio 页面：
 

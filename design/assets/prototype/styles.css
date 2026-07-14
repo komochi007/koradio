@@ -3579,7 +3579,7 @@ a {
   display: grid;
   width: 52px;
   min-width: 44px;
-  height: 44px;
+  height: var(--kr-settings-compact-action-target-height);
   padding: 0;
   place-items: center;
   justify-self: end;
@@ -3591,7 +3591,7 @@ a {
   font: 500 var(--kr-type-caption-size) / 1 var(--kr-font-sans);
 }
 
-.settings-service-row--warning > button {
+.settings-service-row__compact-action {
   border-color: var(--kr-color-border);
 }
 
@@ -3797,7 +3797,7 @@ a {
 
 .settings-data-card button {
   min-width: 44px;
-  min-height: 44px;
+  min-height: var(--kr-settings-compact-action-target-height);
   margin-left: 16px;
   padding: 0 12px;
   border: 1px solid var(--kr-color-border);
@@ -3805,6 +3805,26 @@ a {
   background: transparent;
   color: var(--kr-color-text-primary);
   cursor: pointer;
+}
+
+.settings-service-row__compact-action,
+.settings-data-card > div:first-child > button {
+  position: relative;
+  border-color: transparent;
+}
+
+.settings-service-row__compact-action::before,
+.settings-data-card > div:first-child > button::before {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  left: 4px;
+  height: var(--kr-settings-compact-action-frame-height);
+  transform: translateY(-50%);
+  border: 1px solid var(--kr-color-border);
+  border-radius: var(--kr-radius-sm);
+  content: "";
+  pointer-events: none;
 }
 
 .settings-data-card .settings-cache-action {

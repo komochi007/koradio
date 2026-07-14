@@ -965,7 +965,7 @@
         <span class="settings-service-row__name">${service.name}</span>
         <span class="settings-service-row__status"><i aria-hidden="true"></i>${status}</span>
         ${service.action === "test"
-          ? `<button type="button"${detecting ? " disabled" : ""}>${detecting ? "Testing" : "Test"}</button>`
+          ? `<button class="settings-service-row__compact-action" type="button"${detecting ? " disabled" : ""}>${detecting ? "Testing" : "Test"}</button>`
           : `<button type="button" aria-label="查看 ${service.name} 配置">${icon("chevron")}</button>`}
       </li>
     `;

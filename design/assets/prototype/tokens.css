@@ -116,6 +116,8 @@
   --kr-settings-input-height: 64px;
   --kr-settings-preference-control-height: 44px;
   --kr-settings-preference-gap: 8px;
+  --kr-settings-compact-action-target-height: 44px;
+  --kr-settings-compact-action-frame-height: 32px;
   --kr-detail-sheet-width: 960px;
   --kr-detail-content-offset: 56px;
   --kr-detail-content-width: 848px;

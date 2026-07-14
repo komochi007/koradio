@@ -559,7 +559,7 @@ Dream Pop、Indie Folk、Ambient、City Pop、Alternative、Soft Rock、Bossa No
 “Codex” — 绿色点 — “CONNECTED”
 “NetEase Music API” — 绿色点 — “CONNECTED”
 “Text to Speech” — 黄色点 — “DEGRADED”
-每行右侧有箭头或“Test”小按钮。状态颜色必须配合文字。
+每行右侧有箭头或“Test”小按钮。状态颜色必须配合文字。Test 与下方本地数据的 Change 使用同一紧凑边框规格：按钮命中区高 `44 px`，可见边框高 `32 px` 并垂直居中，不得贴住列表或卡片外框。
 
 下方显示“服务配置”。依次排列单列表单：
 
@@ -579,7 +579,7 @@ Dream Pop、Indie Folk、Ambient、City Pop、Alternative、Soft Rock、Bossa No
 
 接着显示“偏好设置”。Theme Mode 使用三段选择器“Dark / Light / System”，Dark 选中，选中态使用高对比中性色。DJ Language 使用选择器，当前为“中文”。DJ Voice Style 当前为“British Soft Radio”，选择框下方不显示额外说明文字。三个控件均为 `44 px` 高，相邻行之间保留 `8 px` 间距，边框不得相接。
 
-再下方显示“本地数据”。包含数据路径“/Users/komo/Koradio”, “Change”按钮，缓存占用“1.8 GB”，以及一个弱危险操作“清理音频缓存”。不要使用红色大按钮。
+再下方显示“本地数据”。包含数据路径“/Users/komo/Koradio”, “Change”按钮，缓存占用“1.8 GB”，以及一个弱危险操作“清理音频缓存”。Change 使用与 Test 相同的紧凑边框规格。不要使用红色大按钮。
 
 页面底部、主导航上方放置固定操作区。左侧为次级按钮“测试连接”，右侧为主要按钮“保存配置”。主要按钮使用浅色背景 #F2F4F7、深色文字，不使用绿色。
 
