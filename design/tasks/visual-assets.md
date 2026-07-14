@@ -152,7 +152,7 @@ design/assets/
 | VDA-12 | 已完成 | 响应式代表页 | VDA-10、VDA-11 | 用 03、05、08、10、14 验证手机、平板和宽屏布局族 |
 | VDA-13 | 已完成 | 交互与无障碍 | VDA-02、VDA-12 | 补齐交互状态、键盘、Focus、200% zoom 和 Reduce Motion |
 | VDA-14 | 已完成 | 截图基线与视觉 QA | VDA-13 | 输出规范尺寸基线并关闭所有 A / B 级未决差异 |
-| VDA-15 | 待开始 | Figma 派生镜像 | VDA-14 | 从已验收 HTML 生成 Figma 页面和组件映射，不独立修改 |
+| VDA-15 | 已完成 | Figma 派生镜像 | VDA-14 | 从已验收 HTML 生成 Figma 页面和组件映射，不独立修改 |
 | VDA-16 | 待开始 | 视觉冻结与开发交接 | VDA-14、VDA-15 | 完成页面—组件—token—状态映射；通过整体冻结门 |
 
 ## 7. 分任务验收
@@ -254,4 +254,16 @@ design/assets/
 - [x] 已补齐组件目录和 01–15 HTML 主源的 Hover、Active、Focus、Disabled、Loading、Error、键盘路径、状态播报、页面 / Detail 动效、200% zoom 与 Reduce Motion；Detail 已读大字按 A-012 提升至 WCAG AA，并通过自动浏览器交互、结构、对比度和文件检查（VDA-13 已完成）。
 - [x] 已生成 15 张 Dark、15 张 Light `960 × 1600px` Prototype 基线，以及 30 张响应式代表页基线（VDA-14 已完成）。
 - [x] 已完成正式视觉 QA、文件清单与复渲染验证；所有 A / B 级差异均已关闭，C 级裁决可追溯。
-- [ ] 尚未建立 Figma 派生镜像和开发交接映射。
+- [x] 已从已验收 HTML / VDA-14 基线建立 Figma 派生镜像、原生变量 / 样式 / 共享组件与 HTML 版本映射（VDA-15 已完成）。
+- [ ] 尚未建立页面—状态—组件—token—fixture—基线的开发交接映射，整体视觉冻结门尚未通过（VDA-16）。
+
+## 9. VDA-15 执行记录
+
+- 状态：2026-07-14 已完成并通过自动验收。
+- Figma 文件：[Koradio · Visual Baseline · MVP](https://www.figma.com/design/ZxAWTQW5aH3VMd9H3T8zcJ)。
+- 来源：HTML Git 版本 `325b604`；HTML / CSS / JavaScript 继续作为唯一视觉主源，Figma 是派生镜像。
+- 页面：Cover、Getting Started、Foundations、Components、Screens · Prototype、Screens · Responsive、Utilities & Limits 与 3 个分隔页，共 10 页。
+- 资产：6 个变量集合、209 个变量、64 个别名、10 个文字样式、4 个效果样式、7 个组件集 66 个变体、30 张 Prototype Frame 和 30 张 Responsive Frame。
+- 验收：页面顺序、变量别名与 Web code syntax、组件命名 / 重叠、Frame 数量 / 主题 / viewport 均通过结构检查；文档页、组件页及两张页面联系表通过人工视觉复核。
+- 差异：没有新增 A / B 级差异；C-014 自动裁决 Figma 页面保真、SF Pro 可见文字回退、响应式计算和交互转换限制，未修改 HTML 主源或正式基线。
+- 边界：VDA-16 未执行；本任务完成不代表页面—状态—组件—token—fixture—基线开发交接映射或整体视觉冻结门已通过。

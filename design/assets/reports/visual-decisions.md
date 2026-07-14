@@ -412,6 +412,19 @@
 - 最终决定：已按用户两次浏览器标注完成容器居中与关闭 SVG 光学补正，并同步正式基线（2026-07-14）。
 - 证据截图：[Dark 正式基线](../baselines/dark/11-taste-edit.png)、[Light 正式基线](../baselines/light/11-taste-edit.png)
 
+### C-014
+
+- 编号：C-014
+- 页面与区域：VDA-15 Figma 文档页、共享组件与页面 Frame
+- 差异类别：派生镜像可编辑性 / 字体渲染能力
+- Figma 表现：已验收页面以 PNG 图像填充导入时可以完整保留 HTML 主源观感，但不能转换为可编辑 DOM；Figma 可列出 SF Pro 字体，但插件新建 SF Pro 文本在本次环境中产生零宽度度量；响应式媒体查询、CSS `calc()`、动效与交互语义也不能无损映射为静态变量。
+- 规范要求：HTML / CSS / JavaScript 是视觉设计资产唯一主源；PNG 与 Figma 均为派生产物，不得为提高 Figma 可编辑性而静默改变布局、组件、内容层级或交互语义。
+- 严重级别：C
+- 推荐裁决：60 张已验收基线以图像填充 Frame 保真导入；Foundations、文字样式和 7 组共享组件使用原生 Figma 变量、样式与组件表达可复用规则。保留 SF Pro 的变量与文字样式映射，Figma 文档和组件中的可见说明文字使用 Inter，等宽文字使用 Roboto Mono；页面真实字体观感继续由基线图保留。响应式计算与交互限制在文件内显式记录，完整页面—状态—组件映射留给 VDA-16。
+- 影响页面：仅 Figma 派生镜像，不修改 HTML 主源、正式 PNG、产品行为或视觉规范。
+- 最终决定：已自动裁决；以保真、可追溯和主源单一性优先，不伪造可编辑页面结构。
+- 证据：[Koradio · Visual Baseline · MVP](https://www.figma.com/design/ZxAWTQW5aH3VMd9H3T8zcJ)
+
 ## 后续执行约束
 
 1. 核心体验骨架：Radio 按 2026-07-13 用户尺度校准执行；Detail 继续按 A-002 执行。
@@ -591,3 +604,14 @@
 - 交付物：`design/assets/baselines/`、`design/assets/baselines/manifest.json`、`design/assets/scripts/vda-14-baselines.cjs` 与 `design/assets/reports/evidence/vda-14-*.png`。
 - 已知后续范围：Figma 派生镜像属于 VDA-15，页面—状态—组件—token—fixture—基线开发交接与整体冻结门属于 VDA-16；VDA-15 完成前不得把整体视觉冻结门描述为已通过。
 - 浏览器反馈补正：2026-07-14 按 C-013 两次修正 11 Taste 编辑页标签内部水平居中与右侧关闭 SVG 的 `1px` 光学对齐；Dark / Light 两张正式基线与清单已重新生成，其余 58 张基线无文件差异；VDA-14 完成状态不变。
+
+## VDA-15 执行记录
+
+- 状态：2026-07-14 已完成 Figma 派生镜像、文件内转换限制说明、结构审计与人工视觉复核，任务为“已完成”。
+- 文件：[Koradio · Visual Baseline · MVP](https://www.figma.com/design/ZxAWTQW5aH3VMd9H3T8zcJ)；生成所依据的 HTML Git 版本为 `325b604`，同步日期为 `2026-07-14`。
+- 范围：建立 Cover、Getting Started、Foundations、Components、Screens · Prototype、Screens · Responsive、Utilities & Limits 与 3 个分隔页，共 10 页；导入 30 张 Prototype 与 30 张 Responsive 已验收基线 Frame。
+- 原生资产：建立 6 个变量集合、209 个变量、64 个别名、10 个文字样式、4 个效果样式，以及 Button、Input、Status、Media、BottomNavigation、Card、DJStatus 7 个组件集共 66 个变体。
+- A / B 级差异：未发现新增 A / B 级视觉差异；页面 Frame 与 VDA-14 正式基线保持一致。
+- C 级裁决：新增 C-014；以已验收 PNG 图像填充保证页面保真，以原生变量、样式和代表性共享组件承载可编辑设计规则，并记录 SF Pro、响应式计算和交互转换限制。未修改 HTML / CSS / JavaScript、正式基线、布局、内容层级或产品语义。
+- 自动验收：10 页顺序正确；209 个变量无断链别名、无 `ALL_SCOPES`、均有 Web code syntax；10 个文字样式、4 个效果样式存在；7 个组件集共 66 个变体，无未命名变体与重叠；Prototype 为 30 张且 Dark / Light 各 15 张，Responsive 为 30 张且 Mobile / Tablet / Desktop 各 10 张。Cover、Getting Started、Foundations、Components、Utilities & Limits 及两张页面联系表已人工复核，未见裁切、内容缺失或主题错位。
+- 已知后续范围：页面—状态—组件—token—fixture—基线的开发交接映射与整体视觉冻结门属于 VDA-16；VDA-15 完成不代表整体视觉冻结门已经通过。
