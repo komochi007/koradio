@@ -2656,6 +2656,7 @@ a {
   display: inline-flex;
   min-height: 48px;
   align-items: center;
+  justify-content: center;
   gap: 7px;
   padding: 0 10px;
   border: 1px solid var(--kr-color-border);
@@ -2663,6 +2664,15 @@ a {
   background: var(--kr-color-surface-elevated);
   color: var(--kr-color-text-secondary);
   cursor: grab;
+}
+
+.taste-edit-tag > span {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  align-items: center;
+  justify-content: center;
 }
 
 .taste-edit-tag strong {

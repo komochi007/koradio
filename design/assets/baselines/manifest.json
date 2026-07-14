@@ -1,6 +1,6 @@
 {
   "task": "VDA-14",
-  "generatedAt": "2026-07-14T13:10:15.205Z",
+  "generatedAt": "2026-07-14T13:39:17.158Z",
   "source": "design/assets/prototype/index.html",
   "sourceAuthority": "HTML/CSS/JavaScript",
   "capturePolicy": {
@@ -210,8 +210,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 112722,
-      "sha256": "a898fde894e15a885c75449477636dba27f8d336bb93fb1719589947108b894f",
+      "bytes": 112545,
+      "sha256": "9206e13134968cc25baefa1214a1ef753313f6a325e8b6c82a34408f86a5cd74",
       "query": "?page=11-taste-edit&theme=dark&viewport=prototype"
     },
     {
@@ -540,8 +540,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 113062,
-      "sha256": "fc51e18d825a06d3437ea93bf2cb2aa314ab023aa843e77a4b1f545a33db642e",
+      "bytes": 113028,
+      "sha256": "59e4e82fd7de27d9814e7382f75fddc340811ecf9825c9dd37bd7ed839932dbf",
       "query": "?page=11-taste-edit&theme=light&viewport=prototype"
     },
     {
