@@ -141,6 +141,12 @@
       family: "settings",
       state: "config",
       reference: "../../references/14-settings-config.png",
+      variants: [
+        { id: "configured", label: "已配置" },
+        { id: "detecting", label: "检测中" },
+        { id: "incomplete", label: "配置缺失" },
+        { id: "save-error", label: "保存失败" },
+      ],
     },
     {
       id: "15-settings-diagnostics",
@@ -149,6 +155,11 @@
       family: "settings",
       state: "diagnostics",
       reference: "../../references/15-settings-diagnostics.png",
+      variants: [
+        { id: "degraded", label: "TTS 局部降级" },
+        { id: "available", label: "全部可用" },
+        { id: "core-error", label: "核心服务不可用" },
+      ],
     },
   ];
 
@@ -411,6 +422,68 @@
         ],
       },
     },
+    settings: {
+      services: [
+        { name: "Local Service", status: "CONNECTED", tone: "success", action: "open" },
+        { name: "Codex", status: "CONNECTED", tone: "success", action: "open" },
+        { name: "NetEase Music API", status: "CONNECTED", tone: "success", action: "open" },
+        { name: "Text to Speech", status: "DEGRADED", tone: "warning", action: "test" },
+      ],
+      fields: {
+        codexCommand: "/usr/local/bin/codex",
+        neteaseApiUrl: "http://localhost:3000",
+        ttsApiUrl: "https://api.fish.audio/v1",
+        ttsApiKey: "••••••••••••7K2M",
+      },
+      preferences: {
+        themeModes: ["Dark", "Light", "System"],
+        language: "中文",
+        voiceStyle: "British Soft Radio",
+        voiceDescription: "柔和、有磁性、专业克制",
+      },
+      localData: {
+        path: "/Users/komo/Koradio",
+        cache: "1.8 GB",
+      },
+      diagnostics: {
+        degraded: {
+          summary: "3 OF 4 SERVICES AVAILABLE",
+          description: "核心播放服务可用，语音串讲将暂时降级为文字。",
+          services: [
+            { name: "Local Service", status: "AVAILABLE", detail: "Responded in 18 ms", tone: "success" },
+            { name: "Codex", status: "AVAILABLE", detail: "Structured planning response received · 1.4 s", tone: "success" },
+            { name: "NetEase Music API", status: "AVAILABLE", detail: "Search and playback endpoints responding · 326 ms", tone: "success" },
+            { name: "Text to Speech", status: "DEGRADED", detail: "Authentication failed · HTTP 401", tone: "warning", expanded: true },
+          ],
+          guidance: ["检查 TTS API Key 是否有效", "确认服务地址与账户区域一致", "保存配置后重新运行检测"],
+          notice: "你仍然可以生成和播放节目。DJ 串讲会以文字显示，歌曲播放与歌词不受影响。",
+        },
+        available: {
+          summary: "4 OF 4 SERVICES AVAILABLE",
+          description: "所有核心服务与语音串讲均可用，可以返回 Radio 开始节目。",
+          services: [
+            { name: "Local Service", status: "AVAILABLE", detail: "Responded in 18 ms", tone: "success" },
+            { name: "Codex", status: "AVAILABLE", detail: "Structured planning response received · 1.4 s", tone: "success" },
+            { name: "NetEase Music API", status: "AVAILABLE", detail: "Search and playback endpoints responding · 326 ms", tone: "success" },
+            { name: "Text to Speech", status: "AVAILABLE", detail: "Voice service authenticated · 842 ms", tone: "success" },
+          ],
+          guidance: [],
+          notice: "服务检测已完成。当前配置可以生成节目、搜索歌曲并播放语音串讲。",
+        },
+        coreError: {
+          summary: "2 OF 4 SERVICES AVAILABLE",
+          description: "节目生成暂不可用，修复 Codex 与音乐服务后重新检测。",
+          services: [
+            { name: "Local Service", status: "AVAILABLE", detail: "Responded in 18 ms", tone: "success" },
+            { name: "Codex", status: "UNAVAILABLE", detail: "Command not found", tone: "error", expanded: true },
+            { name: "NetEase Music API", status: "UNAVAILABLE", detail: "Connection timed out · 15 s", tone: "error" },
+            { name: "Text to Speech", status: "AVAILABLE", detail: "Voice service authenticated · 842 ms", tone: "success" },
+          ],
+          guidance: ["检查 Codex 命令路径是否可执行", "确认本地服务可访问该命令", "保存配置后重新运行检测"],
+          notice: "当前无法生成可播放节目。修改必要配置后重新检测，已有档案与历史不会受影响。",
+        },
+      },
+    },
   };
 
   const freezeItems = (items) => Object.freeze(items.map((item) => Object.freeze(item)));
@@ -497,6 +570,27 @@
           queue: freezeItems(visualContent.programs.detail.queue.map((track) => ({ ...track }))),
           feedback: freezeItems(visualContent.programs.detail.feedback.map((item) => ({ ...item }))),
         }),
+      }),
+      settings: Object.freeze({
+        services: freezeItems(visualContent.settings.services.map((service) => ({ ...service }))),
+        fields: Object.freeze({ ...visualContent.settings.fields }),
+        preferences: Object.freeze({
+          ...visualContent.settings.preferences,
+          themeModes: Object.freeze([...visualContent.settings.preferences.themeModes]),
+        }),
+        localData: Object.freeze({ ...visualContent.settings.localData }),
+        diagnostics: Object.freeze(
+          Object.fromEntries(
+            Object.entries(visualContent.settings.diagnostics).map(([key, diagnostic]) => [
+              key,
+              Object.freeze({
+                ...diagnostic,
+                services: freezeItems(diagnostic.services.map((service) => ({ ...service }))),
+                guidance: Object.freeze([...diagnostic.guidance]),
+              }),
+            ]),
+          ),
+        ),
       }),
     }),
   });

@@ -64,6 +64,10 @@
       grip: '<circle cx="9" cy="7" r="1"/><circle cx="15" cy="7" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="17" r="1"/><circle cx="15" cy="17" r="1"/>',
       trash: '<path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/>',
       alert: '<path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5M12 17h.01"/>',
+      eye: '<path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/>',
+      chevron: '<path d="m9 6 6 6-6 6"/>',
+      down: '<path d="m6 9 6 6 6-6"/>',
+      folder: '<path d="M3 7.5h7l2-2h9v13H3v-11Z"/>',
     };
 
     return `<svg class="kr-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
@@ -939,6 +943,156 @@
     `;
   };
 
+  const settingsTopbar = () => `
+    <header class="prototype-topbar settings-topbar kr-topbar">
+      ${brand()}
+      <div class="settings-topbar__tools">
+        <span class="radio-top-avatar" role="img" aria-label="After Midnight 档案头像"><i></i></span>
+        <button class="kr-icon-button" type="button" aria-label="切换主题">${icon("moon")}</button>
+      </div>
+    </header>
+  `;
+
+  const settingsSectionTitle = (id, title) => `<h2 id="${id}">${title}</h2>`;
+
+  const settingsServiceRows = (services, variant) => services.map((service) => {
+    const detecting = variant === "detecting";
+    const incomplete = variant === "incomplete";
+    const tone = detecting ? "info" : incomplete && service.name !== "Local Service" ? "warning" : service.tone;
+    const status = detecting ? "CHECKING" : incomplete && service.name !== "Local Service" ? "NOT CONFIGURED" : service.status;
+    return `
+      <li class="settings-service-row settings-service-row--${tone}">
+        <span class="settings-service-row__name">${service.name}</span>
+        <span class="settings-service-row__status"><i aria-hidden="true"></i>${status}</span>
+        ${service.action === "test"
+          ? `<button type="button"${detecting ? " disabled" : ""}>${detecting ? "Testing" : "Test"}</button>`
+          : `<button type="button" aria-label="查看 ${service.name} 配置">${icon("chevron")}</button>`}
+      </li>
+    `;
+  }).join("");
+
+  const settingsField = ({ label, value, secret = false, error = "" }) => `
+    <label class="settings-field${error ? " settings-field--error" : ""}">
+      <span>${label}${error ? `<small>${error}</small>` : ""}</span>
+      <span class="settings-field__control">
+        <input class="kr-input${error ? " kr-input--error" : ""}" value="${value}" aria-label="${label}" readonly />
+        ${secret ? `<button type="button" aria-label="显示 TTS API Key">${icon("eye")}</button>` : ""}
+      </span>
+    </label>
+  `;
+
+  const renderSettingsConfig = (variant = "configured") => {
+    const content = fixtures.visualContent.settings;
+    const incomplete = variant === "incomplete";
+    const detecting = variant === "detecting";
+    const saveError = variant === "save-error";
+    return `
+      <div class="prototype-page prototype-page--settings prototype-page--settings-config prototype-page--settings-config-${variant}">
+        ${settingsTopbar()}
+        <main class="settings-config-main">
+          <header class="settings-config-heading">
+            <h1>设置</h1>
+            <p class="settings-online-status settings-online-status--${incomplete ? "warning" : "success"}"><i aria-hidden="true"></i>${incomplete ? "1 SERVICE ONLINE" : "3 SERVICES ONLINE"}</p>
+          </header>
+          <section class="settings-section settings-services" aria-labelledby="settings-services-title">
+            ${settingsSectionTitle("settings-services-title", "服务状态")}
+            <ul class="kr-card">${settingsServiceRows(content.services, variant)}</ul>
+          </section>
+          <form class="settings-config-form">
+            <section class="settings-section settings-service-config" aria-labelledby="settings-service-config-title">
+              ${settingsSectionTitle("settings-service-config-title", "服务配置")}
+              <div class="settings-fields">
+                ${settingsField({ label: "Codex 命令路径", value: content.fields.codexCommand })}
+                ${settingsField({ label: "网易云 API 地址", value: incomplete ? "" : content.fields.neteaseApiUrl, error: incomplete ? "请输入有效地址" : "" })}
+                ${settingsField({ label: "TTS 服务地址", value: content.fields.ttsApiUrl })}
+                ${settingsField({ label: "TTS API Key", value: incomplete ? "" : content.fields.ttsApiKey, secret: true, error: incomplete ? "请输入 TTS API Key" : "" })}
+              </div>
+            </section>
+            <section class="settings-section settings-preferences" aria-labelledby="settings-preferences-title">
+              ${settingsSectionTitle("settings-preferences-title", "偏好设置")}
+              <div class="settings-preference-row">
+                <span>Theme Mode</span>
+                <div class="settings-segmented" role="radiogroup" aria-label="Theme Mode">
+                  ${content.preferences.themeModes.map((mode, index) => `<button class="${index === 0 ? "settings-segmented__active" : ""}" type="button" role="radio" aria-checked="${index === 0}">${mode}</button>`).join("")}
+                </div>
+              </div>
+              <div class="settings-preference-row">
+                <span>DJ Language</span>
+                <button class="settings-select" type="button"><strong>${content.preferences.language}</strong>${icon("down")}</button>
+              </div>
+              <div class="settings-preference-row settings-preference-row--voice">
+                <span>DJ Voice Style</span>
+                <div><button class="settings-select" type="button"><strong>${content.preferences.voiceStyle}</strong>${icon("down")}</button><small>${content.preferences.voiceDescription}</small></div>
+              </div>
+            </section>
+            <section class="settings-section settings-local-data" aria-labelledby="settings-local-data-title">
+              ${settingsSectionTitle("settings-local-data-title", "本地数据")}
+              <div class="settings-data-card kr-card${saveError ? " settings-data-card--error" : ""}">
+                <div><span>数据路径</span><strong>${content.localData.path}</strong><button type="button">Change</button></div>
+                <div><span>缓存占用</span><strong>${content.localData.cache}</strong></div>
+                <div><span>${saveError ? "当前数据路径不可写" : "管理缓存"}</span><button class="settings-cache-action" type="button">${saveError ? "选择可写目录" : "清理音频缓存"}${icon("chevron")}</button></div>
+              </div>
+            </section>
+          </form>
+        </main>
+        <footer class="settings-actions${saveError ? " settings-actions--error" : ""}" aria-live="polite">
+          <button class="kr-button kr-button--secondary" type="button"${detecting ? " disabled" : ""}>${detecting ? "正在检测服务连接..." : "测试连接"}</button>
+          <button class="kr-button kr-button--primary" type="button"${detecting || incomplete ? " disabled" : ""}>${saveError ? "重新保存" : "保存配置"}</button>
+        </footer>
+        ${nav("settings")}
+      </div>
+    `;
+  };
+
+  const diagnosticsCard = (service, guidance) => `
+    <article class="settings-diagnostic-card settings-diagnostic-card--${service.tone}${service.expanded ? " settings-diagnostic-card--expanded" : ""}">
+      <i class="settings-diagnostic-card__dot" aria-hidden="true"></i>
+      <div class="settings-diagnostic-card__copy">
+        <h2>${service.name}</h2>
+        <strong>${service.status}</strong>
+        <p>${service.detail}</p>
+      </div>
+      <span class="settings-diagnostic-card__symbol" aria-hidden="true">${service.tone === "success" ? icon("check") : icon("alert")}</span>
+      ${service.expanded ? `
+        <div class="settings-diagnostic-card__guidance">
+          <ul>${guidance.map((item) => `<li>${item}</li>`).join("")}</ul>
+          <button class="kr-button kr-button--secondary" type="button">查看配置</button>
+        </div>
+      ` : ""}
+    </article>
+  `;
+
+  const renderSettingsDiagnostics = (variant = "degraded") => {
+    const key = variant === "core-error" ? "coreError" : variant;
+    const content = fixtures.visualContent.settings.diagnostics[key];
+    const noticeTone = variant === "available" ? "success" : variant === "core-error" ? "error" : "warning";
+    return `
+      <div class="prototype-page prototype-page--settings prototype-page--settings-diagnostics prototype-page--settings-diagnostics-${variant}">
+        <header class="settings-diagnostics-topbar">
+          <button class="kr-icon-button" type="button" aria-label="返回设置">${icon("back")}</button>
+          <h1>服务检测</h1>
+        </header>
+        <main class="settings-diagnostics-main">
+          <header class="settings-diagnostics-heading">
+            <p>${content.summary}</p>
+            <span>${content.description}</span>
+          </header>
+          <section class="settings-diagnostics-list" aria-label="服务检测结果">
+            ${content.services.map((service) => diagnosticsCard(service, content.guidance)).join("")}
+          </section>
+          <p class="settings-diagnostics-notice settings-diagnostics-notice--${noticeTone}" aria-live="polite">
+            <span aria-hidden="true">${noticeTone === "success" ? icon("check") : icon("alert")}</span>${content.notice}
+          </p>
+        </main>
+        <footer class="settings-diagnostics-actions">
+          <button class="kr-button kr-button--large kr-button--primary" type="button">返回 Radio</button>
+          <button class="kr-button kr-button--large kr-button--secondary" type="button">修改配置</button>
+        </footer>
+        ${nav("settings")}
+      </div>
+    `;
+  };
+
   const renderSkeleton = (page, theme, viewport) => `
     <div class="prototype-placeholder">
       <p class="prototype-number">PAGE ${page.number}</p>
@@ -968,6 +1122,8 @@
       "11-taste-edit": () => renderTasteEdit(selection.variant?.id),
       "12-programs-list": () => renderProgramsList(selection.variant?.id),
       "13-program-detail": () => renderProgramDetail(selection.variant?.id),
+      "14-settings-config": () => renderSettingsConfig(selection.variant?.id),
+      "15-settings-diagnostics": () => renderSettingsDiagnostics(selection.variant?.id),
     };
     const renderer = renderers[selection.page.id];
     return renderer ? renderer() : renderSkeleton(selection.page, selection.theme, selection.viewport);
