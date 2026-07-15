@@ -3,6 +3,7 @@
 > Status: Release gate template · 尚未进入发布阶段
 > Applies to: External Beta、Release Candidate、v1.0、Hotfix
 > Task dependencies: S7-05 → S8-01～S8-04 → S9-01～S9-04
+> Current channel: Personal Local Preview；不公开下载、不向外部用户分发
 
 ## 0. AI 门禁索引
 
@@ -16,6 +17,8 @@
 | 退出稳定期 | `S9-03` 完成且无未处理 Blocker/Critical | 第 7 节 | 保持稳定期开放 |
 
 本文件是二值发布证据清单，因此保留复选框；可领取、可更新状态的开发任务只存在于 [tasks.md](tasks.md) 的表格中。AI 不得把本清单中的复选项复制成第二套任务状态。
+
+当前 Personal Local Preview 不执行本清单，也不构成 External Beta、RC 或 v1.0 发布。只有项目所有者后续明确授权外部测试或公开下载，才允许进入本清单；届时 Developer ID 签名、公证、Gatekeeper、独立干净环境和其他硬门不得因前期个人使用而豁免。
 
 ## 1. 使用规则
 

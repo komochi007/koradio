@@ -2,7 +2,7 @@
 
 > 日期：2026-07-15
 > Task：S0-05
-> 结果：架构 PoC 完成；Developer ID 签名、公证与独立干净用户验收阻塞
+> 结果：包装架构与本地个人使用验收完成；Developer ID、公证与独立分发环境留待未来公开发布
 > PoC 隔离：源码、依赖、运行时与二进制只存在于系统临时目录，未进入仓库
 
 ## 1. 验证范围
@@ -61,7 +61,7 @@
 {"ok":true,"tokenInTextArtifacts":false,"pocProcesses":0,"pocPortsOpen":0,"pocMounts":0}
 ```
 
-这里的“干净环境”是只读挂载 DMG + 全新临时用户数据根，不是新的 macOS 登录用户或 VM。任务要求的独立干净用户验收仍未完成。
+这里的隔离环境是只读挂载 DMG + 全新临时用户数据根，不是新的 macOS 登录用户或 VM。它满足当前受控本机个人使用的架构 PoC；独立干净用户或 VM 仍是未来外部分发的发布门，不能描述为已经验证。
 
 ## 5. 体积与架构
 
@@ -89,9 +89,9 @@ PoC 只使用 ad-hoc hardened-runtime 签名验证 bundle 结构：
 - 未提供 Apple ID/app-specific password 或 App Store Connect API key 环境凭据。
 - `notarytool`、`stapler`、`codesign`、`productbuild` 与 `pkgbuild` 工具存在。
 
-因此尚不能生成 Developer ID 签名、提交 Apple notary service、staple ticket 或得到 Gatekeeper 接受证据。根据 [S0-05 任务合同](../../project-management/tasks.md)，该缺口阻止任务关闭。
+因此尚不能生成 Developer ID 签名、提交 Apple notary service、staple ticket 或得到 Gatekeeper 接受证据。项目所有者已明确当前不提供公开下载，只在受控本机个人使用；该缺口不再阻止包装架构裁决，但继续禁止任何公开下载或外部分发。
 
-## 7. 恢复验证所需最小条件
+## 7. 未来公开发布所需最小条件
 
 1. 在本机或受控 CI Keychain 配置有效 `Developer ID Application` identity；不要把证书私钥或密码写入仓库。
 2. 在 Keychain 配置 `notarytool` profile，或在受控 CI Secret 中配置 App Store Connect API key；不要在 PR、日志或报告中粘贴凭据。
@@ -99,4 +99,4 @@ PoC 只使用 ad-hoc hardened-runtime 签名验证 bundle 结构：
 4. 执行 `notarytool submit --wait`、`stapler staple/validate`、`codesign --verify` 与 `spctl --assess`，保留脱敏 ticket ID 和结果。
 5. 在独立 macOS 13.5+ 干净用户或 VM 中完成安装、启动、停止、手动替换升级、移除应用和残留检查。
 
-上述门全部通过后，才能将 [ADR 0003](../0003-macos-packaging.md) 从“提议”改为“已接受”，同步架构与工程规则，并把 S0-05 更新为“已完成”。
+上述门不属于当前本地个人使用验收。只有项目所有者后续明确授权公开下载，且这些门全部通过后，才能创建外部分发入口或把产物提供给其他用户。
