@@ -1,6 +1,6 @@
 {
   "task": "VDA-14",
-  "generatedAt": "2026-07-14T13:48:58.547Z",
+  "generatedAt": "2026-07-15T04:06:04.801Z",
   "source": "design/assets/prototype/index.html",
   "sourceAuthority": "HTML/CSS/JavaScript",
   "capturePolicy": {
@@ -11,7 +11,7 @@
     "maxReRenderPixelMismatchRate": 0.006,
     "fontAntialiasDifferencesIgnored": true
   },
-  "browser": "Chrome 150.0.7871.115",
+  "browser": "Chrome 150.0.7871.116",
   "counts": {
     "prototypeDark": 15,
     "prototypeLight": 15,
@@ -100,8 +100,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 148927,
-      "sha256": "e88ab29c587f4e34439938642d8a5c09b436ef8419820ccf0c44c11167a2726a",
+      "bytes": 149235,
+      "sha256": "3c1d6fcf22315fe796740010a56a3d83d0b9871c668686768e7afe0ae2b40b77",
       "query": "?page=01-service-offline&theme=dark&viewport=prototype"
     },
     {
@@ -111,8 +111,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 122541,
-      "sha256": "39a94d46f1be0a6627e7c9d0130a154f8976db7fd51c10d8845a0a83b3a88c56",
+      "bytes": 123480,
+      "sha256": "3885882a6f8854cbca7df90648b168fc3674a1d9f403bde76739af8b29575c15",
       "query": "?page=02-profile-select&theme=dark&viewport=prototype"
     },
     {
@@ -122,8 +122,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 166789,
-      "sha256": "a94f293bbd3f447e3d7519ee695a2acd2651610686181642de1a3d38266b0094",
+      "bytes": 166499,
+      "sha256": "833fff50efadf4ebc35ea721898efc67b08966d47ec60f3a4bef901925e9e223",
       "query": "?page=03-profile-create&theme=dark&viewport=prototype"
     },
     {
@@ -133,8 +133,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 114896,
-      "sha256": "83294e1f01c33165e13652b2c9b24c4312951e2431450689e90e62d8b6fed85c",
+      "bytes": 115035,
+      "sha256": "7ef9c9fe7505eeab51c11c71086a815fe468b4265201f6f5e28106d49997552d",
       "query": "?page=04-radio-empty&theme=dark&viewport=prototype"
     },
     {
@@ -144,8 +144,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 123625,
-      "sha256": "036bd6856a15c18723620126657c6e19053f555a2b9a4545009002fb699b83f5",
+      "bytes": 125541,
+      "sha256": "c61ad53a119b6202b7d158ab70a28f3185ca77686b1f725909403794d007ef0a",
       "query": "?page=05-radio-playing&theme=dark&viewport=prototype"
     },
     {
@@ -155,8 +155,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 79084,
-      "sha256": "27a0e91d964548ce19319393166fc06aa6c13e5f8df3248b9b7fef5ceecacfde",
+      "bytes": 82427,
+      "sha256": "fdbb868268512e3e1d03b74c1f59c259a2c950cb84b7091656289d936d0bc223",
       "query": "?page=06-radio-generating&theme=dark&viewport=prototype"
     },
     {
@@ -166,8 +166,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 80386,
-      "sha256": "6614bb9faac1308f78c9d9ecd6a9aa88c26d4f18fd434063f1edb93b283ed6d2",
+      "bytes": 79515,
+      "sha256": "eb0e2bd8f38ec2d0f272cf670db4c4c1645c2fdfbf029b9a561037340407a1fc",
       "query": "?page=07-radio-detail-speaking&theme=dark&viewport=prototype"
     },
     {
@@ -177,8 +177,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 88787,
-      "sha256": "7bf388d81175b2f6c1ee6ef0fafc0b05bdc93f023a50ba9d46e7c3ec172621a5",
+      "bytes": 88162,
+      "sha256": "276e75d23b52890bb6f46708e83979c8ad8e3635e65367335064cdc72cf3de51",
       "query": "?page=08-radio-detail-lyrics&theme=dark&viewport=prototype"
     },
     {
@@ -188,8 +188,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 169295,
-      "sha256": "192d6dbee9cd41386b8ccd0bca76ea313ee8183d6e4f0a50a7d461a7619d79c9",
+      "bytes": 168595,
+      "sha256": "82259e6e2c36d7bb7e8917c93166d31b550cd178f20407d1bb3cdfbfbeed9f5b",
       "query": "?page=09-library&theme=dark&viewport=prototype"
     },
     {
@@ -199,8 +199,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 158485,
-      "sha256": "426a5ea31f41c56b13a927b7d161391cc1f1681add1fed439f9731ecfa7c8ba4",
+      "bytes": 158660,
+      "sha256": "2bf0da8eb5747f715340628528bd6dbc95b7cfe15e9a21f1ca1fbae1b3bda566",
       "query": "?page=10-taste-overview&theme=dark&viewport=prototype"
     },
     {
@@ -221,8 +221,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 120864,
-      "sha256": "6640c1d26e48e55be5d252ecf487eb35dcd1b8d539b2d9ca4ee6a0cec2b3c7c5",
+      "bytes": 122069,
+      "sha256": "893bc2fd5aa714276c6fe9141df3b367b13e5e128c07465ce8b97702c3c889c0",
       "query": "?page=12-programs-list&theme=dark&viewport=prototype"
     },
     {
@@ -232,8 +232,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 123042,
-      "sha256": "a578f1cb9867e1c281c8af78f2c57376066961ada32270356cefba8ad02bb588",
+      "bytes": 124566,
+      "sha256": "71279a643443dda676a5efecfe39b5ca98ff56d1c8ece1c129471790692fa3d0",
       "query": "?page=13-program-detail&theme=dark&viewport=prototype"
     },
     {
@@ -243,8 +243,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 148399,
-      "sha256": "6a8c0db15c480e9029a65fc5de1aa56c5c8bc7745b0d358ec34b9bd78292dfc1",
+      "bytes": 148749,
+      "sha256": "f23759f5e8d71695d8f723e639fbb011a909c45d26f9ca44f12bd93e658fa355",
       "query": "?page=14-settings-config&theme=dark&viewport=prototype"
     },
     {
@@ -254,8 +254,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 159581,
-      "sha256": "475bd49ca71437e30bbb427c89259f23092a2ef4d9bb3e6d1c9b4c8e4cc7bd03",
+      "bytes": 160604,
+      "sha256": "81fa2d091420f2b67deed0a154f48a928d67c1d4d87f4a2cd985a0a1f1bf4377",
       "query": "?page=15-settings-diagnostics&theme=dark&viewport=prototype"
     },
     {
@@ -265,8 +265,8 @@
       "viewport": "mobile",
       "width": 390,
       "height": 844,
-      "bytes": 79797,
-      "sha256": "da11cc047c3bd50b6076f0d7a9ecff15ffd59b48c1006ce5d17effec3c14be89",
+      "bytes": 79719,
+      "sha256": "092328bf70481e6bedb6f5cb6a792be8f7d0dde2eb49c470e59e14eb54dba026",
       "query": "?page=03-profile-create&theme=dark&viewport=mobile"
     },
     {
@@ -276,8 +276,8 @@
       "viewport": "mobile",
       "width": 390,
       "height": 844,
-      "bytes": 55737,
-      "sha256": "a29b9eddd7c5f4dad2960b71672e1eade6f0a8e3f9cf267ec0efce8551b2983c",
+      "bytes": 57150,
+      "sha256": "688ff2d2b38da473cabccd3cf00bbaba147e59b1833fb98cdda2f0806efabb8b",
       "query": "?page=05-radio-playing&theme=dark&viewport=mobile"
     },
     {
@@ -287,8 +287,8 @@
       "viewport": "mobile",
       "width": 390,
       "height": 844,
-      "bytes": 51645,
-      "sha256": "6e95587d3ffe9648d20473aacd2dad9ac1ea6de5dfb386749e3ca20ee777dc29",
+      "bytes": 51783,
+      "sha256": "17d5f6ebc99cc96435069ab91aa3c364502adfb8d766ac22cbbf472ded542cf0",
       "query": "?page=08-radio-detail-lyrics&theme=dark&viewport=mobile"
     },
     {
@@ -298,8 +298,8 @@
       "viewport": "mobile",
       "width": 390,
       "height": 844,
-      "bytes": 65845,
-      "sha256": "fd46a47e6f3cbd2b917de5a5b47d3674740d993142ce2ec2d75702ff4e060eff",
+      "bytes": 66074,
+      "sha256": "9445065e2bc37128c7c058e8c12863dead87123b61e62c90025becce85b0605d",
       "query": "?page=10-taste-overview&theme=dark&viewport=mobile"
     },
     {
@@ -309,8 +309,8 @@
       "viewport": "mobile",
       "width": 390,
       "height": 844,
-      "bytes": 68364,
-      "sha256": "aa56093212cbb9e1162fd4909f66bf5497d9c5a1b369106115661b0fc643f6d5",
+      "bytes": 68236,
+      "sha256": "e5e91bd2903183500bba9b0e4bfcb756c2490768e0e31850474e3af6ee8bec34",
       "query": "?page=14-settings-config&theme=dark&viewport=mobile"
     },
     {
@@ -320,8 +320,8 @@
       "viewport": "tablet",
       "width": 834,
       "height": 1194,
-      "bytes": 135835,
-      "sha256": "2a5a3fbd35aea11847b647247a8eef241b09674dc857497ed7b6f38a00eef008",
+      "bytes": 135552,
+      "sha256": "d9acce53cec3412c731384af151f826eb8e8ce1bc076765031708288b9e1aa9d",
       "query": "?page=03-profile-create&theme=dark&viewport=tablet"
     },
     {
@@ -331,8 +331,8 @@
       "viewport": "tablet",
       "width": 834,
       "height": 1194,
-      "bytes": 85392,
-      "sha256": "6ea94251109680f78a9b66d317919ad706b2237aac6c20272b07dae9a3dba35d",
+      "bytes": 92078,
+      "sha256": "b30e5ac71472382a54f8c7d45ca40d416fac02ce595cc63b9b94deca41d5921a",
       "query": "?page=05-radio-playing&theme=dark&viewport=tablet"
     },
     {
@@ -342,8 +342,8 @@
       "viewport": "tablet",
       "width": 834,
       "height": 1194,
-      "bytes": 84013,
-      "sha256": "d6095ac4f53a8d6520fa19df6b47dbc0c6f651a5af9ed9ef96f53bb6ec63eadd",
+      "bytes": 83144,
+      "sha256": "0b25d69782c2b3b81481a69b4d732ce4c72ec2176068f9d618948ef591cb4b65",
       "query": "?page=08-radio-detail-lyrics&theme=dark&viewport=tablet"
     },
     {
@@ -353,8 +353,8 @@
       "viewport": "tablet",
       "width": 834,
       "height": 1194,
-      "bytes": 132609,
-      "sha256": "c02a278779d58f72b1d8ba89dcfb28dbc2b6398bf72934be463fa9f158d1a36a",
+      "bytes": 132907,
+      "sha256": "7bc341ca71d83e3c21215743e1b6eb92f46afc4fc30b59281959f02f4577bb73",
       "query": "?page=10-taste-overview&theme=dark&viewport=tablet"
     },
     {
@@ -364,8 +364,8 @@
       "viewport": "tablet",
       "width": 834,
       "height": 1194,
-      "bytes": 109147,
-      "sha256": "9163e6df23731f8f6c67b1e54624d9607f1909a86c8e356b2e3a8140e46c8b22",
+      "bytes": 109760,
+      "sha256": "ff7facf34bb406a0ec260724d783999db920fd9483dd1069834616bef83367f2",
       "query": "?page=14-settings-config&theme=dark&viewport=tablet"
     },
     {
@@ -375,8 +375,8 @@
       "viewport": "desktop",
       "width": 1440,
       "height": 1200,
-      "bytes": 165720,
-      "sha256": "f34f99d14ebe6eb8b2f2f5db639084ba8fd2303328c5ddab3a7d9fceb4bbd742",
+      "bytes": 165414,
+      "sha256": "2167c10c8a00a8708069602b71a5093e2cced455d1c21740e07e9c0471c1228e",
       "query": "?page=03-profile-create&theme=dark&viewport=desktop"
     },
     {
@@ -386,8 +386,8 @@
       "viewport": "desktop",
       "width": 1440,
       "height": 1200,
-      "bytes": 102064,
-      "sha256": "4a409326c2ccd2fff1601d3b24345fe39e23a034b4d3ff65d49ad34dcbe16600",
+      "bytes": 108260,
+      "sha256": "1148f8534609d1895ae710940e44a23efd4c7fc0cfeb3a0210f3ef2fdfbbf5ef",
       "query": "?page=05-radio-playing&theme=dark&viewport=desktop"
     },
     {
@@ -397,8 +397,8 @@
       "viewport": "desktop",
       "width": 1440,
       "height": 1200,
-      "bytes": 89940,
-      "sha256": "6011de273f2248cd4f477dbb9d123e79710bfb292ed5586b8f34ed5a01cc1b79",
+      "bytes": 88824,
+      "sha256": "3ced06c771980bef3a5af82d87a902e04f6fed749a7016f1f47dc443c8df1d5a",
       "query": "?page=08-radio-detail-lyrics&theme=dark&viewport=desktop"
     },
     {
@@ -408,8 +408,8 @@
       "viewport": "desktop",
       "width": 1440,
       "height": 1200,
-      "bytes": 140491,
-      "sha256": "b1ff4c50f028fb5fb293684718a009356271e98f51111ab1d9b364f3b5462c78",
+      "bytes": 140770,
+      "sha256": "a6a7ac5261d123df6536a519f6495ee195499b5f81b9f254d19d4e8bcc0a9100",
       "query": "?page=10-taste-overview&theme=dark&viewport=desktop"
     },
     {
@@ -419,8 +419,8 @@
       "viewport": "desktop",
       "width": 1440,
       "height": 1200,
-      "bytes": 135811,
-      "sha256": "1a7e083613bfecc5d34c7ec6a838cd34d49004d6159783ce27816379f5a52b30",
+      "bytes": 136362,
+      "sha256": "d531d8e5f3386fbe8d9b4fb64eea577e85983f33b0e3c0b63eb4a98b024a40f0",
       "query": "?page=14-settings-config&theme=dark&viewport=desktop"
     },
     {
@@ -430,8 +430,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 140986,
-      "sha256": "eb952b2152b8b97262723645cecd8c19a2ad43b123aff31921b5c870de4e125d",
+      "bytes": 141305,
+      "sha256": "001a83b6760f0d58eaa27c054b42da2a03be645a020584b9b75b45c5b23965b4",
       "query": "?page=01-service-offline&theme=light&viewport=prototype"
     },
     {
@@ -441,8 +441,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 120482,
-      "sha256": "e6a55f2e7d0af160857eee54a1f3a33a0590d5299aad45a561b5b2f55e370dc1",
+      "bytes": 121223,
+      "sha256": "e501ac2accf6c4b8601f64763f5ebb2fab8c8782f4d461a5e4b2a1b8305a07ff",
       "query": "?page=02-profile-select&theme=light&viewport=prototype"
     },
     {
@@ -452,8 +452,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 160798,
-      "sha256": "16f2eeabceacf93d25dbb9285fee0a814989952aa2fa9bf9cdb719ee0fe6ebad",
+      "bytes": 160578,
+      "sha256": "17c8d9b0c6451a34685befb471709d0b0a489b980041a9434b4e765b7393e3b6",
       "query": "?page=03-profile-create&theme=light&viewport=prototype"
     },
     {
@@ -463,8 +463,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 119025,
-      "sha256": "a5ddddd360c03dfcf06b1f6c1bcfea61041a52e426c11fd0578cbffa4249d33a",
+      "bytes": 118594,
+      "sha256": "374774bd8a98fb518ac4b30c64843c1ee5c0d0bd66f29d9895cf381a9dd65f64",
       "query": "?page=04-radio-empty&theme=light&viewport=prototype"
     },
     {
@@ -474,8 +474,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 123708,
-      "sha256": "a4684843bdf0da765e2ad91e067bff487ee594daef72b08c00601a5764be4a24",
+      "bytes": 126156,
+      "sha256": "497e22f3b63ce8c5f72b2002387979ca8f7b90541600f1cea14a2ef9ea7d777f",
       "query": "?page=05-radio-playing&theme=light&viewport=prototype"
     },
     {
@@ -485,8 +485,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 77204,
-      "sha256": "3b18d51d73723beece1bf75da3a9bf874262eaadb9c7ca0187ac5beb4baf1c9b",
+      "bytes": 80778,
+      "sha256": "094d41c85e4f3fee534027614fee8278c63309f9ff6a619194a18ede06714b46",
       "query": "?page=06-radio-generating&theme=light&viewport=prototype"
     },
     {
@@ -496,8 +496,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 80122,
-      "sha256": "12bbf891099e80360285410e446f6adc890f8ea5d928ae23d07f7605571873ad",
+      "bytes": 79509,
+      "sha256": "4112f9e96b59690ff4908f0cbd1d3eaeeabd920f63826701c54f92db52282989",
       "query": "?page=07-radio-detail-speaking&theme=light&viewport=prototype"
     },
     {
@@ -507,8 +507,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 88537,
-      "sha256": "8c449565e7f876c289108352ffa514f76819bb98b28d969b1dfa2b500413e528",
+      "bytes": 88162,
+      "sha256": "9ff952a22eb38700d9261e92f418484abb7b9ed1bcabf14517996b1555f7759c",
       "query": "?page=08-radio-detail-lyrics&theme=light&viewport=prototype"
     },
     {
@@ -518,8 +518,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 168970,
-      "sha256": "5f95f0039acc13c6e05d19043f60359d8cdc994fb5dadac7089acf37d0ab3365",
+      "bytes": 168270,
+      "sha256": "ef26a4c454148590ea4afe48bfda752cac476185f1f346af0b61bf510e68e8e0",
       "query": "?page=09-library&theme=light&viewport=prototype"
     },
     {
@@ -529,8 +529,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 158644,
-      "sha256": "b395954524f900a626a43be44a8359e781c0997320f3c11a1ce76f488a23a161",
+      "bytes": 158693,
+      "sha256": "ecb43e4aafd762f3adedb6d4c498526f8f5d3ec78fd41715a2cbaa5dba1d476a",
       "query": "?page=10-taste-overview&theme=light&viewport=prototype"
     },
     {
@@ -551,8 +551,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 121886,
-      "sha256": "9add92d87320ec34659bd86e5e8ec2ad240ff5e8a4079a816617c7d8e666d18a",
+      "bytes": 122645,
+      "sha256": "30fd6490e82c1783670d9d283b47b99e314b0eb9e2cf2fedd7f46161e2f0a071",
       "query": "?page=12-programs-list&theme=light&viewport=prototype"
     },
     {
@@ -562,8 +562,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 124282,
-      "sha256": "c3516e2a39d69b984d9470a5fae1431458d1de2a14572fdf1c6b05be3b5c8ddd",
+      "bytes": 126087,
+      "sha256": "e926d43952a5935cdda8ab8cb0fa406e3109e6a35a870e80faf0a9470fa387df",
       "query": "?page=13-program-detail&theme=light&viewport=prototype"
     },
     {
@@ -573,8 +573,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 144650,
-      "sha256": "58dad9de4f8a0c855d29f6b5e93fc21b56bffc98fc454becc00a6dbe70901c13",
+      "bytes": 145324,
+      "sha256": "6e37511d482fbfd6dc7ad0741b0872220df21637ccd588afde7170f16a997c57",
       "query": "?page=14-settings-config&theme=light&viewport=prototype"
     },
     {
@@ -584,8 +584,8 @@
       "viewport": "prototype",
       "width": 960,
       "height": 1600,
-      "bytes": 157734,
-      "sha256": "c2f4c5d3a6e77c0e9692cccdafbb3d9d502e7b7f116ec1f32709a3046d7b0804",
+      "bytes": 159269,
+      "sha256": "69a347f5875c40084952afa0ef20b86727dd395e099729c7f0b128848265b37a",
       "query": "?page=15-settings-diagnostics&theme=light&viewport=prototype"
     },
     {
@@ -595,8 +595,8 @@
       "viewport": "mobile",
       "width": 390,
       "height": 844,
-      "bytes": 78215,
-      "sha256": "45380b6ca3b77bf52da46f258166079731221a37efe1717c5b1a8c8559d10568",
+      "bytes": 78114,
+      "sha256": "3ad1c8a6ea19f511d4a2d5a22b62a2d1c5ff9895174a4eff1fcb1b1bc43c92fe",
       "query": "?page=03-profile-create&theme=light&viewport=mobile"
     },
     {
@@ -606,8 +606,8 @@
       "viewport": "mobile",
       "width": 390,
       "height": 844,
-      "bytes": 54720,
-      "sha256": "b4510d330973f481bd8ff2401057f51f62129d4f609e199c96511b9825b36443",
+      "bytes": 55602,
+      "sha256": "98236fb1cf7770ace6090dca08c9f67307c4a6a751764cb2f09fd661e85fbde4",
       "query": "?page=05-radio-playing&theme=light&viewport=mobile"
     },
     {
@@ -617,8 +617,8 @@
       "viewport": "mobile",
       "width": 390,
       "height": 844,
-      "bytes": 51521,
-      "sha256": "d44ec1ff35adc1dc8c3a4d0aec296ef3acccf9c5c79f2ba8b453af8e668a8815",
+      "bytes": 51782,
+      "sha256": "f94f1b96facb0b189190ee09faacd514b333e36568d8165935e40a228ee8634b",
       "query": "?page=08-radio-detail-lyrics&theme=light&viewport=mobile"
     },
     {
@@ -628,8 +628,8 @@
       "viewport": "mobile",
       "width": 390,
       "height": 844,
-      "bytes": 65271,
-      "sha256": "a7ed4ec8370b838bbaedfb213b1a2e39c10ae0d00ff314f045b4cd4a1f811398",
+      "bytes": 65321,
+      "sha256": "feda7058bd04bdf48e2ef6cacc916e518bbe68989dd897274069f17b1394330d",
       "query": "?page=10-taste-overview&theme=light&viewport=mobile"
     },
     {
@@ -639,8 +639,8 @@
       "viewport": "mobile",
       "width": 390,
       "height": 844,
-      "bytes": 67799,
-      "sha256": "5f4747fb6e636c1c1e128328eef58ed4e3fa1fc706ded0ac5a3492b853975c51",
+      "bytes": 67648,
+      "sha256": "9bd79c3d5c1170e4d15135353c9a50476bfb2cea3134df7d8596d2dbd3dd9256",
       "query": "?page=14-settings-config&theme=light&viewport=mobile"
     },
     {
@@ -650,8 +650,8 @@
       "viewport": "tablet",
       "width": 834,
       "height": 1194,
-      "bytes": 133621,
-      "sha256": "1213bd8aa2fab7ab1594d01b338b5bccecc4889e8b6465444470b7f7ef53b9fa",
+      "bytes": 133395,
+      "sha256": "34916b576218627ce68e14e09edb9c9dad07aabdb35b25772943e899f4054efc",
       "query": "?page=03-profile-create&theme=light&viewport=tablet"
     },
     {
@@ -661,8 +661,8 @@
       "viewport": "tablet",
       "width": 834,
       "height": 1194,
-      "bytes": 83650,
-      "sha256": "77b33a79eb4cb9702fb1024799e327bfc9f2e55407a0522fcef88ecc5810f8f8",
+      "bytes": 90761,
+      "sha256": "a12c6571bfb16741e2d0b38a6f1e51e21684c670b0ab3da222cbd807ba584d41",
       "query": "?page=05-radio-playing&theme=light&viewport=tablet"
     },
     {
@@ -672,8 +672,8 @@
       "viewport": "tablet",
       "width": 834,
       "height": 1194,
-      "bytes": 83767,
-      "sha256": "17878bbf4d8847887abdbfda5f8d342a7039649d0f97bc498f102fec15f8fb0f",
+      "bytes": 83140,
+      "sha256": "be06add80e91a27588b523602f42780ee80f0765ab51cd15f7ee2e8550b74d3a",
       "query": "?page=08-radio-detail-lyrics&theme=light&viewport=tablet"
     },
     {
@@ -683,8 +683,8 @@
       "viewport": "tablet",
       "width": 834,
       "height": 1194,
-      "bytes": 132071,
-      "sha256": "76ce3d74303896498293237a64cd482e0d2f83e75315be1deac67f9b72b90117",
+      "bytes": 132179,
+      "sha256": "017cd111e06be7942489bb32806e9d9e146ece75f7ab2b11d2319bb46e154a99",
       "query": "?page=10-taste-overview&theme=light&viewport=tablet"
     },
     {
@@ -694,8 +694,8 @@
       "viewport": "tablet",
       "width": 834,
       "height": 1194,
-      "bytes": 107206,
-      "sha256": "096c00a9ead9359a26fe0cc68a02cd118e6d8cd74b79734ed98d7dae41d0da9b",
+      "bytes": 108154,
+      "sha256": "21847da7a7272cd85900c3f8d8d662a27bc09089884872c21872e4dd0ece56c1",
       "query": "?page=14-settings-config&theme=light&viewport=tablet"
     },
     {
@@ -705,8 +705,8 @@
       "viewport": "desktop",
       "width": 1440,
       "height": 1200,
-      "bytes": 160530,
-      "sha256": "a0b2604e2a0ea1f2d03049aa1461000098c42baee9789ef0f0b6911fc1eb96a5",
+      "bytes": 160270,
+      "sha256": "ba69ced2334e3fdb42c0c29d6e94a69bcee8c9d4b9000d2a8246b17a5b7a443f",
       "query": "?page=03-profile-create&theme=light&viewport=desktop"
     },
     {
@@ -716,8 +716,8 @@
       "viewport": "desktop",
       "width": 1440,
       "height": 1200,
-      "bytes": 100114,
-      "sha256": "6dad64a3e960a91aa19ed28b386efc0818b59b5ff6aa5886c0dd2ff2b3a16e90",
+      "bytes": 106758,
+      "sha256": "cf90a4332a80505f9e4ab52fc39dc5f15a4b08eac15ed6d8174e5dee27798d5c",
       "query": "?page=05-radio-playing&theme=light&viewport=desktop"
     },
     {
@@ -727,8 +727,8 @@
       "viewport": "desktop",
       "width": 1440,
       "height": 1200,
-      "bytes": 89683,
-      "sha256": "0095edf0a1de37a293448e501e1dc472031fd12b45292b56c9d7bb89db64e5f3",
+      "bytes": 88823,
+      "sha256": "438db115448146a4f237af2b9f8eefde3ae096a1ef56efc45d122ffecd284e4f",
       "query": "?page=08-radio-detail-lyrics&theme=light&viewport=desktop"
     },
     {
@@ -738,8 +738,8 @@
       "viewport": "desktop",
       "width": 1440,
       "height": 1200,
-      "bytes": 140228,
-      "sha256": "274e58a08086aa23a85c5827132991a96c412f93fad662c7c49b732a0cdb3179",
+      "bytes": 140337,
+      "sha256": "fb130f03cb334380af6054574df01a6deaf129a559679ea862a1939d44b3d0de",
       "query": "?page=10-taste-overview&theme=light&viewport=desktop"
     },
     {
@@ -749,8 +749,8 @@
       "viewport": "desktop",
       "width": 1440,
       "height": 1200,
-      "bytes": 132623,
-      "sha256": "dd879b391ad32e6314c4896857d274b905bdcd758a623e5cfb23087ec5495372",
+      "bytes": 133484,
+      "sha256": "c4693eb98e9ee6f935176722be92d778beddf9f831ff6c4841ec4f07dae69f4d",
       "query": "?page=14-settings-config&theme=light&viewport=desktop"
     }
   ]

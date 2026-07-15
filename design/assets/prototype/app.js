@@ -398,12 +398,48 @@
 
   const detailWaveformBars = 64;
   const detailTimelineBars = 96;
+  const detailWaveformControlPoints = [58, 46, 72, 54, 84, 30, 70, 44, 66, 50, 78, 28];
+
+  const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
+
+  const smoothCurveValue = (points, index, count) => {
+    const position = index / (count - 1) * (points.length - 1);
+    const segment = Math.floor(position);
+    const progress = position - segment;
+    const p0 = points[Math.max(0, segment - 1)];
+    const p1 = points[segment];
+    const p2 = points[Math.min(points.length - 1, segment + 1)];
+    const p3 = points[Math.min(points.length - 1, segment + 2)];
+    const progressSquared = progress * progress;
+    const progressCubed = progressSquared * progress;
+    return 0.5 * (
+      (2 * p1)
+      + (-p0 + p2) * progress
+      + (2 * p0 - 5 * p1 + 4 * p2 - p3) * progressSquared
+      + (-p0 + 3 * p1 - 3 * p2 + p3) * progressCubed
+    );
+  };
+
+  const deterministicNoise = (index) => {
+    const value = Math.sin((index + 1) * 12.9898 + 78.233) * 43758.5453;
+    return value - Math.floor(value);
+  };
+
+  const detailTimelineHeight = (index) => {
+    const cluster = 0.48 + 0.22 * Math.sin(index * 0.17 + 0.7) + 0.14 * Math.sin(index * 0.047 + 2.1);
+    const texture = 0.18 + 0.58 * deterministicNoise(index) + 0.24 * deterministicNoise(index * 2 + 11);
+    const accent = deterministicNoise(index + 37) > 0.86 ? 0.22 : 0;
+    const activity = clamp(cluster * texture + accent, 0.08, 1);
+    return Math.round(8 + activity * 84);
+  };
 
   const detailWaveform = () => `
     <div class="detail-waveform" aria-hidden="true">
       ${Array.from({ length: detailWaveformBars }, (_, index) => {
-        const height = 28 + ((index * 19) % 43);
-        return `<span${index % 2 === 1 ? ' class="detail-waveform__active"' : ""} style="--detail-wave-height: ${height}%"></span>`;
+        const height = clamp(Math.round(smoothCurveValue(detailWaveformControlPoints, index, detailWaveformBars)), 24, 88);
+        const toneValue = deterministicNoise(index + 101);
+        const tone = height >= 70 || toneValue > 0.86 ? "bright" : toneValue < 0.32 ? "soft" : "mist";
+        return `<span class="detail-waveform__tone--${tone}" style="--detail-wave-height: ${height}%; --detail-wave-index: ${index}"></span>`;
       }).join("")}
     </div>
   `;
@@ -411,7 +447,7 @@
   const detailTimeline = (progress) => `
     <div class="detail-program-progress" role="progressbar" aria-label="节目整体进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Number.parseInt(progress, 10)}">
       ${Array.from({ length: detailTimelineBars }, (_, index) => {
-        const height = 24 + ((index * 17) % 58);
+        const height = detailTimelineHeight(index);
         const played = index < Math.round(detailTimelineBars * Number.parseInt(progress, 10) / 100);
         return `<span${played ? ' class="detail-program-progress__played"' : ""} style="--detail-timeline-height: ${height}%"></span>`;
       }).join("")}

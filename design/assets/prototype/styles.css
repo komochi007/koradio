@@ -1129,8 +1129,8 @@ a {
 }
 
 .radio-time__clock {
-  font: var(--kr-type-display-weight) var(--kr-type-display-size) / var(--kr-type-display-line) var(--kr-font-mono);
-  letter-spacing: -0.055em;
+  font: var(--kr-radio-time-weight) var(--kr-radio-time-size) / var(--kr-radio-time-line) var(--kr-font-display-time);
+  letter-spacing: -0.045em;
 }
 
 .radio-time__date {
@@ -1169,7 +1169,7 @@ a {
 
 .radio-main {
   top: 292px;
-  height: 408px;
+  height: var(--kr-radio-main-height);
 }
 
 .radio-main--empty,
@@ -1351,7 +1351,7 @@ a {
 }
 
 .radio-queue {
-  top: 724px;
+  top: 656px;
   height: 300px;
   overflow: hidden;
   border: 1px solid var(--kr-color-border-subtle);
@@ -1545,7 +1545,7 @@ a {
 }
 
 .radio-dj-status {
-  top: 1048px;
+  top: 980px;
   height: 64px;
   min-height: 64px;
   padding: 0 28px;
@@ -1576,9 +1576,9 @@ a {
 }
 
 .radio-dialogue {
-  top: 1132px;
+  top: 1068px;
   box-sizing: border-box;
-  height: 224px;
+  height: var(--kr-radio-dialogue-height);
   overflow: hidden;
   padding: 24px 28px;
   border: 1px solid var(--kr-color-border-subtle);
@@ -4320,39 +4320,31 @@ a {
 }
 
 .detail-waveform > span {
-  width: 4px;
+  width: 7px;
   height: var(--detail-wave-height);
   min-height: 40px;
   border-radius: var(--kr-radius-full) var(--kr-radius-full) 0 0;
-  background: #f0f2f4;
-  opacity: 0.9;
+  background: #cfd3d6;
+  opacity: 0.82;
   transform-origin: center bottom;
-  animation: detail-wave 760ms var(--kr-ease-standard) infinite alternate;
+  animation: detail-wave-flow 880ms linear infinite;
+  animation-delay: calc(var(--detail-wave-index) * -13.75ms);
+  will-change: transform;
 }
 
-.detail-waveform > span:nth-child(3n) {
-  opacity: 0.58;
+.detail-waveform > .detail-waveform__tone--soft {
+  background: #aeb4b9;
+  opacity: 0.68;
 }
 
-.detail-waveform > span:nth-child(4n + 2) {
-  opacity: 0.74;
+.detail-waveform > .detail-waveform__tone--mist {
+  background: #cfd3d6;
+  opacity: 0.82;
 }
 
-.detail-waveform > span:nth-child(5n) {
-  animation-duration: 880ms;
-}
-
-.detail-waveform > span:nth-child(7n) {
-  animation-duration: 620ms;
-}
-
-.detail-waveform > .detail-waveform__active {
-  background: var(--kr-color-accent);
-  opacity: 1;
-}
-
-.prototype-page--detail-lyrics .detail-waveform > span {
-  animation-duration: 680ms;
+.detail-waveform > .detail-waveform__tone--bright {
+  background: #f0f2f4;
+  opacity: 0.96;
 }
 
 .detail-paper {
@@ -4454,8 +4446,8 @@ a {
 }
 
 .detail-copy--speaking {
-  align-content: space-evenly;
-  gap: 22px;
+  align-content: start;
+  gap: 24px;
 }
 
 .detail-script-line p,
@@ -4587,9 +4579,12 @@ a {
   stroke-width: 2.1;
 }
 
-@keyframes detail-wave {
-  from { transform: scaleY(0.72); }
-  to { transform: scaleY(1); }
+@keyframes detail-wave-flow {
+  0%, 100% { transform: scaleY(0.78); }
+  12.5%, 87.5% { transform: scaleY(0.81); }
+  25%, 75% { transform: scaleY(0.9); }
+  37.5%, 62.5% { transform: scaleY(0.98); }
+  50% { transform: scaleY(1); }
 }
 
 .prototype-canvas[data-resolved-theme="light"] {
@@ -4921,11 +4916,11 @@ a {
 }
 
 .prototype-canvas[data-viewport="mobile"] .radio-main {
-  height: 360px;
+  height: var(--kr-radio-main-height);
 }
 
 .prototype-canvas[data-viewport="mobile"] .radio-player {
-  height: 360px;
+  height: var(--kr-radio-player-height);
   padding: 20px;
 }
 
@@ -4989,7 +4984,7 @@ a {
 
 .prototype-canvas[data-viewport="mobile"] .radio-dialogue {
   height: auto;
-  min-height: 224px;
+  min-height: var(--kr-radio-dialogue-height);
   padding: 20px;
 }
 
@@ -5167,7 +5162,7 @@ a {
 }
 
 .prototype-canvas[data-viewport="mobile"] .detail-waveform > span {
-  width: 2px;
+  width: 3px;
   min-height: 24px;
 }
 

@@ -1,6 +1,8 @@
-# Koradio VDA-14 正式截图基线
+# Koradio 正式截图基线
 
-> 任务：VDA-14｜截图基线与视觉 QA
+> 初始任务：VDA-14｜截图基线与视觉 QA
+>
+> 最近更新：VDA-17｜用户视觉反馈校准与重新冻结（2026-07-15）
 >
 > 主源：`design/assets/prototype/` 中的 HTML / CSS / JavaScript
 >
@@ -13,7 +15,7 @@
 - `responsive/`：03、05、08、10、14 在 Mobile `390 × 844px`、Tablet `834 × 1194px`、Desktop `1440 × 1200px` 下的 Dark / Light 基线，共 30 张。
 - `manifest.json`：记录生成环境、捕获参数、文件尺寸、SHA-256、对比度与自动 QA 结果。
 
-合计 60 张正式 PNG。Figma 镜像仍由 VDA-15 从已验收 HTML 派生，不属于本目录。
+合计 60 张正式 PNG。Figma 镜像由 VDA-15 建立，并在 VDA-17 从重新验收的 HTML 与本目录基线同步刷新；Figma 文件不属于本目录。
 
 ## 捕获与验证规则
 

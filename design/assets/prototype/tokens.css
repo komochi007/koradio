@@ -33,6 +33,7 @@
   --kr-color-detail-text-secondary: #6e737a;
   --kr-color-detail-text-read: #898a86;
   --kr-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+  --kr-font-display-time: "HONOR Sans", "HONOR Sans CN", var(--kr-font-sans);
   --kr-font-mono: "SFMono-Regular", "SF Mono", "Roboto Mono", "JetBrains Mono", "IBM Plex Mono", monospace;
   --kr-type-display-size: 64px;
   --kr-type-display-line: 64px;
@@ -117,8 +118,13 @@
   --kr-radio-width-mobile: 100%;
   --kr-radio-width-tablet: calc(100% - 56px);
   --kr-radio-width-desktop: 816px;
-  --kr-radio-player-height: 408px;
-  --kr-radio-player-padding: 28px;
+  --kr-radio-time-size: 80px;
+  --kr-radio-time-line: 80px;
+  --kr-radio-time-weight: 900;
+  --kr-radio-main-height: 340px;
+  --kr-radio-player-height: 340px;
+  --kr-radio-player-padding: 24px;
+  --kr-radio-dialogue-height: 288px;
   --kr-reading-width: 560px;
   --kr-profile-width: 848px;
   --kr-management-width: 840px;
@@ -224,6 +230,10 @@
   --kr-play-button-size: 72px;
   --kr-play-icon-size: 28px;
   --kr-cover-current-size: 88px;
+  --kr-radio-time-size: 56px;
+  --kr-radio-time-line: 56px;
+  --kr-radio-main-height: 300px;
+  --kr-radio-player-height: 300px;
   --kr-nav-width: calc(100% - 32px);
   --kr-nav-height: 72px;
   --kr-nav-slot-width: calc(100% / 5);
