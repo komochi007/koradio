@@ -5,6 +5,7 @@
 > Management rules: [README.md](README.md)
 > Roadmap and stage gates: [roadmap.md](roadmap.md)
 > Release checks: [release-checklist.md](release-checklist.md)
+> Git workflow: [git-workflow.md](git-workflow.md)
 
 ## 1. AI 快速入口
 
@@ -12,6 +13,7 @@
 |---|---|
 | 当前工程阶段 | Documentation-first；产品工程尚未开始 |
 | 当前已完成任务 | `S0-01` |
+| 当前活动任务 | `S0-07`；完成仓库治理后回到关键路径 |
 | 初始下一任务 | `S0-02`；状态变化后必须重新按依赖计算 |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | v1.0 范围 | PRD 六项 P0 + 三项 P1；macOS 签名公证直发 |
@@ -48,7 +50,7 @@ AI 执行任务时按固定顺序操作：
 
 | 阶段 | 已完成 | 待开始 | 进行中 | 待验收 | 阻塞 | 总数 |
 |---|---:|---:|---:|---:|---:|---:|
-| S0 基线与关键决策 | 1 | 5 | 0 | 0 | 0 | 6 |
+| S0 基线与关键决策 | 1 | 5 | 1 | 0 | 0 | 7 |
 | S1 工程脚手架 | 0 | 4 | 0 | 0 | 0 | 4 |
 | S2 平台、数据与安全底座 | 0 | 5 | 0 | 0 | 0 | 5 |
 | S3 核心领域与 Provider 后端 | 0 | 7 | 0 | 0 | 0 | 7 |
@@ -73,6 +75,7 @@ AI 执行任务时按固定顺序操作：
 | `S0-04` 冻结运行拓扑、端口与会话 ADR | 待开始 | Critical | 确定开发和生产环境中 Web、Local Service、REST、WebSocket、同源托管和端口的真实拓扑。 | S0-03 | `architecture.md`、loopback/session/Origin 规则和包装目标。 | 定义拓扑、端口分配原则和启动关系；未明确列出的实现和功能不在本任务范围内。 | ADR 覆盖 development、production、离线 PWA、token bootstrap、Origin allowlist 和端口冲突处理；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 `docs/adr/0002-runtime-topology.md`。 | 用时序图或最小探针验证拓扑可实现且不把 token 写入 URL 或持久存储。 | 待分配 / 无 | 包装候选要求改变现有安全或播放事实源；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S0-05` 完成 macOS 包装 PoC 并裁决形态 | 待开始 | Critical | 比较桌面壳一体包与 PWA + Local Service 安装器，选择能可靠启动、升级、卸载和公证的 v1.0 方案。 | S0-03、S0-04 | 目标架构、macOS 发布目标、Credential Store 和数据目录要求。 | 只做最小启动/停止/打包 PoC 和成本评估，不实现完整产品或正式安装器；未明确列出的实现和功能不在本任务范围内。 | 两方案按启动体验、运行时捆绑、凭据、升级、卸载、签名公证、维护成本评分并形成唯一裁决；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 PoC 临时隔离目录、`docs/adr/0003-macos-packaging.md` 和证据记录 | 在干净 macOS 用户环境运行最小包并记录启动、停止和残留行为。 | 待分配 / 无 | 缺少签名环境不阻止架构 PoC，但若无法验证所选方案可签名公证则不得关闭任务；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S0-06` 验证 Provider 技术与发布可行性 | 待开始 | Critical | 确认 Codex、网易云和可选 TTS 的调用方式、授权边界、失败行为和测试替身，防止核心能力在发布前才暴露不可用风险。 | S0-02 | PRD、架构 Provider Ports、可用测试凭据和服务文档。 | 验证能力与合规风险，不把 Provider 响应定为公共 contract，不在仓库保存真实密钥；未明确列出的实现和功能不在本任务范围内。 | 每个 Provider 都有能力矩阵、超时/重试/降级策略、Mock fixture 计划和公开发布风险结论；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 `docs/adr/0004-provider-feasibility.md` 及脱敏验证报告。 | 最小真实调用、无凭据/错误凭据/超时测试和响应 schema 采样校验。 | 待分配 / 无 | Codex 或网易云核心能力无法合法、稳定提供；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S0-07` 建立单人 + AI Git 工作流治理 | 进行中 | High | 用独立 worktree、任务分支和 PR 隔离每次修改，避免单人同时调用 AI 时混入无关改动或误推 `main`。 | S0-01 | `AGENTS.md`、本项目管理规范、当前 Git 状态和 GitHub 仓库设置。 | 建立 Git/Worktree/分支/提交/推送/合并/清理规则和仓库门禁；不实现产品代码、不改变产品行为、不自动删除未经批准的 branch/worktree。 | AI 能按唯一文档完成一任务一 worktree/branch/PR；`main` 需要 PR、线性历史并禁用 force/delete；仓库只允许 squash merge；本地安全配置生效。 | `docs/project-management/git-workflow.md`，更新 `AGENTS.md`、本管理规范和任务表；GitHub `main` 保护与 merge 设置；仓库本地 Git 配置。 | Markdown 链接、任务表一致性、`git diff --check`、Git 配置读取、GitHub API 设置回读，并用本任务真实 worktree/PR/squash merge 验证流程。 | 项目所有者 / `codex/s0-07-git-workflow` | 缺少 GitHub 管理权限，或现有分支/工作树含无法确认归属的独有工作；解除要求：取得权限或由用户确认归属后再继续。 |
 
 ### S1｜工程脚手架
 

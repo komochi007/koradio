@@ -31,6 +31,7 @@
 | 系统边界、模块、数据和安全 | `architecture.md` |
 | UI、动效和无障碍 | `design/design.md` |
 | 高保真原型生成 | `design/prompt.md` 与 `design/references/` |
+| Git、Worktree、提交、推送和 PR | `docs/project-management/git-workflow.md` |
 
 不得只依赖摘要文件完成需要精确规则的实现。
 
@@ -155,3 +156,14 @@
 - 是否修改了不相关文件？
 - 是否用实际检查支持完成声明？
 - 下一位 Agent 能否依赖仓库继续工作？
+
+## 9. Git 与 Worktree 强制规则
+
+- 根工作树 `/Users/kleinblue/Project/Koradio` 固定承载 `main`，日常保持 clean，不直接进行任务开发。
+- 一个任务 ID 使用一个独立 worktree、一个 branch 和一个 PR；AI 分支使用 `codex/<task-id>-<slug>`。
+- 任务 worktree 统一放在 `/Users/kleinblue/Project/Koradio-worktrees/`，并从最新 `origin/main` 创建。
+- 禁止直接向 `main` push；只通过 PR squash merge，禁止 force push、删除 `main` 或制造 merge commit。
+- 默认使用 `git add <明确路径...>`；除非用户明确要求全量提交且全部改动已核验归属，否则禁止 `git add -A`、`git add .` 和 `git commit -am`。
+- 发现跨任务、跨 worktree 或归属不明的改动时，立即停止暂存、提交和清理，先拆分或取得用户决定。
+- 分支或 worktree 只有在已合并、无未提交/独有工作且用户明确批准后才能删除；不得自动清理。
+- 完整创建、验证、推送、审阅、合并和清理流程以 [Git 工作流规范](docs/project-management/git-workflow.md) 为准。
