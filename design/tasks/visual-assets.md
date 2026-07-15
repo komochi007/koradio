@@ -4,6 +4,8 @@
 >
 > Status: VDA-17 已完成用户视觉反馈校准、正式基线与 Figma 镜像刷新，并以 2026-07-15 版本重新通过整体视觉冻结门；A / B 级差异均已关闭
 >
+> Lifecycle: Completed history；后续开发使用 `design/assets/reports/handoff-map.md`，本清单不属于默认必读入口
+>
 > Scope: 设计资产沉淀与视觉验收，不包含产品开发
 >
 > Task prefix: `VDA`

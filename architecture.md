@@ -20,11 +20,12 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台，由浏览器 PWA 
 - **Profile**：档案用于数据分区和上下文选择，不是身份认证或安全边界。
 | Concern | Authoritative owner | Persistence |
 |---|---|---|
-| Profile、Taste、Program、Queue、Feedback | Backend + SQLite | Durable |
+| Profile、Taste、Program、PlaybackTimeline、Feedback | Backend + SQLite | Durable |
 | 媒体时间、暂停、seek、媒体错误 | Browser Audio Engine | Checkpoint only |
 | 生成任务、服务健康状态 | Backend runtime | Snapshot |
 | Sheet、draft、筛选等 UI 状态 | Frontend feature | None |
-| Theme、DJ language、voice style | Backend Settings | Durable |
+| dataRoot、Codex、NetEase、可选 TTS、Secret Store 引用 | Backend DeviceSettings | Device durable |
+| Theme、DJ language、voice style | Backend ProfilePreferences | Profile durable |
 
 MVP 不包含云账号、跨设备同步、支付、社区、多人同步收听、分布式微服务或真实频谱分析。
 ## 2. High-Level Architecture
@@ -50,7 +51,7 @@ flowchart LR
 ```
 
 - Production 同源托管 PWA、REST、WebSocket 并绑定 loopback；Development 允许 Vite 独立运行并使用 Origin allowlist。
-- 请求显式携带 `profileId`；MVP 只有一个 active playback session，多个视图不能同时成为播放事实源。
+- Profile-owned 请求显式携带 `profileId`；MVP 只有一个 active playback session。标签页通过 `BroadcastChannel + localStorage TTL lease` 选出唯一主控，不能同时成为播放事实源。
 ## 3. Frontend Architecture
 
 Frontend 按 feature 组织；Page 负责组合，不拥有领域规则或 Provider 细节。
@@ -65,6 +66,7 @@ Frontend 按 feature 组织；Page 负责组合，不拥有领域规则或 Provi
 
 - TanStack Query 管理服务端状态；Zustand 只管理跨组件、非持久 UI；WebSocket event 校验后才能更新缓存。
 - Audio Engine 通过单一 facade 暴露快照；Radio 与 Detail Sheet 共用时间线，页面不得维护多个媒体实例。
+- Local Service 完全离线时，只有已打开或被 Service Worker 缓存的 App Shell 可展示只读 Settings；所有配置、Secret、测试和迁移命令禁用，不从浏览器缓存恢复敏感值。
 ## 4. Backend Architecture
 
 Backend 是 TypeScript 模块化单体，模块内采用轻量 Ports and Adapters。
@@ -87,17 +89,18 @@ flowchart LR
 
 | Feature | Owns | Consumes | Produces | Must not own |
 |---|---|---|---|---|
-| Profiles | 档案 CRUD、profile context | Settings reference | Profile DTO | 登录身份、播放状态 |
+| Profiles | 档案 CRUD、profile context、受控 avatarRef | ProfilePreferences | Profile DTO | 登录身份、播放状态、任意头像路径/URL |
 | Radio | 场景入口、当前节目组合 | Programs、Playback | Generate command | Provider、持久化 |
-| Programs | 生成任务、节目、DJ 段、历史 | Taste、Library、ports | Program、Queue、events | HTMLAudio 状态 |
-| Playback | 队列控制、恢复 checkpoint | Program queue | Playback snapshot | 规划、UI Sheet |
+| Programs | 生成任务、节目、DJ 段、历史 | EffectiveTaste、Library、ports | Program、PlaybackTimeline、events | HTMLAudio 状态 |
+| Playback | 时间线规则、低频 checkpoint | Program timeline | Playback snapshot | 实时进度、UI Sheet |
 | Library | 搜索、导入、候选池 | MusicProvider | NormalizedTrack | 推荐与播放控制 |
-| Taste | 标签、避雷、场景规则、摘要 | Feedback | Taste context | Provider response |
-| Feedback | 喜欢、不喜欢、跳过、收藏事实 | Playback、Programs | Feedback event | 重写历史事实 |
-| Settings | 配置、主题、DJ 偏好、诊断 | SecretStore、health ports | Safe settings | 明文密钥输出 |
+| Taste | 自动 projection、人工 overrides、EffectiveTaste | Feedback | Taste context | Provider response、覆盖人工规则 |
+| Feedback | 显式喜欢/撤销、不喜欢/撤销、节目收藏/撤销、跳过事实 | Playback、Programs | Append-only FeedbackEvent | 重写历史事实 |
+| DeviceSettings | dataRoot、Codex、NetEase、可选 TTS、迁移命令 | SecretStore、health ports | Safe device settings、migration job | Profile 偏好、明文密钥输出 |
+| ProfilePreferences | 主题、DJ 语言、声音风格 | Profiles | Profile preferences | 服务配置、密钥 |
 
 - 每个持久实体只有一个写入 owner；其他模块通过 use case/event 协作，Programs 只通过 Ports 调用 Provider。
-- Feedback 成功持久化后才更新 Taste projection；Settings 永不输出明文密钥。
+- Feedback 成功持久化后才更新 TasteProjection；TasteOverrides 独立持久化且合并时优先。DeviceSettings 永不输出明文密钥。
 ## 6. Data Flow
 
 ### Program generation
@@ -118,23 +121,29 @@ sequenceDiagram
     W->>A: POST program generation
     A->>P: Validate context and start job
     P-->>W: 202 + jobId
-    P->>C: Plan with taste, history, time, settings
+    Note over W,X: Existing program keeps playing while generation runs
+    P->>C: Plan with EffectiveTaste, history, time, ProfilePreferences
     C-->>P: Validated structured plan
     P-->>E: generation.planned
     P->>M: Resolve tracks, URLs and lyrics
     M-->>P: Normalized playable tracks
     P-->>E: generation.tracks-resolved
-    P->>T: Synthesize DJ segments
-    alt TTS available
-        T-->>P: Audio reference, duration, timestamps
-    else TTS unavailable
-        T-->>P: Degraded error
+    alt TTS configured
+        P->>T: Synthesize DJ segments
+        alt Synthesis succeeds
+            T-->>P: Audio reference, duration, timestamps
+        else Synthesis fails
+            T-->>P: Degraded error
+            P-->>E: generation.degraded
+        end
+    else TTS not configured
         P-->>E: generation.degraded
     end
-    P->>D: Persist program and queue atomically
-    P-->>E: queue.updated + generation.completed
+    P->>D: Persist program and timeline atomically
+    P-->>E: program.committed + generation.completed
     E-->>W: Validated events
-    W->>X: Load canonical queue
+    W->>X: Checkpoint and stop previous timeline
+    W->>X: Atomically load committed timeline
     X-->>U: Play DJ audio or first track
 ```
 | Failure | Boundary behavior | Result |
@@ -147,8 +156,10 @@ sequenceDiagram
 | Track playback failure | Mark runtime failure, advance queue | Continue if possible |
 | Feedback write failure | Reject mutation, revert optimistic UI | Playback continues |
 
-反馈记忆流：`UI intent → feedback_event → Taste projection → cache invalidation → next Codex context`。
-历史事实不得因聚合规则变化而被重写；Taste projection 必须可以重建。
+阻断失败不得改变正在播放的旧节目。文字降级 DJ 只保留在 Program segment；只有取得真实音频引用的 `dj` segment 才进入 PlaybackTimeline。
+
+反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Codex context`。
+历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。
 ## 7. State Management Strategy
 
 | State class | Owner | Synchronization |
@@ -165,14 +176,14 @@ stateDiagram-v2
     Idle --> Planning: submit scenario
     Planning --> Resolving: plan validated
     Resolving --> Synthesizing: tracks found
-    Synthesizing --> Ready: queue committed
+    Synthesizing --> Ready: timeline committed
     Ready --> Speaking: DJ audio exists
     Ready --> Playing: text-only DJ
     Speaking --> Playing: segment ended
     Playing --> Paused: pause
     Paused --> Playing: resume
     Playing --> Playing: seek or next
-    Playing --> Completed: queue ended
+    Playing --> Completed: timeline ended
     Planning --> Failed: blocking error
     Resolving --> Failed: blocking error
     Failed --> Planning: retry
@@ -182,6 +193,8 @@ stateDiagram-v2
 - Audio Engine 是 `positionMs`、`paused`、`buffering`、media error 的实时事实源；Backend 只保存低频 checkpoint。
 - Event `sequence` 用于去重和丢弃乱序，`correlationId` 隔离任务；重连后先读 snapshot，旧事件不得覆盖新节目。
 - 乐观更新只用于可回滚操作；节目、队列、档案切换等待服务端确认。
+- Profile 切换先取消旧 generation、丢弃旧 correlation 的迟到事件、保存并停止旧播放，再加载新 Profile。
+- 主控标签每 `2s` 续约、lease `5s` 过期；被动标签只读并可申请接管。主动接管前原主控必须保存 checkpoint 并停止播放，命令以 lease epoch 拒绝旧主控迟到事件。
 ## 8. API Layer Design
 
 - REST `/api/v1` 承载资源查询、命令、幂等写入、snapshot 和 health check。
@@ -196,14 +209,25 @@ stateDiagram-v2
 | Playback | `.../playback`, `.../playback/checkpoints` | snapshot 与 checkpoint |
 | Library | `.../library`, `.../music-searches` | 候选池与外部搜索 |
 | Taste / Feedback | `.../taste`, `.../feedback-events` | projection 与事实事件 |
-| Settings / Health | `.../settings`, `/api/v1/health` | 脱敏配置与诊断 |
+| Device settings | `/api/v1/device-settings` | 设备级非敏感配置与 Secret Store 引用 |
+| Profile preferences | `/api/v1/profiles/:profileId/preferences` | Profile 级主题与 DJ 偏好 |
+| Data root migrations | `/api/v1/device-settings/data-root-migrations` | 幂等异步命令，返回 `202 { jobId }` |
+| Health | `/api/v1/health` | 运行时脱敏健康快照，不持久化为配置事实 |
 
 - Zod schema 是 wire contract 唯一运行时定义，TypeScript 类型由 schema 推导。
-- Event envelope 固定包含 `type`、`version`、`profileId`、`correlationId`、`sequence`、`occurredAt`、`payload`。
-- Event families：`generation.*`、`queue.updated`、`playback.snapshot`、`feedback.persisted`、`service.health.changed`。
+- Event envelope 固定包含 `eventId`、`eventType`、`version`、可选 `profileId`、`correlationId`、`sequence`、`occurredAt`、`payload`。
+- Event families：`generation.*`、`program.committed`、`playback.snapshot`、`feedback.persisted`、`service.health.changed`、`data_root_migration.stage_changed`。WebSocket 不发布高频 position progress。
 - 创建命令接受 `Idempotency-Key`；重复请求返回原结果或当前 job。
 - Error envelope 包含 `code`、安全 `message`、`retryable`、`correlationId` 和可选字段错误。
 - Breaking change 提升 API/event major version；新增可选字段保持向后兼容。
+
+### Data root bootstrap and migration
+
+- 首次启动由 platform adapter 选择对应 OS 的应用数据目录，并以最小权限创建；公共配置不写死平台绝对路径。
+- 迁移命令先验证目标目录为空且可写，再暂停 generation 与 Browser 播放、保存 checkpoint、建立备份、复制并校验，最后以临时文件 + rename 原子切换 bootstrap 指针并重启。
+- 任一阶段失败都回滚 bootstrap 指针并恢复旧目录运行；旧目录和备份不自动删除。
+- `Idempotency-Key` 与 job 持久状态保证重复请求返回同一任务；事件只包含阶段、稳定错误码和脱敏元数据。
+
 ## 9. Authentication Flow
 
 MVP 无云身份认证。Authentication 仅保护本地 HTTP 边界；profile selection 只决定数据上下文。
@@ -235,34 +259,39 @@ sequenceDiagram
 SQLite 保存结构化事实；音频、头像和缓存使用受控文件引用。
 ```mermaid
 erDiagram
-    PROFILE ||--|| TASTE_PROFILE : owns
-    PROFILE ||--|| SETTINGS : owns
+    DEVICE_SETTINGS ||--o| DATA_ROOT_MIGRATION : initiates
+    PROFILE ||--|| PROFILE_PREFERENCES : owns
+    PROFILE ||--|| TASTE_PROJECTION : owns
+    PROFILE ||--|| TASTE_OVERRIDES : owns
     PROFILE ||--o{ PROGRAM : creates
     PROFILE ||--o{ FEEDBACK_EVENT : records
-    PROFILE ||--o| PLAYBACK_STATE : resumes
+    PROFILE ||--o| PLAYBACK_CHECKPOINT : resumes
     PROGRAM ||--o{ DJ_SCRIPT_SEGMENT : contains
-    PROGRAM ||--|| PLAY_QUEUE : owns
-    PLAY_QUEUE ||--o{ PLAY_QUEUE_ITEM : orders
-    MUSIC_TRACK ||--o{ PLAY_QUEUE_ITEM : referenced_by
+    PROGRAM ||--o{ PLAYBACK_TIMELINE_ITEM : orders
+    MUSIC_TRACK ||--o{ PLAYBACK_TIMELINE_ITEM : referenced_by
     MUSIC_TRACK ||--o{ FEEDBACK_EVENT : may_target
     PROGRAM ||--o{ FEEDBACK_EVENT : may_target
 ```
 | Entity | Owner | Core identity / role |
 |---|---|---|
-| `profile` | Profiles | `id`；本地数据分区根 |
-| `taste_profile` | Taste | `profileId`；可重建品味 projection |
-| `settings` | Settings | `profileId`；配置与 secret reference |
+| `profile` | Profiles | `id`、受控 `avatarRef`；本地数据分区根 |
+| `profile_preferences` | ProfilePreferences | `profileId`；主题、DJ language、voice style |
+| `taste_projection` | Taste | `profileId`；可由反馈事实重建的自动投影 |
+| `taste_overrides` | Taste | `profileId`；人工规则，重建投影不得覆盖 |
+| `device_settings` | DeviceSettings | 单设备；dataRoot、服务配置与 secret reference |
+| `data_root_migration` | DeviceSettings | `jobId` + idempotency key；迁移阶段与回滚状态 |
 | `music_track` | Library | `id` + source identity；归一化曲目 |
 | `program` | Programs | `id` + `profileId`；节目快照 |
 | `dj_script_segment` | Programs | `id` + `programId`；文本、时序、TTS ref |
-| `play_queue` / item | Playback | `programId`、position；规范播放顺序 |
-| `playback_state` | Playback | `profileId`；低频可恢复 snapshot |
-| `feedback_event` | Feedback | `id` + `profileId`；append-only 事实 |
+| `playback_timeline_item` | Playback | `programId`、position、`kind`；带音频 `dj` 或 `track` 判别联合 |
+| `playback_checkpoint` | Playback | `profileId`；低频可恢复 snapshot |
+| `feedback_event` | Feedback | `id` + `profileId`；固定 type 的 append-only 事实 |
 
 - 开启 foreign keys、WAL 和版本化 migration；禁止运行时自动重建数据表。
-- Program、segments、queue、items 在单个事务中提交，避免半成品节目。
+- Program、segments、timeline items 在单个事务中提交，避免半成品节目；文字 DJ segment 不生成 timeline item。
 - 播放 URL 是短期资源；历史以 source identity 恢复，FileStore 只返回 data root 内的安全相对引用。
-- Profile 删除通过 application use case 清理记录与文件，UI 不执行级联删除。
+- 头像上传 adapter 只返回 data root 内受控 `avatarRef`，拒绝任意 URL、绝对路径或裸文件名。
+- Profile 删除如未来被授权，只能通过 application use case 处理记录与文件，UI 不执行级联删除。
 ## 11. Shared Layer Strategy
 
 | Shared area | Allowed | Forbidden |
@@ -332,7 +361,8 @@ apps/
 │       │   ├── library/
 │       │   ├── taste/
 │       │   ├── feedback/
-│       │   └── settings/
+│       │   ├── device-settings/
+│       │   └── profile-preferences/
 │       ├── audio/                  # single Audio Engine facade
 │       └── shared/                 # transport, primitives, utilities
 └── server/
@@ -345,7 +375,8 @@ apps/
         │   ├── library/
         │   ├── taste/
         │   ├── feedback/
-        │   └── settings/
+        │   ├── device-settings/
+        │   └── profile-preferences/
         ├── integrations/           # Codex, NetEase, TTS adapters
         └── platform/               # DB, files, secrets, logs, events
 packages/
@@ -386,6 +417,7 @@ packages/
 - 强制 loopback、Origin allowlist、短期 session；REST 与 WebSocket 同等校验。
 - REST、event 和 Provider response 必须通过 Zod runtime validation。
 - SecretStore 使用 OS 凭据存储；API 仅返回脱敏状态，日志清除 token、key 和敏感正文。
+- Codex schema 校验失败不得记录原始正文；只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
 - FileStore 拒绝路径越界和未允许扩展名；媒体下载限制超时、大小、MIME 与重定向。
 - Codex 通过参数数组启动，禁止拼接 shell command；命令路径需验证。
 - DB 与缓存使用当前用户最小权限且备份无明文密钥；错误只暴露稳定 code 与安全 message。
@@ -404,7 +436,9 @@ packages/
 | TD-09 | OS credential store | 避免本地明文密钥 | Headless 环境需报错 |
 | TD-10 | Explicit profile paths | 避免隐式上下文串数据 | 每次调用携带 profileId |
 | TD-11 | Append-only feedback | 保留事实、支持重算 | 需要 Taste projection |
-| TD-12 | Single active playback | 避免双主状态 | 不支持多标签独立播放 |
+| TD-12 | Single active playback + TTL lease | 避免双主状态 | 主控每 2 秒续约，5 秒过期；其他标签只读或申请接管 |
+| TD-13 | DeviceSettings / ProfilePreferences split | 配置 owner 与 Profile 隔离一致 | 路由、表与迁移任务分属明确 owner |
+| TD-14 | Discriminated playback timeline | 不把文字降级伪装成音频 | 只有带 audio ref 的 DJ 段进入时间线 |
 ## 19. Known Tradeoffs
 
 - 模块化单体易部署，但 process crash 会同时影响全部 backend 能力。
@@ -422,7 +456,6 @@ packages/
 ### Stage 1 — Harden local MVP
 
 - 固化 public API、contract check、migration backup，并增加 job snapshot、事件重连和 provider circuit breaker。
-- 为单活 Audio Engine 增加标签页主控租约。
 ### Stage 2 — Expand local automation
 
 - Scheduler 只通过 Programs public use case 生成节目。

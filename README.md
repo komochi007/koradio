@@ -1,8 +1,8 @@
 # Koradio
 
-> Status: **Documentation-first · Not yet implemented · Not currently runnable**  
+> Status: **Documentation-first · Product not yet implemented · Product not currently runnable**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库没有源码、依赖清单、启动脚本或已确认端口
+> Runtime: 当前仓库没有产品源码、依赖清单、启动脚本或已确认端口；零构建设计预览不等于产品运行入口
 
 ## 1. 项目入口
 
@@ -15,7 +15,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
   → Codex 生成结构化节目计划与 DJ 串讲
   → 网易云音乐服务解析歌曲、播放链接与歌词
   → Fish Audio 兼容服务生成可选 DJ 语音
-  → 本地服务提交节目与播放队列
+  → 本地服务原子提交节目与播放时间线
   → 浏览器 Audio Engine 播放并收集反馈
   → 反馈写入本地品味档案，影响后续节目
 ```
@@ -38,32 +38,11 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 产品需求已定义
 - [x] 用户流程已定义
 - [x] 目标系统架构已定义
-- [x] 视觉设计系统已定义
-- [x] 15 个高保真页面状态已有参考图
-- [x] 开发前视觉设计资产任务与裁决机制已定义
-- [x] VDA-00 资产盘点与差距审计已完成，A / B / C 级裁决已记录
 - [x] AI 工作规范与工程规则已建立
 - [x] Git 仓库已初始化并关联 GitHub 远端
-- [x] HTML 视觉设计主源骨架已建立（VDA-01 已完成）
-- [x] CSS Variables、共享组件、原型 SVG 图标与 Dark / Light 组件目录已建立（VDA-02 已完成）
-- [x] 异常与 Profile 01–03 Dark HTML 视觉页面已建立（VDA-03 已完成）
-- [x] Radio 三态 04–06 Dark HTML 视觉页面已建立（VDA-04 已完成）
-- [x] VDA-02–04 尺度补正已完成自动检查与用户视觉验收；共享组件尺度确认点已关闭
-- [x] Detail Sheet 07–08 Dark HTML 视觉页面已建立，并完成波形、专属内容列、卡片尺寸与间距的浏览器反馈视觉校准（VDA-05 已完成）
-- [x] 01–08、共享组件尺度与 Detail Sheet 双态已通过核心体验确认门
-- [x] Library 09 Dark HTML 视觉页面与结果、导入中、空库、无结果、服务异常五种固定变体已建立，并通过自动检查与用户视觉验收（VDA-06 已完成）
-- [x] Taste 10–11 Dark HTML 视觉页面与概览读取、编辑保存七种固定变体已建立，并通过自动浏览器验收与用户视觉反馈校准（VDA-07 已完成）
-- [x] Programs 12–13 Dark HTML 视觉页面与列表读取、详情重播、音频缺失、复用失败八种固定变体已建立，并通过自动浏览器视觉、结构和文件验收（VDA-08 已完成）
-- [x] Settings 14–15 Dark HTML 视觉页面与配置、检测、密钥遮蔽、局部降级七种固定变体已建立，并通过自动浏览器视觉、结构和文件验收（VDA-09 已完成）
-- [x] 15 个页面的 Dark HTML 视觉页面均已建立
-- [x] Light 核心页 01–08 已完成独立材质校准；八页保持 Dark 结构零位移，并通过 `960 × 1600px` 自动浏览器视觉、结构、对比度和文件验收（VDA-10 已完成）
-- [x] Light 管理页 09–15 已完成表单、列表、卡片、状态文字与固定区域校准；27 个固定变体保持 Dark 结构零位移，并通过 `960 × 1600px` 自动浏览器视觉、结构、对比度和文件验收（VDA-11 已完成）
-- [x] 响应式代表页 03、05、08、10、14 已覆盖 Profile、Radio、Detail、Management、Settings 五类布局；三组 viewport 保持单列信息架构、固定区域、安全区和最小命中区，并通过 Dark / Light 自动浏览器视觉、结构和文件验收（VDA-12 已完成）
-- [x] 组件目录与 01–15 HTML 视觉主源已补齐完整交互状态、键盘路径、Focus、状态播报、页面 / Detail 动效、200% zoom 与 Reduce Motion，并通过自动浏览器交互、无障碍结构、对比度和文件验收（VDA-13 已完成）
-- [x] 已从 HTML 视觉主源生成 15 张 Dark、15 张 Light 与 30 张响应式正式基线，并通过文字、裁切、几何、对比度、恢复入口、文件完整性和复渲染自动验收（VDA-14 已完成）
-- [x] 已从已验收 HTML / VDA-14 基线建立 `Koradio · Visual Baseline · MVP` Figma 派生镜像，包含来源版本、变量、样式、共享组件、60 张页面 Frame 与转换限制（VDA-15 已完成）
-- [x] 已建立 15 页、35 个固定状态、共享组件、Tokens、fixture、renderer 与 60 张正式基线的开发交接映射，并通过整体视觉冻结门（VDA-16 已完成）
-- [x] 已按用户验收完成 Radio 时间与纵向骨架、Detail 串讲密度、白灰平滑波形与传播动效校准，重建 60 张正式基线、同步全部 Figma 页面 Frame，并以 VDA-17 重新冻结
+- [x] VDA-17 视觉基线已冻结：HTML / CSS / JavaScript 视觉主源、15 页 35 个固定状态、Dark / Light、五类响应式布局与 60 张正式截图基线均已建立
+- [x] 视觉差异裁决、自动 QA、Figma 派生镜像与开发交接映射已建立
+- [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
@@ -75,6 +54,8 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 ### Agent safety note
 
 当前所有代码目录、命令、端口、版本和运行行为均不能从仓库验证。
+
+视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
 AI Agent **不得**：
 
@@ -104,8 +85,8 @@ AI Agent **不得**：
 3. 在 Radio 页面描述当前场景。
 4. 生成节目计划、DJ 开场和歌曲队列。
 5. 播放、暂停、切歌、seek 并查看歌词或串讲。
-6. 记录喜欢、不喜欢、跳过和收藏。
-7. 将反馈投影为可读、可编辑的品味档案。
+6. 记录喜欢/撤销、不喜欢/撤销、跳过和节目收藏/撤销。
+7. 将反馈投影与人工规则合并为可读、可编辑的品味档案。
 8. 在后续节目中使用品味、历史和场景上下文。
 
 ### 功能优先级
@@ -145,7 +126,8 @@ React PWA
        ↓ REST / WebSocket
 Fastify Local Service
   ├─ Profiles / Programs / Playback
-  ├─ Library / Taste / Feedback / Settings
+  ├─ Library / Taste / Feedback
+  ├─ DeviceSettings / ProfilePreferences
   ├─ SQLite / Local File Store / Secret Store
   └─ Provider Ports
        ├─ Codex Adapter
@@ -160,7 +142,7 @@ Fastify Local Service
 | Browser Client | 页面、交互、查询缓存和实时媒体状态 |
 | Audio Engine | 唯一 `HTMLAudio` 实例、时间线、seek、媒体错误和 checkpoint |
 | Local Service | 业务规则、任务编排、持久化、外部服务访问和事件发布 |
-| SQLite | Profile、Taste、Program、Queue、Feedback 等结构化事实 |
+| SQLite | Profile、Taste、Program、PlaybackTimeline、Feedback 等结构化事实 |
 | Local File Store | 音频缓存、头像、歌词缓存和受控文件引用 |
 | External Providers | Codex、网易云与 TTS；均视为不可信、可失败依赖 |
 
@@ -169,10 +151,11 @@ Fastify Local Service
 - Browser Audio Engine 是实时播放状态的唯一事实源。
 - Backend 是持久领域状态和业务规则的唯一事实源。
 - Profile 是本地数据分区，不是认证或安全边界。
-- MVP 只有一个 active playback session。
+- MVP 只有一个 active playback session；多标签通过 TTL lease 选出唯一主控。
 - Provider 只能通过 Backend Adapter 访问。
 - TTS 失败必须降级为文字 DJ，不得中断可播放节目。
-- Feedback 是 append-only 事实；Taste projection 必须可重建。
+- Feedback 是显式 append-only 事实；TasteProjection 可重建且不覆盖 TasteOverrides。
+- DeviceSettings 是设备级配置，ProfilePreferences 是档案级偏好；TTS 是可选增强。
 - 密钥不得进入浏览器、数据库明文、URL、日志或错误报告。
 
 ## 5. 目标技术栈
@@ -218,9 +201,15 @@ Koradio/
 ├── AI_RULES.md
 ├── context.md
 ├── architecture.md
+├── design-qa.md
 ├── docs/
 │   ├── prd.md
-│   └── user-flow.md
+│   ├── user-flow.md
+│   └── project-management/
+│       ├── README.md
+│       ├── roadmap.md
+│       ├── tasks.md
+│       └── release-checklist.md
 └── design/
     ├── design.md
     ├── prompt.md
@@ -262,6 +251,7 @@ Koradio/
     ├── tasks/
     │   └── visual-assets.md
     └── references/
+        ├── README.md
         ├── 01-service-offline.png
         ├── 02-profile-select.png
         ├── ...
@@ -287,7 +277,8 @@ apps/
 │       │   ├── library/
 │       │   ├── taste/
 │       │   ├── feedback/
-│       │   └── settings/
+│       │   ├── device-settings/
+│       │   └── profile-preferences/
 │       ├── audio/
 │       └── shared/
 └── server/
@@ -300,7 +291,8 @@ apps/
         │   ├── library/
         │   ├── taste/
         │   ├── feedback/
-        │   └── settings/
+        │   ├── device-settings/
+        │   └── profile-preferences/
         ├── integrations/
         └── platform/
 packages/
@@ -314,7 +306,7 @@ packages/
 
 ### 当前可执行状态
 
-**当前不能安装、启动、测试或构建 Koradio。**
+**当前不能安装、启动、测试或构建 Koradio 产品。**
 
 `design/assets/prototype/index.html` 是可直接在浏览器打开的零构建设计预览骨架，不是 Koradio 产品运行入口。
 
@@ -366,9 +358,10 @@ packages/
 | 模块、状态归属、API、数据或安全 | [architecture.md](architecture.md) |
 | UI、组件、token、响应式或无障碍 | [design/design.md](design/design.md) |
 | 高保真原型生成 | [design/prompt.md](design/prompt.md) + [design/references/](design/references/) |
-| 开发前视觉设计资产沉淀 | [design/tasks/visual-assets.md](design/tasks/visual-assets.md) |
+| 已完成的视觉资产任务历史 | [design/tasks/visual-assets.md](design/tasks/visual-assets.md) |
 | 视觉资产审计与裁决 | [design/assets/reports/visual-audit.md](design/assets/reports/visual-audit.md) + [design/assets/reports/visual-decisions.md](design/assets/reports/visual-decisions.md) |
 | 前端视觉实现与冻结版本追溯 | [design/assets/reports/handoff-map.md](design/assets/reports/handoff-map.md) |
+| 项目进度、任务依赖与发布门 | [docs/project-management/README.md](docs/project-management/README.md) + [任务登记表](docs/project-management/tasks.md) |
 | 工程实现或代码审查 | [AI_RULES.md](AI_RULES.md) |
 | Agent 执行与协作 | [AGENTS.md](AGENTS.md) |
 | 快速恢复项目认知 | [context.md](context.md) |

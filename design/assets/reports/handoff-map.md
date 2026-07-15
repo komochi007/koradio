@@ -6,6 +6,8 @@
 >
 > 状态：整体视觉冻结门已通过；本文件是前端实现的视觉追溯入口，不代表产品源码已经存在
 
+> 版本边界：Git `6e97fb74826cdd48e5f75fe57646ac55340aab3c` 是 VDA-17 像素基线提交；当前工作树在保持该像素基线不变的前提下补充 Heart/More 业务语义、fixture 非产品事实声明与 ARIA 文案。当前语义校准不创建新的像素基线版本，也不重新生成 Figma。
+
 ## 1. 冻结范围与权威关系
 
 本次冻结覆盖 15 个页面、35 个固定页面 / 变体状态、Dark / Light / System 主题入口、五类响应式布局、共享组件、交互与无障碍规则、60 张正式截图基线及 Figma 派生镜像。
@@ -13,6 +15,7 @@
 | 资产 | 冻结版本 / 位置 | 权威性 |
 |---|---|---|
 | HTML / CSS / JavaScript 主源 | Git `6e97fb74826cdd48e5f75fe57646ac55340aab3c`；`design/assets/prototype/`、`design/assets/fixtures/`、`design/assets/icons/` | 唯一视觉主源 |
+| 当前语义校准 | 当前树中的 `docs/prd.md`、`docs/user-flow.md`、`design/design.md` 与 `design/assets/prototype/app.js` ARIA 标签 | 产品语义与无障碍文案；不得改变 VDA-17 几何或像素基线 |
 | 正式截图基线 | Git `6e97fb74826cdd48e5f75fe57646ac55340aab3c`；`design/assets/baselines/manifest.json` | 派生视觉回归参考 |
 | Figma 镜像 | [Koradio · Visual Baseline · MVP](https://www.figma.com/design/ZxAWTQW5aH3VMd9H3T8zcJ)；60 个页面 Frame 来源版本 `6e97fb7` | 派生协作镜像 |
 | 产品行为 | `docs/prd.md` | 产品事实源 |
@@ -226,6 +229,7 @@
 - 01 服务异常页没有 VDA-12 独立响应式截图，后续产品验收需按全局响应式和无障碍规则覆盖。
 - `pages.js` 承载页面元数据与主要固定视觉内容；部分变体专属状态文案固定在 `app.js` 的 renderer helper 中。两者均属于 JavaScript 视觉主源，不得被解释为真实领域数据或服务响应。
 - 原型中的 `http://localhost:4173`、`http://localhost:3000`、本地路径和时间只属于视觉 fixture，不能作为产品端口、环境或默认配置事实。
+- Radio 心形按钮语义为“喜欢歌曲”，不喜欢位于 More；节目收藏只在 Programs/节目入口处理。该校准只修改 ARIA 文案，不改变视觉图标或布局。
 
 ## 11. 冻结结论
 

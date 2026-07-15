@@ -285,7 +285,7 @@
             <p>${state.track.subtitle}</p>
           </div>
           <div class="radio-player__actions">
-            <button class="kr-icon-button" type="button" aria-label="收藏当前歌曲" aria-pressed="false" data-action="toggle-pressed" data-label-on="取消收藏当前歌曲" data-label-off="收藏当前歌曲">${icon("heart")}</button>
+            <button class="kr-icon-button" type="button" aria-label="喜欢当前歌曲" aria-pressed="false" data-action="toggle-pressed" data-label-on="取消喜欢当前歌曲" data-label-off="喜欢当前歌曲">${icon("heart")}</button>
             <button class="kr-icon-button" type="button" aria-label="更多播放操作">${icon("more")}</button>
           </div>
         </div>

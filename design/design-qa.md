@@ -2,6 +2,9 @@
 
 > 日期：2026-07-14
 > 结果：passed
+> 状态：历史阶段报告；不代表当前整体视觉冻结状态
+
+当前开发交接与最终冻结状态以 [VDA-17 handoff map](assets/reports/handoff-map.md) 和 [正式截图基线说明](assets/baselines/README.md) 为准。本文件仅保留 VDA-11 的阶段性 Light 管理页 QA 证据，不属于 AI Agent 的默认必读入口。
 
 ## 范围与方法
 

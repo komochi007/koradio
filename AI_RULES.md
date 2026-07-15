@@ -40,6 +40,9 @@
 - **MUST** 让 Browser Audio Engine 成为 `positionMs`、pause、seek、buffering 与 media error 的实时事实源。
 - **MUST** 让 Radio 与 Detail Sheet 订阅同一播放时间线。
 - **MUST** 对播放 checkpoint 进行节流，并在暂停、切歌和关闭等边界触发保存。
+- **MUST** 使用 `BroadcastChannel + localStorage TTL lease` 保证唯一主控标签；主控每 `2s` 续约，租约 `5s` 过期，被动标签只读。
+- **MUST** 在标签接管前由原主控保存 checkpoint 并停止播放；使用 lease epoch 丢弃旧主控的迟到命令。
+- **MUST** 在 Profile 切换时取消旧生成任务、丢弃迟到事件、保存并停止旧播放，再加载新 Profile。
 - **MUST NOT** 创建多个竞争的 `HTMLAudio` 实例或页面级播放事实源。
 - **MUST NOT** 通过 WebSocket 发送逐帧播放进度。
 - **MUST NOT** 让 Frontend 导入 Server、Drizzle、Node API 或秘密配置。
@@ -55,6 +58,8 @@
 - **MUST** 将 Provider response 归一化后再进入 Application 或公共 contract。
 - **MUST** 为异步生成任务提供 job ID、取消、超时、幂等和可恢复 snapshot。
 - **MUST** 在 TTS 不可用时保留文字 DJ，并继续可播放节目。
+- **MUST** 将 Codex 与网易云视为节目生成核心依赖，将 TTS 视为可选增强。
+- **MUST** 在新节目完整提交前继续播放旧节目；失败保持旧节目不变，成功后保存旧 checkpoint、停止旧时间线并原子切换。
 - **MUST** 在单曲不可播放时标记运行时失败并尝试下一首。
 - **MUST NOT** 让 Domain 导入 React、Fastify、Drizzle、WebSocket 或 Provider SDK。
 - **MUST NOT** 让 Adapter 决定业务降级、修改领域规则或泄露供应商结构。
@@ -71,7 +76,9 @@
 - **MUST** 使用 `/api/v1` 承载资源查询、命令、snapshot 与 health check。
 - **MUST** 使用 `/api/v1/events` 推送领域变化和异步任务阶段。
 - **MUST** 让 Profile-owned route 显式携带 `profileId`。
-- **MUST** 让 Event envelope 包含 `type`、`version`、`profileId`、`correlationId`、`sequence`、`occurredAt` 与 `payload`。
+- **MUST** 使用 `/api/v1/device-settings` 管理设备配置，使用 `/api/v1/profiles/:profileId/preferences` 管理 Profile 偏好。
+- **MUST** 让数据目录迁移使用 `/api/v1/device-settings/data-root-migrations` 幂等异步命令并返回 `jobId`。
+- **MUST** 让 Event envelope 包含 `eventId`、`eventType`、`version`、可选 `profileId`、`correlationId`、`sequence`、`occurredAt` 与 `payload`。
 - **MUST** 使用 `sequence` 去重并丢弃乱序事件，使用 `correlationId` 隔离任务。
 - **MUST** 让创建类命令接受 `Idempotency-Key`，重复请求返回原结果或当前 job。
 - **MUST** 返回包含稳定 `code`、安全 `message`、`retryable` 与 `correlationId` 的错误 envelope。
@@ -84,8 +91,14 @@
 
 - **MUST** 使用版本化 migration 修改 SQLite schema。
 - **MUST** 启用 SQLite foreign keys 与 WAL。
-- **MUST** 在单一事务中提交 Program、DJ segments、Queue 与 Queue items。
-- **MUST** 将 Feedback 保存为 append-only 事实，并让 Taste projection 可重建。
+- **MUST** 在单一事务中提交 Program、DJ segments 与 PlaybackTimeline items。
+- **MUST** 使用 `dj` / `track` discriminated union 表达 PlaybackTimelineItem；文字 DJ 只保留在 Program segment，不创建伪音频 item。
+- **MUST** 将 Feedback 保存为固定枚举的 append-only 显式事件：`track_liked`、`track_like_removed`、`track_disliked`、`track_dislike_removed`、`program_favorited`、`program_favorite_removed`、`track_skipped`。
+- **MUST** 将 Taste 分为可重建 `TasteProjection`、人工 `TasteOverrides` 与合并后的 `EffectiveTaste`；人工规则优先且不得被 projection 重建覆盖。
+- **MUST** 将 `DeviceSettings` 与 `ProfilePreferences` 分属设备级和 Profile 级 owner；`ServiceHealth` 仅作为运行时 snapshot。
+- **MUST** 在首次启动使用 OS 应用数据目录；迁移前验证目标为空且可写，暂停任务和播放、保存 checkpoint、备份复制校验并原子切换 bootstrap。
+- **MUST** 在迁移失败时回滚到旧数据目录，并保留旧数据与备份，不得自动删除。
+- **MUST** 只保存上传流程生成的受控 `avatarRef`，拒绝任意 URL、绝对路径和裸文件名。
 - **MUST** 使用 Provider source identity 恢复历史曲目。
 - **MUST** 只在数据库保存受控相对文件引用，不保存任意绝对路径。
 - **MUST** 通过 Application use case 完成 Profile 数据和文件清理。
@@ -93,6 +106,7 @@
 - **MUST** 对媒体、歌词、TTS 和搜索缓存设置容量、过期或清理策略。
 - **MUST NOT** 依赖短期播放 URL 作为永久历史身份。
 - **MUST NOT** 在运行时自动重建、覆盖或静默修复生产数据表。
+- **MUST NOT** 持久化队列展开态、详情覆盖层开关、高亮行、场景输入 draft 或实时播放进度。
 - **MUST NOT** 让 UI 直接执行数据库级联删除。
 
 ## 7. 安全
@@ -104,10 +118,12 @@
 - **MUST** 在每次服务启动时生成短期 session token，并只保存在内存。
 - **MUST** 使用 OS Credential Store 保存 API key 与其他秘密。
 - **MUST** 对日志、错误、诊断和 API 响应执行秘密与敏感正文脱敏。
+- **MUST** 在 Codex 输出校验失败时只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
 - **MUST** 将 External JSON、Codex output、歌词、媒体 URL、文件名和 MIME 视为不可信输入。
 - **MUST** 让 File Store 拒绝路径越界、未允许扩展名、超限大小、非法 MIME 和不安全重定向。
 - **MUST** 通过参数数组启动 Codex，并验证可执行路径。
 - **MUST NOT** 将 token 或 key 写入 URL、日志、SQLite、LocalStorage、历史或错误报告。
+- **MUST NOT** 保存、记录或回显无效 Codex 输出的原始正文。
 - **MUST NOT** 拼接 shell command 启动 Provider 或本地进程。
 - **MUST NOT** 默认监听局域网或公网。
 - **NEVER** 向 Frontend 返回明文秘密。
@@ -136,6 +152,8 @@
 - **MUST** 保持 Radio 为中央单列；宽屏不得改成多栏控制台。
 - **MUST** 让 Radio 空态、播放态和生成态共享同一页面骨架。
 - **MUST** 让 Detail Sheet 覆盖完整产品画布，并与 Radio 共享播放状态。
+- **MUST** 让 Radio 心形按钮只表达“喜欢歌曲”，不喜欢位于 More，节目收藏只位于 Programs/节目入口；Detail Sheet 只保留单一播放/暂停。
+- **MUST** 在 Local Service 完全离线时仅允许已打开或缓存的 PWA 展示只读 Settings，禁用配置、密钥、测试与迁移控件。
 - **MUST** 让主按钮使用黑白高对比，绿色只表达在线、播放、成功、Focus 或少量波形活动。
 - **MUST** 让头像、封面、圆形按钮、状态点和图标按钮使用固定比例容器。
 - **MUST** 让 DJ 文案使用节目正文语义；仅用户输入使用弱气泡。
@@ -157,6 +175,7 @@
 - **MUST** 为关键 UI 状态、键盘操作、Focus、aria 与 Reduce Motion 编写组件测试。
 - **MUST** 为档案创建、首次配置、节目生成、播放、反馈和失败恢复建立核心 E2E。
 - **MUST** 覆盖 Codex invalid output、搜歌为空、TTS 降级、歌词缺失、单曲失败、反馈回滚与事件重连。
+- **MUST** 覆盖 OS 默认数据目录、迁移成功/回滚、播放中生成、Profile 切换、双标签接管、反馈撤销和 TasteProjection 重建不覆盖 overrides。
 - **MUST** 在 Unit 与 Integration 测试中替换真实 Provider，保持测试可重复且不消耗外部额度。
 - **MUST** 为每个 bug fix 添加能在修复前失败、修复后通过的 regression test。
 - **MUST** 在合并前通过 typecheck、lint、format check、相关测试与构建。
