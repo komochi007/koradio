@@ -143,7 +143,24 @@
 - **MUST NOT** 使用 Boolean 参数隐藏多个行为分支；必须使用明确 command 或 options 类型。
 - **MUST NOT** 添加复述代码的注释；注释只能解释无法从实现推导的原因、约束或权衡。
 
-## 9. UI 与无障碍
+## 9. 工具链与依赖治理
+
+> [RULE-TOOLCHAIN]
+
+- **MUST** 按 `docs/adr/0001-toolchain-and-quality.md` 实现工具链，不得将尚未创建的 manifest、锁文件、配置或 script 描述为当前事实。
+- **MUST** 使用 Node.js 24.18.0 LTS、Corepack 0.35.0 与 pnpm 11.13.0，并在配置中同时固定运行版本和 package manager 版本。
+- **MUST** 使用单一根 `pnpm-lock.yaml`、pnpm 原生 workspace 和 `workspace:*` 内部依赖；CI 必须执行 frozen lockfile install。
+- **MUST** 使用 ESM-only TypeScript 6.0.3 project references；Web 使用 `moduleResolution: "bundler"`，Server 与 Node 工具使用 `NodeNext`。
+- **MUST** 让 Web 使用 Vite 8.1.4 构建，让 Server、contracts 与 design tokens 使用 `tsc -b` 构建。
+- **MUST** 使用 ESLint 10 flat config、typescript-eslint typed lint 与精确固定的 Prettier 3.9.5。
+- **MUST** 使用 Vitest 4 + V8 coverage 承载 unit、contract 与 integration，使用 React Testing Library + jsdom 承载 component，使用 Playwright + axe-core 承载 E2E、视觉与自动无障碍检查。
+- **MUST** 在根 manifest 提供 ADR 0001 定义的 `dev`、typecheck、lint、format、测试、build 与 `check` 命令族。
+- **MUST** 精确固定直接依赖，设置 24 小时 release age、严格 engine、frozen lockfile 和 pnpm `allowBuilds` 审批；依赖 build script 默认拒绝。
+- **MUST** 让 GitHub Actions 的常规质量门运行在 Linux，让 Credential Store、数据目录、进程生命周期与包装探针运行在 macOS；第三方 Actions 固定完整 commit SHA。
+- **MUST NOT** 混用 package manager 或锁文件、依赖浮动 tag、启用 `dangerouslyAllowAllBuilds`，或自动合并 major 工具升级。
+- **MUST NOT** 在没有可观察瓶颈和新 ADR 的情况下引入 Turborepo、Nx 或第二套测试/格式化体系。
+
+## 10. UI 与无障碍
 
 > [RULE-UI]
 
@@ -164,7 +181,7 @@
 - **MUST NOT** 使用大型装饰插画、霓虹、重玻璃拟态、后台式侧边栏或大面积绿色填充。
 - **MUST NOT** 让专辑封面控制页面主题色。
 
-## 10. 测试与质量门禁
+## 11. 测试与质量门禁
 
 > [RULE-TEST]
 
@@ -182,7 +199,7 @@
 - **MUST** 披露无法运行的质量门禁及其缺失条件。
 - **MUST NOT** 通过删除测试、放宽断言、跳过失败用例或降低类型安全使检查通过。
 
-## 11. 规则变更
+## 12. 规则变更
 
 > [RULE-CHANGE]
 
