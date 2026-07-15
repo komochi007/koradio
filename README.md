@@ -45,6 +45,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；尚未实装
 - [x] 运行拓扑、端口、Origin allowlist 与本地会话已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 冻结；尚未实装
+- [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 推荐 native launcher + 外部浏览器 PWA，但正式签名、公证与独立干净用户验收阻塞，决策尚未接受或实装
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
@@ -55,7 +56,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ### Agent safety note
 
-当前所有产品代码目录、可执行命令、端口和运行行为均不能从仓库验证。工具链的目标版本和命令合同已经写入 ADR 0001，运行拓扑、端口与本地会话已经写入 ADR 0002，但不代表依赖、配置、端口监听或服务已经存在。
+当前所有产品代码目录、可执行命令、端口和运行行为均不能从仓库验证。工具链的目标版本和命令合同已经写入 ADR 0001，运行拓扑、端口与本地会话已经写入 ADR 0002；ADR 0003 只记录包装 PoC 的推荐与阻塞。这些文档都不代表依赖、配置、端口监听、服务或安装包已经存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -65,6 +66,7 @@ AI Agent **不得**：
 - 把目标技术栈描述成已安装依赖。
 - 把 ADR 选定的包管理器、Node.js 版本或脚本名描述成已经安装或可运行的事实。
 - 把 ADR 0002 选定的端口、进程关系或 session bootstrap 描述为已经实装或可运行。
+- 把 ADR 0003 的提议方案描述为已接受、已实现或已经通过 Developer ID 签名公证。
 - 声称应用、测试、构建或数据库可以运行。
 - 从参考图推断尚未写入权威文档的业务规则。
 
@@ -202,9 +204,13 @@ Fastify Local Service
 - Production 使用同源 Local Service，首选 `49373`，仅允许 `49373-49383` 有界 fallback。
 - Token 通过 `POST /api/v1/session/bootstrap` 的 `no-store` JSON 响应进入浏览器内存；WebSocket 不使用 URL token。
 
+由 [ADR 0003](docs/adr/0003-macos-packaging.md) 提议但尚未接受或实装：
+
+- 推荐 macOS 13.5+、arm64/x64 分架构 DMG、原生轻量 launcher + bundled Node Local Service + 外部浏览器 PWA。
+- Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净用户生命周期仍未验证；S0-05 保持阻塞。
+
 尚未决定：
 
-- macOS 包装形态、产品最低 macOS 版本和目标 CPU 架构。
 - Provider、数据库和其他业务依赖的具体包与精确版本。
 
 ## 6. 目录结构

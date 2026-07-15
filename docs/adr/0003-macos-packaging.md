@@ -1,0 +1,179 @@
+# ADR 0003：macOS 包装形态与发布边界
+
+> 状态：提议
+> 日期：2026-07-15
+> 决策人：项目所有者
+> Task：S0-05
+> 取代：无
+> 被取代：无
+
+## 1. 背景
+
+Koradio 当前仍处于 Documentation-first 阶段，没有产品源码、manifest、锁文件、生产构建或正式安装包。[ADR 0001](0001-toolchain-and-quality.md) 已固定 Node 24.18.0、pnpm production 文件树与运行时自带要求；[ADR 0002](0002-runtime-topology.md) 已固定 production 同源 Local Service、loopback、端口 fallback 和本地 session 安全边界。
+
+S0-05 需要比较 Electron 桌面壳一体包与 PWA + Local Service 安装器，关闭会改变 S1 脚手架、S2 Credential Store、S7 发布工程和用户安装生命周期的包装未知项。本 ADR 记录唯一推荐方案，但由于当前没有 Developer ID identity、公证凭据和独立干净 macOS 用户证据，状态保持“提议”，不能作为已接受实现依据。
+
+## 2. 决策范围
+
+### 包含
+
+- macOS v1.0 包装形态与安装容器。
+- Node runtime、Server production 文件树和 PWA 静态资源的捆绑边界。
+- launcher、Local Service、外部浏览器的启动与停止关系。
+- 最低 macOS 版本、CPU 架构和产物拆分方式。
+- Credential Store、数据目录、手动升级、卸载和残留原则。
+- Developer ID 签名、公证、staple 与 Gatekeeper 验证路径。
+
+### 不包含
+
+- 产品源码、完整 launcher、正式安装器、release workflow 或自动更新实现。
+- SQLite、Secret Store、Provider 或其他 native dependency 的具体包选择。
+- Windows、Mac App Store、登录自动启动、后台常驻服务或远程访问。
+- 产品页面、视觉设计或 PRD 公共行为变更。
+
+## 3. 约束与决策驱动因素
+
+| 因素 | 必须满足的条件 | 证据来源 |
+|---|---|---|
+| 工程 | 自带 Node 24.18.0；production Server 使用受控 `pnpm deploy` 或等价 bundling；不复制开发期链接树 | [ADR 0001](0001-toolchain-and-quality.md) |
+| 架构 | Browser 仍拥有实时播放；Production 仍由 Local Service 同源托管 PWA/REST/WS；launcher 不携带 token | [architecture.md](../../architecture.md)、[ADR 0002](0002-runtime-topology.md) |
+| 安全与数据 | 只绑定 loopback；Secret 进入 OS Credential Store；数据进入用户 Application Support；卸载不自动删除数据 | [AI_RULES.md](../../AI_RULES.md)、[PRD](../prd.md) |
+| 发布 | macOS 直接分发、签名、公证；v1 只要求手动升级，不引入 App Store 或自动更新 | [roadmap.md](../project-management/roadmap.md)、[release checklist](../project-management/release-checklist.md) |
+| 验收 | 两方案必须比较启动、运行时、凭据、升级、卸载、签名公证与维护成本，并在干净环境记录生命周期 | [tasks.md](../project-management/tasks.md) |
+
+## 4. 候选方案
+
+评分为 `1-5`，分数越高越适合 Koradio v1；签名公证仍是独立硬门，不因总分较高而豁免。
+
+| 维度 | Electron 桌面壳一体包 | 原生 launcher + 外部浏览器 PWA |
+|---|---:|---:|
+| 启动体验 | 5：单一桌面窗口 | 4：双击 launcher 后打开默认浏览器 |
+| 运行时捆绑 | 2：Electron/Chromium 之外仍需精确 Node sidecar | 5：只携带精简 Node runtime 与生产文件树 |
+| Credential Store | 4：sidecar 可访问，但 entitlement/签名面更大 | 5：同一用户会话下由 Local Service adapter 访问 |
+| 手动升级 | 4：替换 app，数据外置 | 5：按架构替换 launcher app，数据外置 |
+| 卸载与残留 | 4：移除 app，数据保留 | 5：移除 app，无 LaunchAgent/Login Item，数据保留 |
+| 签名公证复杂度 | 3：多 helper/framework 与 JIT entitlement | 4：launcher + Node 两层 Mach-O；仍需真实 Developer ID 验证 |
+| 维护成本 | 2：Electron 与 Node 双运行时、Chromium 高频升级 | 5：薄 launcher，产品 Web 仍服从既有 PWA 架构 |
+| 总分 | **24 / 35** | **33 / 35** |
+
+详细 PoC 结果见 [证据记录](evidence/0003-macos-packaging-poc.md)。
+
+## 5. 推荐裁决
+
+推荐采用 **原生轻量 launcher + bundled Local Service + 外部浏览器 PWA**，以每架构独立、签名公证的 DMG 直接分发。
+
+该推荐只有在第 5.6 节门禁全部通过后才能从“提议”变为“已接受”。当前仓库不得把以下内容描述为已经实现或最终支持承诺。
+
+### 5.1 产物形态
+
+- v1 发布两个独立产物：`arm64` DMG 与 `x64` DMG，不构建包含两份 Node runtime 的 universal DMG。
+- 每个 DMG 包含一个薄原生 launcher `.app`、对应架构的 Node 24.18.0 精简 runtime、`pnpm --prod deploy` 生成的 Server 文件树和 built PWA assets。
+- 精简 runtime 只保留运行所需 `bin/node` 与 Node `LICENSE`；不携带 npm、npx、Corepack、pnpm、headers 或开发文档。
+- 最低支持系统推荐为 **macOS 13.5**，由 Node 24.18.0 arm64/x64 官方二进制的 `LC_BUILD_VERSION.minos` 决定。
+
+### 5.2 启动与停止
+
+```text
+用户启动 Koradio launcher
+  → 检测 49373 是否为现有 Koradio Local Service
+  → 复用现有实例，或启动 bundled Node + deployed Server
+  → 未知进程占用时在 49373-49383 有界 fallback
+  → health ready 后只打开 http://127.0.0.1:<selected-port>/
+  → PWA 通过同源 POST bootstrap 取得内存 token
+
+用户退出 launcher
+  → launcher 向自己启动的 Local Service 发送 SIGTERM
+  → 等待 checkpoint/关闭完成并释放端口
+  → 不遗留后台服务、LaunchAgent 或 Login Item
+```
+
+- launcher URL 只能包含 origin 和普通路径，不得包含 token、key、profile 或敏感诊断。
+- v1 不默认登录启动或后台常驻；直接打开已安装 PWA 而服务未运行时，继续使用既有只读离线 Settings 行为。
+- S7 正式 launcher 必须提供清晰的“打开 Koradio”和“退出 Koradio”生命周期入口；PoC 的无 UI agent 形态不是最终用户界面。
+
+### 5.3 数据与凭据
+
+- 首次启动继续由 platform adapter 选择 `~/Library/Application Support/Koradio` 等 OS 应用数据目录；launcher 不把绝对用户路径编译进包。
+- Local Service 以当前登录用户身份访问 OS Credential Store；浏览器、launcher URL、SQLite、日志与普通文件不接触明文 secret。
+- 应用二进制、用户数据与 Keychain item 分离。替换或移除 `.app` 不修改数据目录、备份或凭据。
+- 用户主动清理数据必须由后续明确授权的 runbook/use case 执行，不属于默认卸载。
+
+### 5.4 升级与卸载
+
+- v1 使用手动升级：下载相同架构的新 DMG，停止旧 launcher，替换 `.app`，再启动并由产品 migration 处理数据版本。
+- 架构选择错误必须在下载页和启动诊断中明确；不能静默用 Rosetta 代替 arm64 原生包。
+- 卸载默认只移除 `.app`。数据目录、备份和 Credential Store 保留，防止未经确认的数据删除。
+- S7 必须用两个真实版本验证替换升级、失败回滚和数据保留；本 S0 PoC 只证明包装边界与进程生命周期。
+
+### 5.5 签名与公证路径
+
+每个架构独立执行：
+
+1. 用 `Developer ID Application` 对 bundled Node 和 launcher bundle 逐层签名，启用 Hardened Runtime、安全时间戳，禁止 `get-task-allow`。
+2. 执行 `codesign --verify --deep --strict`，复核 entitlements、架构和 deployment target。
+3. 创建并签名 DMG；推荐方案不使用 `.pkg`，因此不需要 Developer ID Installer identity。
+4. 使用 `notarytool submit --wait` 提交最终 DMG，检查 accepted 结果和脱敏日志。
+5. 对 DMG 执行 `stapler staple/validate`，并在带 quarantine 的独立干净环境执行 Gatekeeper `spctl` 与首次启动。
+
+签名私钥和公证凭据只能进入受控 Keychain 或 CI Secrets，不得进入仓库、命令回显、PR、日志或产物。
+
+### 5.6 接受门禁
+
+本 ADR 只有同时满足以下条件才能更新为“已接受”：
+
+- arm64/x64 DMG 均取得 Developer ID 签名、安全时间戳和 strict codesign 通过证据。
+- Apple notary service 返回 accepted，ticket 可 staple/validate，Gatekeeper 接受最终产物。
+- 在独立 macOS 13.5+ 干净用户或 VM 完成启动、停止、手动替换升级、移除应用和残留检查。
+- S0-05 的 blocker 被解除，权威架构、工程规则、README、context、路线图和任务状态同步更新。
+
+## 6. 后果
+
+### 正向后果
+
+- 保持 Browser Audio Engine 与既有 PWA 为产品事实源，不再引入 Electron renderer 分支。
+- arm64 PoC DMG 约 43.9 MB，Electron arm64 PoC DMG 约 174.8 MB，下载与维护面明显缩小。
+- launcher 明确拥有子服务生命周期，默认无后台常驻、登录项或系统级 daemon。
+- per-architecture 包与 Node 官方分发一致，避免把两份 runtime 塞入 universal 包。
+
+### 负向后果与权衡
+
+- 启动会打开默认浏览器，不是单窗口桌面壳；用户直接打开 PWA 时仍可能看到 Local Service 离线状态。
+- 需要维护一个很小但真实的 native launcher 与 arm64/x64 构建矩阵。
+- 手动下载时用户可能选错架构；发布页和诊断必须可操作。
+- 当前没有真实签名、公证与独立干净用户证据，推荐方案尚不能进入 S1/S7 的最终实现合同。
+
+### 保持不变
+
+- Production 同源、loopback、端口 fallback、session bootstrap 与 Origin 规则不变。
+- Browser Audio Engine、Backend、DeviceSettings、ProfilePreferences、Secret Store 和数据迁移 owner 不变。
+- v1 仍不包含 Windows、Mac App Store、自动更新、云身份、远程访问或默认登录启动。
+
+## 7. 实施与验证
+
+| 项目 | 结果或计划 | 证据 |
+|---|---|---|
+| 隔离 PoC | Electron arm64、launcher arm64/x64 均生成 DMG；临时源和二进制未进入仓库 | [证据记录](evidence/0003-macos-packaging-poc.md) |
+| 生命周期 | 只读 DMG 启动、Node 版本、Keychain、同源 health/session、停止和端口释放通过 | [证据记录](evidence/0003-macos-packaging-poc.md) |
+| 包装结构 | `pnpm deploy`、精简 Node runtime、arm64/x64 与 macOS 13.5 下限已验证 | [证据记录](evidence/0003-macos-packaging-poc.md) |
+| 签名公证 | ad-hoc strict codesign 通过；Developer ID、notary ticket、Gatekeeper 与独立干净用户未通过 | S0-05 blocker |
+| 回滚或替代 | 正式签名/公证若证明该方案不可行，保持 ADR 为提议并重新比较 Electron 或其他原生 launcher | 新证据 + 新/更新 ADR |
+
+## 8. 权威文档同步
+
+| 文档 | 是否需要修改 | 原因或结果 |
+|---|---|---|
+| `docs/prd.md` | 否 | 产品行为未变化 |
+| `docs/user-flow.md` | 否 | 用户流程未变化；launcher 最终 UI 尚未接受 |
+| `architecture.md` | 否 | ADR 仍为提议，不能改写目标架构合同 |
+| `design/design.md` | 否 | 没有产品视觉变更 |
+| `AI_RULES.md` | 否 | ADR 仍为提议，不能新增已接受硬约束 |
+| `README.md` | 是 | 记录 PoC 推荐与阻塞事实，继续明确未实现 |
+| `context.md` | 否 | 稳定认知只收录已接受决策，不记录动态 blocker |
+| 项目管理文档 | 是 | 记录 S0-05 blocker、证据和恢复条件 |
+
+## 9. 后续任务
+
+- S0-05：取得 Developer ID/notary 环境和独立干净用户后恢复验证；通过后接受本 ADR 并同步权威文档。
+- S1-01/S1-03：只在 S0 阶段门关闭后实现 production deploy、static serving 与 launcher 消费边界。
+- S2-03：按接受后的包装边界实现 OS Credential Store adapter，并在 headless/错误环境验证。
+- S7-01～S7-03：实现正式 launcher、双架构构建、手动升级/回滚、签名、公证和发布流水线。
