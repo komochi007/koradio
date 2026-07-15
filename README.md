@@ -2,7 +2,7 @@
 
 > Status: **Documentation-first · Product not yet implemented · Product not currently runnable**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库没有产品源码、依赖清单、启动脚本或已确认端口；零构建设计预览不等于产品运行入口
+> Runtime: 当前仓库没有产品源码、依赖清单、启动脚本或已实装端口；零构建设计预览不等于产品运行入口
 
 ## 1. 项目入口
 
@@ -44,6 +44,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 视觉差异裁决、自动 QA、Figma 派生镜像与开发交接映射已建立
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；尚未实装
+- [x] 运行拓扑、端口、Origin allowlist 与本地会话已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 冻结；尚未实装
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
@@ -54,7 +55,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ### Agent safety note
 
-当前所有产品代码目录、可执行命令、端口和运行行为均不能从仓库验证。工具链的目标版本和命令合同已经写入 ADR 0001，但不代表依赖或配置已经存在。
+当前所有产品代码目录、可执行命令、端口和运行行为均不能从仓库验证。工具链的目标版本和命令合同已经写入 ADR 0001，运行拓扑、端口与本地会话已经写入 ADR 0002，但不代表依赖、配置、端口监听或服务已经存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -63,7 +64,7 @@ AI Agent **不得**：
 - 把目标目录树描述成现有代码。
 - 把目标技术栈描述成已安装依赖。
 - 把 ADR 选定的包管理器、Node.js 版本或脚本名描述成已经安装或可运行的事实。
-- 猜测尚未由 S0-04 决定的端口、进程关系或 session bootstrap。
+- 把 ADR 0002 选定的端口、进程关系或 session bootstrap 描述为已经实装或可运行。
 - 声称应用、测试、构建或数据库可以运行。
 - 从参考图推断尚未写入权威文档的业务规则。
 
@@ -178,6 +179,9 @@ Fastify Local Service
 | Audio | Browser `HTMLAudio` | Planned |
 | Backend | Node.js + Fastify modular monolith | Planned |
 | API | REST `/api/v1` + WebSocket events | Planned |
+| Development topology | Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` | Selected · not implemented |
+| Production topology | Same-origin PWA / REST / WebSocket on loopback, preferred port `49373` with bounded fallback `49373-49383` | Selected · not implemented |
+| Local session | `POST /api/v1/session/bootstrap`, memory-only token, exact Origin allowlist, WebSocket first-message auth | Selected · not implemented |
 | Runtime validation | Zod | Planned |
 | Database | SQLite | Planned |
 | ORM / migrations | Drizzle | Planned |
@@ -191,9 +195,15 @@ Fastify Local Service
 | Lint / format | ESLint 10.7.0 + typescript-eslint 8.64.0 + Prettier 3.9.5 | Selected · not installed |
 | CI | GitHub Actions | Selected · not configured |
 
-尚未决定：
+已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 决定但尚未实装：
 
 - Development / production 拓扑、端口、进程关系、session bootstrap 与 Origin allowlist。
+- Development 使用 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373`。
+- Production 使用同源 Local Service，首选 `49373`，仅允许 `49373-49383` 有界 fallback。
+- Token 通过 `POST /api/v1/session/bootstrap` 的 `no-store` JSON 响应进入浏览器内存；WebSocket 不使用 URL token。
+
+尚未决定：
+
 - macOS 包装形态、产品最低 macOS 版本和目标 CPU 架构。
 - Provider、数据库和其他业务依赖的具体包与精确版本。
 
@@ -214,7 +224,8 @@ Koradio/
 │   │   ├── README.md
 │   │   ├── template.md
 │   │   ├── 0000-development-baseline.md
-│   │   └── 0001-toolchain-and-quality.md
+│   │   ├── 0001-toolchain-and-quality.md
+│   │   └── 0002-runtime-topology.md
 │   ├── prd.md
 │   ├── user-flow.md
 │   └── project-management/
@@ -331,7 +342,7 @@ packages/
 - 没有数据库 schema 或 migration。
 - 没有运行脚本。
 - 没有测试配置。
-- 没有已确认的端口。
+- 没有已实装并验证的端口监听。
 
 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 已固定未来根 script 名和 CI 安装合同，但本 README 在 S1 实装并验证前不提供可复制的运行命令，防止将计划误判为仓库事实。
 
@@ -346,7 +357,7 @@ packages/
 - [ ] Unit、integration、component 与 E2E 测试命令。
 - [ ] SQLite migration 与数据备份命令。
 - [ ] 必需环境变量和 Secret Store 初始化方式。
-- [ ] 默认绑定地址与端口。
+- [ ] ADR 0002 选定的默认绑定地址、端口、Origin allowlist 与 session bootstrap。
 - [ ] Provider mock / offline development 模式。
 - [ ] 健康检查与故障诊断入口。
 
@@ -405,7 +416,7 @@ packages/
 - 建立测试入口和 CI 可执行命令。
 - 更新本 README 的开发启动章节。
 
-实际脚手架必须实现 ADR 0001，并等待 S0-04 关闭运行拓扑与端口后，再与 `architecture.md` 和 `AI_RULES.md` 一起落地。
+实际脚手架必须实现 ADR 0001 和 ADR 0002，并与 `architecture.md` 和 `AI_RULES.md` 一起落地。
 
 ## 10. 文档维护 Checklist
 
