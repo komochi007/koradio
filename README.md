@@ -43,17 +43,18 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] VDA-17 视觉基线已冻结：HTML / CSS / JavaScript 视觉主源、15 页 35 个固定状态、Dark / Light、五类响应式布局与 60 张正式截图基线均已建立
 - [x] 视觉差异裁决、自动 QA、Figma 派生镜像与开发交接映射已建立
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
+- [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；尚未实装
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
 - [ ] SQLite schema 与 migrations 尚未实现
 - [ ] Provider adapters 尚未实现
 - [ ] 自动化测试尚未建立
-- [ ] 安装、开发、测试和构建命令尚未确定
+- [ ] 已选定的安装、开发、测试和构建命令尚未创建或验证
 
 ### Agent safety note
 
-当前所有代码目录、命令、端口、版本和运行行为均不能从仓库验证。
+当前所有产品代码目录、可执行命令、端口和运行行为均不能从仓库验证。工具链的目标版本和命令合同已经写入 ADR 0001，但不代表依赖或配置已经存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -61,7 +62,8 @@ AI Agent **不得**：
 
 - 把目标目录树描述成现有代码。
 - 把目标技术栈描述成已安装依赖。
-- 猜测包管理器、Node.js 版本、端口或脚本名。
+- 把 ADR 选定的包管理器、Node.js 版本或脚本名描述成已经安装或可运行的事实。
+- 猜测尚未由 S0-04 决定的端口、进程关系或 session bootstrap。
 - 声称应用、测试、构建或数据库可以运行。
 - 从参考图推断尚未写入权威文档的业务规则。
 
@@ -160,13 +162,16 @@ Fastify Local Service
 
 ## 5. 目标技术栈
 
-> 下表来自目标架构。`Status` 全部为 **Planned**，不代表依赖已经安装。
+> 产品技术来自目标架构；工具链精确版本来自 [ADR 0001](docs/adr/0001-toolchain-and-quality.md)。`Selected` 只表示决策已完成，不代表依赖已经安装。
 
 | Area | Planned technology | Status |
 |---|---|---|
-| Language | TypeScript | Planned |
-| Repository | TypeScript monorepo | Planned |
+| Runtime | Node.js 24.18.0 LTS | Selected · not installed |
+| Package management | Corepack 0.35.0 + pnpm 11.13.0 | Selected · not installed |
+| Language | TypeScript 6.0.3 | Selected · not installed |
+| Repository | pnpm native TypeScript workspace | Selected · not created |
 | Frontend | React + Vite | Planned |
+| Frontend build | Vite 8.1.4 | Selected · not installed |
 | App delivery | Web / PWA | Planned |
 | Server state | TanStack Query | Planned |
 | Cross-component UI state | Zustand | Planned |
@@ -180,15 +185,17 @@ Fastify Local Service
 | AI orchestration | Local Codex process | Planned |
 | Music provider | NetEase-compatible API | Planned |
 | Voice provider | Fish Audio-compatible TTS | Planned |
+| Unit / integration test | Vitest 4.1.10 + V8 coverage | Selected · not installed |
+| Component test | React Testing Library 16.3.2 + jsdom 29.1.1 | Selected · not installed |
+| Browser / visual / a11y test | Playwright 1.61.1 + axe-core | Selected · not installed |
+| Lint / format | ESLint 10.7.0 + typescript-eslint 8.64.0 + Prettier 3.9.5 | Selected · not installed |
+| CI | GitHub Actions | Selected · not configured |
 
 尚未决定：
 
-- Package manager。
-- Node.js 和依赖版本。
-- Workspace 工具。
-- Development / production 端口。
-- Test runner 与浏览器测试工具。
-- Lint、format、typecheck 的具体工具和脚本名。
+- Development / production 拓扑、端口、进程关系、session bootstrap 与 Origin allowlist。
+- macOS 包装形态、产品最低 macOS 版本和目标 CPU 架构。
+- Provider、数据库和其他业务依赖的具体包与精确版本。
 
 ## 6. 目录结构
 
@@ -203,6 +210,11 @@ Koradio/
 ├── architecture.md
 ├── design-qa.md
 ├── docs/
+│   ├── adr/
+│   │   ├── README.md
+│   │   ├── template.md
+│   │   ├── 0000-development-baseline.md
+│   │   └── 0001-toolchain-and-quality.md
 │   ├── prd.md
 │   ├── user-flow.md
 │   └── project-management/
@@ -321,12 +333,12 @@ packages/
 - 没有测试配置。
 - 没有已确认的端口。
 
-本 README 不提供候选命令，防止 AI Agent 将计划误判为仓库事实。
+[ADR 0001](docs/adr/0001-toolchain-and-quality.md) 已固定未来根 script 名和 CI 安装合同，但本 README 在 S1 实装并验证前不提供可复制的运行命令，防止将计划误判为仓库事实。
 
 ### 脚手架落地后必须补齐
 
-- [ ] Required Node.js 版本。
-- [ ] Package manager 与锁文件。
+- [ ] 实装并验证 ADR 0001 选定的 Node.js 版本。
+- [ ] 实装并验证 Corepack、pnpm 与单一锁文件。
 - [ ] 一次性安装命令。
 - [ ] Frontend 与 Local Service 开发命令。
 - [ ] 同源生产构建与启动命令。
@@ -363,6 +375,7 @@ packages/
 | 前端视觉实现与冻结版本追溯 | [design/assets/reports/handoff-map.md](design/assets/reports/handoff-map.md) |
 | 项目进度、任务依赖与发布门 | [docs/project-management/README.md](docs/project-management/README.md) + [任务登记表](docs/project-management/tasks.md) |
 | 工程实现或代码审查 | [AI_RULES.md](AI_RULES.md) |
+| 工具链、构建、测试、命令或 CI | [docs/adr/0001-toolchain-and-quality.md](docs/adr/0001-toolchain-and-quality.md) + [AI_RULES.md](AI_RULES.md) |
 | Agent 执行与协作 | [AGENTS.md](AGENTS.md) |
 | 快速恢复项目认知 | [context.md](context.md) |
 
@@ -392,7 +405,7 @@ packages/
 - 建立测试入口和 CI 可执行命令。
 - 更新本 README 的开发启动章节。
 
-任何实际脚手架方案都必须先解决当前“尚未决定”项，并与 `architecture.md` 和 `AI_RULES.md` 对齐。
+实际脚手架必须实现 ADR 0001，并等待 S0-04 关闭运行拓扑与端口后，再与 `architecture.md` 和 `AI_RULES.md` 一起落地。
 
 ## 10. 文档维护 Checklist
 
