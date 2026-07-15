@@ -46,7 +46,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；尚未实装
 - [x] 运行拓扑、端口、Origin allowlist 与本地会话已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 冻结；尚未实装
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 已接受 native launcher + 外部浏览器 PWA，当前仅限受控本机个人使用，尚未实装
-- [ ] [ADR 0004](docs/adr/0004-provider-feasibility.md) 仍为提议；Browser Audio Engine 已确认保留，Apple 系统 TTS 与网易云官方查询链路已完成探针；仍需取得网易云官方 Browser 播放资源能力与授权，无法取得时替换音乐 Provider
+- [ ] [ADR 0004](docs/adr/0004-provider-feasibility.md) 仍为提议；Browser Audio Engine、Apple 系统 TTS、网易云官方查询链路与播放 URL 契约已确认；仍需验证当前 App 权限及真实 URL 的 CORS/Range、过期和不可播行为
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
@@ -214,7 +214,7 @@ Fastify Local Service
 
 尚未决定：
 
-- 网易云官方接入的最终配置字段、播放资源边界，以及数据库和其他业务依赖的具体包与精确版本；Apple 系统 TTS 的 v1 接入形态已经由项目所有者明确。
+- 网易云官方接入的最终 App/设备配置字段、真实播放 URL 的 Browser 资源边界，以及数据库和其他业务依赖的具体包与精确版本；Apple 系统 TTS 的 v1 接入形态已经由项目所有者明确。
 
 ## 6. 目录结构
 
