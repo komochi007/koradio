@@ -46,7 +46,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；尚未实装
 - [x] 运行拓扑、端口、Origin allowlist 与本地会话已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 冻结；尚未实装
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 已接受 native launcher + 外部浏览器 PWA，当前仅限受控本机个人使用，尚未实装
-- [ ] [ADR 0004](docs/adr/0004-provider-feasibility.md) 仍为提议；Apple 系统 TTS 与网易云官方搜索/歌词/歌单链路已完成本机探针，但 CLI 未返回 Browser Audio Engine 所需播放资源，等待播放 owner 裁决
+- [ ] [ADR 0004](docs/adr/0004-provider-feasibility.md) 仍为提议；Browser Audio Engine 已确认保留，Apple 系统 TTS 与网易云官方查询链路已完成探针；仍需取得网易云官方 Browser 播放资源能力与授权，无法取得时替换音乐 Provider
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
