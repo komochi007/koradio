@@ -78,6 +78,7 @@
 - **MUST** 让 Profile-owned route 显式携带 `profileId`。
 - **MUST** 使用 `/api/v1/device-settings` 管理设备配置，使用 `/api/v1/profiles/:profileId/preferences` 管理 Profile 偏好。
 - **MUST** 让数据目录迁移使用 `/api/v1/device-settings/data-root-migrations` 幂等异步命令并返回 `jobId`。
+- **MUST** 使用 `POST /api/v1/session/bootstrap` 承载本地 session token bootstrap，并返回 `Cache-Control: no-store` 的 JSON 响应。
 - **MUST** 让 Event envelope 包含 `eventId`、`eventType`、`version`、可选 `profileId`、`correlationId`、`sequence`、`occurredAt` 与 `payload`。
 - **MUST** 使用 `sequence` 去重并丢弃乱序事件，使用 `correlationId` 隔离任务。
 - **MUST** 让创建类命令接受 `Idempotency-Key`，重复请求返回原结果或当前 job。
@@ -114,8 +115,10 @@
 > [RULE-SECURITY]
 
 - **MUST** 默认只绑定 `127.0.0.1` 或 `::1`。
+- **MUST** 按 ADR 0002 使用 Development Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373`，Production 同源 Local Service 首选 `49373` 并仅允许 `49373-49383` 有界 fallback。
 - **MUST** 对 REST 与 WebSocket 使用相同的 session 与 Origin 校验。
 - **MUST** 在每次服务启动时生成短期 session token，并只保存在内存。
+- **MUST** 让 WebSocket 先校验 Origin，再通过首条 `session.authenticate` 消息认证；认证前不得发送领域事件。
 - **MUST** 使用 OS Credential Store 保存 API key 与其他秘密。
 - **MUST** 对日志、错误、诊断和 API 响应执行秘密与敏感正文脱敏。
 - **MUST** 在 Codex 输出校验失败时只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
@@ -123,6 +126,7 @@
 - **MUST** 让 File Store 拒绝路径越界、未允许扩展名、超限大小、非法 MIME 和不安全重定向。
 - **MUST** 通过参数数组启动 Codex，并验证可执行路径。
 - **MUST NOT** 将 token 或 key 写入 URL、日志、SQLite、LocalStorage、历史或错误报告。
+- **MUST NOT** 将 token 嵌入 HTML、query、fragment、redirect、cookie、SessionStorage、IndexedDB 或 WebSocket URL。
 - **MUST NOT** 保存、记录或回显无效 Codex 输出的原始正文。
 - **MUST NOT** 拼接 shell command 启动 Provider 或本地进程。
 - **MUST NOT** 默认监听局域网或公网。

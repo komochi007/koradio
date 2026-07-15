@@ -50,7 +50,7 @@ flowchart LR
     Secrets["OS Credential Store"] --> TTS
 ```
 
-- Production 同源托管 PWA、REST、WebSocket 并绑定 loopback；Development 允许 Vite 独立运行并使用 Origin allowlist。
+- Production 同源托管 PWA、REST、WebSocket 并绑定 loopback；Development 使用 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` 双进程拓扑，并使用精确 Origin allowlist。
 - Profile-owned 请求显式携带 `profileId`；MVP 只有一个 active playback session。标签页通过 `BroadcastChannel + localStorage TTL lease` 选出唯一主控，不能同时成为播放事实源。
 ## 3. Frontend Architecture
 
@@ -237,21 +237,27 @@ sequenceDiagram
     participant B as Browser PWA
     participant A as API / WebSocket
     participant P as Profile Module
-    S->>S: Bind loopback and generate short-lived token
-    S->>B: Serve same-origin app with bootstrap token
-    B->>B: Consume token into memory, remove bootstrap value
+    S->>S: Bind loopback, select port and generate session secret
+    S->>B: Serve same-origin app shell
+    B->>S: POST /api/v1/session/bootstrap
+    S-->>B: Return token in no-store JSON body
+    B->>B: Keep token in JS memory only
     B->>A: Bearer token + allowed Origin
     A->>A: Validate token, expiry and Origin
     B->>P: Select explicit profileId
     P-->>B: Profile-scoped context
     Note over B,P: Profile selection is not login
-    B->>A: Open WebSocket with same session
+    B->>A: Open WebSocket without URL token
+    B->>A: First message session.authenticate
     A-->>B: Authorized event stream
 ```
 
 - 服务只监听 `127.0.0.1` / `::1`，禁止默认监听局域网或公网。
+- Development 默认端口为 Vite `5173` 与 Local Service `49373`；Production 首选 `49373`，可在 `49373-49383` 有界范围内 fallback，并只允许所选 origin。
 - Token 每次启动生成、短期有效，只驻留内存，不得写入 URL、日志、SQLite、LocalStorage、历史或错误报告。
+- Token 只通过 `POST /api/v1/session/bootstrap` 的 `no-store` JSON 响应返回；不得嵌入 HTML、query、fragment、redirect 或 cookie。
 - REST 与 WebSocket 使用相同校验；Origin 不匹配时拒绝连接。
+- 浏览器 WebSocket 不使用 URL token；握手校验 Origin，首条消息必须完成 session authentication，认证前不得发送领域事件。
 - Profile-owned 路由始终显式携带 `profileId`，不得由 token 隐式绑定。
 - 本地恶意进程不在 MVP 威胁模型内；远程访问必须替换认证边界。
 ## 10. Database Design Overview
@@ -439,6 +445,7 @@ packages/
 | TD-12 | Single active playback + TTL lease | 避免双主状态 | 主控每 2 秒续约，5 秒过期；其他标签只读或申请接管 |
 | TD-13 | DeviceSettings / ProfilePreferences split | 配置 owner 与 Profile 隔离一致 | 路由、表与迁移任务分属明确 owner |
 | TD-14 | Discriminated playback timeline | 不把文字降级伪装成音频 | 只有带 audio ref 的 DJ 段进入时间线 |
+| TD-15 | Development dual process, production same origin | 保留 Vite HMR，同时让生产安全边界保持单一 loopback origin | 需要精确 Origin allowlist、端口冲突处理和 WebSocket 首消息认证 |
 ## 19. Known Tradeoffs
 
 - 模块化单体易部署，但 process crash 会同时影响全部 backend 能力。
