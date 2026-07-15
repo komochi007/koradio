@@ -52,6 +52,15 @@ flowchart LR
 
 - Production 同源托管 PWA、REST、WebSocket 并绑定 loopback；Development 使用 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` 双进程拓扑，并使用精确 Origin allowlist。
 - Profile-owned 请求显式携带 `profileId`；MVP 只有一个 active playback session。标签页通过 `BroadcastChannel + localStorage TTL lease` 选出唯一主控，不能同时成为播放事实源。
+
+### Packaging and delivery
+
+- macOS 包装采用原生轻量 launcher + bundled Node Local Service + 外部浏览器 PWA；launcher 只负责进程生命周期、health ready 和打开同源 origin，不成为播放或业务事实源。
+- 每个 CPU 架构使用独立 app/DMG，捆绑对应架构的 Node 24.18.0 精简 runtime、production Server 文件树和 built PWA assets；最低目标系统为 macOS 13.5。
+- 当前交付渠道仅限项目所有者在受控本机从可信源码构建并个人使用。ad-hoc 签名只用于本地 bundle 结构和生命周期验证，不得作为公开下载或外部分发凭据。
+- 公开下载属于后续发布阶段；任何外部分发产物都必须先取得 Developer ID 签名、公证 ticket、Gatekeeper 与独立干净环境验收，不得通过关闭系统安全检查替代。
+- 应用二进制、用户数据与 Credential Store 分离；替换或移除 app 不自动删除数据、备份或凭据。
+
 ## 3. Frontend Architecture
 
 Frontend 按 feature 组织；Page 负责组合，不拥有领域规则或 Provider 细节。
