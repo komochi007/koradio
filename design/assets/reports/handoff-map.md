@@ -1,8 +1,8 @@
 # Koradio 视觉冻结与开发交接映射
 
-> 任务：VDA-16｜视觉冻结与开发交接
+> 任务：VDA-17｜用户视觉反馈校准与重新冻结（延续 VDA-16 开发交接）
 >
-> 冻结标识：`Koradio Visual Freeze · MVP · VDA-16 · 2026-07-14`
+> 冻结标识：`Koradio Visual Freeze · MVP · VDA-17 · 2026-07-15`
 >
 > 状态：整体视觉冻结门已通过；本文件是前端实现的视觉追溯入口，不代表产品源码已经存在
 
@@ -12,9 +12,9 @@
 
 | 资产 | 冻结版本 / 位置 | 权威性 |
 |---|---|---|
-| HTML / CSS / JavaScript 主源 | Git `325b604c5749594ebc89dd32526d52fd205a6936`；`design/assets/prototype/`、`design/assets/fixtures/`、`design/assets/icons/` | 唯一视觉主源 |
-| 正式截图基线 | Git `5ffa59749d392faafd0d2a296e2579e56086f44c`；`design/assets/baselines/manifest.json` | 派生视觉回归参考 |
-| Figma 镜像 | [Koradio · Visual Baseline · MVP](https://www.figma.com/design/ZxAWTQW5aH3VMd9H3T8zcJ)；来源 HTML 版本 `325b604` | 派生协作镜像 |
+| HTML / CSS / JavaScript 主源 | Git `6e97fb74826cdd48e5f75fe57646ac55340aab3c`；`design/assets/prototype/`、`design/assets/fixtures/`、`design/assets/icons/` | 唯一视觉主源 |
+| 正式截图基线 | Git `6e97fb74826cdd48e5f75fe57646ac55340aab3c`；`design/assets/baselines/manifest.json` | 派生视觉回归参考 |
+| Figma 镜像 | [Koradio · Visual Baseline · MVP](https://www.figma.com/design/ZxAWTQW5aH3VMd9H3T8zcJ)；60 个页面 Frame 来源版本 `6e97fb7` | 派生协作镜像 |
 | 产品行为 | `docs/prd.md` | 产品事实源 |
 | 用户路径 | `docs/user-flow.md` | 流程事实源 |
 | UI 规则 | `design/design.md` | 明确视觉规则事实源 |
@@ -58,8 +58,8 @@
 | `C-STATUS` | `.kr-status`、`.kr-status__dot`、tone modifier | Success / Warning / Error / Info / Offline 的文字与状态点双重表达 |
 | `C-MEDIA` | `.kr-square-media`、`.kr-circle-media`、`.kr-avatar`、`.kr-cover` 及页面媒体类 | 固定比例头像、封面和圆形控件，不随父级拉伸 |
 | `C-QUEUE` | `.kr-queue`、`.kr-queue__item`、`.radio-queue` | 编辑式队列、当前项、骨架、空状态 |
-| `C-RADIO` | `.prototype-page--radio`、`.radio-scroll`、`.radio-player`、`.radio-dj-status`、`.radio-dialogue`、`.radio-scene-input` | 04–06 的共享骨架、播放器、DJ 与场景输入 |
-| `C-DETAIL` | `.prototype-page--detail`、`.detail-waveform`、`.detail-paper`、`.detail-copy`、`.detail-program-progress` | 07–08 的全屏覆盖、声场、节目面、文本跟随和唯一播放控制 |
+| `C-RADIO` | `.prototype-page--radio`、`.radio-scroll`、`.radio-player`、`.radio-dj-status`、`.radio-dialogue`、`.radio-scene-input` | 04–06 的共享骨架、`HONOR Sans Heavy` 时间、340px 主内容、288px DJ 对话与场景输入 |
+| `C-DETAIL` | `.prototype-page--detail`、`.detail-waveform`、`.detail-paper`、`.detail-copy`、`.detail-program-progress` | 07–08 的全屏覆盖、白灰平滑传播声波、节目面、文本跟随、非规则节目进度和唯一播放控制 |
 | `C-STATE` | `.library-state`、`.taste-state`、`.programs-state`、内联 warning / error、`.settings-diagnostic-card` | 空、加载、错误、降级与恢复入口 |
 | `C-MOTION-A11Y` | `app.js` 的导航、Detail、播放状态与 live-region 行为；Focus / Reduce Motion CSS | 页面切换、Modal 焦点循环、状态播报、200% zoom 与 Reduce Motion |
 
@@ -71,7 +71,7 @@
 |---|---|---|
 | `T-COLOR` | `--kr-color-primary` 至 `--kr-color-info`、`--kr-color-ambient`、`--kr-color-radio-ambient`、`--kr-color-surface-sheen` | Dark / Light 表面、文字、边框、状态与环境层 |
 | `T-DETAIL-COLOR` | `--kr-color-detail-*` | Detail 固定深色声场、白色节目面、浅灰内容卡与三层文本 |
-| `T-TYPE` | `--kr-font-*`、`--kr-type-*` | 系统字体、等宽状态、Display / H1–H3 / Body / Caption / Label |
+| `T-TYPE` | `--kr-font-*`、`--kr-type-*` | 系统字体、`HONOR Sans` Radio 时间、等宽状态、Display / H1–H3 / Body / Caption / Label |
 | `T-SPACE-RADIUS` | `--kr-space-*`、`--kr-radius-*` | 4px 网格、共享间距与圆角 |
 | `T-CONTROL` | `--kr-control-*`、`--kr-input-height`、`--kr-textarea-height`、`--kr-icon-button-size`、`--kr-play-*` | 按钮、输入、文本区与播放器控件 |
 | `T-MEDIA` | `--kr-avatar-*`、`--kr-cover-*`、`--kr-status-dot-*` | 头像、封面和状态点固定比例 |
@@ -163,7 +163,7 @@
 ### 8.2 Tokens 与共享组件
 
 - [ ] 颜色、排版、间距、圆角、内容列、控件、媒体、导航和动效均映射到共享 token。
-- [ ] 主按钮保持黑白高对比；绿色只用于在线、播放、成功、Focus 或少量波形。
+- [ ] 主按钮保持黑白高对比；绿色只用于在线、播放、成功、Focus 或细线，Detail 顶部声波只使用白色与浅灰色。
 - [ ] Logo、字标、顶部工具、底部导航、按钮、输入、卡片、状态、媒体与队列只有一套共享规格。
 - [ ] 头像、封面、状态点、圆形按钮使用固定比例容器，不受文字或 Flex 拉伸。
 - [ ] 页面没有为通过截图回归而新增私有色值、私有 rail 或平行组件尺寸。
@@ -171,7 +171,9 @@
 ### 8.3 页面与状态
 
 - [ ] Radio 04–06 共用同一骨架，固定边缘与 slot 在状态切换时零位移。
+- [ ] Radio 大号时间使用 `HONOR Sans Heavy`；原型为 `80px / 80px / 900`，移动端为 `56px / 56px / 900`；主内容与 DJ 对话 slot 分别为 `340px` 与 `288px`。
 - [ ] Detail 07–08 共用全屏骨架，只替换状态、歌曲进度与主内容；底层 Radio 与主导航不可见。
+- [ ] Detail 顶部 64 柱波形使用白灰平滑包络和传播式动效，暂停 / Reduce Motion 停止；07 串讲词顶部对齐并保持 `24px` 组间距，节目进度不出现规则周期重复。
 - [ ] Detail 只有一个播放 / 暂停入口，不显示封面、切歌、喜欢、更多或传统控制台。
 - [ ] DJ 内容使用节目正文，只有用户输入使用右对齐弱气泡。
 - [ ] Management 与 Settings 保持单列，不出现后台侧栏或内容网格化重构。
@@ -229,6 +231,6 @@
 
 - 依赖：VDA-14 与 VDA-15 已满足。
 - 映射：15 页、35 个固定状态、12 个组件组、13 个 token 组、fixture / renderer 与 60 张正式基线已建立追溯关系。
-- 差异：A-001–A-012、B-001–B-004 均已关闭；VDA-16 未新增 A / B 级差异，C-015 记录交接映射与非默认变体基线边界。
+- 差异：A-001–A-012、B-001–B-004 均已关闭；VDA-17 未新增 A / B 级未决差异，C-015 记录交接映射与非默认变体基线边界，C-016 记录用户确认的 Radio / Detail 冻结后视觉校准。
 - 门禁：整体视觉冻结门通过。
 - 后续：任何视觉变化按第 9 节流程执行；前端开发按第 8 节验收。

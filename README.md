@@ -63,6 +63,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 已从 HTML 视觉主源生成 15 张 Dark、15 张 Light 与 30 张响应式正式基线，并通过文字、裁切、几何、对比度、恢复入口、文件完整性和复渲染自动验收（VDA-14 已完成）
 - [x] 已从已验收 HTML / VDA-14 基线建立 `Koradio · Visual Baseline · MVP` Figma 派生镜像，包含来源版本、变量、样式、共享组件、60 张页面 Frame 与转换限制（VDA-15 已完成）
 - [x] 已建立 15 页、35 个固定状态、共享组件、Tokens、fixture、renderer 与 60 张正式基线的开发交接映射，并通过整体视觉冻结门（VDA-16 已完成）
+- [x] 已按用户验收完成 Radio 时间与纵向骨架、Detail 串讲密度、白灰平滑波形与传播动效校准，重建 60 张正式基线、同步全部 Figma 页面 Frame，并以 VDA-17 重新冻结
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
