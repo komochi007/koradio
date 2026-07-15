@@ -10,13 +10,14 @@
 ## 1. System Overview
 
 Koradio 是运行在单台设备上的私人 AI 音乐电台，由浏览器 PWA 与本地 Node.js 服务组成。
-系统读取当前档案的品味与历史，通过 Codex 规划节目，经网易云解析歌曲，并可通过 Fish Audio 兼容服务生成 DJ 语音。
+系统读取当前档案的品味与历史，通过 Codex 规划节目，经网易云解析歌曲，并可通过 bundled macOS native helper 调用 `AVSpeechSynthesizer` 生成 DJ 语音。
 ### System boundaries
 
 - **Client**：界面、HTMLAudio、实时播放进度和短生命周期交互状态。
 - **Local Service**：业务规则、任务编排、持久化、外部服务访问和事件发布。
 - **Device**：SQLite、音频缓存、头像与日志只保存在本机。
-- **External**：Codex、网易云和 TTS 均为不可信、可失败依赖，只允许 Backend Adapter 访问。
+- **External**：Codex 与网易云均为不可信、可失败依赖，只允许 Backend Adapter 访问。
+- **Native TTS**：Apple 系统 TTS 是本机 OS 能力，但 native helper、已安装语音与音频输出仍视为可失败 I/O；Local Service 只能通过 TTS Port 调用。
 - **Profile**：档案用于数据分区和上下文选择，不是身份认证或安全边界。
 | Concern | Authoritative owner | Persistence |
 |---|---|---|
@@ -24,7 +25,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台，由浏览器 PWA 
 | 媒体时间、暂停、seek、媒体错误 | Browser Audio Engine | Checkpoint only |
 | 生成任务、服务健康状态 | Backend runtime | Snapshot |
 | Sheet、draft、筛选等 UI 状态 | Frontend feature | None |
-| dataRoot、Codex、NetEase、可选 TTS、Secret Store 引用 | Backend DeviceSettings | Device durable |
+| dataRoot、Codex、NetEase、Secret Store 引用 | Backend DeviceSettings | Device durable |
 | Theme、DJ language、voice style | Backend ProfilePreferences | Profile durable |
 
 MVP 不包含云账号、跨设备同步、支付、社区、多人同步收听、分布式微服务或真实频谱分析。
@@ -46,8 +47,10 @@ flowchart LR
     Modules --> TTS["TTSProvider Adapter"]
     Codex --> CodexExt["Local Codex Process"]
     Music --> MusicExt["NetEase API"]
-    TTS --> TTSExt["Fish Audio Compatible API"]
-    Secrets["OS Credential Store"] --> TTS
+    TTS --> TTSHelper["Bundled macOS TTS Helper"]
+    TTSHelper --> AppleTTS["AVSpeechSynthesizer<br/>Installed Standard Voices"]
+    Secrets["OS Credential Store"] --> Codex
+    Secrets --> Music
 ```
 
 - Production 同源托管 PWA、REST、WebSocket 并绑定 loopback；Development 使用 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` 双进程拓扑，并使用精确 Origin allowlist。
@@ -55,7 +58,7 @@ flowchart LR
 
 ### Packaging and delivery
 
-- macOS 包装采用原生轻量 launcher + bundled Node Local Service + 外部浏览器 PWA；launcher 只负责进程生命周期、health ready 和打开同源 origin，不成为播放或业务事实源。
+- macOS 包装采用原生轻量 launcher + bundled Node Local Service + bundled native TTS helper + 外部浏览器 PWA；launcher 只负责进程生命周期、health ready 和打开同源 origin，不成为播放或业务事实源。
 - 每个 CPU 架构使用独立 app/DMG，捆绑对应架构的 Node 24.18.0 精简 runtime、production Server 文件树和 built PWA assets；最低目标系统为 macOS 13.5。
 - 当前交付渠道仅限项目所有者在受控本机从可信源码构建并个人使用。ad-hoc 签名只用于本地 bundle 结构和生命周期验证，不得作为公开下载或外部分发凭据。
 - 公开下载属于后续发布阶段；任何外部分发产物都必须先取得 Developer ID 签名、公证 ticket、Gatekeeper 与独立干净环境验收，不得通过关闭系统安全检查替代。
@@ -105,7 +108,7 @@ flowchart LR
 | Library | 搜索、导入、候选池 | MusicProvider | NormalizedTrack | 推荐与播放控制 |
 | Taste | 自动 projection、人工 overrides、EffectiveTaste | Feedback | Taste context | Provider response、覆盖人工规则 |
 | Feedback | 显式喜欢/撤销、不喜欢/撤销、节目收藏/撤销、跳过事实 | Playback、Programs | Append-only FeedbackEvent | 重写历史事实 |
-| DeviceSettings | dataRoot、Codex、NetEase、可选 TTS、迁移命令 | SecretStore、health ports | Safe device settings、migration job | Profile 偏好、明文密钥输出 |
+| DeviceSettings | dataRoot、Codex、NetEase、迁移命令 | SecretStore、health ports | Safe device settings、migration job | Profile 偏好、Apple TTS 地址/密钥、明文密钥输出 |
 | ProfilePreferences | 主题、DJ 语言、声音风格 | Profiles | Profile preferences | 服务配置、密钥 |
 
 - 每个持久实体只有一个写入 owner；其他模块通过 use case/event 协作，Programs 只通过 Ports 调用 Provider。
@@ -137,7 +140,7 @@ sequenceDiagram
     P->>M: Resolve tracks, URLs and lyrics
     M-->>P: Normalized playable tracks
     P-->>E: generation.tracks-resolved
-    alt TTS configured
+    alt Apple system TTS available
         P->>T: Synthesize DJ segments
         alt Synthesis succeeds
             T-->>P: Audio reference, duration, timestamps
@@ -145,7 +148,7 @@ sequenceDiagram
             T-->>P: Degraded error
             P-->>E: generation.degraded
         end
-    else TTS not configured
+    else Native helper or matching standard voice unavailable
         P-->>E: generation.degraded
     end
     P->>D: Persist program and timeline atomically
@@ -397,6 +400,9 @@ apps/
 packages/
 ├── contracts/                      # versioned Zod wire schemas
 └── design-tokens/                  # shared visual tokens
+native/
+└── macos/
+    └── tts-helper/                 # AVSpeechSynthesizer bridge; planned, not implemented
 ```
 
 - 文件按共同变化的 feature 聚合，不建全局技术层目录；每个 module 只有一个公开入口。
@@ -422,7 +428,7 @@ packages/
 - WebSocket 不发送逐帧进度，只发布领域变化、任务阶段和低频 snapshot。
 - SQLite 使用 WAL、必要索引与短事务；外部请求不得占用数据库事务。
 - Program 列表分页；歌词、DJ 文本与历史详情按需加载。
-- TTS、歌词和搜索按 provider identity 缓存，并设置容量与清理策略。
+- TTS 按标准 voice identifier、OS build 与合成参数缓存，歌词和搜索按 provider identity 缓存，并设置容量与清理策略。
 - Codex、搜索、TTS 均为异步任务；HTTP 只受理，不等待完整管线。
 - Profile 切换取消旧请求并丢弃迟到结果；模拟波形不得持续高 CPU。
 ## 17. Security Considerations
@@ -435,6 +441,9 @@ packages/
 - Codex schema 校验失败不得记录原始正文；只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
 - FileStore 拒绝路径越界和未允许扩展名；媒体下载限制超时、大小、MIME 与重定向。
 - Codex 通过参数数组启动，禁止拼接 shell command；命令路径需验证。
+- Apple 系统 TTS 通过固定路径的 bundled native helper 调用；参数使用数组，DJ 文本经结构化 stdin 传递而不得进入 argv，stdout 只允许脱敏 JSON 结果。
+- v1 只枚举并使用当前设备已安装的标准系统语音；每次合成前验证 voice identifier 仍在可用列表，不请求 Personal Voice 授权。
+- TTS helper 输出的 PCM/音频元数据必须校验，目标文件只能由 FileStore 分配；超时或取消时终止 helper 并忽略迟到输出。
 - DB 与缓存使用当前用户最小权限且备份无明文密钥；错误只暴露稳定 code 与安全 message。
 ## 18. Technical Decisions
 
@@ -455,6 +464,7 @@ packages/
 | TD-13 | DeviceSettings / ProfilePreferences split | 配置 owner 与 Profile 隔离一致 | 路由、表与迁移任务分属明确 owner |
 | TD-14 | Discriminated playback timeline | 不把文字降级伪装成音频 | 只有带 audio ref 的 DJ 段进入时间线 |
 | TD-15 | Development dual process, production same origin | 保留 Vite HMR，同时让生产安全边界保持单一 loopback origin | 需要精确 Origin allowlist、端口冲突处理和 WebSocket 首消息认证 |
+| TD-16 | Apple system TTS via bundled native helper | 保持语音本地化并移除云 TTS 凭据与网络依赖 | 需要双架构 Swift helper、已安装标准语音检查、进程 deadline 和文字降级 |
 ## 19. Known Tradeoffs
 
 - 模块化单体易部署，但 process crash 会同时影响全部 backend 能力。

@@ -14,7 +14,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 场景输入
   → Codex 生成结构化节目计划与 DJ 串讲
   → 网易云音乐服务解析歌曲、播放链接与歌词
-  → Fish Audio 兼容服务生成可选 DJ 语音
+  → Apple AVSpeechSynthesizer 通过本机原生 helper 生成可选 DJ 语音
   → 本地服务原子提交节目与播放时间线
   → 浏览器 Audio Engine 播放并收集反馈
   → 反馈写入本地品味档案，影响后续节目
@@ -46,6 +46,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；尚未实装
 - [x] 运行拓扑、端口、Origin allowlist 与本地会话已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 冻结；尚未实装
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 已接受 native launcher + 外部浏览器 PWA，当前仅限受控本机个人使用，尚未实装
+- [ ] [ADR 0004](docs/adr/0004-provider-feasibility.md) 仍为提议；Apple 系统 TTS 已完成本机探针，网易云官方开发者 CLI 成功链路因缺少开放平台凭据而阻塞
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
@@ -86,7 +87,7 @@ AI Agent **不得**：
 ### MVP 核心闭环
 
 1. 创建或选择本地电台档案。
-2. 配置本地 Codex、网易云 API 与可选 TTS 能力。
+2. 配置本地 Codex 与网易云核心能力，并检测可选 Apple 系统 TTS。
 3. 在 Radio 页面描述当前场景。
 4. 生成节目计划、DJ 开场和歌曲队列。
 5. 播放、暂停、切歌、seek 并查看歌词或串讲。
@@ -149,7 +150,8 @@ Fastify Local Service
 | Local Service | 业务规则、任务编排、持久化、外部服务访问和事件发布 |
 | SQLite | Profile、Taste、Program、PlaybackTimeline、Feedback 等结构化事实 |
 | Local File Store | 音频缓存、头像、歌词缓存和受控文件引用 |
-| External Providers | Codex、网易云与 TTS；均视为不可信、可失败依赖 |
+| External Providers | Codex 与网易云；均视为不可信、可失败依赖 |
+| Native TTS | bundled macOS helper 调用 Apple `AVSpeechSynthesizer`；本机能力仍可失败并必须文字降级 |
 
 ### 关键不变量
 
@@ -189,8 +191,8 @@ Fastify Local Service
 | ORM / migrations | Drizzle | Planned |
 | Secrets | OS Credential Store | Planned |
 | AI orchestration | Local Codex process | Planned |
-| Music provider | NetEase-compatible API | Planned |
-| Voice provider | Fish Audio-compatible TTS | Planned |
+| Music provider | NetEase official approved channel | Proposed · live validation blocked |
+| Voice provider | Apple `AVSpeechSynthesizer` via bundled native helper；standard installed voices only | Selected · not implemented |
 | Unit / integration test | Vitest 4.1.10 + V8 coverage | Selected · not installed |
 | Component test | React Testing Library 16.3.2 + jsdom 29.1.1 | Selected · not installed |
 | Browser / visual / a11y test | Playwright 1.61.1 + axe-core | Selected · not installed |
@@ -204,15 +206,15 @@ Fastify Local Service
 - Production 使用同源 Local Service，首选 `49373`，仅允许 `49373-49383` 有界 fallback。
 - Token 通过 `POST /api/v1/session/bootstrap` 的 `no-store` JSON 响应进入浏览器内存；WebSocket 不使用 URL token。
 
-由 [ADR 0003](docs/adr/0003-macos-packaging.md) 决定但尚未实装：
+由 [ADR 0003](docs/adr/0003-macos-packaging.md) 与 [ADR 0004](docs/adr/0004-provider-feasibility.md) 的 Apple TTS 子决策确定但尚未实装：
 
-- 推荐 macOS 13.5+、arm64/x64 分架构 DMG、原生轻量 launcher + bundled Node Local Service + 外部浏览器 PWA。
+- 推荐 macOS 13.5+、arm64/x64 分架构 DMG、原生轻量 launcher + bundled Node Local Service + bundled native TTS helper + 外部浏览器 PWA。
 - 当前只允许项目所有者从可信源码在受控本机构建并个人使用，不提供公开下载。
 - Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净环境仍未验证；这些是未来任何外部分发的硬门，不阻塞当前本地开发。
 
 尚未决定：
 
-- Provider、数据库和其他业务依赖的具体包与精确版本。
+- 网易云官方接入的最终配置字段、播放资源边界，以及数据库和其他业务依赖的具体包与精确版本；Apple 系统 TTS 的 v1 接入形态已经由项目所有者明确。
 
 ## 6. 目录结构
 

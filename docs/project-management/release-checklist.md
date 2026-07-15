@@ -52,7 +52,7 @@ Go/No-Go 时间：
 - [ ] S5-04 全量功能验收为 `已完成`，PRD 六项 P0 和三项 P1 均有实现证据。
 - [ ] 15 个页面/状态由真实产品数据和行为承载，不依赖静态设计 fixture 伪装功能。
 - [ ] 首次启动、档案创建、核心配置、生成、播放、反馈、Library、Taste、Programs 均可完成。
-- [ ] TTS 未配置或失败时仍能生成文字 DJ 和可播放歌曲。
+- [ ] Apple 系统 TTS helper、匹配标准语音缺失或合成失败时仍能生成文字 DJ 和可播放歌曲。
 - [ ] 完全离线时只显示只读 Settings、启动说明、脱敏状态和重试，所有写操作禁用。
 
 ### 内部质量与安全
@@ -98,7 +98,7 @@ Go/No-Go 时间：
 
 - [ ] 全新安装和至少一个旧 Beta 升级到 RC 均通过。
 - [ ] 升级后 Profile、Program、Feedback、TasteOverrides、Preferences 和 checkpoint 可读取。
-- [ ] 首次配置和三类 Provider 健康检查行为正确，TTS 可选边界未改变。
+- [ ] 首次配置、Codex/网易云 Provider 与 Apple 系统 TTS 能力检查行为正确，TTS 可选边界未改变。
 - [ ] 场景生成期间旧节目继续播放，失败保持旧节目，成功后原子切换。
 - [ ] 长时播放、暂停、seek、切歌、Detail Sheet、歌词/串讲跟随和媒体失败恢复通过。
 - [ ] Library 搜索/导入、Taste 编辑、Programs 历史/复用/收藏通过。
