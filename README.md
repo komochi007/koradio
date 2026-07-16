@@ -2,9 +2,9 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 public contracts complete · Mock mode only**
+> Status: **S1 engineering scaffold complete · S2 contracts and database foundation complete · Mock mode only**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service 最小骨架；只提供 Mock health、事件连接和 App Shell，不代表 Koradio 产品功能已经实现
+> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service 最小骨架，以及 SQLite/Drizzle migration 与首次数据目录 bootstrap；仍只提供 Mock health、事件连接和 App Shell，不代表 Koradio 产品功能已经实现
 
 ## 1. 项目入口
 
@@ -53,7 +53,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] React/Vite 最小 App Shell 已实现；业务页面、路由、PWA 缓存和 Audio Engine 尚未实现
 - [x] Fastify Local Service 最小 health/session/events 与 Mock Provider health 已实现；业务模块尚未实现
 - [x] 完整 v1 公共 Contracts 已用 Zod 固化：REST DTO/command、显式 `profileId`、`Idempotency-Key`、异步 job、WebSocket event 与安全 error envelope 均有正反向和兼容性测试
-- [ ] SQLite schema 与 migrations 尚未实现
+- [x] SQLite/Drizzle 平台底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；业务 owner schema 尚未实现
 - [ ] Provider adapters 尚未实现
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
@@ -62,7 +62,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ### Agent safety note
 
-当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 S1 Mock skeleton 的开发/生产启动、REST health、认证后 WebSocket 事件和同源静态托管。这些证据只证明工程骨架连通，不证明 Profile、Program、播放、数据库或真实 Provider 行为；真实 Provider adapter、TTS helper、业务模块和安装包仍不存在。
+当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 Mock skeleton 的开发/生产启动、REST health、认证后 WebSocket 事件、同源静态托管和 SQLite 平台 bootstrap。这些证据只证明工程与数据底座连通，不证明 Profile、Program、播放、业务数据模型或真实 Provider 行为；真实 Provider adapter、TTS helper、业务模块和安装包仍不存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -73,7 +73,7 @@ AI Agent **不得**：
 - 把尚未实装的 macOS 平台/包装 CI 或产品行为测试覆盖描述成已经可运行的事实。
 - 把 S1 最小 Session/Origin 骨架描述为已经完成 S2-04 的全部安全防护。
 - 把 ADR 0003 的已接受架构描述为已经实现，或把本地 ad-hoc 产物描述为已通过 Developer ID 签名公证、可公开分发。
-- 声称产品功能、真实 Provider、播放或数据库可以运行。
+- 声称产品功能、真实 Provider、播放或业务数据库模型可以运行。
 - 从参考图推断尚未写入权威文档的业务规则。
 
 ## 3. 产品快照
@@ -192,8 +192,8 @@ Fastify Local Service
 | Production topology | Same-origin PWA / REST / WebSocket on loopback, preferred port `49373` with bounded fallback `49373-49383` | S1 static serving and strict smoke verified |
 | Local session | `POST /api/v1/session/bootstrap`, memory-only token, exact Origin allowlist, WebSocket first-message auth | Minimal S1 implementation · S2 hardening pending |
 | Runtime validation | Zod 4.4.3 | Complete v1 public REST/WS contracts verified；Provider/Codex internal schemas planned |
-| Database | SQLite | Planned |
-| ORM / migrations | Drizzle | Planned |
+| Database | Node 24 `node:sqlite` / SQLite 3.53.2 | Platform bootstrap implemented and verified · domain schema planned |
+| ORM / migrations | Drizzle ORM + Drizzle Kit 1.0.0-rc.4 | Runtime migration and generation flow verified · domain tables planned |
 | Secrets | OS Credential Store | Planned |
 | AI orchestration | Local Codex process | Planned |
 | Music provider | Backend TypeScript NetEase `linuxapi` Adapter；no official CLI or .NET runtime | Selected for Personal Local Preview · not implemented |
@@ -414,6 +414,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 pnpm build
 pnpm start
+pnpm --filter @koradio/server db:generate
 pnpm typecheck
 pnpm lint
 pnpm format:check
@@ -430,7 +431,7 @@ pnpm check
 
 当前骨架边界：
 
-- 没有数据库 schema 或 migration。
+- 已有 OS 数据目录 bootstrap、SQLite connection、Drizzle migration runner 与初始 platform migration；尚无 Profile、Program 等业务 owner schema。
 - 没有 Profile、Program、Library、Taste、Feedback 或 Playback 业务模块。
 - 已有完整 v1 wire contracts，但除 S1 health/session/events 外，对应业务 route 和 use case 尚未实现。
 - 没有真实 Codex、NetEase 或 TTS Adapter；运行时只允许 `mock`。
@@ -450,7 +451,8 @@ pnpm check
 - [x] Lint 与 format check 命令。
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试命令。
 - [x] 聚合 `check` 命令与 Linux GitHub Actions 常规质量门。
-- [ ] SQLite migration 与数据备份命令。
+- [x] SQLite migration 生成与启动时事务化执行命令。
+- [ ] 数据备份与恢复命令。
 - [x] 非敏感环境变量模板；Secret Store 初始化方式仍待 S2。
 - [x] ADR 0002 的默认绑定地址、端口、精确 Origin allowlist 与最小 session bootstrap。
 - [x] Provider Mock development 模式；离线 PWA 仍待 S4。
@@ -501,12 +503,12 @@ pnpm check
 
 ## 9. 下一实现起点
 
-S1 工程脚手架阶段门已关闭，`S2-01` 完整 v1 公共 Contracts 已通过验证。下一关键任务是 `S2-02`：
+S1 工程脚手架阶段门已关闭，`S2-01` 完整 v1 公共 Contracts 与 `S2-02` SQLite/Drizzle 数据底座已通过验证。下一关键任务是 `S2-03`：
 
-- 建立 SQLite、Drizzle 与首次数据目录 bootstrap。
-- 启用版本化 migration、foreign keys 与 WAL。
-- 验证空环境迁移、重复迁移幂等和失败不自动重建数据表。
-- 保持数据库实体、Provider response 与公共 wire contract 分离。
+- 建立 Secret Store、File Store 与脱敏日志平台边界。
+- 保证秘密只进入 OS Credential Store，受控文件只能位于 data root。
+- 覆盖恶意路径、密钥回显、下载限制和 headless 错误。
+- 保持平台 adapter 与后续业务 owner 分离。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。
 

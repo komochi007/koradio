@@ -20,6 +20,7 @@ export default defineConfig({
       KORADIO_PORT: "49373",
       KORADIO_PROVIDER_MODE: "mock",
       KORADIO_STRICT_PORT: "true",
+      KORADIO_DATA_DIR: "test-results/koradio-data",
     },
   },
   use: {

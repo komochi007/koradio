@@ -5,12 +5,16 @@ import {
 } from "@koradio/contracts";
 import "@fastify/websocket";
 import { Buffer } from "node:buffer";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createApp } from "../../apps/server/src/bootstrap/app.js";
 import type { RuntimeConfig } from "../../apps/server/src/bootstrap/config.js";
 
 const origin = "http://127.0.0.1:49373";
+const dataRoot = await mkdtemp(join(tmpdir(), "koradio-skeleton-server-"));
 const config: RuntimeConfig = {
   environment: "test",
   host: "127.0.0.1",
@@ -18,6 +22,7 @@ const config: RuntimeConfig = {
   webPort: 5173,
   providerMode: "mock",
   strictPort: true,
+  dataRoot,
   webRoot: "unused-in-test",
 };
 

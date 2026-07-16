@@ -2,6 +2,8 @@ import { fileURLToPath } from "node:url";
 
 import { z } from "zod";
 
+import { resolveDataRoot } from "../platform/db/data-root.js";
+
 const booleanStringSchema = z
   .enum(["true", "false"])
   .transform((value) => value === "true")
@@ -14,6 +16,7 @@ const environmentSchema = z.object({
   KORADIO_WEB_PORT: z.coerce.number().int().min(1024).max(65535).default(5173),
   KORADIO_PROVIDER_MODE: z.literal("mock").default("mock"),
   KORADIO_STRICT_PORT: booleanStringSchema,
+  KORADIO_DATA_DIR: z.string().trim().min(1).optional(),
 });
 
 export interface RuntimeConfig {
@@ -23,6 +26,7 @@ export interface RuntimeConfig {
   webPort: number;
   providerMode: "mock";
   strictPort: boolean;
+  dataRoot: string;
   webRoot: string;
 }
 
@@ -36,6 +40,9 @@ export function loadRuntimeConfig(environment: NodeJS.ProcessEnv = process.env):
     webPort: parsed.KORADIO_WEB_PORT,
     providerMode: parsed.KORADIO_PROVIDER_MODE,
     strictPort: parsed.KORADIO_STRICT_PORT,
+    dataRoot: resolveDataRoot(
+      parsed.KORADIO_DATA_DIR === undefined ? undefined : { override: parsed.KORADIO_DATA_DIR },
+    ),
     webRoot: fileURLToPath(new URL("../../../web/dist/", import.meta.url)),
   };
 }

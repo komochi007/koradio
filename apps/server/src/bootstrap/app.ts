@@ -13,6 +13,7 @@ import {
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { createMockHealthSnapshot } from "../integrations/mock-provider-health.js";
+import { bootstrapDatabase } from "../platform/db/database.js";
 import { createAllowedOrigins, type RuntimeConfig } from "./config.js";
 import { createSessionState } from "./session.js";
 
@@ -27,8 +28,13 @@ function isAllowedOrigin(origin: string | undefined, allowedOrigins: Set<string>
 
 export async function createApp(options: CreateAppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
+  const database = await bootstrapDatabase({ dataRoot: options.config.dataRoot });
   const allowedOrigins = createAllowedOrigins(options.config, options.selectedPort);
   const session = createSessionState();
+
+  app.addHook("onClose", () => {
+    database.close();
+  });
 
   await app.register(cors, {
     origin(origin, callback) {
