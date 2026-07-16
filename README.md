@@ -1,8 +1,8 @@
 # Koradio
 
-> Status: **Documentation-first · Product not yet implemented · Product not currently runnable**
+> Status: **S1 engineering scaffold · Product not yet implemented · Product not currently runnable**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库没有产品源码、依赖清单、启动脚本或已实装端口；零构建设计预览不等于产品运行入口
+> Runtime: 当前仓库已有可安装的 pnpm workspace 与最小 typecheck，但没有产品源码、启动脚本或已实装端口；零构建设计预览不等于产品运行入口
 
 ## 1. 项目入口
 
@@ -43,21 +43,22 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] VDA-17 视觉基线已冻结：HTML / CSS / JavaScript 视觉主源、15 页 35 个固定状态、Dark / Light、五类响应式布局与 60 张正式截图基线均已建立
 - [x] 视觉差异裁决、自动 QA、Figma 派生镜像与开发交接映射已建立
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
-- [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；尚未实装
+- [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；S1-01 已实装运行版本、workspace、锁文件与最小 typecheck，其余质量命令尚未实装
 - [x] 运行拓扑、端口、Origin allowlist 与本地会话已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 冻结；尚未实装
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 已接受 native launcher + 外部浏览器 PWA，当前仅限受控本机个人使用，尚未实装
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；尚未实装
-- [ ] Monorepo 尚未创建
+- [x] pnpm TypeScript monorepo 的四个目标边界、运行版本与单一锁文件已创建；产品源码尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
 - [ ] SQLite schema 与 migrations 尚未实现
 - [ ] Provider adapters 尚未实现
 - [ ] 自动化测试尚未建立
-- [ ] 已选定的安装、开发、测试和构建命令尚未创建或验证
+- [x] Workspace frozen install 与最小 typecheck 已创建并验证
+- [ ] 产品开发、测试和构建命令尚未创建或验证
 
 ### Agent safety note
 
-当前所有产品代码目录、可执行命令、端口和运行行为均不能从仓库验证。工具链的目标版本和命令合同已经写入 ADR 0001，运行拓扑、端口与本地会话已经写入 ADR 0002，包装与交付边界已经写入 ADR 0003，Provider 可行性与发布边界已经写入 ADR 0004。这些已接受决策都不代表依赖、配置、端口监听、服务、Provider adapter 或安装包已经存在。
+当前只能从仓库验证运行版本、workspace 边界、锁文件、frozen install 与最小 typecheck；产品源码、开发服务、测试、构建、端口监听和运行行为仍不能验证。工具链的其余命令合同已经写入 ADR 0001，运行拓扑、端口与本地会话已经写入 ADR 0002，包装与交付边界已经写入 ADR 0003，Provider 可行性与发布边界已经写入 ADR 0004。这些已接受决策都不代表对应服务、Provider adapter 或安装包已经存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -65,7 +66,7 @@ AI Agent **不得**：
 
 - 把目标目录树描述成现有代码。
 - 把目标技术栈描述成已安装依赖。
-- 把 ADR 选定的包管理器、Node.js 版本或脚本名描述成已经安装或可运行的事实。
+- 把尚未实装的 `dev`、测试、构建或质量脚本描述成已经可运行的事实。
 - 把 ADR 0002 选定的端口、进程关系或 session bootstrap 描述为已经实装或可运行。
 - 把 ADR 0003 的已接受架构描述为已经实现，或把本地 ad-hoc 产物描述为已通过 Developer ID 签名公证、可公开分发。
 - 声称应用、测试、构建或数据库可以运行。
@@ -167,14 +168,14 @@ Fastify Local Service
 
 ## 5. 目标技术栈
 
-> 产品技术来自目标架构；工具链精确版本来自 [ADR 0001](docs/adr/0001-toolchain-and-quality.md)。`Selected` 只表示决策已完成，不代表依赖已经安装。
+> 产品技术来自目标架构；工具链精确版本来自 [ADR 0001](docs/adr/0001-toolchain-and-quality.md)。只有标记为 `Pinned and verified` 的 S1-01 基础已经从当前仓库验证。
 
 | Area | Planned technology | Status |
 |---|---|---|
-| Runtime | Node.js 24.18.0 LTS | Selected · not installed |
-| Package management | Corepack 0.35.0 + pnpm 11.13.0 | Selected · not installed |
-| Language | TypeScript 6.0.3 | Selected · not installed |
-| Repository | pnpm native TypeScript workspace | Selected · not created |
+| Runtime | Node.js 24.18.0 LTS | Pinned and verified |
+| Package management | Corepack 0.35.0 + pnpm 11.13.0 | Pinned and verified |
+| Language | TypeScript 6.0.3 | Installed for minimal typecheck |
+| Repository | pnpm native TypeScript workspace | Created · source not implemented |
 | Frontend | React + Vite | Planned |
 | Frontend build | Vite 8.1.4 | Selected · not installed |
 | App delivery | Web / PWA | Planned |
@@ -228,12 +229,32 @@ Fastify Local Service
 
 ```text
 Koradio/
+├── .nvmrc
+├── package.json
+├── pnpm-workspace.yaml
+├── pnpm-lock.yaml
+├── tsconfig.base.json
+├── tsconfig.json
 ├── README.md
 ├── AGENTS.md
 ├── AI_RULES.md
 ├── context.md
 ├── architecture.md
 ├── design-qa.md
+├── apps/
+│   ├── web/
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   └── server/
+│       ├── package.json
+│       └── tsconfig.json
+├── packages/
+│   ├── contracts/
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   └── design-tokens/
+│       ├── package.json
+│       └── tsconfig.json
 ├── docs/
 │   ├── adr/
 │   │   ├── README.md
@@ -299,9 +320,9 @@ Koradio/
             └── AI音乐电台施工图.jpg
 ```
 
-### 目标代码目录
+### 目标源码目录
 
-> 以下结构来自 `architecture.md`，尚不存在。
+> `apps/*` 与 `packages/*` 边界 manifest 已存在；以下 `src/` 结构来自 `architecture.md`，尚不存在。
 
 ```text
 apps/
@@ -344,31 +365,41 @@ packages/
 
 ### 当前可执行状态
 
-**当前不能安装、启动、测试或构建 Koradio 产品。**
+**当前可以安装 workspace 并运行最小 typecheck；仍不能启动、测试或构建 Koradio 产品。**
 
 `design/assets/prototype/index.html` 是可直接在浏览器打开的零构建设计预览骨架，不是 Koradio 产品运行入口。
 
-原因：
+当前已验证的基础命令：
 
-- 没有 `package.json` 或 workspace manifest。
-- 没有源码入口。
-- 没有依赖锁文件。
+```bash
+nvm install
+nvm use
+npm install --global corepack@0.35.0
+corepack prepare pnpm@11.13.0 --activate
+pnpm install --frozen-lockfile
+pnpm typecheck
+```
+
+仍不能运行产品的原因：
+
+- 四个 workspace 当前只有 manifest 与基础 `tsconfig`，没有源码入口。
 - 没有环境变量模板。
 - 没有数据库 schema 或 migration。
-- 没有运行脚本。
+- 没有 `dev`、测试或构建脚本。
 - 没有测试配置。
 - 没有已实装并验证的端口监听。
 
-[ADR 0001](docs/adr/0001-toolchain-and-quality.md) 已固定未来根 script 名和 CI 安装合同，但本 README 在 S1 实装并验证前不提供可复制的运行命令，防止将计划误判为仓库事实。
+[ADR 0001](docs/adr/0001-toolchain-and-quality.md) 已固定完整根 script 名和 CI 安装合同；当前仅 `typecheck` 已实装，其他公共命令将在后续 S1 任务中创建并验证。
 
 ### 脚手架落地后必须补齐
 
-- [ ] 实装并验证 ADR 0001 选定的 Node.js 版本。
-- [ ] 实装并验证 Corepack、pnpm 与单一锁文件。
-- [ ] 一次性安装命令。
+- [x] 实装并验证 ADR 0001 选定的 Node.js 版本。
+- [x] 实装并验证 Corepack、pnpm 与单一锁文件。
+- [x] 一次性 frozen install 命令。
+- [x] 最小 workspace typecheck 命令。
 - [ ] Frontend 与 Local Service 开发命令。
 - [ ] 同源生产构建与启动命令。
-- [ ] Typecheck、lint、format check 命令。
+- [ ] Lint 与 format check 命令。
 - [ ] Unit、integration、component 与 E2E 测试命令。
 - [ ] SQLite migration 与数据备份命令。
 - [ ] 必需环境变量和 Secret Store 初始化方式。
