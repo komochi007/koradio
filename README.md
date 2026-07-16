@@ -1,6 +1,8 @@
 # Koradio
 
-> Status: **S1 runnable skeleton · Product features not yet implemented · Mock mode only**
+[![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
+
+> Status: **S1 engineering scaffold complete · S2 platform foundation next · Mock mode only**
 > Audience: AI Coding Agents、开发者、维护者  
 > Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service 最小骨架；只提供 Mock health、事件连接和 App Shell，不代表 Koradio 产品功能已经实现
 
@@ -43,7 +45,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] VDA-17 视觉基线已冻结：HTML / CSS / JavaScript 视觉主源、15 页 35 个固定状态、Dark / Light、五类响应式布局与 60 张正式截图基线均已建立
 - [x] 视觉差异裁决、自动 QA、Figma 派生镜像与开发交接映射已建立
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
-- [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、质量命令、`dev` 与 `build` 已实装，聚合 `check` 和 CI 待 S1-04
+- [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、完整根命令族与 GitHub Actions CI 已实装并由真实 run 验证
 - [x] Development 双进程、Production 同源静态托管、loopback 端口、精确 Origin 与最小内存 Session/WS 首消息认证已实装；完整 REST/WS 防护和负向安全矩阵待 S2-04
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 已接受 native launcher + 外部浏览器 PWA，当前仅限受控本机个人使用，尚未实装
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；尚未实装
@@ -55,10 +57,11 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
 - [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证
+- [x] `pnpm check`、Linux 常规质量门、三浏览器 E2E、axe 与视觉回归已进入 GitHub Actions
 
 ### Agent safety note
 
-当前可以验证运行版本、workspace、锁文件、frozen install、strict typecheck、lint、format、四层 Vitest、三浏览器 E2E、axe、视觉基线、coverage，以及 S1 Mock skeleton 的开发/生产启动、REST health、认证后 WebSocket 事件和同源静态托管。这些证据只证明工程骨架连通，不证明 Profile、Program、播放、数据库或真实 Provider 行为；真实 Provider adapter、TTS helper、业务模块和安装包仍不存在。
+当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 S1 Mock skeleton 的开发/生产启动、REST health、认证后 WebSocket 事件和同源静态托管。这些证据只证明工程骨架连通，不证明 Profile、Program、播放、数据库或真实 Provider 行为；真实 Provider adapter、TTS helper、业务模块和安装包仍不存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -66,7 +69,7 @@ AI Agent **不得**：
 
 - 把目标目录树描述成现有代码。
 - 把目标技术栈描述成已安装依赖。
-- 把尚未实装的聚合 `check`、CI 或产品行为测试覆盖描述成已经可运行的事实。
+- 把尚未实装的 macOS 平台/包装 CI 或产品行为测试覆盖描述成已经可运行的事实。
 - 把 S1 最小 Session/Origin 骨架描述为已经完成 S2-04 的全部安全防护。
 - 把 ADR 0003 的已接受架构描述为已经实现，或把本地 ad-hoc 产物描述为已通过 Developer ID 签名公证、可公开分发。
 - 声称产品功能、真实 Provider、播放或数据库可以运行。
@@ -196,9 +199,9 @@ Fastify Local Service
 | Voice provider | Apple `AVSpeechSynthesizer` via bundled native helper；standard installed voices only | Selected · not implemented |
 | Unit / integration test | Vitest 4.1.10 + V8 coverage | Configured and verified |
 | Component test | React Testing Library 16.3.2 + jsdom 29.1.1 | Configured and verified |
-| Browser / visual / a11y test | Playwright 1.61.1 + axe-core | Configured and locally verified |
+| Browser / visual / a11y test | Playwright 1.61.1 + axe-core | Configured and CI verified |
 | Lint / format | ESLint 10.7.0 + typescript-eslint 8.64.0 + Prettier 3.9.5 | Configured and verified |
-| CI | GitHub Actions | Selected · not configured |
+| CI | GitHub Actions | Linux quality/browser jobs configured and verified |
 
 已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 决定；S1 最小骨架已实装：
 
@@ -229,6 +232,9 @@ Fastify Local Service
 
 ```text
 Koradio/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── .env.example
 ├── .nvmrc
 ├── package.json
@@ -418,6 +424,7 @@ pnpm test:coverage
 pnpm exec playwright install chromium firefox webkit
 pnpm test:e2e
 pnpm test:visual
+pnpm check
 ```
 
 当前骨架边界：
@@ -428,7 +435,7 @@ pnpm test:visual
 - 最小 App Shell 只展示 REST、WebSocket 和 Mock Provider 连通状态。
 - S1 Session 只覆盖内存 bootstrap、精确 Origin 与 WS 首消息认证；完整安全防护由 S2-04 完成。
 
-[ADR 0001](docs/adr/0001-toolchain-and-quality.md) 已固定完整根 script 名和 CI 安装合同；`dev`、`build` 与 `start` 已实装，聚合 `check` 和 GitHub Actions CI 由 S1-04 完成。
+[ADR 0001](docs/adr/0001-toolchain-and-quality.md) 的完整根 script 名和 CI 安装合同已实装。`pnpm check` 聚合非浏览器合并门；[GitHub Actions CI](https://github.com/komochi007/koradio/actions/workflows/ci.yml) 在 `main` push、Pull Request 和手动触发时执行 frozen install、`check`、三浏览器 E2E、axe 与 Chromium 视觉回归。macOS 平台和包装探针仍由后续对应任务建立。
 
 ### 脚手架落地后必须补齐
 
@@ -440,6 +447,7 @@ pnpm test:visual
 - [x] 同源生产构建与启动命令。
 - [x] Lint 与 format check 命令。
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试命令。
+- [x] 聚合 `check` 命令与 Linux GitHub Actions 常规质量门。
 - [ ] SQLite migration 与数据备份命令。
 - [x] 非敏感环境变量模板；Secret Store 初始化方式仍待 S2。
 - [x] ADR 0002 的默认绑定地址、端口、精确 Origin allowlist 与最小 session bootstrap。
@@ -489,19 +497,16 @@ pnpm test:visual
 
 文档发生冲突时，不得静默择一。先指出冲突及所属 Concern，再修改该 Concern 的权威文档，并同步所有受影响的摘要或规则文件。
 
-## 9. 实现起点
+## 9. 下一实现起点
 
-第一个代码里程碑应建立可验证的最小骨架，而不是同时实现完整 MVP：
+S1 工程脚手架阶段门已由可安装、可启动、可测试、可构建的 Mock skeleton 和真实 CI run 关闭。下一关键任务是 `S2-01`：
 
-- 初始化已选定的 TypeScript workspace。
-- 创建 `apps/web`、`apps/server` 和 `packages/contracts`。
-- 建立健康检查和最小同源通信。
-- 建立 Zod contract 与类型检查。
-- 建立 SQLite migration 基础设施。
-- 建立测试入口和 CI 可执行命令。
-- 更新本 README 的开发启动章节。
+- 将 S1 最小 health/session/event schemas 扩展为完整 v1 wire contracts。
+- 建立 error envelope、幂等命令、`profileId` 和事件兼容性规则。
+- 为所有新增 Zod schema 提供有效与无效 contract tests。
+- 保持 ORM model、Provider response、秘密和内部 entity 不进入公共 contract。
 
-实际脚手架必须实现 ADR 0001 和 ADR 0002，并与 `architecture.md` 和 `AI_RULES.md` 一起落地。
+任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。
 
 ## 10. 文档维护 Checklist
 

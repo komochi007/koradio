@@ -11,10 +11,10 @@
 
 | 问题 | 直接答案 |
 |---|---|
-| 当前工程阶段 | S1 工程脚手架；S1-04 正在建立常规 CI 与聚合质量门 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-03` |
-| 当前活动任务 | `S1-04` 已完成本地自检，等待真实 GitHub Actions run 验收 |
-| 初始下一任务 | S1-04 完成后按阶段门进入 S2 |
+| 当前工程阶段 | S2 平台、数据与安全底座；S1 工程脚手架阶段门已通过 |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04` |
+| 当前活动任务 | 无；按依赖选择下一任务 |
+| 初始下一任务 | `S2-01` 建立 v1 公共 Contracts |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
 | 状态事实源 | 只修改本文件；GitHub Issue/Project 只写入“外部引用” |
@@ -51,7 +51,7 @@ AI 执行任务时按固定顺序操作：
 | 阶段 | 已完成 | 待开始 | 进行中 | 待验收 | 阻塞 | 总数 |
 |---|---:|---:|---:|---:|---:|---:|
 | S0 基线与关键决策 | 8 | 0 | 0 | 0 | 0 | 8 |
-| S1 工程脚手架 | 3 | 0 | 0 | 1 | 0 | 4 |
+| S1 工程脚手架 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S2 平台、数据与安全底座 | 0 | 5 | 0 | 0 | 0 | 5 |
 | S3 核心领域与 Provider 后端 | 0 | 7 | 0 | 0 | 0 | 7 |
 | S4 P0 核心产品体验 | 0 | 6 | 0 | 0 | 0 | 6 |
@@ -87,7 +87,7 @@ AI 执行任务时按固定顺序操作：
 | `S1-01` 初始化 TypeScript monorepo 与运行版本 | 已完成 | Critical | 建立唯一安装入口和锁定的运行环境，为所有应用和 package 提供可复现基础。 | S0-03、S0-04 | 工具链与运行拓扑 ADR。 | 只创建 workspace、版本和基础脚本，不实现领域功能；未明确列出的实现和功能不在本任务范围内。 | 全新 clone 可一次安装，workspace 能识别四个目标边界，锁文件无漂移；同时满足“输入”所引用权威文档的适用验收项。 | 根 `package.json`、`pnpm-workspace.yaml`、`pnpm-lock.yaml`、`.nvmrc`、基础 `tsconfig` 与四个边界 manifest。 | Node 24.18.0、Corepack 0.35.0、pnpm 11.13.0 精确版本回读；清理本任务生成的 `node_modules` 后 frozen install、四边界列表、最小 typecheck、锁文件哈希稳定和 `git diff --check` 均通过。 | 项目所有者 / 无 | 所选运行版本与包装方案或关键原生依赖不兼容；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S1-02` 建立 strict TypeScript 与质量命令 | 已完成 | Critical | 从第一行产品代码开始建立 typecheck、lint、format、unit、component 和 E2E 的统一入口。 | S1-01 | S0-03 ADR、`AI_RULES.md` 测试与 TypeScript 规则。 | 建立配置和示例测试，不以放宽规则换取通过；未明确列出的实现和功能不在本任务范围内。 | strict、`noImplicitAny` 生效；同时满足“输入”所引用权威文档的适用验收项。 | 根 TypeScript、ESLint、Prettier、Vitest、Playwright 配置，各 workspace 质量脚本，分层测试样例与视觉基线。 | Node/Corepack/pnpm 版本回读、frozen install 与锁文件哈希稳定；typecheck、lint、format check、四层 Vitest、V8 coverage、三浏览器 Playwright + axe、Chromium 视觉回归和 `git diff --check` 全部通过；受控失败样例分别触发 `noImplicitAny`、lint 与 unit 门禁后已移除。 | 项目所有者 / 无 | 工具之间存在不可兼容配置；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S1-03` 建立 Web、Server、Contracts 与 Tokens 最小骨架 | 已完成 | Critical | 建立架构规定的四个边界，并用 health REST、WebSocket 事件和 Mock Provider 证明端到端连通。 | S1-01、S0-06 | 架构目录、运行拓扑和 Provider 可行性结论。 | 实现最小 App Shell 和服务探针，不实现 Profile、Program 或真实播放；未明确列出的实现和功能不在本任务范围内。 | Web 可读取 `/api/v1/health`、建立 `/api/v1/events`、解析 Zod 响应并在 Mock 模式启动；同时满足“输入”所引用权威文档的适用验收项。 | `apps/web/src/`、`apps/server/src/`、`packages/contracts/src/`、`packages/design-tokens/src/`、`.env.example` 及根 dev/build/start 命令。 | Node/Corepack/pnpm 与 ncm-cli 版本回读；frozen install、typecheck、lint、format、四层 Vitest、coverage、build、开发/生产冒烟、REST/WS contract/integration、三浏览器连接 E2E + axe、视觉回归和 `git diff --check` 全部通过。 | 项目所有者 / 无 | 最小同源/开发拓扑无法同时满足 session 与 Origin 规则；已用内存 bootstrap、精确 Origin 和 WS 首消息认证解除，完整安全矩阵留给 S2-04。 |
-| `S1-04` 建立 CI 与真实开发说明 | 待验收 | High | 让每次合并都执行同一套质量门，并把 README 从 Documentation-first 状态同步为可验证事实。 | S1-02、S1-03 | 全部根脚本和目标 CI 平台。 | 只建立常规 CI，不做签名、公证和正式发布流水线；未明确列出的实现和功能不在本任务范围内。 | CI 执行 install、typecheck、lint、format check、相关测试和 build；同时满足“输入”所引用权威文档的适用验收项。 | `.github/workflows/ci.yml`、根 `check` 命令；README 与必要开发文档待真实 run 通过后收口。 | 本地等价 `check`、三浏览器 E2E 与视觉回归已通过；等待真实 GitHub Actions run。 | 项目所有者 / 无 | CI 无法安装关键原生依赖；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S1-04` 建立 CI 与真实开发说明 | 已完成 | High | 让每次合并都执行同一套质量门，并把 README 从 Documentation-first 状态同步为可验证事实。 | S1-02、S1-03 | 全部根脚本和目标 CI 平台。 | 只建立常规 CI，不做签名、公证和正式发布流水线；未明确列出的实现和功能不在本任务范围内。 | CI 执行 install、typecheck、lint、format check、相关测试和 build；同时满足“输入”所引用权威文档的适用验收项。 | `.github/workflows/ci.yml`、根 `check` 命令、README、Context、ADR 实施状态与路线图同步。 | 本地 frozen install、`check`、三浏览器 E2E 与视觉回归通过；Ubuntu 24.04 的 quality/build 和 browser/visual jobs 由真实 run 全部通过。 | 项目所有者 / [CI run #29477544514](https://github.com/komochi007/koradio/actions/runs/29477544514) | CI 无法安装关键原生依赖；本次 run 已证明依赖与 Playwright 浏览器可安装，阻塞条件未发生。 |
 
 ### S2｜平台、数据与安全底座
 

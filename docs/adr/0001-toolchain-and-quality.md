@@ -5,12 +5,13 @@
 > Task：S0-03
 > 决策人：项目所有者
 > 取代：无
+> 实施状态：S1-01～S1-04 已完成；根命令族与固定完整 Action SHA 的 GitHub Actions 工作流已由 [真实 CI run](https://github.com/komochi007/koradio/actions/runs/29477544514) 验证
 
 ## 1. 决策摘要
 
 Koradio 采用 Node.js 24 LTS、Corepack 与 pnpm 11 的原生 workspace，使用 ESM-only TypeScript 6 工程引用组织四个目标边界。Web 由 Vite 构建，Server 与共享 packages 由 `tsc -b` 构建；质量体系由 ESLint、Prettier、Vitest、React Testing Library、Playwright 与 axe-core 组成；常规 CI 使用 GitHub Actions。
 
-本 ADR 固定后续脚手架必须实现的版本、锁文件、根命令、测试分层、供应链控制和升级策略。当前仓库仍没有 manifest、锁文件、产品源码或质量配置；下文命令是 S1 的目标合同，当前不可执行。
+本 ADR 固定后续脚手架必须实现的版本、锁文件、根命令、测试分层、供应链控制和升级策略。本 ADR 作出时仓库还没有 manifest、锁文件、产品源码或质量配置；这些目标合同现已由 S1 实装，历史决策上下文保留不变。
 
 ## 2. 上下文与范围
 
