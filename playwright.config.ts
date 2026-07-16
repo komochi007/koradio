@@ -9,6 +9,19 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   snapshotPathTemplate: "{testDir}/__screenshots__/{testFilePath}/{projectName}/{arg}{ext}",
+  webServer: {
+    command: "pnpm build && pnpm start",
+    url: "http://127.0.0.1:49373/api/v1/health",
+    reuseExistingServer: false,
+    timeout: 120_000,
+    env: {
+      NODE_ENV: "production",
+      KORADIO_HOST: "127.0.0.1",
+      KORADIO_PORT: "49373",
+      KORADIO_PROVIDER_MODE: "mock",
+      KORADIO_STRICT_PORT: "true",
+    },
+  },
   use: {
     trace: "retain-on-failure",
   },

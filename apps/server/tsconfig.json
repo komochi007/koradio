@@ -2,10 +2,14 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
-    "noEmit": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2024"]
+    "lib": ["ES2024"],
+    "types": ["node"],
+    "rootDir": "src",
+    "outDir": "dist",
+    "sourceMap": true
   },
-  "files": []
+  "include": ["src/**/*.ts"],
+  "references": [{ "path": "../../packages/contracts" }]
 }

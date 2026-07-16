@@ -1,8 +1,8 @@
 # Koradio
 
-> Status: **S1 engineering scaffold · Product not yet implemented · Product not currently runnable**
+> Status: **S1 runnable skeleton · Product features not yet implemented · Mock mode only**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库已有可安装的 pnpm workspace、strict TypeScript 与质量命令，但没有产品源码、启动脚本或已实装端口；零构建设计预览不等于产品运行入口
+> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service 最小骨架；只提供 Mock health、事件连接和 App Shell，不代表 Koradio 产品功能已经实现
 
 ## 1. 项目入口
 
@@ -43,22 +43,22 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] VDA-17 视觉基线已冻结：HTML / CSS / JavaScript 视觉主源、15 页 35 个固定状态、Dark / Light、五类响应式布局与 60 张正式截图基线均已建立
 - [x] 视觉差异裁决、自动 QA、Figma 派生镜像与开发交接映射已建立
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
-- [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；S1-01/S1-02 已实装运行版本、workspace、strict TypeScript 与质量命令，`dev`、`build` 和聚合 `check` 尚未实装
-- [x] 运行拓扑、端口、Origin allowlist 与本地会话已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 冻结；尚未实装
+- [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、质量命令、`dev` 与 `build` 已实装，聚合 `check` 和 CI 待 S1-04
+- [x] Development 双进程、Production 同源静态托管、loopback 端口、精确 Origin 与最小内存 Session/WS 首消息认证已实装；完整 REST/WS 防护和负向安全矩阵待 S2-04
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 已接受 native launcher + 外部浏览器 PWA，当前仅限受控本机个人使用，尚未实装
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；尚未实装
-- [x] pnpm TypeScript monorepo 的四个目标边界、运行版本与单一锁文件已创建；产品源码尚未创建
-- [ ] Frontend 尚未实现
-- [ ] Local Service 尚未实现
+- [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
+- [x] React/Vite 最小 App Shell 已实现；业务页面、路由、PWA 缓存和 Audio Engine 尚未实现
+- [x] Fastify Local Service 最小 health/session/events 与 Mock Provider health 已实现；业务模块尚未实现
 - [ ] SQLite schema 与 migrations 尚未实现
 - [ ] Provider adapters 尚未实现
-- [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口和脚手架样例已建立；产品测试待产品源码创建后扩展
+- [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
-- [ ] 产品开发和构建命令尚未创建或验证
+- [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证
 
 ### Agent safety note
 
-当前可以从仓库验证运行版本、workspace 边界、锁文件、frozen install、strict typecheck、lint、format check、四层 Vitest、三浏览器 E2E、axe、视觉基线和 coverage；这些测试目前只证明质量工具链，不证明尚不存在的产品行为。产品源码、开发服务、构建、端口监听和运行行为仍不能验证。运行拓扑、端口与本地会话已经写入 ADR 0002，包装与交付边界已经写入 ADR 0003，Provider 可行性与发布边界已经写入 ADR 0004。这些已接受决策都不代表对应服务、Provider adapter 或安装包已经存在。
+当前可以验证运行版本、workspace、锁文件、frozen install、strict typecheck、lint、format、四层 Vitest、三浏览器 E2E、axe、视觉基线、coverage，以及 S1 Mock skeleton 的开发/生产启动、REST health、认证后 WebSocket 事件和同源静态托管。这些证据只证明工程骨架连通，不证明 Profile、Program、播放、数据库或真实 Provider 行为；真实 Provider adapter、TTS helper、业务模块和安装包仍不存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -66,10 +66,10 @@ AI Agent **不得**：
 
 - 把目标目录树描述成现有代码。
 - 把目标技术栈描述成已安装依赖。
-- 把尚未实装的 `dev`、`build`、聚合 `check` 或产品测试覆盖描述成已经可运行的事实。
-- 把 ADR 0002 选定的端口、进程关系或 session bootstrap 描述为已经实装或可运行。
+- 把尚未实装的聚合 `check`、CI 或产品行为测试覆盖描述成已经可运行的事实。
+- 把 S1 最小 Session/Origin 骨架描述为已经完成 S2-04 的全部安全防护。
 - 把 ADR 0003 的已接受架构描述为已经实现，或把本地 ad-hoc 产物描述为已通过 Developer ID 签名公证、可公开分发。
-- 声称产品应用、产品行为测试、构建或数据库可以运行。
+- 声称产品功能、真实 Provider、播放或数据库可以运行。
 - 从参考图推断尚未写入权威文档的业务规则。
 
 ## 3. 产品快照
@@ -168,26 +168,26 @@ Fastify Local Service
 
 ## 5. 目标技术栈
 
-> 产品技术来自目标架构；工具链精确版本来自 [ADR 0001](docs/adr/0001-toolchain-and-quality.md)。标记为 `Pinned and verified` 或 `Configured and verified` 的 S1-01/S1-02 基础已经从当前仓库验证。
+> 产品技术来自目标架构；工具链精确版本来自 [ADR 0001](docs/adr/0001-toolchain-and-quality.md)。标记为 `Pinned and verified` 或 `Configured and verified` 的 S1-01～S1-03 基础已经从当前仓库验证。
 
 | Area | Planned technology | Status |
 |---|---|---|
 | Runtime | Node.js 24.18.0 LTS | Pinned and verified |
 | Package management | Corepack 0.35.0 + pnpm 11.13.0 | Pinned and verified |
 | Language | TypeScript 6.0.3 | Strict project references verified |
-| Repository | pnpm native TypeScript workspace | Created · source not implemented |
-| Frontend | React + Vite | Planned |
-| Frontend build | Vite 8.1.4 | Selected · not installed |
-| App delivery | Web / PWA | Planned |
+| Repository | pnpm native TypeScript workspace | Created · S1 source skeleton verified |
+| Frontend | React 19.2.7 + Vite | Minimal App Shell verified |
+| Frontend build | Vite 8.1.4 | Installed and verified |
+| App delivery | Web / PWA | Web skeleton verified · PWA cache planned |
 | Server state | TanStack Query | Planned |
 | Cross-component UI state | Zustand | Planned |
 | Audio | Browser `HTMLAudio` | Planned |
-| Backend | Node.js + Fastify modular monolith | Planned |
-| API | REST `/api/v1` + WebSocket events | Planned |
-| Development topology | Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` | Selected · not implemented |
-| Production topology | Same-origin PWA / REST / WebSocket on loopback, preferred port `49373` with bounded fallback `49373-49383` | Selected · not implemented |
-| Local session | `POST /api/v1/session/bootstrap`, memory-only token, exact Origin allowlist, WebSocket first-message auth | Selected · not implemented |
-| Runtime validation | Zod | Planned |
+| Backend | Node.js + Fastify 5.10.0 modular monolith | S1 bootstrap verified · modules planned |
+| API | REST `/api/v1` + WebSocket events | Health/session/events skeleton verified |
+| Development topology | Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` | Implemented and verified |
+| Production topology | Same-origin PWA / REST / WebSocket on loopback, preferred port `49373` with bounded fallback `49373-49383` | S1 static serving and strict smoke verified |
+| Local session | `POST /api/v1/session/bootstrap`, memory-only token, exact Origin allowlist, WebSocket first-message auth | Minimal S1 implementation · S2 hardening pending |
+| Runtime validation | Zod 4.4.3 | Health/session/event schemas verified |
 | Database | SQLite | Planned |
 | ORM / migrations | Drizzle | Planned |
 | Secrets | OS Credential Store | Planned |
@@ -200,7 +200,7 @@ Fastify Local Service
 | Lint / format | ESLint 10.7.0 + typescript-eslint 8.64.0 + Prettier 3.9.5 | Configured and verified |
 | CI | GitHub Actions | Selected · not configured |
 
-已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 决定但尚未实装：
+已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 决定；S1 最小骨架已实装：
 
 - Development / production 拓扑、端口、进程关系、session bootstrap 与 Origin allowlist。
 - Development 使用 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373`。
@@ -229,6 +229,7 @@ Fastify Local Service
 
 ```text
 Koradio/
+├── .env.example
 ├── .nvmrc
 ├── package.json
 ├── pnpm-workspace.yaml
@@ -248,16 +249,28 @@ Koradio/
 ├── design-qa.md
 ├── apps/
 │   ├── web/
+│   │   ├── src/
+│   │   │   ├── app.tsx
+│   │   │   ├── main.tsx
+│   │   │   ├── styles.css
+│   │   │   └── transport.ts
+│   │   ├── index.html
+│   │   ├── vite.config.ts
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   └── server/
+│       ├── src/
+│       │   ├── bootstrap/
+│       │   └── integrations/
 │       ├── package.json
 │       └── tsconfig.json
 ├── packages/
 │   ├── contracts/
+│   │   ├── src/
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   └── design-tokens/
+│       ├── src/
 │       ├── package.json
 │       └── tsconfig.json
 ├── tests/
@@ -379,7 +392,7 @@ packages/
 
 ### 当前可执行状态
 
-**当前可以安装 workspace 并运行质量工具链；仍不能启动或构建 Koradio 产品，现有测试只覆盖脚手架样例。**
+**当前可以安装 workspace、启动开发双进程并构建/启动同源生产骨架；当前页面和服务只验证 S1 工程连通，不提供 Koradio 产品功能。**
 
 `design/assets/prototype/index.html` 是可直接在浏览器打开的零构建设计预览骨架，不是 Koradio 产品运行入口。
 
@@ -391,6 +404,9 @@ nvm use
 npm install --global corepack@0.35.0
 corepack prepare pnpm@11.13.0 --activate
 pnpm install --frozen-lockfile
+pnpm dev
+pnpm build
+pnpm start
 pnpm typecheck
 pnpm lint
 pnpm format:check
@@ -404,16 +420,15 @@ pnpm test:e2e
 pnpm test:visual
 ```
 
-仍不能运行产品的原因：
+当前骨架边界：
 
-- 四个 workspace 当前只有 manifest 与基础 `tsconfig`，没有源码入口。
-- 没有环境变量模板。
 - 没有数据库 schema 或 migration。
-- 没有 `dev` 或构建脚本。
-- 现有测试是工具链样例，不承载产品功能验收。
-- 没有已实装并验证的端口监听。
+- 没有 Profile、Program、Library、Taste、Feedback 或 Playback 业务模块。
+- 没有真实 Codex、NetEase 或 TTS Adapter；运行时只允许 `mock`。
+- 最小 App Shell 只展示 REST、WebSocket 和 Mock Provider 连通状态。
+- S1 Session 只覆盖内存 bootstrap、精确 Origin 与 WS 首消息认证；完整安全防护由 S2-04 完成。
 
-[ADR 0001](docs/adr/0001-toolchain-and-quality.md) 已固定完整根 script 名和 CI 安装合同；S1-02 质量命令已实装，`dev`、`build` 与聚合 `check` 将随 S1-03/S1-04 创建并验证。
+[ADR 0001](docs/adr/0001-toolchain-and-quality.md) 已固定完整根 script 名和 CI 安装合同；`dev`、`build` 与 `start` 已实装，聚合 `check` 和 GitHub Actions CI 由 S1-04 完成。
 
 ### 脚手架落地后必须补齐
 
@@ -421,15 +436,15 @@ pnpm test:visual
 - [x] 实装并验证 Corepack、pnpm 与单一锁文件。
 - [x] 一次性 frozen install 命令。
 - [x] 最小 workspace typecheck 命令。
-- [ ] Frontend 与 Local Service 开发命令。
-- [ ] 同源生产构建与启动命令。
+- [x] Frontend 与 Local Service 开发命令。
+- [x] 同源生产构建与启动命令。
 - [x] Lint 与 format check 命令。
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试命令。
 - [ ] SQLite migration 与数据备份命令。
-- [ ] 必需环境变量和 Secret Store 初始化方式。
-- [ ] ADR 0002 选定的默认绑定地址、端口、Origin allowlist 与 session bootstrap。
-- [ ] Provider mock / offline development 模式。
-- [ ] 健康检查与故障诊断入口。
+- [x] 非敏感环境变量模板；Secret Store 初始化方式仍待 S2。
+- [x] ADR 0002 的默认绑定地址、端口、精确 Origin allowlist 与最小 session bootstrap。
+- [x] Provider Mock development 模式；离线 PWA 仍待 S4。
+- [x] S1 health 与事件连接探针；完整故障诊断仍待 S2/S4。
 
 ## 8. AI Agent Bootstrap
 

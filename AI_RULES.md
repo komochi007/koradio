@@ -1,7 +1,7 @@
 # Koradio Engineering Rules
 
 > Scope: Koradio 的所有源码、配置、测试、migration 与工程文档  
-> Status: Target engineering law；代码尚未实现  
+> Status: Active engineering law；S1 最小骨架已实现，产品业务尚未实现
 > Keywords: `MUST`、`MUST NOT`、`ALWAYS`、`NEVER` 均为强制要求
 
 ## 1. 权威与适用性

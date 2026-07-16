@@ -9,5 +9,10 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": ["*.config.ts", "tests/**/*.ts", "tests/**/*.tsx"]
+  "include": ["*.config.ts", "tests/**/*.ts", "tests/**/*.tsx"],
+  "references": [
+    { "path": "./apps/server" },
+    { "path": "./packages/contracts" },
+    { "path": "./packages/design-tokens" }
+  ]
 }

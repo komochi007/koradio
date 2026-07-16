@@ -11,10 +11,10 @@
 
 | 问题 | 直接答案 |
 |---|---|
-| 当前工程阶段 | S1 工程脚手架；S1-01/S1-02 已建立 workspace、运行版本与质量工具链，产品源码尚未开始 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`、`S1-02` |
+| 当前工程阶段 | S1 工程脚手架；S1-01～S1-03 已建立可安装、可测试、可构建的 Mock skeleton |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-03` |
 | 当前活动任务 | 无；按依赖选择下一任务 |
-| 初始下一任务 | `S1-03` 建立 Web、Server、Contracts 与 Tokens 最小骨架 |
+| 初始下一任务 | `S1-04` 建立 CI 与真实开发说明 |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
 | 状态事实源 | 只修改本文件；GitHub Issue/Project 只写入“外部引用” |
@@ -51,7 +51,7 @@ AI 执行任务时按固定顺序操作：
 | 阶段 | 已完成 | 待开始 | 进行中 | 待验收 | 阻塞 | 总数 |
 |---|---:|---:|---:|---:|---:|---:|
 | S0 基线与关键决策 | 8 | 0 | 0 | 0 | 0 | 8 |
-| S1 工程脚手架 | 2 | 2 | 0 | 0 | 0 | 4 |
+| S1 工程脚手架 | 3 | 1 | 0 | 0 | 0 | 4 |
 | S2 平台、数据与安全底座 | 0 | 5 | 0 | 0 | 0 | 5 |
 | S3 核心领域与 Provider 后端 | 0 | 7 | 0 | 0 | 0 | 7 |
 | S4 P0 核心产品体验 | 0 | 6 | 0 | 0 | 0 | 6 |
@@ -86,7 +86,7 @@ AI 执行任务时按固定顺序操作：
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `S1-01` 初始化 TypeScript monorepo 与运行版本 | 已完成 | Critical | 建立唯一安装入口和锁定的运行环境，为所有应用和 package 提供可复现基础。 | S0-03、S0-04 | 工具链与运行拓扑 ADR。 | 只创建 workspace、版本和基础脚本，不实现领域功能；未明确列出的实现和功能不在本任务范围内。 | 全新 clone 可一次安装，workspace 能识别四个目标边界，锁文件无漂移；同时满足“输入”所引用权威文档的适用验收项。 | 根 `package.json`、`pnpm-workspace.yaml`、`pnpm-lock.yaml`、`.nvmrc`、基础 `tsconfig` 与四个边界 manifest。 | Node 24.18.0、Corepack 0.35.0、pnpm 11.13.0 精确版本回读；清理本任务生成的 `node_modules` 后 frozen install、四边界列表、最小 typecheck、锁文件哈希稳定和 `git diff --check` 均通过。 | 项目所有者 / 无 | 所选运行版本与包装方案或关键原生依赖不兼容；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S1-02` 建立 strict TypeScript 与质量命令 | 已完成 | Critical | 从第一行产品代码开始建立 typecheck、lint、format、unit、component 和 E2E 的统一入口。 | S1-01 | S0-03 ADR、`AI_RULES.md` 测试与 TypeScript 规则。 | 建立配置和示例测试，不以放宽规则换取通过；未明确列出的实现和功能不在本任务范围内。 | strict、`noImplicitAny` 生效；同时满足“输入”所引用权威文档的适用验收项。 | 根 TypeScript、ESLint、Prettier、Vitest、Playwright 配置，各 workspace 质量脚本，分层测试样例与视觉基线。 | Node/Corepack/pnpm 版本回读、frozen install 与锁文件哈希稳定；typecheck、lint、format check、四层 Vitest、V8 coverage、三浏览器 Playwright + axe、Chromium 视觉回归和 `git diff --check` 全部通过；受控失败样例分别触发 `noImplicitAny`、lint 与 unit 门禁后已移除。 | 项目所有者 / 无 | 工具之间存在不可兼容配置；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
-| `S1-03` 建立 Web、Server、Contracts 与 Tokens 最小骨架 | 待开始 | Critical | 建立架构规定的四个边界，并用 health REST、WebSocket 事件和 Mock Provider 证明端到端连通。 | S1-01、S0-06 | 架构目录、运行拓扑和 Provider 可行性结论。 | 实现最小 App Shell 和服务探针，不实现 Profile、Program 或真实播放；未明确列出的实现和功能不在本任务范围内。 | Web 可读取 `/api/v1/health`、建立 `/api/v1/events`、解析 Zod 响应并在 Mock 模式启动；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 `apps/web/`、`apps/server/`、`packages/contracts/`、`packages/design-tokens/` 和非敏感环境模板。 | 开发与生产构建冒烟、REST/WS contract test 和浏览器连接测试。 | 待分配 / 无 | 最小同源/开发拓扑无法同时满足 session 与 Origin 规则；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S1-03` 建立 Web、Server、Contracts 与 Tokens 最小骨架 | 已完成 | Critical | 建立架构规定的四个边界，并用 health REST、WebSocket 事件和 Mock Provider 证明端到端连通。 | S1-01、S0-06 | 架构目录、运行拓扑和 Provider 可行性结论。 | 实现最小 App Shell 和服务探针，不实现 Profile、Program 或真实播放；未明确列出的实现和功能不在本任务范围内。 | Web 可读取 `/api/v1/health`、建立 `/api/v1/events`、解析 Zod 响应并在 Mock 模式启动；同时满足“输入”所引用权威文档的适用验收项。 | `apps/web/src/`、`apps/server/src/`、`packages/contracts/src/`、`packages/design-tokens/src/`、`.env.example` 及根 dev/build/start 命令。 | Node/Corepack/pnpm 与 ncm-cli 版本回读；frozen install、typecheck、lint、format、四层 Vitest、coverage、build、开发/生产冒烟、REST/WS contract/integration、三浏览器连接 E2E + axe、视觉回归和 `git diff --check` 全部通过。 | 项目所有者 / 无 | 最小同源/开发拓扑无法同时满足 session 与 Origin 规则；已用内存 bootstrap、精确 Origin 和 WS 首消息认证解除，完整安全矩阵留给 S2-04。 |
 | `S1-04` 建立 CI 与真实开发说明 | 待开始 | High | 让每次合并都执行同一套质量门，并把 README 从 Documentation-first 状态同步为可验证事实。 | S1-02、S1-03 | 全部根脚本和目标 CI 平台。 | 只建立常规 CI，不做签名、公证和正式发布流水线；未明确列出的实现和功能不在本任务范围内。 | CI 执行 install、typecheck、lint、format check、相关测试和 build；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 `.github/workflows/ci.yml`，更新根 `README.md` 与必要开发文档。 | 本地执行等价命令并由一次真实 CI run 证明通过。 | 待分配 / 无 | CI 无法安装关键原生依赖；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 
 ### S2｜平台、数据与安全底座
@@ -95,10 +95,10 @@ AI 执行任务时按固定顺序操作：
 
 | ID / 任务 | 状态 | 优先级 | 目的 | 依赖 | 输入 | 范围边界 | 验收标准 | 交付物 / 计划路径 | 验证方式 | 负责人 / 外部引用 | 阻塞条件 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `S2-01` 建立 v1 公共 Contracts | 待开始 | Critical | 用 Zod 固化 REST、WebSocket、错误、幂等命令和异步任务的 wire 边界，避免前后端复制类型。 | S1-02、S1-03 | PRD、架构 API Layer 和 `AI_RULES.md`。 | 只定义 wire schema 和类型，不暴露 ORM、Provider response 或内部 entity；未明确列出的实现和功能不在本任务范围内。 | 有效/无效样例齐全，event envelope、error envelope、`profileId` 和 `Idempotency-Key` 规则均被测试；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 `packages/contracts/src/` 的 v1 schemas、public exports 和 contract tests。 | schema 样例测试、跨 workspace typecheck 和 breaking-change 检查。 | 待分配 / 无 | PRD 与架构对公共行为冲突；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S2-01` 建立 v1 公共 Contracts | 待开始 | Critical | 用 Zod 固化 REST、WebSocket、错误、幂等命令和异步任务的 wire 边界，避免前后端复制类型。 | S1-02、S1-03 | PRD、架构 API Layer 和 `AI_RULES.md`。 | 只定义 wire schema 和类型，不暴露 ORM、Provider response 或内部 entity；未明确列出的实现和功能不在本任务范围内。 | 有效/无效样例齐全，event envelope、error envelope、`profileId` 和 `Idempotency-Key` 规则均被测试；同时满足“输入”所引用权威文档的适用验收项。 | 计划把 `packages/contracts/src/` 的 S1 最小 schemas 扩展为完整 v1 contracts，并补齐 public exports 与 contract tests。 | schema 样例测试、跨 workspace typecheck 和 breaking-change 检查。 | 待分配 / 无 | PRD 与架构对公共行为冲突；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S2-02` 建立 SQLite、Drizzle 与首次数据目录 | 待开始 | Critical | 建立可版本化、可事务、可恢复的本地数据基础，并在首次启动自动选择 OS 应用数据目录。 | S2-01 | 架构 Database Design、`AI_RULES.md` 数据规则。 | 建立 schema、migration runner、WAL、foreign keys 和 bootstrap；未明确列出的实现和功能不在本任务范围内。 | 空环境可迁移到最新版本，重复迁移幂等，外键/WAL 生效，失败不自动重建表；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 `apps/server/src/platform/db/`、`migrations/` 和 bootstrap adapter。 | 临时数据目录集成测试、升级/失败 migration 测试和数据库 pragma 检查。 | 待分配 / 无 | ORM 或打包运行时无法可靠加载 migration；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S2-03` 建立 Secret Store、File Store 与脱敏日志 | 待开始 | Critical | 把密钥、头像、音频和缓存限制在受控本地边界，阻止秘密和任意路径进入 API、数据库或日志。 | S2-02、S0-05 | 安全规则、包装 ADR、未来可选 secret 类型；v1 NetEase 不使用 Secret Store。 | 提供平台 Port/Adapter 和测试替身，不实现具体业务页面；未明确列出的实现和功能不在本任务范围内。 | Secret 只进入 OS Credential Store；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 `apps/server/src/platform/secrets/`、`files/`、`logging/` 及测试。 | 恶意路径、密钥回显、下载限制和 headless 错误集成测试。 | 待分配 / 无 | 包装形态无法访问安全凭据库；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
-| `S2-04` 建立本地 Session、Origin 与事件连接防护 | 待开始 | Critical | 保护 loopback HTTP 边界，避免其他网页或迟到事件控制本地服务。 | S1-03、S2-01 | S0-04 ADR、架构 Authentication Flow。 | 实现短期内存 token、Origin 校验、REST/WS 一致认证和重连基础，不引入云账号；未明确列出的实现和功能不在本任务范围内。 | 非法 Origin、过期 token、URL token、LocalStorage token 和未认证 WebSocket 均被拒绝；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 server session middleware、Web bootstrap consumer 和安全测试。 | REST/WS 正反向集成测试、浏览器存储检查和日志脱敏检查。 | 待分配 / 无 | 所选包装/启动方式要求持久化或在 URL 传 token；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S2-04` 建立本地 Session、Origin 与事件连接防护 | 待开始 | Critical | 保护 loopback HTTP 边界，避免其他网页或迟到事件控制本地服务。 | S1-03、S2-01 | S0-04 ADR、架构 Authentication Flow。 | 实现短期内存 token、Origin 校验、REST/WS 一致认证和重连基础，不引入云账号；未明确列出的实现和功能不在本任务范围内。 | 非法 Origin、过期 token、URL token、LocalStorage token 和未认证 WebSocket 均被拒绝；同时满足“输入”所引用权威文档的适用验收项。 | 计划把 S1 最小 session/bootstrap/WS 认证扩展为完整 middleware、Web consumer 和安全测试矩阵。 | REST/WS 正反向集成测试、浏览器存储检查和日志脱敏检查。 | 待分配 / 无 | 所选包装/启动方式要求持久化或在 URL 传 token；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S2-05` 实现 DeviceSettings、ProfilePreferences、Health 与数据迁移底座 | 待开始 | Critical | 建立设备级配置、档案级偏好、脱敏健康状态和可回滚数据目录迁移的明确 owner。 | S2-02、S2-03、S2-04 | PRD Settings、用户流程、架构数据迁移规则。 | 实现平台和后端用例/contract；未明确列出的实现和功能不在本任务范围内。 | 设备/Profile 配置不串层；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建两个 server module、health service、迁移 job 和集成测试。 | 配置隔离、内置 Provider 只读状态、迁移成功/回滚/重复请求和完全离线 contract tests。 | 待分配 / 无 | 无法在目标平台保证原子 bootstrap 切换和备份校验；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 
 ### S3｜核心领域与 Provider 后端

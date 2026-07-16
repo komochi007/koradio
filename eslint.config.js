@@ -18,7 +18,7 @@ export default [
       "design/**",
       "docs/**",
       "node_modules/**",
-      "dist/**",
+      "**/dist/**",
       "coverage/**",
       "playwright-report/**",
       "test-results/**",

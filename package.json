@@ -9,6 +9,11 @@
     "pnpm": "11.13.0"
   },
   "scripts": {
+    "build:packages": "pnpm --filter @koradio/contracts build && pnpm --filter @koradio/design-tokens build",
+    "predev": "pnpm build:packages",
+    "dev": "pnpm --parallel --filter @koradio/server --filter @koradio/web dev",
+    "build": "pnpm build:packages && pnpm --filter @koradio/server build && pnpm --filter @koradio/web build",
+    "start": "pnpm --filter @koradio/server start",
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write --ignore-unknown .",
@@ -24,12 +29,16 @@
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
     "@eslint/js": "10.0.1",
+    "@fastify/websocket": "11.3.0",
     "@playwright/test": "1.61.1",
+    "@koradio/contracts": "workspace:*",
+    "@koradio/design-tokens": "workspace:*",
     "@testing-library/dom": "10.4.1",
     "@testing-library/react": "16.3.2",
     "@types/node": "24.13.3",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
+    "@types/ws": "8.18.1",
     "@vitest/coverage-v8": "4.1.10",
     "eslint": "10.7.0",
     "jsdom": "29.1.1",

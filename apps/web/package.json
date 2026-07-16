@@ -4,9 +4,23 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "vite build",
+    "dev": "vite",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"**/*.{ts,tsx}\" --no-error-on-unmatched-pattern --max-warnings=0",
     "format": "prettier --write --ignore-unknown .",
     "format:check": "prettier --check --ignore-unknown ."
+  },
+  "dependencies": {
+    "@koradio/contracts": "workspace:*",
+    "@koradio/design-tokens": "workspace:*",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.3",
+    "vite": "8.1.4"
   }
 }

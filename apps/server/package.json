@@ -4,9 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "tsc -b",
+    "dev": "NODE_ENV=development tsx watch src/bootstrap/main.ts",
+    "start": "NODE_ENV=production node dist/bootstrap/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"**/*.ts\" --no-error-on-unmatched-pattern --max-warnings=0",
     "format": "prettier --write --ignore-unknown .",
     "format:check": "prettier --check --ignore-unknown ."
+  },
+  "dependencies": {
+    "@fastify/cors": "11.3.0",
+    "@fastify/static": "10.1.0",
+    "@fastify/websocket": "11.3.0",
+    "@koradio/contracts": "workspace:*",
+    "fastify": "5.10.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/ws": "8.18.1",
+    "tsx": "4.23.1"
   }
 }

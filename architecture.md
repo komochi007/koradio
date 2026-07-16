@@ -1,6 +1,6 @@
 # Koradio System Architecture
 
-> Status: Target Architecture · Documentation-first · Not yet implemented  
+> Status: Target Architecture · S1 runnable skeleton partially implemented
 > Scope: Local-first Web/PWA MVP  
 > Audience: AI Coding Agents, maintainers, system architects  
 > Sources: `docs/prd.md`, `docs/user-flow.md`, `design/design.md`
