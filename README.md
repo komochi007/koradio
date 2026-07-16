@@ -46,6 +46,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；尚未实装
 - [x] 运行拓扑、端口、Origin allowlist 与本地会话已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 冻结；尚未实装
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 已接受 native launcher + 外部浏览器 PWA，当前仅限受控本机个人使用，尚未实装
+- [ ] Provider 可行性尚未关闭；[ADR 0004](docs/adr/0004-provider-feasibility.md) 处于提议状态，Codex、网易云搜索/歌词/歌单和 Apple TTS 已验证，网易云播放 URL 官方端点存在但当前应用未授权
 - [ ] Monorepo 尚未创建
 - [ ] Frontend 尚未实现
 - [ ] Local Service 尚未实现
@@ -56,7 +57,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ### Agent safety note
 
-当前所有产品代码目录、可执行命令、端口和运行行为均不能从仓库验证。工具链的目标版本和命令合同已经写入 ADR 0001，运行拓扑、端口与本地会话已经写入 ADR 0002，包装与交付边界已经写入 ADR 0003。这些文档都不代表依赖、配置、端口监听、服务或安装包已经存在。
+当前所有产品代码目录、可执行命令、端口和运行行为均不能从仓库验证。工具链的目标版本和命令合同已经写入 ADR 0001，运行拓扑、端口与本地会话已经写入 ADR 0002，包装与交付边界已经写入 ADR 0003；Provider 可行性验证见 ADR 0004，但该 ADR 尚未接受。这些文档都不代表依赖、配置、端口监听、服务、Provider adapter 或安装包已经存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -190,7 +191,7 @@ Fastify Local Service
 | ORM / migrations | Drizzle | Planned |
 | Secrets | OS Credential Store | Planned |
 | AI orchestration | Local Codex process | Planned |
-| Music provider | NetEase-compatible API | Planned |
+| Music provider | NetEase OpenAPI / compatible API | Proposed · blocked on play URL authorization |
 | Voice provider | Apple `AVSpeechSynthesizer` via bundled native helper；standard installed voices only | Selected · not implemented |
 | Unit / integration test | Vitest 4.1.10 + V8 coverage | Selected · not installed |
 | Component test | React Testing Library 16.3.2 + jsdom 29.1.1 | Selected · not installed |
@@ -211,9 +212,15 @@ Fastify Local Service
 - 当前只允许项目所有者从可信源码在受控本机构建并个人使用，不提供公开下载。
 - Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净环境仍未验证；这些是未来任何外部分发的硬门，不阻塞当前本地开发。
 
+由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 验证但尚未接受：
+
+- 本机 Codex CLI、网易云 `ncm-cli`、网易云搜索/歌词/歌单调用和 Apple 系统 TTS 可用。
+- 网易云“获取歌曲播放url”官方端点已定位为 `/openapi/music/basic/song/playurl/get/v2`，但当前开放平台应用未授权该接口。
+- `ncm-cli play` 只返回 `orpheus://` 唤端结果，不能作为 Browser Audio Engine 的播放事实源。
+
 尚未决定：
 
-- Provider、数据库和其他业务依赖的具体包与精确版本；Apple 系统 TTS 的 v1 接入形态已经由项目所有者明确。
+- Provider 的完整可行性裁决、数据库和其他业务依赖的具体包与精确版本；Apple 系统 TTS 的 v1 接入形态已经由项目所有者明确。
 
 ## 6. 目录结构
 
