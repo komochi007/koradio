@@ -59,6 +59,9 @@
 - **MUST** 为异步生成任务提供 job ID、取消、超时、幂等和可恢复 snapshot。
 - **MUST** 在 TTS 不可用时保留文字 DJ，并继续可播放节目。
 - **MUST** 将 Codex 与网易云视为节目生成核心依赖，将 TTS 视为可选增强。
+- **MUST** 在 v1 通过 bundled macOS native helper 调用 Apple `AVSpeechSynthesizer`，只使用当前设备已安装的标准系统语音；**MUST NOT** 使用云 TTS 或请求 Personal Voice 权限。
+- **MUST** 用参数数组启动 TTS helper，通过结构化 stdin 传递 DJ 文本并校验 stdout/音频元数据；**MUST NOT** 把 DJ 文本、voice payload 或输出路径拼接进 shell command。
+- **MUST** 在每次合成前用系统可用语音列表校验 voice identifier；helper 缺失、语音不匹配、输出非法、取消或超时时必须稳定降级为文字 DJ。
 - **MUST** 在新节目完整提交前继续播放旧节目；失败保持旧节目不变，成功后保存旧 checkpoint、停止旧时间线并原子切换。
 - **MUST** 在单曲不可播放时标记运行时失败并尝试下一首。
 - **MUST NOT** 让 Domain 导入 React、Fastify、Drizzle、WebSocket 或 Provider SDK。
@@ -161,7 +164,7 @@
 - **MUST** 在根 manifest 提供 ADR 0001 定义的 `dev`、typecheck、lint、format、测试、build 与 `check` 命令族。
 - **MUST** 精确固定直接依赖，设置 24 小时 release age、严格 engine、frozen lockfile 和 pnpm `allowBuilds` 审批；依赖 build script 默认拒绝。
 - **MUST** 让 GitHub Actions 的常规质量门运行在 Linux，让 Credential Store、数据目录、进程生命周期与包装探针运行在 macOS；第三方 Actions 固定完整 commit SHA。
-- **MUST** 按 `docs/adr/0003-macos-packaging.md` 使用原生轻量 launcher + bundled Node Local Service + 外部浏览器 PWA，并为 arm64/x64 生成独立产物；launcher 不得拥有播放或业务事实。
+- **MUST** 按 `docs/adr/0003-macos-packaging.md` 使用原生轻量 launcher + bundled Node Local Service + bundled native TTS helper + 外部浏览器 PWA，并为 arm64/x64 生成独立产物；launcher 与 TTS helper 均不得拥有播放或业务事实。
 - **MUST** 让本地个人预览产物从可信源码在受控本机构建；ad-hoc 签名只用于本地 bundle 结构与生命周期验证，不得上传、公开下载或分发给外部用户。
 - **MUST** 在任何公开下载或外部分发前完成 Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净环境验收；不得关闭或绕过系统安全检查来替代发布门。
 - **MUST NOT** 混用 package manager 或锁文件、依赖浮动 tag、启用 `dangerouslyAllowAllBuilds`，或自动合并 major 工具升级。
