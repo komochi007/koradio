@@ -180,7 +180,7 @@
 - **MUST** 让 Radio 空态、播放态和生成态共享同一页面骨架。
 - **MUST** 让 Detail Sheet 覆盖完整产品画布，并与 Radio 共享播放状态。
 - **MUST** 让 Radio 心形按钮只表达“喜欢歌曲”，不喜欢位于 More，节目收藏只位于 Programs/节目入口；Detail Sheet 只保留单一播放/暂停。
-- **MUST** 在 Local Service 完全离线时仅允许已打开或缓存的 PWA 展示只读 Settings，禁用配置、密钥、测试与迁移控件。
+- **MUST** 在 Local Service 完全离线时仅允许已打开或缓存的 PWA 展示只读 Settings，禁用配置、测试与迁移控件。
 - **MUST** 让主按钮使用黑白高对比，绿色只表达在线、播放、成功、Focus 或少量波形活动。
 - **MUST** 让头像、封面、圆形按钮、状态点和图标按钮使用固定比例容器。
 - **MUST** 让 DJ 文案使用节目正文语义；仅用户输入使用弱气泡。

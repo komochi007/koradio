@@ -10,7 +10,7 @@
 ## 1. System Overview
 
 Koradio 是运行在单台设备上的私人 AI 音乐电台，由浏览器 PWA 与本地 Node.js 服务组成。
-系统读取当前档案的品味与历史，通过 Codex 规划节目，经网易云解析歌曲，并可通过 bundled macOS native helper 调用 `AVSpeechSynthesizer` 生成 DJ 语音。
+系统读取当前档案的品味与历史，通过 Codex 规划节目，经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled macOS native helper 调用 `AVSpeechSynthesizer` 生成 DJ 语音。
 ### System boundaries
 
 - **Client**：界面、HTMLAudio、实时播放进度和短生命周期交互状态。
@@ -25,7 +25,8 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台，由浏览器 PWA 
 | 媒体时间、暂停、seek、媒体错误 | Browser Audio Engine | Checkpoint only |
 | 生成任务、服务健康状态 | Backend runtime | Snapshot |
 | Sheet、draft、筛选等 UI 状态 | Frontend feature | None |
-| dataRoot、Codex、NetEase、Secret Store 引用 | Backend DeviceSettings | Device durable |
+| dataRoot、Codex 命令路径 | Backend DeviceSettings | Device durable |
+| NetEase、TTS 能力状态 | Backend runtime | Snapshot |
 | Theme、DJ language、voice style | Backend ProfilePreferences | Profile durable |
 
 MVP 不包含云账号、跨设备同步、支付、社区、多人同步收听、分布式微服务或真实频谱分析。
@@ -46,11 +47,10 @@ flowchart LR
     Modules --> Music["NetEase Adapter"]
     Modules --> TTS["TTSProvider Adapter"]
     Codex --> CodexExt["Local Codex Process"]
-    Music --> MusicExt["NetEase API"]
+    Music --> MusicExt["NetEase linuxapi Service"]
     TTS --> TTSHelper["Bundled macOS TTS Helper"]
     TTSHelper --> AppleTTS["AVSpeechSynthesizer<br/>Installed Standard Voices"]
     Secrets["OS Credential Store"] --> Codex
-    Secrets --> Music
 ```
 
 - Production 同源托管 PWA、REST、WebSocket 并绑定 loopback；Development 使用 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` 双进程拓扑，并使用精确 Origin allowlist。
@@ -108,11 +108,11 @@ flowchart LR
 | Library | 搜索、导入、候选池 | MusicProvider | NormalizedTrack | 推荐与播放控制 |
 | Taste | 自动 projection、人工 overrides、EffectiveTaste | Feedback | Taste context | Provider response、覆盖人工规则 |
 | Feedback | 显式喜欢/撤销、不喜欢/撤销、节目收藏/撤销、跳过事实 | Playback、Programs | Append-only FeedbackEvent | 重写历史事实 |
-| DeviceSettings | dataRoot、Codex、NetEase、迁移命令 | SecretStore、health ports | Safe device settings、migration job | Profile 偏好、Apple TTS 地址/密钥、明文密钥输出 |
+| DeviceSettings | dataRoot、Codex 命令路径、迁移命令 | health ports | Safe device settings、migration job | Profile 偏好、NetEase/Apple TTS 地址或密钥、明文密钥输出 |
 | ProfilePreferences | 主题、DJ 语言、声音风格 | Profiles | Profile preferences | 服务配置、密钥 |
 
 - 每个持久实体只有一个写入 owner；其他模块通过 use case/event 协作，Programs 只通过 Ports 调用 Provider。
-- Feedback 成功持久化后才更新 TasteProjection；TasteOverrides 独立持久化且合并时优先。DeviceSettings 永不输出明文密钥。
+- Feedback 成功持久化后才更新 TasteProjection；TasteOverrides 独立持久化且合并时优先。v1 的 DeviceSettings 不接受或输出网易云地址、Cookie 或密钥。
 ## 6. Data Flow
 
 ### Program generation
@@ -296,7 +296,7 @@ erDiagram
 | `profile_preferences` | ProfilePreferences | `profileId`；主题、DJ language、voice style |
 | `taste_projection` | Taste | `profileId`；可由反馈事实重建的自动投影 |
 | `taste_overrides` | Taste | `profileId`；人工规则，重建投影不得覆盖 |
-| `device_settings` | DeviceSettings | 单设备；dataRoot、服务配置与 secret reference |
+| `device_settings` | DeviceSettings | 单设备；dataRoot 与 Codex 命令路径 |
 | `data_root_migration` | DeviceSettings | `jobId` + idempotency key；迁移阶段与回滚状态 |
 | `music_track` | Library | `id` + source identity；归一化曲目 |
 | `program` | Programs | `id` + `profileId`；节目快照 |
@@ -438,6 +438,8 @@ native/
 - 强制 loopback、Origin allowlist、短期 session；REST 与 WebSocket 同等校验。
 - REST、event 和 Provider response 必须通过 Zod runtime validation。
 - SecretStore 使用 OS 凭据存储；API 仅返回脱敏状态，日志清除 token、key 和敏感正文。
+- v1 的网易云适配器不接收用户 Cookie、开放平台凭据或可配置上游地址；任何未来登录能力必须经新 ADR 与 SecretStore 安全设计。
+- 网易云返回的媒体 URL 必须经协议、域名、DNS/重定向、MIME、Range 和大小校验，Browser 只获得已验证的短期 `resolvedAudioRef`。
 - Codex schema 校验失败不得记录原始正文；只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
 - FileStore 拒绝路径越界和未允许扩展名；媒体下载限制超时、大小、MIME 与重定向。
 - Codex 通过参数数组启动，禁止拼接 shell command；命令路径需验证。
@@ -465,6 +467,7 @@ native/
 | TD-14 | Discriminated playback timeline | 不把文字降级伪装成音频 | 只有带 audio ref 的 DJ 段进入时间线 |
 | TD-15 | Development dual process, production same origin | 保留 Vite HMR，同时让生产安全边界保持单一 loopback origin | 需要精确 Origin allowlist、端口冲突处理和 WebSocket 首消息认证 |
 | TD-16 | Apple system TTS via bundled native helper | 保持语音本地化并移除云 TTS 凭据与网络依赖 | 需要双架构 Swift helper、已安装标准语音检查、进程 deadline 和文字降级 |
+| TD-17 | Built-in TypeScript NetEase `linuxapi` adapter | Personal Local Preview 不依赖官方 CLI、C# 二进制或 .NET 运行时 | 协议变化与公开发布合规必须在 S3/S7 持续验证 |
 ## 19. Known Tradeoffs
 
 - 模块化单体易部署，但 process crash 会同时影响全部 backend 能力。
