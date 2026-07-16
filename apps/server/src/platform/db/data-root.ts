@@ -1,7 +1,9 @@
 import { constants } from "node:fs";
-import { access, mkdir, stat } from "node:fs/promises";
+import { access, chmod, mkdir, open, readFile, rename, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+
+import { z } from "zod";
 
 export interface ResolveDataRootOptions {
   environment?: NodeJS.ProcessEnv;
@@ -9,6 +11,11 @@ export interface ResolveDataRootOptions {
   override?: string;
   platform?: NodeJS.Platform;
 }
+
+const dataRootBootstrapSchema = z.strictObject({
+  version: z.literal(1),
+  dataRoot: z.string().trim().min(1).max(300),
+});
 
 function resolveEnvironmentDirectory(value: string | undefined): string | undefined {
   const directory = value?.trim();
@@ -55,4 +62,50 @@ export async function ensureDataRoot(dataRoot: string): Promise<void> {
   }
 
   await access(dataRoot, constants.R_OK | constants.W_OK);
+}
+
+export function resolveDataRootBootstrapPath(initialDataRoot: string): string {
+  return `${initialDataRoot}.bootstrap.json`;
+}
+
+export async function readActiveDataRoot(
+  initialDataRoot: string,
+  bootstrapPath = resolveDataRootBootstrapPath(initialDataRoot),
+): Promise<string> {
+  try {
+    const serialized = await readFile(bootstrapPath, "utf8");
+    return resolve(dataRootBootstrapSchema.parse(JSON.parse(serialized) as unknown).dataRoot);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return resolve(initialDataRoot);
+    }
+
+    throw error;
+  }
+}
+
+export async function writeActiveDataRoot(bootstrapPath: string, dataRoot: string): Promise<void> {
+  await mkdir(dirname(bootstrapPath), { mode: 0o700, recursive: true });
+
+  const temporaryPath = `${bootstrapPath}.${process.pid.toString()}.tmp`;
+  const file = await open(temporaryPath, "w", 0o600);
+
+  try {
+    await file.writeFile(
+      `${JSON.stringify({
+        version: 1,
+        dataRoot: resolve(dataRoot),
+      })}\n`,
+      "utf8",
+    );
+    await file.sync();
+  } finally {
+    await file.close();
+  }
+
+  if (process.platform !== "win32") {
+    await chmod(temporaryPath, 0o600);
+  }
+
+  await rename(temporaryPath, bootstrapPath);
 }

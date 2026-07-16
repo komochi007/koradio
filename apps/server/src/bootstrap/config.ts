@@ -2,7 +2,11 @@ import { fileURLToPath } from "node:url";
 
 import { z } from "zod";
 
-import { resolveDataRoot } from "../platform/db/data-root.js";
+import {
+  readActiveDataRoot,
+  resolveDataRoot,
+  resolveDataRootBootstrapPath,
+} from "../platform/db/data-root.js";
 
 const booleanStringSchema = z
   .enum(["true", "false"])
@@ -27,11 +31,16 @@ export interface RuntimeConfig {
   providerMode: "mock";
   strictPort: boolean;
   dataRoot: string;
+  initialDataRoot?: string;
+  dataRootBootstrapPath?: string;
   webRoot: string;
 }
 
 export function loadRuntimeConfig(environment: NodeJS.ProcessEnv = process.env): RuntimeConfig {
   const parsed = environmentSchema.parse(environment);
+  const initialDataRoot = resolveDataRoot(
+    parsed.KORADIO_DATA_DIR === undefined ? undefined : { override: parsed.KORADIO_DATA_DIR },
+  );
 
   return {
     environment: parsed.NODE_ENV,
@@ -40,10 +49,23 @@ export function loadRuntimeConfig(environment: NodeJS.ProcessEnv = process.env):
     webPort: parsed.KORADIO_WEB_PORT,
     providerMode: parsed.KORADIO_PROVIDER_MODE,
     strictPort: parsed.KORADIO_STRICT_PORT,
-    dataRoot: resolveDataRoot(
-      parsed.KORADIO_DATA_DIR === undefined ? undefined : { override: parsed.KORADIO_DATA_DIR },
-    ),
+    dataRoot: initialDataRoot,
+    initialDataRoot,
+    dataRootBootstrapPath: resolveDataRootBootstrapPath(initialDataRoot),
     webRoot: fileURLToPath(new URL("../../../web/dist/", import.meta.url)),
+  };
+}
+
+export async function resolveRuntimeDataRoot(config: RuntimeConfig): Promise<RuntimeConfig> {
+  const initialDataRoot = config.initialDataRoot ?? config.dataRoot;
+  const dataRootBootstrapPath =
+    config.dataRootBootstrapPath ?? resolveDataRootBootstrapPath(initialDataRoot);
+
+  return {
+    ...config,
+    dataRoot: await readActiveDataRoot(initialDataRoot, dataRootBootstrapPath),
+    initialDataRoot,
+    dataRootBootstrapPath,
   };
 }
 

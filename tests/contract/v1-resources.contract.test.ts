@@ -252,6 +252,13 @@ describe("v1 resource and command contracts", () => {
         updatedAt: now,
       }),
     ).toMatchObject({ codexCommand: "/usr/local/bin/codex" });
+    expect(
+      deviceSettingsSchema.parse({
+        dataRoot: "/Users/example/Library/Application Support/Koradio",
+        codexCommand: null,
+        updatedAt: now,
+      }),
+    ).toMatchObject({ codexCommand: null });
     expect(updateDeviceSettingsCommandSchema.parse({ codexCommand: "codex" })).toEqual({
       codexCommand: "codex",
     });

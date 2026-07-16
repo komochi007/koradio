@@ -42,8 +42,14 @@ describe("SQLite platform bootstrap", () => {
     try {
       expect(readScalar(context.client, "PRAGMA foreign_keys")).toBe(1);
       expect(readScalar(context.client, "PRAGMA journal_mode")).toBe("wal");
-      expect(readScalar(context.client, "PRAGMA user_version")).toBe(1);
-      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(1);
+      expect(readScalar(context.client, "PRAGMA user_version")).toBe(2);
+      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(2);
+      expect(
+        readScalar(
+          context.client,
+          "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('device_settings', 'profile_preferences', 'data_root_migration')",
+        ),
+      ).toBe(3);
 
       context.client.exec(`
         CREATE TABLE parent (id INTEGER PRIMARY KEY);
@@ -72,8 +78,8 @@ describe("SQLite platform bootstrap", () => {
 
     const second = await bootstrapDatabase({ dataRoot });
     try {
-      expect(readScalar(second.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(1);
-      expect(readScalar(second.client, "PRAGMA user_version")).toBe(1);
+      expect(readScalar(second.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(2);
+      expect(readScalar(second.client, "PRAGMA user_version")).toBe(2);
     } finally {
       second.close();
     }

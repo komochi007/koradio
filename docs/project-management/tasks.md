@@ -11,10 +11,10 @@
 
 | 问题 | 直接答案 |
 |---|---|
-| 当前工程阶段 | S2 平台、数据与安全底座；S1 工程脚手架阶段门已通过 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-04` |
+| 当前工程阶段 | S3 核心领域与 Provider 后端；S2 平台、数据与安全阶段门已通过 |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05` |
 | 当前活动任务 | 无；按依赖选择下一任务 |
-| 初始下一任务 | `S2-05` 实现 DeviceSettings、ProfilePreferences、Health 与数据迁移底座 |
+| 初始下一任务 | `S3-01` 实现 Profiles 与 ProfilePreferences 领域闭环 |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
 | 状态事实源 | 只修改本文件；GitHub Issue/Project 只写入“外部引用” |
@@ -52,7 +52,7 @@ AI 执行任务时按固定顺序操作：
 |---|---:|---:|---:|---:|---:|---:|
 | S0 基线与关键决策 | 8 | 0 | 0 | 0 | 0 | 8 |
 | S1 工程脚手架 | 4 | 0 | 0 | 0 | 0 | 4 |
-| S2 平台、数据与安全底座 | 4 | 1 | 0 | 0 | 0 | 5 |
+| S2 平台、数据与安全底座 | 5 | 0 | 0 | 0 | 0 | 5 |
 | S3 核心领域与 Provider 后端 | 0 | 7 | 0 | 0 | 0 | 7 |
 | S4 P0 核心产品体验 | 0 | 6 | 0 | 0 | 0 | 6 |
 | S5 P1 全量功能 | 0 | 4 | 0 | 0 | 0 | 4 |
@@ -99,7 +99,7 @@ AI 执行任务时按固定顺序操作：
 | `S2-02` 建立 SQLite、Drizzle 与首次数据目录 | 已完成 | Critical | 建立可版本化、可事务、可恢复的本地数据基础，并在首次启动自动选择 OS 应用数据目录。 | S2-01 | 架构 Database Design、`AI_RULES.md` 数据规则。 | 建立 schema、migration runner、WAL、foreign keys 和 bootstrap；未明确列出的实现和功能不在本任务范围内。 | 空环境可迁移到最新版本，重复迁移幂等，外键/WAL 生效，失败不自动重建表；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/server/src/platform/db/`、`apps/server/migrations/`、Drizzle 配置与首次数据目录 adapter，并接入 Local Service 启动/关闭链路；业务 owner schema 保持未实现。 | `pnpm check`（77 个 coverage tests）、11 个 unit、56 个 contract、9 个 integration、1 个 component、三浏览器 6 个 E2E 与 1 个视觉测试通过；Drizzle schema 回读无未生成变更；空库/重复/升级/失败迁移、WAL、foreign keys、`0700/0600` 权限通过；`pnpm --prod deploy --legacy` 产物可加载 migration 并完成 production health smoke。 | 项目所有者 / 无 | ORM 或打包运行时无法可靠加载 migration；Node 24 `node:sqlite` + Drizzle ORM/Kit 1.0 RC 已通过 strict TypeScript、运行时、migration 与 deploy 验证，阻塞条件未发生。 |
 | `S2-03` 建立 Secret Store、File Store 与脱敏日志 | 已完成 | Critical | 把密钥、头像、音频和缓存限制在受控本地边界，阻止秘密和任意路径进入 API、数据库或日志。 | S2-02、S0-05 | 安全规则、包装 ADR、未来可选 secret 类型；v1 NetEase 不使用 Secret Store。 | 提供平台 Port/Adapter 和测试替身，不实现具体业务页面；未明确列出的实现和功能不在本任务范围内。 | Secret 只进入 OS Credential Store；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/server/src/platform/secrets/`、`files/`、`logging/`，接入结构化启动日志，并新增 `tests/integration/platform-security.integration.test.ts`；DeviceSettings、Provider 和业务页面保持未实现。 | `pnpm check` 通过：11 个 unit、56 个 contract、16 个 integration、1 个 component、84 个 coverage tests 与完整 build；三浏览器 6 个 E2E、1 个 Chromium 视觉测试通过；真实 macOS Keychain `set/has/get/delete` 往返通过；恶意路径、明文 argv/日志回显、headless、扩展名/MIME/大小/超时和不安全重定向均有正反向测试。 | 项目所有者 / 无 | 包装形态无法访问安全凭据库；真实 macOS 登录会话 Keychain 往返已通过，阻塞条件未发生。 |
 | `S2-04` 建立本地 Session、Origin 与事件连接防护 | 已完成 | Critical | 保护 loopback HTTP 边界，避免其他网页或迟到事件控制本地服务。 | S1-03、S2-01 | S0-04 ADR、架构 Authentication Flow。 | 实现短期内存 token、Origin 校验、REST/WS 一致认证和重连基础，不引入云账号；未明确列出的实现和功能不在本任务范围内。 | 非法 Origin、过期 token、URL token、LocalStorage token 和未认证 WebSocket 均被拒绝；同时满足“输入”所引用权威文档的适用验收项。 | 已扩展 `apps/server/src/bootstrap/` 的短期签名 session 与统一安全 middleware，更新 `apps/web/src/transport.ts` 为共享内存会话和 401 重试，并新增 session、REST/WS 与浏览器安全测试；云账号、Profile 身份和远程访问保持未实现。 | `pnpm check` 通过：16 个 unit、56 个 contract、20 个 integration、1 个 component、93 个 coverage tests 与完整 build；三浏览器 6 个 E2E、1 个 Chromium 视觉测试通过；非法/缺失 Origin、过期/跨进程/URL/持久化 token、未认证 WebSocket、认证前事件、Cookie/存储/URL 泄漏和日志脱敏均有正反向验证。 | 项目所有者 / 无 | 所选包装/启动方式要求持久化或在 URL 传 token；当前 native launcher + 外部浏览器 PWA 形态未触发该条件。 |
-| `S2-05` 实现 DeviceSettings、ProfilePreferences、Health 与数据迁移底座 | 待开始 | Critical | 建立设备级配置、档案级偏好、脱敏健康状态和可回滚数据目录迁移的明确 owner。 | S2-02、S2-03、S2-04 | PRD Settings、用户流程、架构数据迁移规则。 | 实现平台和后端用例/contract；未明确列出的实现和功能不在本任务范围内。 | 设备/Profile 配置不串层；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建两个 server module、health service、迁移 job 和集成测试。 | 配置隔离、内置 Provider 只读状态、迁移成功/回滚/重复请求和完全离线 contract tests。 | 待分配 / 无 | 无法在目标平台保证原子 bootstrap 切换和备份校验；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S2-05` 实现 DeviceSettings、ProfilePreferences、Health 与数据迁移底座 | 已完成 | Critical | 建立设备级配置、档案级偏好、脱敏健康状态和可回滚数据目录迁移的明确 owner。 | S2-02、S2-03、S2-04 | PRD Settings、用户流程、架构数据迁移规则。 | 实现平台和后端用例/contract；未明确列出的实现和功能不在本任务范围内。 | 设备/Profile 配置不串层；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/server/src/modules/device-settings/`、`profile-preferences/`、`platform/events/`、settings migration、受保护 REST/WS 接入与 `tests/integration/settings-foundation.integration.test.ts`；Profiles CRUD、Settings UI、真实 Provider 和播放协调保持范围外。 | `pnpm check` 通过：17 个 unit、57 个 contract、26 个 integration、1 个 component、101 个 coverage tests 与完整 build；三浏览器 6 个 E2E、1 个 Chromium 视觉测试通过；配置隔离、内置 Provider 只读/脱敏、完全离线上次状态 contract、迁移成功/回滚/重复请求、并发迁移拒绝、持久备份、SHA-256 校验、原子 bootstrap、production 重启、重启失败状态回滚和旧 token 失效均已验证。 | 项目所有者 / 无 | 原子 bootstrap 切换和备份校验已在目标 macOS production smoke 中验证，阻塞条件未发生；完整旧版本升级与逐阶段恢复矩阵保留给 S6-02。 |
 
 ### S3｜核心领域与 Provider 后端
 

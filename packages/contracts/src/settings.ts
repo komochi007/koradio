@@ -5,7 +5,7 @@ import { errorCodeSchema } from "./errors.js";
 
 export const deviceSettingsSchema = z.strictObject({
   dataRoot: z.string().trim().min(1).max(300),
-  codexCommand: z.string().trim().min(1).max(300),
+  codexCommand: z.string().trim().min(1).max(300).nullable(),
   updatedAt: occurredAtSchema,
 });
 export const updateDeviceSettingsCommandSchema = z
@@ -48,4 +48,6 @@ export const dataRootMigrationSnapshotSchema = z.strictObject({
 export type DeviceSettings = z.infer<typeof deviceSettingsSchema>;
 export type UpdateDeviceSettingsCommand = z.infer<typeof updateDeviceSettingsCommandSchema>;
 export type CreateDataRootMigrationCommand = z.infer<typeof createDataRootMigrationCommandSchema>;
+export type DataRootMigrationStage = z.infer<typeof dataRootMigrationStageSchema>;
+export type DataRootMigrationStatus = z.infer<typeof dataRootMigrationStatusSchema>;
 export type DataRootMigrationSnapshot = z.infer<typeof dataRootMigrationSnapshotSchema>;

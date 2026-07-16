@@ -87,6 +87,49 @@ describe("v1 foundation contracts", () => {
     ).toBe(false);
   });
 
+  it("represents a fully offline last-known health snapshot without sensitive diagnostics", () => {
+    const offline = serviceHealthListResponseSchema.parse({
+      items: [
+        {
+          service: "local-service",
+          status: "unavailable",
+          checkedAt: now,
+          redactedSummary: "Local Service is not connected",
+        },
+        {
+          service: "codex",
+          status: "unavailable",
+          checkedAt: now,
+          redactedSummary: "Last known status is unavailable",
+        },
+        {
+          service: "netease",
+          status: "unavailable",
+          checkedAt: now,
+          redactedSummary: "Last known status is unavailable",
+        },
+        {
+          service: "tts",
+          status: "unavailable",
+          checkedAt: now,
+          redactedSummary: "Last known status is unavailable",
+        },
+      ],
+    });
+
+    expect(offline.items).toHaveLength(4);
+    expect(
+      serviceHealthListResponseSchema.safeParse({
+        items: [
+          {
+            ...offline.items[0],
+            dataRoot: "/Users/private/Library/Application Support/Koradio",
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts session bootstrap and WebSocket authentication commands", () => {
     const accessToken = "a".repeat(48);
 

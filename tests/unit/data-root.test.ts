@@ -4,7 +4,13 @@ import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ensureDataRoot, resolveDataRoot } from "../../apps/server/src/platform/db/data-root.js";
+import {
+  ensureDataRoot,
+  readActiveDataRoot,
+  resolveDataRoot,
+  resolveDataRootBootstrapPath,
+  writeActiveDataRoot,
+} from "../../apps/server/src/platform/db/data-root.js";
 
 describe("OS data root adapter", () => {
   it("selects the macOS Application Support directory", () => {
@@ -70,5 +76,21 @@ describe("OS data root adapter", () => {
     await writeFile(dataRoot, "not a directory");
 
     await expect(ensureDataRoot(dataRoot)).rejects.toThrow();
+  });
+
+  it("uses an atomic bootstrap pointer without changing the initial default", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "koradio-data-root-bootstrap-"));
+    const initialDataRoot = join(parent, "initial");
+    const migratedDataRoot = join(parent, "migrated");
+    const bootstrapPath = resolveDataRootBootstrapPath(initialDataRoot);
+
+    expect(await readActiveDataRoot(initialDataRoot, bootstrapPath)).toBe(initialDataRoot);
+
+    await writeActiveDataRoot(bootstrapPath, migratedDataRoot);
+
+    expect(await readActiveDataRoot(initialDataRoot, bootstrapPath)).toBe(migratedDataRoot);
+    if (process.platform !== "win32") {
+      expect((await stat(bootstrapPath)).mode & 0o777).toBe(0o600);
+    }
   });
 });
