@@ -9,7 +9,11 @@ import {
 import { createFeedbackCommandSchema } from "./feedback.js";
 import { importPlaylistCommandSchema, musicSearchCommandSchema } from "./music.js";
 import { updateProfilePreferencesCommandSchema } from "./preferences.js";
-import { createProfileCommandSchema, updateProfileCommandSchema } from "./profiles.js";
+import {
+  createProfileCommandSchema,
+  selectCurrentProfileCommandSchema,
+  updateProfileCommandSchema,
+} from "./profiles.js";
 import { generateProgramCommandSchema, savePlaybackCheckpointCommandSchema } from "./programs.js";
 import {
   createDataRootMigrationCommandSchema,
@@ -24,6 +28,9 @@ export const createProfileRequestSchema = z.strictObject({
 export const updateProfileRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
   body: updateProfileCommandSchema,
+});
+export const selectCurrentProfileRequestSchema = z.strictObject({
+  body: selectCurrentProfileCommandSchema,
 });
 export const updateProfilePreferencesRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
@@ -72,6 +79,7 @@ export const createDataRootMigrationRequestSchema = z.strictObject({
 
 export type CreateProfileRequest = z.infer<typeof createProfileRequestSchema>;
 export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
+export type SelectCurrentProfileRequest = z.infer<typeof selectCurrentProfileRequestSchema>;
 export type UpdateProfilePreferencesRequest = z.infer<typeof updateProfilePreferencesRequestSchema>;
 export type GenerateProgramRequest = z.infer<typeof generateProgramRequestSchema>;
 export type SavePlaybackCheckpointRequest = z.infer<typeof savePlaybackCheckpointRequestSchema>;

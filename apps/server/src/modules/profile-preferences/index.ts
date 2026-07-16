@@ -19,8 +19,16 @@ export interface CreateProfilePreferencesServiceOptions {
 }
 
 export interface ProfilePreferencesService {
+  initialize(profileId: string, updatedAt?: string): ProfilePreferences;
   get(profileId: string): ProfilePreferences;
   update(profileId: string, command: UpdateProfilePreferencesCommand): ProfilePreferences;
+}
+
+export class ProfilePreferencesNotFoundError extends Error {
+  constructor() {
+    super("Profile preferences were not found");
+    this.name = "ProfilePreferencesNotFoundError";
+  }
 }
 
 function mapRow(row: ProfilePreferencesRow): ProfilePreferences {
@@ -64,17 +72,20 @@ export function createProfilePreferencesService(
   `);
 
   function get(profileId: string): ProfilePreferences {
-    insertDefaults.run(profileId, now().toISOString());
     const row = selectByProfileId.get(profileId) as ProfilePreferencesRow | undefined;
 
     if (row === undefined) {
-      throw new Error("Profile preferences could not be initialized");
+      throw new ProfilePreferencesNotFoundError();
     }
 
     return mapRow(row);
   }
 
   return {
+    initialize(profileId, updatedAt = now().toISOString()) {
+      insertDefaults.run(profileId, updatedAt);
+      return get(profileId);
+    },
     get,
     update(profileId, command) {
       const current = get(profileId);

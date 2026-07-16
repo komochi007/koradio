@@ -7,9 +7,11 @@ import { describe, expect, it } from "vitest";
 import {
   ensureDataRoot,
   readActiveDataRoot,
+  readCurrentProfileId,
   resolveDataRoot,
   resolveDataRootBootstrapPath,
   writeActiveDataRoot,
+  writeCurrentProfileId,
 } from "../../apps/server/src/platform/db/data-root.js";
 
 describe("OS data root adapter", () => {
@@ -92,5 +94,20 @@ describe("OS data root adapter", () => {
     if (process.platform !== "win32") {
       expect((await stat(bootstrapPath)).mode & 0o777).toBe(0o600);
     }
+  });
+
+  it("preserves the selected Profile when the active data root changes", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "koradio-profile-bootstrap-"));
+    const initialDataRoot = join(parent, "initial");
+    const migratedDataRoot = join(parent, "migrated");
+    const bootstrapPath = resolveDataRootBootstrapPath(initialDataRoot);
+    const profileId = "11111111-1111-4111-8111-111111111111";
+
+    expect(await readCurrentProfileId(initialDataRoot, bootstrapPath)).toBeNull();
+    await writeCurrentProfileId(bootstrapPath, initialDataRoot, profileId);
+    await writeActiveDataRoot(bootstrapPath, migratedDataRoot);
+
+    expect(await readCurrentProfileId(initialDataRoot, bootstrapPath)).toBe(profileId);
+    expect(await readActiveDataRoot(initialDataRoot, bootstrapPath)).toBe(migratedDataRoot);
   });
 });

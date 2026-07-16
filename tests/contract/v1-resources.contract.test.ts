@@ -1,7 +1,9 @@
 import {
+  avatarRefSchema,
   createDataRootMigrationCommandSchema,
   createFeedbackCommandSchema,
   createProfileCommandSchema,
+  currentProfileResponseSchema,
   dataRootMigrationSnapshotSchema,
   deviceSettingsSchema,
   djScriptSegmentSchema,
@@ -17,6 +19,8 @@ import {
   playbackCheckpointSchema,
   playbackTimelineItemSchema,
   profileListResponseSchema,
+  profileAvatarUploadResponseSchema,
+  profileContextSchema,
   profilePreferencesSchema,
   profileSchema,
   programDetailSchema,
@@ -60,6 +64,20 @@ describe("v1 resource and command contracts", () => {
       }),
     ).toMatchObject({ radioName: "Night Signals" });
     expect(updateProfileCommandSchema.parse({ avatarRef: null })).toEqual({ avatarRef: null });
+    expect(avatarRefSchema.parse("avatars/profile/avatar.webp")).toBe(
+      "avatars/profile/avatar.webp",
+    );
+    expect(profileAvatarUploadResponseSchema.parse({ avatarRef: profile.avatarRef })).toEqual({
+      avatarRef: profile.avatarRef,
+    });
+    const context = profileContextSchema.parse({
+      profile,
+      preferences,
+    });
+    expect(currentProfileResponseSchema.parse({ current: context }).current?.profile.id).toBe(
+      profile.id,
+    );
+    expect(currentProfileResponseSchema.parse({ current: null })).toEqual({ current: null });
   });
 
   it("rejects invalid or empty profile commands and uncontrolled avatars", () => {
@@ -70,6 +88,9 @@ describe("v1 resource and command contracts", () => {
     expect(
       updateProfileCommandSchema.safeParse({ avatarRef: "https://example.com/avatar.png" }).success,
     ).toBe(false);
+    expect(updateProfileCommandSchema.safeParse({ avatarRef: "media/avatar.png" }).success).toBe(
+      false,
+    );
     expect(profileListResponseSchema.safeParse({ items: [profile], total: 1 }).success).toBe(false);
   });
 

@@ -1,0 +1,8 @@
+{
+  "dialect": "sqlite",
+  "id": "cb8e315d-5bd4-4d6a-9f31-d6f4115b4f68",
+  "prevIds": ["f949f028-2be0-4fcf-9d38-f655ea407413"],
+  "version": "7",
+  "ddl": [],
+  "renames": []
+}

@@ -2,12 +2,12 @@ import {
   deviceSettingsSchema,
   errorEnvelopeSchema,
   jobAcceptedResponseSchema,
+  profileSchema,
   profilePreferencesSchema,
   serviceHealthListResponseSchema,
   sessionBootstrapResponseSchema,
   type SessionBootstrapResponse,
 } from "@koradio/contracts";
-import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
@@ -95,6 +95,28 @@ function authorizedHeaders(session: SessionBootstrapResponse): Record<string, st
   };
 }
 
+async function createProfile(
+  app: Awaited<ReturnType<typeof createApp>>,
+  headers: Record<string, string>,
+  idempotencyKey: string,
+  radioName: string,
+): Promise<string> {
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/v1/profiles",
+    headers: {
+      ...headers,
+      "idempotency-key": idempotencyKey,
+    },
+    payload: {
+      radioName,
+      nickname: "Klein",
+    },
+  });
+  expect(response.statusCode).toBe(201);
+  return profileSchema.parse(response.json<unknown>()).id;
+}
+
 async function waitForMigration(
   dataRoot: string,
   jobId: string,
@@ -136,8 +158,18 @@ describe("S2-05 settings, health and data root foundation", () => {
     const context = await createTestApp();
     const session = await bootstrapSession(context.app);
     const headers = authorizedHeaders(session);
-    const profileOne = randomUUID();
-    const profileTwo = randomUUID();
+    const profileOne = await createProfile(
+      context.app,
+      headers,
+      "settings-profile-one",
+      "Night Signals",
+    );
+    const profileTwo = await createProfile(
+      context.app,
+      headers,
+      "settings-profile-two",
+      "Morning Signals",
+    );
 
     const initialDeviceResponse = await context.app.inject({
       method: "GET",

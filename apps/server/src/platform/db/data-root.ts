@@ -1,4 +1,5 @@
 import { constants } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { access, chmod, mkdir, open, readFile, rename, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
@@ -15,7 +16,16 @@ export interface ResolveDataRootOptions {
 const dataRootBootstrapSchema = z.strictObject({
   version: z.literal(1),
   dataRoot: z.string().trim().min(1).max(300),
+  currentProfileId: z.uuid().nullable().optional(),
 });
+
+interface DataRootBootstrap {
+  version: 1;
+  dataRoot: string;
+  currentProfileId: string | null;
+}
+
+const bootstrapWriteQueues = new Map<string, Promise<void>>();
 
 function resolveEnvironmentDirectory(value: string | undefined): string | undefined {
   const directory = value?.trim();
@@ -72,29 +82,56 @@ export async function readActiveDataRoot(
   initialDataRoot: string,
   bootstrapPath = resolveDataRootBootstrapPath(initialDataRoot),
 ): Promise<string> {
+  return (await readDataRootBootstrap(initialDataRoot, bootstrapPath)).dataRoot;
+}
+
+export async function readCurrentProfileId(
+  initialDataRoot: string,
+  bootstrapPath = resolveDataRootBootstrapPath(initialDataRoot),
+): Promise<string | null> {
+  return (await readDataRootBootstrap(initialDataRoot, bootstrapPath)).currentProfileId;
+}
+
+async function readDataRootBootstrap(
+  initialDataRoot: string,
+  bootstrapPath: string,
+): Promise<DataRootBootstrap> {
   try {
     const serialized = await readFile(bootstrapPath, "utf8");
-    return resolve(dataRootBootstrapSchema.parse(JSON.parse(serialized) as unknown).dataRoot);
+    const parsed = dataRootBootstrapSchema.parse(JSON.parse(serialized) as unknown);
+    return {
+      version: 1,
+      dataRoot: resolve(parsed.dataRoot),
+      currentProfileId: parsed.currentProfileId ?? null,
+    };
   } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return resolve(initialDataRoot);
+      return {
+        version: 1,
+        dataRoot: resolve(initialDataRoot),
+        currentProfileId: null,
+      };
     }
 
     throw error;
   }
 }
 
-export async function writeActiveDataRoot(bootstrapPath: string, dataRoot: string): Promise<void> {
+async function writeDataRootBootstrap(
+  bootstrapPath: string,
+  bootstrap: DataRootBootstrap,
+): Promise<void> {
   await mkdir(dirname(bootstrapPath), { mode: 0o700, recursive: true });
 
-  const temporaryPath = `${bootstrapPath}.${process.pid.toString()}.tmp`;
+  const temporaryPath = `${bootstrapPath}.${process.pid.toString()}.${randomUUID()}.tmp`;
   const file = await open(temporaryPath, "w", 0o600);
 
   try {
     await file.writeFile(
       `${JSON.stringify({
         version: 1,
-        dataRoot: resolve(dataRoot),
+        dataRoot: resolve(bootstrap.dataRoot),
+        currentProfileId: bootstrap.currentProfileId,
       })}\n`,
       "utf8",
     );
@@ -108,4 +145,49 @@ export async function writeActiveDataRoot(bootstrapPath: string, dataRoot: strin
   }
 
   await rename(temporaryPath, bootstrapPath);
+}
+
+async function queueBootstrapWrite(
+  bootstrapPath: string,
+  operation: () => Promise<void>,
+): Promise<void> {
+  const previous = bootstrapWriteQueues.get(bootstrapPath) ?? Promise.resolve();
+  const queued = previous.catch(() => undefined).then(operation);
+  bootstrapWriteQueues.set(bootstrapPath, queued);
+
+  try {
+    await queued;
+  } finally {
+    if (bootstrapWriteQueues.get(bootstrapPath) === queued) {
+      bootstrapWriteQueues.delete(bootstrapPath);
+    }
+  }
+}
+
+export async function writeActiveDataRoot(bootstrapPath: string, dataRoot: string): Promise<void> {
+  await queueBootstrapWrite(bootstrapPath, async () => {
+    const currentProfileId = (await readDataRootBootstrap(dataRoot, bootstrapPath))
+      .currentProfileId;
+    await writeDataRootBootstrap(bootstrapPath, {
+      version: 1,
+      dataRoot,
+      currentProfileId,
+    });
+  });
+}
+
+export async function writeCurrentProfileId(
+  bootstrapPath: string,
+  dataRoot: string,
+  profileId: string,
+): Promise<void> {
+  const parsedProfileId = z.uuid().parse(profileId);
+  await queueBootstrapWrite(bootstrapPath, async () => {
+    const activeDataRoot = (await readDataRootBootstrap(dataRoot, bootstrapPath)).dataRoot;
+    await writeDataRootBootstrap(bootstrapPath, {
+      version: 1,
+      dataRoot: activeDataRoot,
+      currentProfileId: parsedProfileId,
+    });
+  });
 }

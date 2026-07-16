@@ -12,9 +12,9 @@
 | 问题 | 直接答案 |
 |---|---|
 | 当前工程阶段 | S3 核心领域与 Provider 后端；S2 平台、数据与安全阶段门已通过 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05` |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01` |
 | 当前活动任务 | 无；按依赖选择下一任务 |
-| 初始下一任务 | `S3-01` 实现 Profiles 与 ProfilePreferences 领域闭环 |
+| 初始下一任务 | `S3-02` 实现 Library 与音乐归一化后端 |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
 | 状态事实源 | 只修改本文件；GitHub Issue/Project 只写入“外部引用” |
@@ -53,7 +53,7 @@ AI 执行任务时按固定顺序操作：
 | S0 基线与关键决策 | 8 | 0 | 0 | 0 | 0 | 8 |
 | S1 工程脚手架 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S2 平台、数据与安全底座 | 5 | 0 | 0 | 0 | 0 | 5 |
-| S3 核心领域与 Provider 后端 | 0 | 7 | 0 | 0 | 0 | 7 |
+| S3 核心领域与 Provider 后端 | 1 | 6 | 0 | 0 | 0 | 7 |
 | S4 P0 核心产品体验 | 0 | 6 | 0 | 0 | 0 | 6 |
 | S5 P1 全量功能 | 0 | 4 | 0 | 0 | 0 | 4 |
 | S6 集成、质量与安全加固 | 0 | 5 | 0 | 0 | 0 | 5 |
@@ -107,7 +107,7 @@ AI 执行任务时按固定顺序操作：
 
 | ID / 任务 | 状态 | 优先级 | 目的 | 依赖 | 输入 | 范围边界 | 验收标准 | 交付物 / 计划路径 | 验证方式 | 负责人 / 外部引用 | 阻塞条件 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `S3-01` 实现 Profiles 与 ProfilePreferences 领域闭环 | 待开始 | Critical | 让用户能创建、选择和加载本地档案，并保持品味、历史和偏好按 Profile 隔离。 | S2-01、S2-02、S2-05 | PRD 功能 1、Profile 切换流程和受控头像规则。 | 实现后端 CRUD、上传和切换协调；未明确列出的实现和功能不在本任务范围内。 | 字段校验、受控 `avatarRef`、默认 TasteOverrides/ProfilePreferences 和显式 `profileId` 全部生效；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 Profiles application/domain/persistence/public API 及 ProfilePreferences 用例测试。 | 单元、repository、上传安全、Profile 隔离和切换取消集成测试。 | 待分配 / 无 | Profile 删除或认证范围出现未定义需求；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S3-01` 实现 Profiles 与 ProfilePreferences 领域闭环 | 已完成 | Critical | 让用户能创建、选择和加载本地档案，并保持品味、历史和偏好按 Profile 隔离。 | S2-01、S2-02、S2-05 | PRD 功能 1、Profile 切换流程和受控头像规则。 | 实现后端 CRUD、上传和切换协调；未明确列出的实现和功能不在本任务范围内。 | 字段校验、受控 `avatarRef`、默认 TasteOverrides/ProfilePreferences 和显式 `profileId` 全部生效；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/server/src/modules/profiles/`、最小 `modules/taste/` owner API、Profiles migration、multipart 头像上传、create/list/read/update/current Profile REST、bootstrap Profile context、Contracts 与专项测试；Profile 删除、前端 UI、节目、播放实现和真实 Provider 保持范围外。 | `pnpm check` 通过：20 个测试文件、107 个用例、coverage 阈值和完整 build；三浏览器 6 个 E2E 通过。幂等创建、repository 损坏行隔离、默认 TasteOverrides/ProfilePreferences、显式 `profileId`、头像签名/MIME/5 MiB 限制、Profile 偏好隔离、切换取消/丢弃/checkpoint/停止顺序和失败不改当前 context 均已验证。 | 项目所有者 / 无 | v1 明确不提供 Profile 删除，Profile 选择不属于认证；原阻塞条件未发生。 |
 | `S3-02` 实现 Library 与音乐归一化后端 | 待开始 | High | 为节目生成和 P1 Library 提供统一搜索、导入、歌词、播放链接和 Provider source identity。 | S2-01、S0-06 | PRD 功能 2/7、MusicProvider Port 结论。 | 实现后端能力和缓存，不实现推荐决策或 Library UI；未明确列出的实现和功能不在本任务范围内。 | Provider 响应被归一化；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 Library module、MusicProvider port、normalized models、cache 和测试。 | Adapter mapping、搜索/导入集成、无结果重试和恶意响应 schema tests。 | 待分配 / 无 | 核心音乐服务不可用或授权不满足发布；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S3-03` 实现 Feedback 与 Taste 记忆后端 | 待开始 | Critical | 保存可追溯反馈事实，并把自动投影与人工规则安全合并为下一次规划上下文。 | S3-01、S2-02 | PRD 功能 5/8、固定反馈枚举和 Taste 规则。 | 实现 append-only events、projection、overrides 和 EffectiveTaste；未明确列出的实现和功能不在本任务范围内。 | 喜欢/撤销、不喜欢/撤销、收藏/撤销、跳过均追加事件；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 Feedback、Taste modules、projection runner、repositories 和测试。 | 事件回放、撤销、并发写入、重建与人工规则优先级测试。 | 待分配 / 无 | 需要新增反馈类型或改变合并规则；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S3-04` 实现 Programs 与 Playback 领域模型 | 待开始 | Critical | 建立节目快照、DJ 段、判别式播放时间线和低频 checkpoint，保证新节目原子切换。 | S3-01、S3-02、S3-03 | PRD 功能 2～4、架构 Program generation 和数据库设计。 | 实现领域/application/persistence，不创建浏览器 `HTMLAudio`；未明确列出的实现和功能不在本任务范围内。 | Program、segments、timeline 在单事务提交；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 Programs、Playback modules、schema ownership、repositories 和测试。 | domain policy、事务回滚、判别联合、checkpoint 和历史恢复测试。 | 待分配 / 无 | 时间线或 owner 与架构冲突；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |

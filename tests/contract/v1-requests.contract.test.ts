@@ -8,6 +8,7 @@ import {
   programDetailRequestSchema,
   programGenerationSnapshotRequestSchema,
   savePlaybackCheckpointRequestSchema,
+  selectCurrentProfileRequestSchema,
   updateDeviceSettingsRequestSchema,
   updateProfilePreferencesRequestSchema,
   updateProfileRequestSchema,
@@ -120,6 +121,13 @@ describe("v1 REST request contracts", () => {
         },
       }),
     ).toMatchObject({ params });
+    expect(
+      selectCurrentProfileRequestSchema.parse({
+        body: { profileId: ids.profile },
+      }),
+    ).toEqual({
+      body: { profileId: ids.profile },
+    });
   });
 
   it("rejects missing or implicit profile ownership", () => {
@@ -130,6 +138,11 @@ describe("v1 REST request contracts", () => {
       updateProfilePreferencesRequestSchema.safeParse({
         params: { profileId: "current" },
         body: { themeMode: "dark" },
+      }).success,
+    ).toBe(false);
+    expect(
+      selectCurrentProfileRequestSchema.safeParse({
+        body: { profileId: "current" },
       }).success,
     ).toBe(false);
     expect(

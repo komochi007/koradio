@@ -217,6 +217,8 @@ stateDiagram-v2
 | Session | `/api/v1/session` | 本地会话，不代表 profile 登录 |
 | Profiles | `/api/v1/profiles` | 档案列表与创建 |
 | Profile resources | `/api/v1/profiles/:profileId/*` | 显式 ownership |
+| Profile avatar upload | `/api/v1/profile-avatars` | 单文件 multipart 上传，只返回 `avatars/` 受控引用 |
+| Current profile | `/api/v1/profiles/current` | 读取或切换本机当前 Profile context；选择不是登录 |
 | Programs | `.../programs`, `.../program-generations` | 历史与异步生成 |
 | Playback | `.../playback`, `.../playback/checkpoints` | snapshot 与 checkpoint |
 | Library | `.../library`, `.../music-searches` | 候选池与外部搜索 |
@@ -233,6 +235,9 @@ stateDiagram-v2
 - Event envelope 固定包含 `eventId`、`eventType`、`version`、可选 `profileId`、`correlationId`、`sequence`、`occurredAt`、`payload`。
 - v1 Event types：`generation.planned`、`generation.tracks-resolved`、`generation.degraded`、`generation.completed`、`program.committed`、`playback.snapshot`、`feedback.persisted`、`service.health.changed`、`data_root_migration.stage_changed`。WebSocket 不发布高频 position progress。
 - 创建命令接受 `Idempotency-Key`；重复请求返回原结果或当前 job。
+- `POST /api/v1/profile-avatars` 只接受单个头像文件，先校验图片文件签名、MIME、大小与扩展策略，再由 File Store 生成受控 `avatars/` 引用。
+- `PUT /api/v1/profiles/current` 的 body 显式携带 `profileId`；切换成功前依次取消旧 generation、丢弃旧 correlation 的迟到事件、保存旧 checkpoint、停止旧时间线，最后原子更新本机 bootstrap runtime config。
+- v1 Profiles 公共 API 提供创建、列表、读取、更新与选择，不提供删除；删除语义必须另行取得产品决策。
 - Error envelope 包含 `code`、安全 `message`、`retryable`、`correlationId` 和可选字段错误。
 - Breaking change 提升 API/event major version；新增可选字段保持向后兼容。
 

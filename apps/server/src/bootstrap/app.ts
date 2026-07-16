@@ -2,19 +2,27 @@ import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
 import {
   createDataRootMigrationRequestSchema,
+  createProfileRequestSchema,
+  currentProfileResponseSchema,
   errorEnvelopeSchema,
   healthResponseSchema,
   jobAcceptedResponseSchema,
+  profileAvatarUploadResponseSchema,
   profileIdParamsSchema,
+  profileListResponseSchema,
+  profileSchema,
+  selectCurrentProfileRequestSchema,
   serviceHealthListResponseSchema,
   serviceHealthChangedEventSchema,
   sessionAuthenticateSchema,
   sessionBootstrapResponseSchema,
   updateDeviceSettingsRequestSchema,
+  updateProfileRequestSchema,
   updateProfilePreferencesRequestSchema,
 } from "@koradio/contracts";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
@@ -27,10 +35,31 @@ import {
 } from "../modules/device-settings/data-root-migration.js";
 import { createHealthService } from "../modules/device-settings/health.js";
 import { createDeviceSettingsService } from "../modules/device-settings/index.js";
-import { createProfilePreferencesService } from "../modules/profile-preferences/index.js";
+import {
+  ProfilePreferencesNotFoundError,
+  createProfilePreferencesService,
+} from "../modules/profile-preferences/index.js";
+import {
+  AvatarUploadError,
+  AvatarReferenceError,
+  ProfileDataError,
+  ProfileNotFoundError,
+  ProfileSwitchError,
+  createAvatarUploadService,
+  createProfileContextService,
+  createProfileRepository,
+  createProfileService,
+  type ProfileSwitchRuntimeCoordinator,
+} from "../modules/profiles/index.js";
+import { createTasteDefaultsService } from "../modules/taste/index.js";
 import { bootstrapDatabase } from "../platform/db/database.js";
-import { resolveDataRootBootstrapPath } from "../platform/db/data-root.js";
+import {
+  readCurrentProfileId,
+  resolveDataRootBootstrapPath,
+  writeCurrentProfileId,
+} from "../platform/db/data-root.js";
 import { createEventHub } from "../platform/events/index.js";
+import { FileStoreError, createLocalFileStore } from "../platform/files/index.js";
 import { createAllowedOrigins, type RuntimeConfig } from "./config.js";
 import { enforceApiSecurity, isAllowedOrigin } from "./security.js";
 import { createSessionState, type SessionState } from "./session.js";
@@ -39,6 +68,7 @@ export interface CreateAppOptions {
   config: RuntimeConfig;
   selectedPort: number;
   migrationRuntimeCoordinator?: DataRootMigrationRuntimeCoordinator;
+  profileSwitchRuntimeCoordinator?: ProfileSwitchRuntimeCoordinator;
   requestRestart?: (request: DataRootRestartRequest) => Promise<void>;
   session?: SessionState;
   webSocketAuthenticationTimeoutMs?: number;
@@ -64,21 +94,50 @@ function sendApiError(
 export async function createApp(options: CreateAppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
   const database = await bootstrapDatabase({ dataRoot: options.config.dataRoot });
+  const bootstrapPath =
+    options.config.dataRootBootstrapPath ??
+    resolveDataRootBootstrapPath(options.config.initialDataRoot ?? options.config.dataRoot);
   const deviceSettings = createDeviceSettingsService({
     client: database.client,
     dataRoot: options.config.dataRoot,
   });
   deviceSettings.initialize();
   const profilePreferences = createProfilePreferencesService({ client: database.client });
+  const tasteDefaults = createTasteDefaultsService(database.client);
+  const avatarUpload = createAvatarUploadService(
+    createLocalFileStore({ dataRoot: options.config.dataRoot }),
+  );
+  const profiles = createProfileService({
+    avatarReferences: avatarUpload,
+    client: database.client,
+    preferences: profilePreferences,
+    repository: createProfileRepository(database.client),
+    tasteDefaults,
+  });
+  const profileContext = createProfileContextService({
+    profiles,
+    preferences: profilePreferences,
+    readCurrentProfileId: () =>
+      readCurrentProfileId(
+        options.config.initialDataRoot ?? options.config.dataRoot,
+        bootstrapPath,
+      ),
+    runtimeCoordinator: options.profileSwitchRuntimeCoordinator ?? {
+      cancelGeneration: () => Promise.resolve(),
+      checkpointPlayback: () => Promise.resolve(),
+      discardLateEvents: () => Promise.resolve(),
+      stopPlayback: () => Promise.resolve(),
+    },
+    writeCurrentProfileId: (profileId) =>
+      writeCurrentProfileId(bootstrapPath, options.config.dataRoot, profileId),
+  });
   const health = createHealthService({
     deviceSettings,
     mode: options.config.providerMode,
   });
   const eventHub = createEventHub();
   const dataRootMigration = createDataRootMigrationService({
-    bootstrapPath:
-      options.config.dataRootBootstrapPath ??
-      resolveDataRootBootstrapPath(options.config.initialDataRoot ?? options.config.dataRoot),
+    bootstrapPath,
     checkpointDatabase: () => {
       database.client.exec("PRAGMA wal_checkpoint(TRUNCATE)");
       return Promise.resolve();
@@ -109,8 +168,11 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     origin(origin, callback) {
       callback(null, origin === undefined || isAllowedOrigin(origin, allowedOrigins));
     },
-    methods: ["GET", "PATCH", "POST", "OPTIONS"],
+    methods: ["GET", "PATCH", "POST", "PUT", "OPTIONS"],
     allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key"],
+  });
+  await app.register(multipart, {
+    throwFileSizeLimit: true,
   });
   await app.register(websocket);
 
@@ -146,6 +208,238 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     return deviceSettings.update(parsed.data.body);
   });
 
+  app.get("/api/v1/profiles", () => profileListResponseSchema.parse(profiles.list()));
+
+  app.post("/api/v1/profiles", async (request, reply) => {
+    const parsed = createProfileRequestSchema.safeParse({
+      headers: {
+        "idempotency-key": request.headers["idempotency-key"],
+      },
+      body: request.body,
+    });
+
+    if (!parsed.success) {
+      return sendApiError(reply, 400, "PROFILE_VALIDATION_FAILED", "Profile is invalid", false);
+    }
+
+    try {
+      return await reply
+        .status(201)
+        .send(
+          profileSchema.parse(
+            await profiles.create(parsed.data.body, parsed.data.headers["idempotency-key"]),
+          ),
+        );
+    } catch (error) {
+      if (error instanceof AvatarReferenceError) {
+        return sendApiError(
+          reply,
+          400,
+          "PROFILE_AVATAR_INVALID",
+          "Profile avatar reference is invalid",
+          false,
+        );
+      }
+      throw error;
+    }
+  });
+
+  app.get("/api/v1/profiles/current", async (_request, reply) => {
+    try {
+      return currentProfileResponseSchema.parse(await profileContext.getCurrent());
+    } catch (error) {
+      if (
+        error instanceof ProfileNotFoundError ||
+        error instanceof ProfilePreferencesNotFoundError ||
+        error instanceof ProfileDataError
+      ) {
+        return sendApiError(
+          reply,
+          409,
+          "CURRENT_PROFILE_UNAVAILABLE",
+          "Current profile could not be loaded",
+          false,
+        );
+      }
+      throw error;
+    }
+  });
+
+  app.put("/api/v1/profiles/current", async (request, reply) => {
+    const parsed = selectCurrentProfileRequestSchema.safeParse({
+      body: request.body,
+    });
+
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PROFILE_SELECTION_VALIDATION_FAILED",
+        "Profile selection is invalid",
+        false,
+      );
+    }
+
+    try {
+      return currentProfileResponseSchema.parse(
+        await profileContext.select(parsed.data.body.profileId),
+      );
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProfilePreferencesNotFoundError || error instanceof ProfileDataError) {
+        return sendApiError(reply, 500, "PROFILE_UNREADABLE", "Profile could not be read", false);
+      }
+      if (error instanceof ProfileSwitchError) {
+        return sendApiError(
+          reply,
+          500,
+          "PROFILE_SWITCH_FAILED",
+          "Profile switch could not be completed",
+          true,
+        );
+      }
+      throw error;
+    }
+  });
+
+  app.post("/api/v1/profile-avatars", async (request, reply) => {
+    if (!request.isMultipart()) {
+      return sendApiError(
+        reply,
+        400,
+        "AVATAR_UPLOAD_VALIDATION_FAILED",
+        "Avatar upload is invalid",
+        false,
+      );
+    }
+
+    try {
+      let uploaded:
+        | {
+            content: Buffer;
+            mimeType: string;
+          }
+        | undefined;
+
+      for await (const part of request.parts({
+        limits: {
+          fields: 0,
+          fileSize: 5 * 1_048_576,
+          files: 1,
+          parts: 1,
+        },
+      })) {
+        if (part.type !== "file" || part.fieldname !== "avatar" || uploaded !== undefined) {
+          throw new AvatarUploadError();
+        }
+        uploaded = {
+          content: await part.toBuffer(),
+          mimeType: part.mimetype,
+        };
+      }
+
+      if (uploaded === undefined) {
+        throw new AvatarUploadError();
+      }
+
+      return await reply.status(201).send(
+        profileAvatarUploadResponseSchema.parse({
+          avatarRef: await avatarUpload.store(uploaded.content, uploaded.mimeType),
+        }),
+      );
+    } catch (error) {
+      if (error instanceof app.multipartErrors.RequestFileTooLargeError) {
+        return sendApiError(reply, 413, "AVATAR_FILE_TOO_LARGE", "Avatar file is too large", false);
+      }
+      if (
+        error instanceof AvatarUploadError ||
+        error instanceof app.multipartErrors.FilesLimitError ||
+        error instanceof app.multipartErrors.FieldsLimitError ||
+        error instanceof app.multipartErrors.PartsLimitError
+      ) {
+        return sendApiError(
+          reply,
+          400,
+          "AVATAR_UPLOAD_VALIDATION_FAILED",
+          "Avatar upload is invalid",
+          false,
+        );
+      }
+      if (error instanceof FileStoreError) {
+        return sendApiError(
+          reply,
+          500,
+          "AVATAR_STORAGE_FAILED",
+          "Avatar could not be stored",
+          true,
+        );
+      }
+      throw error;
+    }
+  });
+
+  app.get("/api/v1/profiles/:profileId", (request, reply) => {
+    const parsed = profileIdParamsSchema.safeParse(request.params);
+
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PROFILE_VALIDATION_FAILED",
+        "Profile request is invalid",
+        false,
+      );
+    }
+
+    try {
+      return profileSchema.parse(profiles.get(parsed.data.profileId));
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProfileDataError) {
+        return sendApiError(reply, 500, "PROFILE_UNREADABLE", "Profile could not be read", false);
+      }
+      throw error;
+    }
+  });
+
+  app.patch("/api/v1/profiles/:profileId", async (request, reply) => {
+    const parsed = updateProfileRequestSchema.safeParse({
+      params: request.params,
+      body: request.body,
+    });
+
+    if (!parsed.success) {
+      return sendApiError(reply, 400, "PROFILE_VALIDATION_FAILED", "Profile is invalid", false);
+    }
+
+    try {
+      return profileSchema.parse(
+        await profiles.update(parsed.data.params.profileId, parsed.data.body),
+      );
+    } catch (error) {
+      if (error instanceof AvatarReferenceError) {
+        return sendApiError(
+          reply,
+          400,
+          "PROFILE_AVATAR_INVALID",
+          "Profile avatar reference is invalid",
+          false,
+        );
+      }
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProfileDataError) {
+        return sendApiError(reply, 500, "PROFILE_UNREADABLE", "Profile could not be read", false);
+      }
+      throw error;
+    }
+  });
+
   app.get("/api/v1/profiles/:profileId/preferences", (request, reply) => {
     const parsed = profileIdParamsSchema.safeParse(request.params);
 
@@ -159,7 +453,18 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       );
     }
 
-    return profilePreferences.get(parsed.data.profileId);
+    try {
+      profiles.get(parsed.data.profileId);
+      return profilePreferences.get(parsed.data.profileId);
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProfilePreferencesNotFoundError || error instanceof ProfileDataError) {
+        return sendApiError(reply, 500, "PROFILE_UNREADABLE", "Profile could not be read", false);
+      }
+      throw error;
+    }
   });
 
   app.patch("/api/v1/profiles/:profileId/preferences", (request, reply) => {
@@ -178,7 +483,18 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       );
     }
 
-    return profilePreferences.update(parsed.data.params.profileId, parsed.data.body);
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return profilePreferences.update(parsed.data.params.profileId, parsed.data.body);
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProfilePreferencesNotFoundError || error instanceof ProfileDataError) {
+        return sendApiError(reply, 500, "PROFILE_UNREADABLE", "Profile could not be read", false);
+      }
+      throw error;
+    }
   });
 
   app.post("/api/v1/device-settings/data-root-migrations", (request, reply) => {
