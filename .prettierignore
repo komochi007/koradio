@@ -1,9 +1,10 @@
-.DS_Store
-**/.DS_Store
+**/*.md
+design/
+docs/
 node_modules/
 .pnpm-store/
 dist/
-*.tsbuildinfo
 coverage/
 playwright-report/
 test-results/
+pnpm-lock.yaml

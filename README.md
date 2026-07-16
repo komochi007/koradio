@@ -2,7 +2,7 @@
 
 > Status: **S1 engineering scaffold · Product not yet implemented · Product not currently runnable**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库已有可安装的 pnpm workspace 与最小 typecheck，但没有产品源码、启动脚本或已实装端口；零构建设计预览不等于产品运行入口
+> Runtime: 当前仓库已有可安装的 pnpm workspace、strict TypeScript 与质量命令，但没有产品源码、启动脚本或已实装端口；零构建设计预览不等于产品运行入口
 
 ## 1. 项目入口
 
@@ -43,7 +43,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] VDA-17 视觉基线已冻结：HTML / CSS / JavaScript 视觉主源、15 页 35 个固定状态、Dark / Light、五类响应式布局与 60 张正式截图基线均已建立
 - [x] 视觉差异裁决、自动 QA、Figma 派生镜像与开发交接映射已建立
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
-- [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；S1-01 已实装运行版本、workspace、锁文件与最小 typecheck，其余质量命令尚未实装
+- [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；S1-01/S1-02 已实装运行版本、workspace、strict TypeScript 与质量命令，`dev`、`build` 和聚合 `check` 尚未实装
 - [x] 运行拓扑、端口、Origin allowlist 与本地会话已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 冻结；尚未实装
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 已接受 native launcher + 外部浏览器 PWA，当前仅限受控本机个人使用，尚未实装
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；尚未实装
@@ -52,13 +52,13 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [ ] Local Service 尚未实现
 - [ ] SQLite schema 与 migrations 尚未实现
 - [ ] Provider adapters 尚未实现
-- [ ] 自动化测试尚未建立
+- [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口和脚手架样例已建立；产品测试待产品源码创建后扩展
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
-- [ ] 产品开发、测试和构建命令尚未创建或验证
+- [ ] 产品开发和构建命令尚未创建或验证
 
 ### Agent safety note
 
-当前只能从仓库验证运行版本、workspace 边界、锁文件、frozen install 与最小 typecheck；产品源码、开发服务、测试、构建、端口监听和运行行为仍不能验证。工具链的其余命令合同已经写入 ADR 0001，运行拓扑、端口与本地会话已经写入 ADR 0002，包装与交付边界已经写入 ADR 0003，Provider 可行性与发布边界已经写入 ADR 0004。这些已接受决策都不代表对应服务、Provider adapter 或安装包已经存在。
+当前可以从仓库验证运行版本、workspace 边界、锁文件、frozen install、strict typecheck、lint、format check、四层 Vitest、三浏览器 E2E、axe、视觉基线和 coverage；这些测试目前只证明质量工具链，不证明尚不存在的产品行为。产品源码、开发服务、构建、端口监听和运行行为仍不能验证。运行拓扑、端口与本地会话已经写入 ADR 0002，包装与交付边界已经写入 ADR 0003，Provider 可行性与发布边界已经写入 ADR 0004。这些已接受决策都不代表对应服务、Provider adapter 或安装包已经存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -66,10 +66,10 @@ AI Agent **不得**：
 
 - 把目标目录树描述成现有代码。
 - 把目标技术栈描述成已安装依赖。
-- 把尚未实装的 `dev`、测试、构建或质量脚本描述成已经可运行的事实。
+- 把尚未实装的 `dev`、`build`、聚合 `check` 或产品测试覆盖描述成已经可运行的事实。
 - 把 ADR 0002 选定的端口、进程关系或 session bootstrap 描述为已经实装或可运行。
 - 把 ADR 0003 的已接受架构描述为已经实现，或把本地 ad-hoc 产物描述为已通过 Developer ID 签名公证、可公开分发。
-- 声称应用、测试、构建或数据库可以运行。
+- 声称产品应用、产品行为测试、构建或数据库可以运行。
 - 从参考图推断尚未写入权威文档的业务规则。
 
 ## 3. 产品快照
@@ -168,13 +168,13 @@ Fastify Local Service
 
 ## 5. 目标技术栈
 
-> 产品技术来自目标架构；工具链精确版本来自 [ADR 0001](docs/adr/0001-toolchain-and-quality.md)。只有标记为 `Pinned and verified` 的 S1-01 基础已经从当前仓库验证。
+> 产品技术来自目标架构；工具链精确版本来自 [ADR 0001](docs/adr/0001-toolchain-and-quality.md)。标记为 `Pinned and verified` 或 `Configured and verified` 的 S1-01/S1-02 基础已经从当前仓库验证。
 
 | Area | Planned technology | Status |
 |---|---|---|
 | Runtime | Node.js 24.18.0 LTS | Pinned and verified |
 | Package management | Corepack 0.35.0 + pnpm 11.13.0 | Pinned and verified |
-| Language | TypeScript 6.0.3 | Installed for minimal typecheck |
+| Language | TypeScript 6.0.3 | Strict project references verified |
 | Repository | pnpm native TypeScript workspace | Created · source not implemented |
 | Frontend | React + Vite | Planned |
 | Frontend build | Vite 8.1.4 | Selected · not installed |
@@ -194,10 +194,10 @@ Fastify Local Service
 | AI orchestration | Local Codex process | Planned |
 | Music provider | Backend TypeScript NetEase `linuxapi` Adapter；no official CLI or .NET runtime | Selected for Personal Local Preview · not implemented |
 | Voice provider | Apple `AVSpeechSynthesizer` via bundled native helper；standard installed voices only | Selected · not implemented |
-| Unit / integration test | Vitest 4.1.10 + V8 coverage | Selected · not installed |
-| Component test | React Testing Library 16.3.2 + jsdom 29.1.1 | Selected · not installed |
-| Browser / visual / a11y test | Playwright 1.61.1 + axe-core | Selected · not installed |
-| Lint / format | ESLint 10.7.0 + typescript-eslint 8.64.0 + Prettier 3.9.5 | Selected · not installed |
+| Unit / integration test | Vitest 4.1.10 + V8 coverage | Configured and verified |
+| Component test | React Testing Library 16.3.2 + jsdom 29.1.1 | Configured and verified |
+| Browser / visual / a11y test | Playwright 1.61.1 + axe-core | Configured and locally verified |
+| Lint / format | ESLint 10.7.0 + typescript-eslint 8.64.0 + Prettier 3.9.5 | Configured and verified |
 | CI | GitHub Actions | Selected · not configured |
 
 已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 决定但尚未实装：
@@ -233,8 +233,13 @@ Koradio/
 ├── package.json
 ├── pnpm-workspace.yaml
 ├── pnpm-lock.yaml
+├── eslint.config.js
+├── prettier.config.js
+├── playwright.config.ts
+├── vitest.config.ts
 ├── tsconfig.base.json
 ├── tsconfig.json
+├── tsconfig.quality.json
 ├── README.md
 ├── AGENTS.md
 ├── AI_RULES.md
@@ -255,6 +260,15 @@ Koradio/
 │   └── design-tokens/
 │       ├── package.json
 │       └── tsconfig.json
+├── tests/
+│   ├── fixtures/
+│   ├── unit/
+│   ├── contract/
+│   ├── integration/
+│   ├── component/
+│   ├── e2e/
+│   ├── visual/
+│   └── __screenshots__/
 ├── docs/
 │   ├── adr/
 │   │   ├── README.md
@@ -365,7 +379,7 @@ packages/
 
 ### 当前可执行状态
 
-**当前可以安装 workspace 并运行最小 typecheck；仍不能启动、测试或构建 Koradio 产品。**
+**当前可以安装 workspace 并运行质量工具链；仍不能启动或构建 Koradio 产品，现有测试只覆盖脚手架样例。**
 
 `design/assets/prototype/index.html` 是可直接在浏览器打开的零构建设计预览骨架，不是 Koradio 产品运行入口。
 
@@ -378,6 +392,16 @@ npm install --global corepack@0.35.0
 corepack prepare pnpm@11.13.0 --activate
 pnpm install --frozen-lockfile
 pnpm typecheck
+pnpm lint
+pnpm format:check
+pnpm test:unit
+pnpm test:contract
+pnpm test:integration
+pnpm test:component
+pnpm test:coverage
+pnpm exec playwright install chromium firefox webkit
+pnpm test:e2e
+pnpm test:visual
 ```
 
 仍不能运行产品的原因：
@@ -385,11 +409,11 @@ pnpm typecheck
 - 四个 workspace 当前只有 manifest 与基础 `tsconfig`，没有源码入口。
 - 没有环境变量模板。
 - 没有数据库 schema 或 migration。
-- 没有 `dev`、测试或构建脚本。
-- 没有测试配置。
+- 没有 `dev` 或构建脚本。
+- 现有测试是工具链样例，不承载产品功能验收。
 - 没有已实装并验证的端口监听。
 
-[ADR 0001](docs/adr/0001-toolchain-and-quality.md) 已固定完整根 script 名和 CI 安装合同；当前仅 `typecheck` 已实装，其他公共命令将在后续 S1 任务中创建并验证。
+[ADR 0001](docs/adr/0001-toolchain-and-quality.md) 已固定完整根 script 名和 CI 安装合同；S1-02 质量命令已实装，`dev`、`build` 与聚合 `check` 将随 S1-03/S1-04 创建并验证。
 
 ### 脚手架落地后必须补齐
 
@@ -399,8 +423,8 @@ pnpm typecheck
 - [x] 最小 workspace typecheck 命令。
 - [ ] Frontend 与 Local Service 开发命令。
 - [ ] 同源生产构建与启动命令。
-- [ ] Lint 与 format check 命令。
-- [ ] Unit、integration、component 与 E2E 测试命令。
+- [x] Lint 与 format check 命令。
+- [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试命令。
 - [ ] SQLite migration 与数据备份命令。
 - [ ] 必需环境变量和 Secret Store 初始化方式。
 - [ ] ADR 0002 选定的默认绑定地址、端口、Origin allowlist 与 session bootstrap。

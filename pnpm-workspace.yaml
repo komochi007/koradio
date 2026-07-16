@@ -6,4 +6,5 @@ nodeVersion: 24.18.0
 engineStrict: true
 minimumReleaseAge: 1440
 strictDepBuilds: true
-allowBuilds: {}
+allowBuilds:
+  esbuild: true

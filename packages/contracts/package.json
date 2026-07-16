@@ -2,5 +2,11 @@
   "name": "@koradio/contracts",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint \"**/*.ts\" --no-error-on-unmatched-pattern --max-warnings=0",
+    "format": "prettier --write --ignore-unknown .",
+    "format:check": "prettier --check --ignore-unknown ."
+  }
 }
