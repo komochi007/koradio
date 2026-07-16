@@ -1,6 +1,6 @@
 # Koradio System Architecture
 
-> Status: Target Architecture · S1 runnable skeleton and S2 v1 public contracts implemented
+> Status: Target Architecture · S1 runnable skeleton and S2 contracts/database/secrets/files/logging foundations implemented
 > Scope: Local-first Web/PWA MVP  
 > Audience: AI Coding Agents, maintainers, system architects  
 > Sources: `docs/prd.md`, `docs/user-flow.md`, `design/design.md`

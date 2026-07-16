@@ -2,9 +2,9 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 contracts and database foundation complete · Mock mode only**
+> Status: **S1 engineering scaffold complete · S2 contracts, database and local I/O security foundations complete · Mock mode only**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service 最小骨架，以及 SQLite/Drizzle migration 与首次数据目录 bootstrap；仍只提供 Mock health、事件连接和 App Shell，不代表 Koradio 产品功能已经实现
+> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service 最小骨架，以及 SQLite/Drizzle migration、首次数据目录 bootstrap、macOS Keychain Secret Store、受控 File Store 与结构化脱敏日志；仍只提供 Mock health、事件连接和 App Shell，不代表 Koradio 产品功能已经实现
 
 ## 1. 项目入口
 
@@ -54,6 +54,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] Fastify Local Service 最小 health/session/events 与 Mock Provider health 已实现；业务模块尚未实现
 - [x] 完整 v1 公共 Contracts 已用 Zod 固化：REST DTO/command、显式 `profileId`、`Idempotency-Key`、异步 job、WebSocket event 与安全 error envelope 均有正反向和兼容性测试
 - [x] SQLite/Drizzle 平台底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；业务 owner schema 尚未实现
+- [x] Secret Store、File Store 与脱敏日志平台边界已实现：macOS Keychain 往返、headless 稳定错误、受控引用、扩展名/MIME/大小/重定向限制和敏感信息清除已验证；尚未接入 DeviceSettings 或真实 Provider
 - [ ] Provider adapters 尚未实现
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
@@ -62,7 +63,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ### Agent safety note
 
-当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 Mock skeleton 的开发/生产启动、REST health、认证后 WebSocket 事件、同源静态托管和 SQLite 平台 bootstrap。这些证据只证明工程与数据底座连通，不证明 Profile、Program、播放、业务数据模型或真实 Provider 行为；真实 Provider adapter、TTS helper、业务模块和安装包仍不存在。
+当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 Mock skeleton 的开发/生产启动、REST health、认证后 WebSocket 事件、同源静态托管、SQLite 平台 bootstrap、受控 File Store 和脱敏日志。macOS 登录会话还可验证真实 Keychain 往返；这些证据只证明工程、数据与本地 I/O 安全底座连通，不证明 Profile、Program、播放、业务数据模型或真实 Provider 行为；真实 Provider adapter、TTS helper、业务模块和安装包仍不存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -194,7 +195,7 @@ Fastify Local Service
 | Runtime validation | Zod 4.4.3 | Complete v1 public REST/WS contracts verified；Provider/Codex internal schemas planned |
 | Database | Node 24 `node:sqlite` / SQLite 3.53.2 | Platform bootstrap implemented and verified · domain schema planned |
 | ORM / migrations | Drizzle ORM + Drizzle Kit 1.0.0-rc.4 | Runtime migration and generation flow verified · domain tables planned |
-| Secrets | OS Credential Store | Planned |
+| Secrets | macOS Keychain via `/usr/bin/security` interactive stdin | Platform adapter and real round-trip verified · business use planned |
 | AI orchestration | Local Codex process | Planned |
 | Music provider | Backend TypeScript NetEase `linuxapi` Adapter；no official CLI or .NET runtime | Selected for Personal Local Preview · not implemented |
 | Voice provider | Apple `AVSpeechSynthesizer` via bundled native helper；standard installed voices only | Selected · not implemented |
@@ -268,7 +269,13 @@ Koradio/
 │   └── server/
 │       ├── src/
 │       │   ├── bootstrap/
-│       │   └── integrations/
+│       │   ├── integrations/
+│       │   └── platform/
+│       │       ├── db/
+│       │       ├── files/
+│       │       ├── logging/
+│       │       └── secrets/
+│       ├── migrations/
 │       ├── package.json
 │       └── tsconfig.json
 ├── packages/
@@ -356,7 +363,7 @@ Koradio/
 
 ### 目标源码目录
 
-> `apps/*` 与 `packages/*` 边界 manifest 已存在；以下 `src/` 结构来自 `architecture.md`，尚不存在。
+> `apps/*` 与 `packages/*` 边界 manifest 已存在，`apps/server/src/platform/{db,files,logging,secrets}` 已落地；以下业务 module、Web feature、Audio Engine 与 native helper 结构仍来自 `architecture.md`，尚不存在。
 
 ```text
 apps/
@@ -432,6 +439,7 @@ pnpm check
 当前骨架边界：
 
 - 已有 OS 数据目录 bootstrap、SQLite connection、Drizzle migration runner 与初始 platform migration；尚无 Profile、Program 等业务 owner schema。
+- 已有 macOS Keychain Secret Store、受控 File Store 和结构化脱敏 logger；尚未通过 DeviceSettings 或真实 Provider 使用秘密和文件。
 - 没有 Profile、Program、Library、Taste、Feedback 或 Playback 业务模块。
 - 已有完整 v1 wire contracts，但除 S1 health/session/events 外，对应业务 route 和 use case 尚未实现。
 - 没有真实 Codex、NetEase 或 TTS Adapter；运行时只允许 `mock`。
@@ -453,7 +461,7 @@ pnpm check
 - [x] 聚合 `check` 命令与 Linux GitHub Actions 常规质量门。
 - [x] SQLite migration 生成与启动时事务化执行命令。
 - [ ] 数据备份与恢复命令。
-- [x] 非敏感环境变量模板；Secret Store 初始化方式仍待 S2。
+- [x] 非敏感环境变量模板与 macOS Keychain Secret Store adapter；业务配置接入待 S2-05。
 - [x] ADR 0002 的默认绑定地址、端口、精确 Origin allowlist 与最小 session bootstrap。
 - [x] Provider Mock development 模式；离线 PWA 仍待 S4。
 - [x] S1 health 与事件连接探针；完整故障诊断仍待 S2/S4。
@@ -503,12 +511,11 @@ pnpm check
 
 ## 9. 下一实现起点
 
-S1 工程脚手架阶段门已关闭，`S2-01` 完整 v1 公共 Contracts 与 `S2-02` SQLite/Drizzle 数据底座已通过验证。下一关键任务是 `S2-03`：
+S1 工程脚手架阶段门已关闭，`S2-01`～`S2-03` 的公共 Contracts、SQLite/Drizzle 与本地 I/O 安全底座已通过验证。下一关键任务是 `S2-04`：
 
-- 建立 Secret Store、File Store 与脱敏日志平台边界。
-- 保证秘密只进入 OS Credential Store，受控文件只能位于 data root。
-- 覆盖恶意路径、密钥回显、下载限制和 headless 错误。
-- 保持平台 adapter 与后续业务 owner 分离。
+- 扩展 S1 最小 session 为 REST / WebSocket 一致认证。
+- 覆盖非法 Origin、过期 token、URL/浏览器持久化 token 和未认证 WebSocket。
+- 保持本地会话只驻留内存，不引入云账号或 Profile 身份边界。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。
 
