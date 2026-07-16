@@ -113,6 +113,9 @@ flowchart LR
 
 - 每个持久实体只有一个写入 owner；其他模块通过 use case/event 协作，Programs 只通过 Ports 调用 Provider。
 - Feedback 成功持久化后才更新 TasteProjection；TasteOverrides 独立持久化且合并时优先。v1 的 DeviceSettings 不接受或输出网易云地址、Cookie 或密钥。
+- Feedback 以 `(profileId, idempotencyKey)` 去重，并在 `BEGIN IMMEDIATE` 短事务中由 SQLite 分配内部 replay order、按该稳定追加顺序回放 Profile 全部事件、写入新的 TasteProjection；重复命令返回原事件且不推进 projection，内部 replay order 不进入公共 DTO。
+- v1 projection 是事实型映射：`track_liked` / removed、`track_disliked` / removed 和 `program_favorited` / removed 分别维护对应目标的最新有效状态；`track_skipped` 只保留事实和版本，不产生负向推断。自动 tags 暂为空，affinity/avoid signal 使用 `track:<targetId>` 或 `program:<targetId>` 稳定标识。
+- EffectiveTaste 在读取时合并，不单独持久化。人工列表保序优先，比较时 trim 并忽略大小写；人工 avoid rule 排除同文本自动 tag 或 affinity，自动 avoid signal 在人工规则之后去重并只填充 contract 剩余容量。
 ## 6. Data Flow
 
 ### Program generation
@@ -172,6 +175,7 @@ sequenceDiagram
 
 反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Codex context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。
+Feedback target 必须先通过 owner 提供的公开 Port 校验：歌曲目标由 Library 校验，节目目标由 Programs 校验；S3-04 接入真实 Programs owner 前，composition 可注入确定性 Programs target resolver 进行模块验收。
 ## 7. State Management Strategy
 
 | State class | Owner | Synchronization |

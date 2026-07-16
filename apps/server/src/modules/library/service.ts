@@ -54,6 +54,7 @@ export interface LibraryService {
   close(): Promise<void>;
   getImport(profileId: string, jobId: string): PlaylistImportSnapshot;
   getLyrics(trackId: string): Promise<TrackLyrics>;
+  hasTrack(trackId: string): boolean;
   importPlaylist(
     profileId: string,
     playlistRef: string,
@@ -198,6 +199,9 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       const lyrics = parseProviderLyricsResult(providerResponse, track.id);
       lyricsCache.set(cacheKey, lyrics);
       return trackLyricsSchema.parse(lyrics);
+    },
+    hasTrack(trackId) {
+      return options.repository.findTrack(trackId) !== null;
     },
     importPlaylist(profileId, playlistRef, idempotencyKey) {
       const createdAt = now().toISOString();

@@ -8,11 +8,14 @@ import websocket from "@fastify/websocket";
 import {
   audioResolutionRequestSchema,
   audioResolutionSchema,
+  createFeedbackRequestSchema,
   createLibraryItemRequestSchema,
   createDataRootMigrationRequestSchema,
   createProfileRequestSchema,
   currentProfileResponseSchema,
   errorEnvelopeSchema,
+  feedbackEventSchema,
+  feedbackPersistedEventSchema,
   healthResponseSchema,
   jobAcceptedResponseSchema,
   libraryItemSchema,
@@ -33,10 +36,12 @@ import {
   sessionBootstrapResponseSchema,
   trackLyricsRequestSchema,
   trackLyricsSchema,
+  tasteResponseSchema,
   importPlaylistRequestSchema,
   updateDeviceSettingsRequestSchema,
   updateProfileRequestSchema,
   updateProfilePreferencesRequestSchema,
+  updateTasteOverridesRequestSchema,
 } from "@koradio/contracts";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 
@@ -48,6 +53,13 @@ import {
 } from "../modules/device-settings/data-root-migration.js";
 import { createHealthService } from "../modules/device-settings/health.js";
 import { createDeviceSettingsService } from "../modules/device-settings/index.js";
+import {
+  FeedbackDataError,
+  FeedbackTargetNotFoundError,
+  createFeedbackRepository,
+  createFeedbackService,
+  type FeedbackTargetResolver,
+} from "../modules/feedback/index.js";
 import {
   ProfilePreferencesNotFoundError,
   createProfilePreferencesService,
@@ -76,7 +88,13 @@ import {
   createProfileService,
   type ProfileSwitchRuntimeCoordinator,
 } from "../modules/profiles/index.js";
-import { createTasteDefaultsService } from "../modules/taste/index.js";
+import {
+  TasteDataError,
+  TasteNotFoundError,
+  createTasteDefaultsService,
+  createTasteRepository,
+  createTasteService,
+} from "../modules/taste/index.js";
 import { bootstrapDatabase } from "../platform/db/database.js";
 import {
   readCurrentProfileId,
@@ -95,6 +113,7 @@ export interface CreateAppOptions {
   migrationRuntimeCoordinator?: DataRootMigrationRuntimeCoordinator;
   profileSwitchRuntimeCoordinator?: ProfileSwitchRuntimeCoordinator;
   musicProvider?: MusicProvider;
+  programFeedbackTargets?: Pick<FeedbackTargetResolver, "programExists">;
   requestRestart?: (request: DataRootRestartRequest) => Promise<void>;
   session?: SessionState;
   webSocketAuthenticationTimeoutMs?: number;
@@ -130,6 +149,8 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   deviceSettings.initialize();
   const profilePreferences = createProfilePreferencesService({ client: database.client });
   const tasteDefaults = createTasteDefaultsService(database.client);
+  const tasteRepository = createTasteRepository(database.client);
+  const taste = createTasteService({ repository: tasteRepository });
   const avatarUpload = createAvatarUploadService(
     createLocalFileStore({ dataRoot: options.config.dataRoot }),
   );
@@ -160,6 +181,15 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const library = createLibraryService({
     provider: options.musicProvider ?? createMockMusicProvider(),
     repository: createLibraryRepository(database.client),
+  });
+  const feedback = createFeedbackService({
+    client: database.client,
+    repository: createFeedbackRepository(database.client),
+    targets: {
+      programExists: options.programFeedbackTargets?.programExists ?? (() => false),
+      trackExists: (_profileId, trackId) => library.hasTrack(trackId),
+    },
+    tasteRepository,
   });
   const health = createHealthService({
     deviceSettings,
@@ -525,6 +555,142 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
         return sendApiError(reply, 500, "PROFILE_UNREADABLE", "Profile could not be read", false);
       }
       throw error;
+    }
+  });
+
+  app.get("/api/v1/profiles/:profileId/taste", (request, reply) => {
+    const parsed = profileIdParamsSchema.safeParse(request.params);
+    if (!parsed.success) {
+      return sendApiError(reply, 400, "TASTE_VALIDATION_FAILED", "Taste request is invalid", false);
+    }
+
+    try {
+      profiles.get(parsed.data.profileId);
+      return tasteResponseSchema.parse(taste.get(parsed.data.profileId));
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (
+        error instanceof ProfileDataError ||
+        error instanceof TasteDataError ||
+        error instanceof TasteNotFoundError
+      ) {
+        return sendApiError(reply, 500, "TASTE_UNREADABLE", "Taste could not be read", false);
+      }
+      throw error;
+    }
+  });
+
+  app.patch("/api/v1/profiles/:profileId/taste", (request, reply) => {
+    const parsed = updateTasteOverridesRequestSchema.safeParse({
+      params: request.params,
+      body: request.body,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "TASTE_VALIDATION_FAILED",
+        "Taste overrides are invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return tasteResponseSchema.parse(
+        taste.updateOverrides(parsed.data.params.profileId, parsed.data.body),
+      );
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (
+        error instanceof ProfileDataError ||
+        error instanceof TasteDataError ||
+        error instanceof TasteNotFoundError
+      ) {
+        return sendApiError(reply, 500, "TASTE_UNREADABLE", "Taste could not be read", false);
+      }
+      throw error;
+    }
+  });
+
+  app.post("/api/v1/profiles/:profileId/feedback-events", (request, reply) => {
+    const parsed = createFeedbackRequestSchema.safeParse({
+      params: request.params,
+      headers: {
+        "idempotency-key": request.headers["idempotency-key"],
+      },
+      body: request.body,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "FEEDBACK_VALIDATION_FAILED",
+        "Feedback request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      const result = feedback.create(
+        parsed.data.params.profileId,
+        parsed.data.body,
+        parsed.data.headers["idempotency-key"],
+      );
+      if (result.created) {
+        eventHub.publish(
+          feedbackPersistedEventSchema.parse({
+            eventId: randomUUID(),
+            eventType: "feedback.persisted",
+            version: 1,
+            profileId: parsed.data.params.profileId,
+            correlationId: parsed.data.params.profileId,
+            sequence: result.projection.sourceVersion,
+            occurredAt: result.event.createdAt,
+            payload: result.event,
+          }),
+        );
+      }
+      return reply.status(201).send(feedbackEventSchema.parse(result.event));
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof FeedbackTargetNotFoundError) {
+        return sendApiError(
+          reply,
+          404,
+          "FEEDBACK_TARGET_NOT_FOUND",
+          "Feedback target was not found",
+          false,
+        );
+      }
+      if (
+        error instanceof ProfileDataError ||
+        error instanceof FeedbackDataError ||
+        error instanceof TasteDataError ||
+        error instanceof TasteNotFoundError
+      ) {
+        return sendApiError(
+          reply,
+          500,
+          "FEEDBACK_WRITE_FAILED",
+          "Feedback could not be stored",
+          true,
+        );
+      }
+      return sendApiError(
+        reply,
+        500,
+        "FEEDBACK_WRITE_FAILED",
+        "Feedback could not be stored",
+        true,
+      );
     }
   });
 

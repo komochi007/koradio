@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
@@ -6,6 +6,7 @@ import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 
 import { bootstrapDatabase } from "../../apps/server/src/platform/db/database.js";
+import { defaultMigrationsFolder } from "../../apps/server/src/platform/db/migrations.js";
 
 interface TestMigration {
   sql: string;
@@ -42,14 +43,14 @@ describe("SQLite platform bootstrap", () => {
     try {
       expect(readScalar(context.client, "PRAGMA foreign_keys")).toBe(1);
       expect(readScalar(context.client, "PRAGMA journal_mode")).toBe("wal");
-      expect(readScalar(context.client, "PRAGMA user_version")).toBe(4);
-      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(4);
+      expect(readScalar(context.client, "PRAGMA user_version")).toBe(5);
+      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(5);
       expect(
         readScalar(
           context.client,
-          "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('device_settings', 'profile_preferences', 'data_root_migration', 'profile', 'taste_overrides', 'music_track', 'playlist_source', 'library_item', 'playlist_import_job')",
+          "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('device_settings', 'profile_preferences', 'data_root_migration', 'profile', 'taste_overrides', 'taste_projection', 'feedback_event', 'music_track', 'playlist_source', 'library_item', 'playlist_import_job')",
         ),
-      ).toBe(9);
+      ).toBe(11);
 
       context.client.exec(`
         CREATE TABLE parent (id INTEGER PRIMARY KEY);
@@ -78,10 +79,114 @@ describe("SQLite platform bootstrap", () => {
 
     const second = await bootstrapDatabase({ dataRoot });
     try {
-      expect(readScalar(second.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(4);
-      expect(readScalar(second.client, "PRAGMA user_version")).toBe(4);
+      expect(readScalar(second.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(5);
+      expect(readScalar(second.client, "PRAGMA user_version")).toBe(5);
     } finally {
       second.close();
+    }
+  });
+
+  it("upgrades existing profiles with empty projections without changing overrides", async () => {
+    const dataRoot = await createTemporaryDirectory("koradio-feedback-upgrade-db-");
+    const previousMigrations = await createTemporaryDirectory(
+      "koradio-feedback-upgrade-migrations-",
+    );
+    const migrationDirectories = (await readdir(defaultMigrationsFolder, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+    expect(migrationDirectories.at(-1)).toBe("20260716210000_add_feedback_taste_memory");
+
+    await Promise.all(
+      migrationDirectories.slice(0, -1).map((directory) =>
+        cp(join(defaultMigrationsFolder, directory), join(previousMigrations, directory), {
+          recursive: true,
+        }),
+      ),
+    );
+
+    const previous = await bootstrapDatabase({
+      dataRoot,
+      migrationsFolder: previousMigrations,
+    });
+    const profileId = "11111111-1111-4111-8111-111111111111";
+    const createdAt = "2026-07-16T09:00:00.000Z";
+    previous.client
+      .prepare(
+        `
+          INSERT INTO profile (
+            id,
+            creation_idempotency_key,
+            radio_name,
+            nickname,
+            avatar_ref,
+            frequent_genres_json,
+            default_scenario,
+            created_at,
+            updated_at
+          )
+          VALUES (?, 'upgrade-profile', 'Night Signals', 'Klein', NULL, '[]', '', ?, ?)
+        `,
+      )
+      .run(profileId, createdAt, createdAt);
+    previous.client
+      .prepare(
+        `
+          INSERT INTO taste_overrides (
+            profile_id,
+            tags_json,
+            avoid_rules_json,
+            scene_rules_json,
+            updated_at
+          )
+          VALUES (?, '["ambient"]', '["harsh treble"]', '["夜晚写作"]', ?)
+        `,
+      )
+      .run(profileId, createdAt);
+    previous.close();
+
+    const upgraded = await bootstrapDatabase({ dataRoot });
+    try {
+      expect(
+        upgraded.client
+          .prepare(
+            `
+              SELECT
+                tags_json,
+                affinities_json,
+                avoid_signals_json,
+                source_version,
+                updated_at
+              FROM taste_projection
+              WHERE profile_id = ?
+            `,
+          )
+          .get(profileId),
+      ).toEqual({
+        tags_json: "[]",
+        affinities_json: "[]",
+        avoid_signals_json: "[]",
+        source_version: 0,
+        updated_at: createdAt,
+      });
+      expect(
+        upgraded.client
+          .prepare(
+            `
+              SELECT tags_json, avoid_rules_json, scene_rules_json, version
+              FROM taste_overrides
+              WHERE profile_id = ?
+            `,
+          )
+          .get(profileId),
+      ).toEqual({
+        tags_json: '["ambient"]',
+        avoid_rules_json: '["harsh treble"]',
+        scene_rules_json: '["夜晚写作"]',
+        version: 0,
+      });
+    } finally {
+      upgraded.close();
     }
   });
 
