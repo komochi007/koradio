@@ -215,7 +215,7 @@ Fastify Local Service
 由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 验证但尚未接受：
 
 - 本机 Codex CLI、网易云 `ncm-cli`、网易云搜索/歌词/歌单调用和 Apple 系统 TTS 可用。
-- 网易云“获取歌曲播放url”官方端点已定位为 `/openapi/music/basic/song/playurl/get/v2`，但当前开放平台应用未授权该接口。
+- 网易云“获取歌曲播放url”应调用 `POST /openapi/music/basic/batch/song/playurl/get`，但当前开放平台应用未授权该接口。
 - `ncm-cli play` 只返回 `orpheus://` 唤端结果，不能作为 Browser Audio Engine 的播放事实源。
 
 尚未决定：

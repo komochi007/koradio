@@ -24,7 +24,7 @@
 |---|---|
 | OpenAI Codex 非交互文档 | `codex exec` 用于脚本/CI；默认只读 sandbox；可用 `--ephemeral`、`--output-schema` 和 `--output-last-message` 产出机器可读结果；认证材料不得进入仓库或不受信环境 |
 | NetEase skills / ncm-cli 文档 | 使用前需要安装 `@music163/ncm-cli`、完成开放平台入驻和 `ncm-cli configure`；能力覆盖搜索歌曲/歌单/专辑、歌单管理、推荐等；所有命令依赖 API key |
-| 网易云官方开发者文档 | 用户提供的 `docId=3d2c9f695ff24f4ea37611614b7f7856` 在官方文档搜索 API 中对应“获取歌曲播放url”，分类为“获取播放地址API” |
+| 网易云官方开发者文档 | 用户提供的 `docId=3d2c9f695ff24f4ea37611614b7f7856` 在官方文档搜索 API 中对应“获取歌曲播放url”，分类为“获取播放地址API”；开发者平台问答进一步给出批量接口路径、POST 方法和业务参数约束 |
 | 本机 CLI help | `ncm-cli search song`、`song lyric`、`search playlist`、`playlist tracks` 可返回 JSON；`play` 可播放音频 URL、歌曲加密 ID 或歌单，但实测返回 `orpheus://` 唤端结果，不返回 Browser 播放 URL |
 
 ## 3. Codex 验证
@@ -53,13 +53,13 @@
 | 歌单曲目 | `ncm-cli playlist tracks --playlistId <脱敏 playlistId> --limit 1 --output json` | `code: 200`，返回 1 条歌曲记录和 playability flags |
 | CLI 播放命令 | `ncm-cli play --song --encrypted-id <脱敏 songId> --original-id <originalId> --output json` | 返回成功唤起云音乐播放歌曲，输出 `orpheus://` 唤端协议；不返回 Browser 可消费音频 URL |
 | 官方播放 URL 文档定位 | 官方文档搜索 API 查询“获取歌曲播放url” | 返回目标 `docId`、标题“获取歌曲播放url”、分类“获取播放地址API” |
-| 播放 URL 端点探测 | 对候选路径做无凭据 GET 探针 | `/openapi/music/basic/song/playurl/get/v2` 返回参数错误或 `appId` 错误；相邻错误路径返回“接口未找到”，说明该端点存在 |
-| 播放 URL 授权采样 | 复用 `ncm-cli` 签名链临时改写路径到 `song/playurl/get/v2` | 返回 `code: 300`、`message: 应用未授权当前接口`；未返回播放直链，报告不保存原始 URL 或密钥 |
+| 官方批量接口约束 | 用户提供的网易云开发者平台问答截图 | 使用 `POST /openapi/music/basic/batch/song/playurl/get`；歌曲 ID 列表最多 500 个并序列化为 JSON 字符串；音质可选 `128/320/999/1999`、默认 `320`；可选音效参数如杜比 `eac3/ac4`；请求携带 SDK 公共参数，响应从 `url` 字段取得短期播放地址 |
+| 批量播放 URL 授权采样 | 复用 `ncm-cli` 已验证签名链，将受控请求路径临时改写为 `/openapi/music/basic/batch/song/playurl/get` | 返回 `code: 300`、`message: 应用未授权当前接口`；授权层在业务参数校验前拒绝请求，未返回播放直链，报告不保存原始 URL、access token、签名或密钥 |
 | 非法 ID | `ncm-cli playlist tracks --playlistId invalid-playlist-id --limit 1 --output json` | 输出 `code: 400`、`message: 歌单id有非法字符`；进程退出码仍为 `0`，adapter 必须按 body code 判错 |
 | 无凭据 | `HOME=/dev/null ncm-cli search song ...` | 退出码 `1`，提示 API key 未设置，并建议 `ncm-cli configure` 或 `config set` |
 | 超时包装 | 1 秒外层 alarm 包装搜索 | 外层可返回 `124`，但子进程仍可能完成输出；产品 adapter 必须用可杀进程组的 timeout/cancel 机制 |
 
-结论：网易云搜索、歌词、歌单导入与失败采样可行；官方播放 URL 端点存在，但当前开放平台应用未授权该接口。S0-06 因此阻塞，不能把外部播放器唤端或 `orpheus://` 结果作为 Browser Audio Engine 的事实源。
+结论：网易云搜索、歌词、歌单导入与失败采样可行；官方批量播放 URL 端点和调用约束已经定位，但当前开放平台应用未授权该接口，正式业务字段名与成功响应 schema 尚未验证。S0-06 因此阻塞，不能把外部播放器唤端或 `orpheus://` 结果作为 Browser Audio Engine 的事实源。
 
 ## 5. Apple TTS 验证
 

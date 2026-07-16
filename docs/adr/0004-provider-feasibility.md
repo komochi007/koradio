@@ -47,7 +47,7 @@ Koradio 当前仍处于 Documentation-first 阶段，没有产品源码、Provid
 - 收益：与当前 PRD 的本地配置模型一致，不把外部服务直接暴露给 Browser；S0 已有本机真实验证路径。
 - 代价：Codex 与网易云都依赖本机配置和外部账号状态；`ncm-cli` 当前公开命令可验证搜索、歌词和歌单，但没有直接暴露 Browser 可消费的播放 URL 命令。
 - 风险：公开发布前必须确认网易云开放平台条款、播放 URL 接口授权和用户自备凭据边界。
-- 验证结果：Codex JSON、网易云搜索/歌词/歌单、无凭据失败和 TTS 合成均完成脱敏验证；网易云官方文档确认存在“获取歌曲播放url”API，实测端点为 `/openapi/music/basic/song/playurl/get/v2`，但当前应用返回 `code: 300`、`应用未授权当前接口`，因此本方案尚不能作为已接受裁决。
+- 验证结果：Codex JSON、网易云搜索/歌词/歌单、无凭据失败和 TTS 合成均完成脱敏验证；网易云开发者平台确认应通过 `POST /openapi/music/basic/batch/song/playurl/get` 批量获取播放 URL，但当前应用访问该端点返回 `code: 300`、`应用未授权当前接口`，因此本方案尚不能作为已接受裁决。
 
 ### 方案 B：自建或第三方 NetEase HTTP API 服务
 
@@ -67,7 +67,7 @@ Koradio 当前仍处于 Documentation-first 阶段，没有产品源码、Provid
 
 ## 5. 当前裁决
 
-S0-06 暂不接受任何方案作为完整 Provider 可行性裁决。**方案 A 是唯一保留候选**，但必须先解除网易云播放 URL 接口授权阻塞：当前 `ncm-cli` 凭据可完成搜索、歌词和歌单调用，也能复用签名链访问官方 `song/playurl/get/v2` 端点；该端点返回的稳定错误为“应用未授权当前接口”，说明问题位于开放平台应用权限而非本地 CLI 可用性或请求构造。
+S0-06 暂不接受任何方案作为完整 Provider 可行性裁决。**方案 A 是唯一保留候选**，但必须先解除网易云播放 URL 接口授权阻塞：当前 `ncm-cli` 凭据可完成搜索、歌词和歌单调用；复用其签名链访问官方 `batch/song/playurl/get` 端点时，授权层稳定返回“应用未授权当前接口”，业务参数尚未进入可验证阶段。
 
 因此，S0 阶段门仍未关闭。后续只有在当前或替代网易云开放平台应用获得“获取歌曲播放url”接口授权，并完成脱敏成功响应采样、URL 安全校验方案和失败映射后，才能把本 ADR 更新为已接受或创建替代 ADR 关闭 S0-06。
 
@@ -84,7 +84,8 @@ S0-06 暂不接受任何方案作为完整 Provider 可行性裁决。**方案 A
 - S0 采用已安装的 `@music163/ncm-cli@0.1.6` 作为受控真实验证工具；后续 S3 adapter 不能依赖 `ncm-cli play`，应直接实现等价开放平台 HTTP 调用或由受控工具暴露可校验响应。
 - DeviceSettings 仍保留网易云服务配置；凭据必须进入 OS Credential Store，API 只返回 `configured` / `available` / `unavailable` 和脱敏摘要。
 - 已验证能力：歌曲搜索、无结果分支、歌词获取、歌单搜索和歌单曲目分页。
-- 已定位但阻塞的能力：用户提供的网易云官方文档 `docId=3d2c9f695ff24f4ea37611614b7f7856` 对应“获取歌曲播放url”；实测端点 `/openapi/music/basic/song/playurl/get/v2` 存在，但当前应用未获授权。
+- 已定位但阻塞的能力：用户提供的网易云官方文档 `docId=3d2c9f695ff24f4ea37611614b7f7856` 对应“获取歌曲播放url”；开发者平台给出的正式端点为 `POST /openapi/music/basic/batch/song/playurl/get`，当前应用访问该端点时未获授权。
+- 后续 Adapter 应按官方 SDK 公共参数发起请求，业务 body 使用最多 500 个歌曲 ID 的 JSON 字符串，并按需传入音质和音效参数；具体字段名与响应 schema 必须在接口授权后从正式参考文档和脱敏成功响应确认，不得依据问答摘要猜测。
 - `ncm-cli play` 返回 `orpheus://` 唤端结果，不适合作为 Browser Audio Engine 的事实源，也不能替代 `resolvedAudioRef`。
 - 解除 S0-06 阻塞前，S1-03 不应把真实 NetEase Adapter 当作可用依赖；只能使用 Mock Provider 或把 S1 继续置于 S0-06 依赖之后。
 - 网易云健康检查 15 秒超时；搜索无结果按 PRD 换关键词重试 2 次；API key 缺失、凭据错误、限流、非法 ID 或响应 schema 异常均返回脱敏错误。
@@ -102,7 +103,7 @@ S0-06 暂不接受任何方案作为完整 Provider 可行性裁决。**方案 A
 | Provider | 必需能力 | S0 结论 | 后续验收 |
 |---|---|---|---|
 | Codex | 根据场景、taste、history 和偏好输出结构化节目计划 | 可行；本机 `codex exec` 返回 PRD 最小 JSON | S2/S3 用 Zod schema、`--output-schema`、超时和脱敏日志覆盖 |
-| NetEase | 搜索歌曲、取得稳定 source identity、歌词、歌单曲目、播放 URL | 阻塞；搜索/歌词/歌单可行，官方播放 URL 端点存在但当前应用未授权 | 先开通 `song/playurl/get/v2` 权限并完成成功采样，再进入 S3 Adapter 实现 |
+| NetEase | 搜索歌曲、取得稳定 source identity、歌词、歌单曲目、播放 URL | 阻塞；搜索/歌词/歌单可行，官方批量播放 URL 端点存在但当前应用未授权 | 先开通 `batch/song/playurl/get` 权限并完成成功采样，再进入 S3 Adapter 实现 |
 | TTS | 本机标准语音合成 DJ 音频，失败文字降级 | 可行；系统语音与临时 AIFF 合成通过 | S7 将 Swift helper 纳入签名、公证、双架构和 Gatekeeper 验收 |
 
 ## 7. 失败、重试与降级策略
