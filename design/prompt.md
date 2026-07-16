@@ -560,7 +560,7 @@ Dream Pop、Indie Folk、Ambient、City Pop、Alternative、Soft Rock、Bossa No
 “Local Service” — 绿色点 — “CONNECTED”
 “Codex” — 绿色点 — “CONNECTED”
 “NetEase Music API” — 绿色点 — “CONNECTED”
-“Text to Speech” — 黄色点 — “DEGRADED”
+“Apple System TTS” — 黄色点 — “DEGRADED”
 每行右侧有箭头或“Test”小按钮。状态颜色必须配合文字。Test 与下方本地数据的 Change 使用同一紧凑边框规格：按钮命中区高 `44 px`，可见边框高 `32 px` 并垂直居中，不得贴住列表或卡片外框。
 
 下方显示“服务配置”。依次排列单列表单：
@@ -571,11 +571,8 @@ Dream Pop、Indie Folk、Ambient、City Pop、Alternative、Soft Rock、Bossa No
 “网易云 API 地址”
 输入值“http://localhost:3000”
 
-“TTS 服务地址”
-输入值“https://api.fish.audio/v1”
-
-“TTS API Key”
-密码框显示“••••••••••••7K2M”，右侧有显示/隐藏按钮，密钥只显示后四位。
+“Apple System TTS”
+只读值“AVSpeechSynthesizer · SYSTEM VOICES”，辅助文字“无需 API Key；使用已安装的标准系统语音”。
 
 所有服务配置输入框高度 `64 px`，圆角 14 px，背景 #111317，边框 #2A2F37。标签使用 14 px 次要文字。服务状态、服务配置、偏好设置、本地数据、固定操作区和底部导航之间统一保留 `24 px` 的纵向间距。
 
@@ -624,13 +621,13 @@ Dream Pop、Indie Folk、Ambient、City Pop、Alternative、Soft Rock、Bossa No
 
 第四张为展开状态：
 黄色小圆点
-“Text to Speech”
+“Apple System TTS”
 状态“DEGRADED”
-说明“Authentication failed · HTTP 401”
+说明“Preferred en-GB voice unavailable”
 卡片边框可轻微使用警告色，但背景保持深色。展开区域通过细分割线显示修复建议：
-“检查 TTS API Key 是否有效”
-“确认服务地址与账户区域一致”
-“保存配置后重新运行检测”
+“在 macOS 系统设置中安装匹配语言的标准语音”
+“Personal Voice 不在 V1 支持范围内”
+“安装语音后重新运行检测”
 右侧或底部显示小型按钮“查看配置”。
 
 卡片下方显示局部降级说明区，使用警告图标与自然文字：“你仍然可以生成和播放节目。DJ 串讲会以文字显示，歌曲播放与歌词不受影响。”该说明不应使用红色错误语气。
@@ -641,4 +638,4 @@ Dream Pop、Indie Folk、Ambient、City Pop、Alternative、Soft Rock、Bossa No
 
 整体表现为清晰、可恢复的服务检查结果，不制造严重故障感。信息层级应让用户立即理解：三个服务正常，TTS 可降级，不会阻断核心播放。
 
-必须准确显示“3 OF 4 SERVICES AVAILABLE”、四项服务结果和 TTS 修复建议。不要生成全部成功的绿色庆祝页面、巨大勾号、进度百分比、服务器监控仪表盘、日志终端、红色满屏错误、左侧导航栏、绿色主按钮、彩色插画、霓虹或复杂渐变。
+必须准确显示“3 OF 4 SERVICES AVAILABLE”、四项服务结果和 Apple System TTS 修复建议。不要生成 TTS API 地址或密钥字段、全部成功的绿色庆祝页面、巨大勾号、进度百分比、服务器监控仪表盘、日志终端、红色满屏错误、左侧导航栏、绿色主按钮、彩色插画、霓虹或复杂渐变。
