@@ -24,7 +24,8 @@
     "test:component": "vitest run tests/component",
     "test:e2e": "playwright test tests/e2e",
     "test:visual": "playwright test tests/visual --project=chromium",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test:unit && pnpm test:contract && pnpm test:integration && pnpm test:component && pnpm test:coverage && pnpm build"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
