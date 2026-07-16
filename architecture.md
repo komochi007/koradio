@@ -1,6 +1,6 @@
 # Koradio System Architecture
 
-> Status: Target Architecture · S1 runnable skeleton partially implemented
+> Status: Target Architecture · S1 runnable skeleton and S2 v1 public contracts implemented
 > Scope: Local-first Web/PWA MVP  
 > Audience: AI Coding Agents, maintainers, system architects  
 > Sources: `docs/prd.md`, `docs/user-flow.md`, `design/design.md`
@@ -227,8 +227,11 @@ stateDiagram-v2
 | Health | `/api/v1/health` | 运行时脱敏健康快照，不持久化为配置事实 |
 
 - Zod schema 是 wire contract 唯一运行时定义，TypeScript 类型由 schema 推导。
+- S2 v1 contract 已在 `packages/contracts/src/` 实装：公共标识使用 UUID，时间使用 ISO 8601 UTC，媒体时长与位置使用毫秒，音量使用 `0-1`。
+- Profile-owned request contract 通过 route params 显式携带 `profileId`；创建类 request contract 同时要求规范化后的 `idempotency-key` header，外部 HTTP 名称仍为 `Idempotency-Key`。
+- v1 command、DTO、event 与 error schema 拒绝未知字段；受控文件引用只允许 `avatars/`、`lyrics/`、`media/`、`tts/` 命名空间，不接受 URL、绝对路径或裸文件名。
 - Event envelope 固定包含 `eventId`、`eventType`、`version`、可选 `profileId`、`correlationId`、`sequence`、`occurredAt`、`payload`。
-- Event families：`generation.*`、`program.committed`、`playback.snapshot`、`feedback.persisted`、`service.health.changed`、`data_root_migration.stage_changed`。WebSocket 不发布高频 position progress。
+- v1 Event types：`generation.planned`、`generation.tracks-resolved`、`generation.degraded`、`generation.completed`、`program.committed`、`playback.snapshot`、`feedback.persisted`、`service.health.changed`、`data_root_migration.stage_changed`。WebSocket 不发布高频 position progress。
 - 创建命令接受 `Idempotency-Key`；重复请求返回原结果或当前 job。
 - Error envelope 包含 `code`、安全 `message`、`retryable`、`correlationId` 和可选字段错误。
 - Breaking change 提升 API/event major version；新增可选字段保持向后兼容。

@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 platform foundation next · Mock mode only**
+> Status: **S1 engineering scaffold complete · S2 public contracts complete · Mock mode only**
 > Audience: AI Coding Agents、开发者、维护者  
 > Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service 最小骨架；只提供 Mock health、事件连接和 App Shell，不代表 Koradio 产品功能已经实现
 
@@ -52,6 +52,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
 - [x] React/Vite 最小 App Shell 已实现；业务页面、路由、PWA 缓存和 Audio Engine 尚未实现
 - [x] Fastify Local Service 最小 health/session/events 与 Mock Provider health 已实现；业务模块尚未实现
+- [x] 完整 v1 公共 Contracts 已用 Zod 固化：REST DTO/command、显式 `profileId`、`Idempotency-Key`、异步 job、WebSocket event 与安全 error envelope 均有正反向和兼容性测试
 - [ ] SQLite schema 与 migrations 尚未实现
 - [ ] Provider adapters 尚未实现
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
@@ -190,7 +191,7 @@ Fastify Local Service
 | Development topology | Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` | Implemented and verified |
 | Production topology | Same-origin PWA / REST / WebSocket on loopback, preferred port `49373` with bounded fallback `49373-49383` | S1 static serving and strict smoke verified |
 | Local session | `POST /api/v1/session/bootstrap`, memory-only token, exact Origin allowlist, WebSocket first-message auth | Minimal S1 implementation · S2 hardening pending |
-| Runtime validation | Zod 4.4.3 | Health/session/event schemas verified |
+| Runtime validation | Zod 4.4.3 | Complete v1 public REST/WS contracts verified；Provider/Codex internal schemas planned |
 | Database | SQLite | Planned |
 | ORM / migrations | Drizzle | Planned |
 | Secrets | OS Credential Store | Planned |
@@ -431,6 +432,7 @@ pnpm check
 
 - 没有数据库 schema 或 migration。
 - 没有 Profile、Program、Library、Taste、Feedback 或 Playback 业务模块。
+- 已有完整 v1 wire contracts，但除 S1 health/session/events 外，对应业务 route 和 use case 尚未实现。
 - 没有真实 Codex、NetEase 或 TTS Adapter；运行时只允许 `mock`。
 - 最小 App Shell 只展示 REST、WebSocket 和 Mock Provider 连通状态。
 - S1 Session 只覆盖内存 bootstrap、精确 Origin 与 WS 首消息认证；完整安全防护由 S2-04 完成。
@@ -499,12 +501,12 @@ pnpm check
 
 ## 9. 下一实现起点
 
-S1 工程脚手架阶段门已由可安装、可启动、可测试、可构建的 Mock skeleton 和真实 CI run 关闭。下一关键任务是 `S2-01`：
+S1 工程脚手架阶段门已关闭，`S2-01` 完整 v1 公共 Contracts 已通过验证。下一关键任务是 `S2-02`：
 
-- 将 S1 最小 health/session/event schemas 扩展为完整 v1 wire contracts。
-- 建立 error envelope、幂等命令、`profileId` 和事件兼容性规则。
-- 为所有新增 Zod schema 提供有效与无效 contract tests。
-- 保持 ORM model、Provider response、秘密和内部 entity 不进入公共 contract。
+- 建立 SQLite、Drizzle 与首次数据目录 bootstrap。
+- 启用版本化 migration、foreign keys 与 WAL。
+- 验证空环境迁移、重复迁移幂等和失败不自动重建数据表。
+- 保持数据库实体、Provider response 与公共 wire contract 分离。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。
 
