@@ -157,13 +157,14 @@
 - 是否用实际检查支持完成声明？
 - 下一位 Agent 能否依赖仓库继续工作？
 
-## 9. Git 与 Worktree 强制规则
+## 9. Git 强制规则
 
-- 根工作树 `/Users/kleinblue/Project/Koradio` 固定承载 `main`，日常保持 clean，不直接进行任务开发。
-- 一个任务 ID 使用一个独立 worktree、一个 branch 和一个 PR；AI 分支使用 `codex/<task-id>-<slug>`。
-- 任务 worktree 统一放在 `/Users/kleinblue/Project/Koradio-worktrees/`，并从最新 `origin/main` 创建。
-- 禁止直接向 `main` push；只通过 PR squash merge，禁止 force push、删除 `main` 或制造 merge commit。
+- 只使用根目录 `/Users/kleinblue/Project/Koradio`；常规任务直接在 `main` 顺序执行，不创建 worktree、任务分支或 PR。
+- 开始任务前必须确认当前是 clean `main`，执行 `fetch --prune` 和 `pull --ff-only`，并确认没有其他 Agent 同时修改仓库。
+- 一个任务对应一个或少量可验证提交；验收通过后直接推送 `origin/main`，提交信息必须包含任务 ID。
 - 默认使用 `git add <明确路径...>`；除非用户明确要求全量提交且全部改动已核验归属，否则禁止 `git add -A`、`git add .` 和 `git commit -am`。
-- 发现跨任务、跨 worktree 或归属不明的改动时，立即停止暂存、提交和清理，先拆分或取得用户决定。
-- 分支或 worktree 只有在已合并、无未提交/独有工作且用户明确批准后才能删除；不得自动清理。
+- 发现跨任务、用户工作或归属不明的改动时，立即停止暂存、提交和清理，先拆分或取得用户决定。
+- 禁止 force push、删除 `main` 或改写已推送历史；推送冲突必须先核实远端变化。
+- 只有用户明确要求，或高风险方案经用户确认后，才在同一目录创建 `codex/<task-id>-<slug>` 临时分支并使用 PR；默认不创建额外文件夹。
+- 分支或目录只有在无未提交/独有工作且用户明确批准后才能删除；不得自动清理。
 - 完整创建、验证、推送、审阅、合并和清理流程以 [Git 工作流规范](docs/project-management/git-workflow.md) 为准。
