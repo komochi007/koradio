@@ -1,4 +1,6 @@
 import {
+  addLibraryItemCommandSchema,
+  audioResolutionSchema,
   avatarRefSchema,
   createDataRootMigrationCommandSchema,
   createFeedbackCommandSchema,
@@ -16,6 +18,8 @@ import {
   musicSearchCommandSchema,
   musicSearchResponseSchema,
   musicTrackSchema,
+  playlistImportSnapshotSchema,
+  playlistSourceSchema,
   playbackCheckpointSchema,
   playbackTimelineItemSchema,
   profileListResponseSchema,
@@ -30,6 +34,7 @@ import {
   tasteOverridesSchema,
   tasteProjectionSchema,
   tasteResponseSchema,
+  trackLyricsSchema,
   updateDeviceSettingsCommandSchema,
   updateProfileCommandSchema,
   updateProfilePreferencesCommandSchema,
@@ -176,7 +181,7 @@ describe("v1 resource and command contracts", () => {
       libraryItemSchema.parse({
         track,
         addedAt: now,
-        playlistSourceId: "playlist-123",
+        playlistSourceId: ids.playlistSource,
       }),
     ).toMatchObject({ track });
     expect(musicSearchCommandSchema.parse({ keyword: "Space Song" })).toEqual({
@@ -186,6 +191,52 @@ describe("v1 resource and command contracts", () => {
     expect(importPlaylistCommandSchema.parse({ playlistRef: "123456" })).toEqual({
       playlistRef: "123456",
     });
+    expect(addLibraryItemCommandSchema.parse({ trackId: ids.track })).toEqual({
+      trackId: ids.track,
+    });
+    const playlistSource = {
+      id: ids.playlistSource,
+      source: "netease",
+      sourcePlaylistId: "123456",
+      title: "Night Playlist",
+      importedAt: now,
+      availableTrackCount: 1,
+      unavailableTrackCount: 2,
+    } as const;
+    expect(playlistSourceSchema.parse(playlistSource)).toEqual(playlistSource);
+    expect(
+      playlistImportSnapshotSchema.parse({
+        jobId: ids.job,
+        profileId: ids.profile,
+        status: "succeeded",
+        playlistRef: "123456",
+        progress: { total: 3, processed: 3, imported: 1, unavailable: 2 },
+        playlistSource,
+        createdAt: now,
+        updatedAt: now,
+      }).playlistSource,
+    ).toEqual(playlistSource);
+    expect(
+      trackLyricsSchema.parse({
+        trackId: ids.track,
+        status: "available",
+        content: "[00:00.00]Night",
+      }).status,
+    ).toBe("available");
+    expect(
+      trackLyricsSchema.parse({
+        trackId: ids.trackTwo,
+        status: "unavailable",
+        content: null,
+      }).content,
+    ).toBeNull();
+    expect(
+      audioResolutionSchema.parse({
+        trackId: ids.track,
+        resolvedAudioRef: "https://media.example.com/song.m4a",
+        expiresAt: now,
+      }).trackId,
+    ).toBe(ids.track);
     expect(
       libraryListResponseSchema.parse({
         items: [{ track, addedAt: now, playlistSourceId: null }],
@@ -200,6 +251,21 @@ describe("v1 resource and command contracts", () => {
     expect(musicTrackSchema.safeParse({ ...track, durationMs: 0 }).success).toBe(false);
     expect(musicSearchCommandSchema.safeParse({ keyword: " " }).success).toBe(false);
     expect(importPlaylistCommandSchema.safeParse({ playlistRef: "" }).success).toBe(false);
+    expect(addLibraryItemCommandSchema.safeParse({ trackId: "current" }).success).toBe(false);
+    expect(
+      trackLyricsSchema.safeParse({
+        trackId: ids.track,
+        status: "unavailable",
+        content: "unexpected",
+      }).success,
+    ).toBe(false);
+    expect(
+      audioResolutionSchema.safeParse({
+        trackId: ids.track,
+        resolvedAudioRef: "http://media.example.com/song.m4a",
+        expiresAt: now,
+      }).success,
+    ).toBe(false);
   });
 
   it("accepts program, script, timeline and checkpoint DTOs", () => {

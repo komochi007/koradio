@@ -6,12 +6,22 @@ import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
 import {
+  audioResolutionRequestSchema,
+  audioResolutionSchema,
+  createLibraryItemRequestSchema,
   createDataRootMigrationRequestSchema,
   createProfileRequestSchema,
   currentProfileResponseSchema,
   errorEnvelopeSchema,
   healthResponseSchema,
   jobAcceptedResponseSchema,
+  libraryItemSchema,
+  libraryListRequestSchema,
+  libraryListResponseSchema,
+  musicSearchRequestSchema,
+  musicSearchResponseSchema,
+  playlistImportSnapshotRequestSchema,
+  playlistImportSnapshotSchema,
   profileAvatarUploadResponseSchema,
   profileIdParamsSchema,
   profileListResponseSchema,
@@ -21,6 +31,9 @@ import {
   serviceHealthChangedEventSchema,
   sessionAuthenticateSchema,
   sessionBootstrapResponseSchema,
+  trackLyricsRequestSchema,
+  trackLyricsSchema,
+  importPlaylistRequestSchema,
   updateDeviceSettingsRequestSchema,
   updateProfileRequestSchema,
   updateProfilePreferencesRequestSchema,
@@ -39,6 +52,18 @@ import {
   ProfilePreferencesNotFoundError,
   createProfilePreferencesService,
 } from "../modules/profile-preferences/index.js";
+import {
+  LibraryCursorError,
+  LibraryDataError,
+  LibraryTrackNotFoundError,
+  MusicProviderResponseError,
+  MusicProviderUnavailableError,
+  PlaylistImportNotFoundError,
+  createLibraryRepository,
+  createLibraryService,
+  createMockMusicProvider,
+  type MusicProvider,
+} from "../modules/library/index.js";
 import {
   AvatarUploadError,
   AvatarReferenceError,
@@ -69,6 +94,7 @@ export interface CreateAppOptions {
   selectedPort: number;
   migrationRuntimeCoordinator?: DataRootMigrationRuntimeCoordinator;
   profileSwitchRuntimeCoordinator?: ProfileSwitchRuntimeCoordinator;
+  musicProvider?: MusicProvider;
   requestRestart?: (request: DataRootRestartRequest) => Promise<void>;
   session?: SessionState;
   webSocketAuthenticationTimeoutMs?: number;
@@ -131,6 +157,10 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     writeCurrentProfileId: (profileId) =>
       writeCurrentProfileId(bootstrapPath, options.config.dataRoot, profileId),
   });
+  const library = createLibraryService({
+    provider: options.musicProvider ?? createMockMusicProvider(),
+    repository: createLibraryRepository(database.client),
+  });
   const health = createHealthService({
     deviceSettings,
     mode: options.config.providerMode,
@@ -160,7 +190,8 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const session = options.session ?? createSessionState();
   const webSocketAuthenticationTimeoutMs = options.webSocketAuthenticationTimeoutMs ?? 2_000;
 
-  app.addHook("onClose", () => {
+  app.addHook("onClose", async () => {
+    await library.close();
     database.close();
   });
 
@@ -496,6 +527,323 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       throw error;
     }
   });
+
+  app.post("/api/v1/profiles/:profileId/music-searches", async (request, reply) => {
+    const parsed = musicSearchRequestSchema.safeParse({
+      params: request.params,
+      body: request.body,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "MUSIC_SEARCH_VALIDATION_FAILED",
+        "Music search request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return musicSearchResponseSchema.parse(await library.search(parsed.data.body.keyword));
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof MusicProviderResponseError) {
+        return sendApiError(
+          reply,
+          502,
+          "MUSIC_PROVIDER_RESPONSE_INVALID",
+          "Music provider returned an invalid response",
+          true,
+        );
+      }
+      if (error instanceof MusicProviderUnavailableError) {
+        return sendApiError(
+          reply,
+          503,
+          "MUSIC_PROVIDER_UNAVAILABLE",
+          "Music provider is unavailable",
+          true,
+        );
+      }
+      throw error;
+    }
+  });
+
+  app.post("/api/v1/profiles/:profileId/library-items", (request, reply) => {
+    const parsed = createLibraryItemRequestSchema.safeParse({
+      params: request.params,
+      headers: {
+        "idempotency-key": request.headers["idempotency-key"],
+      },
+      body: request.body,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "LIBRARY_ITEM_VALIDATION_FAILED",
+        "Library item request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return reply
+        .status(201)
+        .send(
+          libraryItemSchema.parse(
+            library.addItem(
+              parsed.data.params.profileId,
+              parsed.data.body.trackId,
+              parsed.data.headers["idempotency-key"],
+            ),
+          ),
+        );
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof LibraryTrackNotFoundError) {
+        return sendApiError(
+          reply,
+          404,
+          "MUSIC_TRACK_NOT_FOUND",
+          "Music track was not found",
+          false,
+        );
+      }
+      throw error;
+    }
+  });
+
+  app.get("/api/v1/profiles/:profileId/library", (request, reply) => {
+    const parsed = libraryListRequestSchema.safeParse({
+      params: request.params,
+      query: request.query,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "LIBRARY_LIST_VALIDATION_FAILED",
+        "Library list request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return libraryListResponseSchema.parse(
+        library.list(
+          parsed.data.params.profileId,
+          parsed.data.query.cursor,
+          parsed.data.query.limit,
+        ),
+      );
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof LibraryCursorError) {
+        return sendApiError(
+          reply,
+          400,
+          "LIBRARY_CURSOR_INVALID",
+          "Library cursor is invalid",
+          false,
+        );
+      }
+      if (error instanceof LibraryDataError) {
+        return sendApiError(reply, 500, "LIBRARY_UNREADABLE", "Library could not be read", false);
+      }
+      throw error;
+    }
+  });
+
+  app.post("/api/v1/profiles/:profileId/playlist-imports", (request, reply) => {
+    const parsed = importPlaylistRequestSchema.safeParse({
+      params: request.params,
+      headers: {
+        "idempotency-key": request.headers["idempotency-key"],
+      },
+      body: request.body,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PLAYLIST_IMPORT_VALIDATION_FAILED",
+        "Playlist import request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      const snapshot = library.importPlaylist(
+        parsed.data.params.profileId,
+        parsed.data.body.playlistRef,
+        parsed.data.headers["idempotency-key"],
+      );
+      return reply.status(202).send(jobAcceptedResponseSchema.parse({ jobId: snapshot.jobId }));
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      throw error;
+    }
+  });
+
+  app.get("/api/v1/profiles/:profileId/playlist-imports/:jobId", (request, reply) => {
+    const parsed = playlistImportSnapshotRequestSchema.safeParse({
+      params: request.params,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PLAYLIST_IMPORT_VALIDATION_FAILED",
+        "Playlist import request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return playlistImportSnapshotSchema.parse(
+        library.getImport(parsed.data.params.profileId, parsed.data.params.jobId),
+      );
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof PlaylistImportNotFoundError) {
+        return sendApiError(
+          reply,
+          404,
+          "PLAYLIST_IMPORT_NOT_FOUND",
+          "Playlist import was not found",
+          false,
+        );
+      }
+      if (error instanceof LibraryDataError) {
+        return sendApiError(reply, 500, "LIBRARY_UNREADABLE", "Library could not be read", false);
+      }
+      throw error;
+    }
+  });
+
+  app.get("/api/v1/profiles/:profileId/tracks/:trackId/lyrics", async (request, reply) => {
+    const parsed = trackLyricsRequestSchema.safeParse({
+      params: request.params,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "TRACK_LYRICS_VALIDATION_FAILED",
+        "Track lyrics request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return trackLyricsSchema.parse(await library.getLyrics(parsed.data.params.trackId));
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof LibraryTrackNotFoundError) {
+        return sendApiError(
+          reply,
+          404,
+          "MUSIC_TRACK_NOT_FOUND",
+          "Music track was not found",
+          false,
+        );
+      }
+      if (error instanceof MusicProviderResponseError) {
+        return sendApiError(
+          reply,
+          502,
+          "MUSIC_PROVIDER_RESPONSE_INVALID",
+          "Music provider returned an invalid response",
+          true,
+        );
+      }
+      if (error instanceof MusicProviderUnavailableError) {
+        return sendApiError(
+          reply,
+          503,
+          "MUSIC_PROVIDER_UNAVAILABLE",
+          "Music provider is unavailable",
+          true,
+        );
+      }
+      throw error;
+    }
+  });
+
+  app.post(
+    "/api/v1/profiles/:profileId/tracks/:trackId/audio-resolutions",
+    async (request, reply) => {
+      const parsed = audioResolutionRequestSchema.safeParse({
+        params: request.params,
+      });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "AUDIO_RESOLUTION_VALIDATION_FAILED",
+          "Audio resolution request is invalid",
+          false,
+        );
+      }
+
+      try {
+        profiles.get(parsed.data.params.profileId);
+        reply.header("Cache-Control", "no-store");
+        return audioResolutionSchema.parse(await library.resolveAudio(parsed.data.params.trackId));
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof LibraryTrackNotFoundError) {
+          return sendApiError(
+            reply,
+            404,
+            "MUSIC_TRACK_NOT_FOUND",
+            "Music track was not found",
+            false,
+          );
+        }
+        if (error instanceof MusicProviderResponseError) {
+          return sendApiError(
+            reply,
+            502,
+            "MUSIC_PROVIDER_RESPONSE_INVALID",
+            "Music provider returned an invalid response",
+            true,
+          );
+        }
+        if (error instanceof MusicProviderUnavailableError) {
+          return sendApiError(
+            reply,
+            503,
+            "MUSIC_PROVIDER_UNAVAILABLE",
+            "Music provider is unavailable",
+            true,
+          );
+        }
+        throw error;
+      }
+    },
+  );
 
   app.post("/api/v1/device-settings/data-root-migrations", (request, reply) => {
     const parsed = createDataRootMigrationRequestSchema.safeParse({

@@ -1,14 +1,19 @@
 import {
+  audioResolutionRequestSchema,
+  createLibraryItemRequestSchema,
   createDataRootMigrationRequestSchema,
   createFeedbackRequestSchema,
   createProfileRequestSchema,
   generateProgramRequestSchema,
   importPlaylistRequestSchema,
+  libraryListRequestSchema,
   musicSearchRequestSchema,
+  playlistImportSnapshotRequestSchema,
   programDetailRequestSchema,
   programGenerationSnapshotRequestSchema,
   savePlaybackCheckpointRequestSchema,
   selectCurrentProfileRequestSchema,
+  trackLyricsRequestSchema,
   updateDeviceSettingsRequestSchema,
   updateProfilePreferencesRequestSchema,
   updateProfileRequestSchema,
@@ -44,6 +49,13 @@ describe("v1 REST request contracts", () => {
       }),
     ).toMatchObject({ params, headers });
     expect(
+      createLibraryItemRequestSchema.parse({
+        params,
+        headers,
+        body: { trackId: ids.track },
+      }),
+    ).toMatchObject({ params, headers });
+    expect(
       createFeedbackRequestSchema.parse({
         params,
         headers,
@@ -74,6 +86,12 @@ describe("v1 REST request contracts", () => {
       importPlaylistRequestSchema.safeParse({
         params,
         body: { playlistRef: "123456" },
+      }).success,
+    ).toBe(false);
+    expect(
+      createLibraryItemRequestSchema.safeParse({
+        params,
+        body: { trackId: ids.track },
       }).success,
     ).toBe(false);
     expect(
@@ -181,6 +199,22 @@ describe("v1 REST request contracts", () => {
         body: { keyword: "Space Song" },
       }),
     ).toMatchObject({ params });
+    expect(libraryListRequestSchema.parse({ params, query: { limit: "20" } }).query.limit).toBe(20);
+    expect(
+      playlistImportSnapshotRequestSchema.parse({
+        params: { profileId: ids.profile, jobId: ids.job },
+      }),
+    ).toMatchObject({ params: { jobId: ids.job } });
+    expect(
+      trackLyricsRequestSchema.parse({
+        params: { profileId: ids.profile, trackId: ids.track },
+      }),
+    ).toMatchObject({ params: { trackId: ids.track } });
+    expect(
+      audioResolutionRequestSchema.parse({
+        params: { profileId: ids.profile, trackId: ids.track },
+      }),
+    ).toMatchObject({ params: { trackId: ids.track } });
     expect(
       updateDeviceSettingsRequestSchema.parse({
         body: { codexCommand: "codex" },
@@ -203,6 +237,12 @@ describe("v1 REST request contracts", () => {
       musicSearchRequestSchema.safeParse({
         params,
         body: { keyword: "Space Song", provider: "netease" },
+      }).success,
+    ).toBe(false);
+    expect(
+      libraryListRequestSchema.safeParse({
+        params,
+        query: { limit: "101" },
       }).success,
     ).toBe(false);
     expect(

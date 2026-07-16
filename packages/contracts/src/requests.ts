@@ -2,12 +2,18 @@ import { z } from "zod";
 
 import {
   idempotencyKeyHeadersSchema,
+  pageQuerySchema,
   profileIdParamsSchema,
   profileJobIdParamsSchema,
   profileProgramIdParamsSchema,
+  profileTrackIdParamsSchema,
 } from "./common.js";
 import { createFeedbackCommandSchema } from "./feedback.js";
-import { importPlaylistCommandSchema, musicSearchCommandSchema } from "./music.js";
+import {
+  addLibraryItemCommandSchema,
+  importPlaylistCommandSchema,
+  musicSearchCommandSchema,
+} from "./music.js";
 import { updateProfilePreferencesCommandSchema } from "./preferences.js";
 import {
   createProfileCommandSchema,
@@ -55,10 +61,28 @@ export const musicSearchRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
   body: musicSearchCommandSchema,
 });
+export const createLibraryItemRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+  headers: idempotencyKeyHeadersSchema,
+  body: addLibraryItemCommandSchema,
+});
+export const libraryListRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+  query: pageQuerySchema,
+});
 export const importPlaylistRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
   headers: idempotencyKeyHeadersSchema,
   body: importPlaylistCommandSchema,
+});
+export const playlistImportSnapshotRequestSchema = z.strictObject({
+  params: profileJobIdParamsSchema,
+});
+export const trackLyricsRequestSchema = z.strictObject({
+  params: profileTrackIdParamsSchema,
+});
+export const audioResolutionRequestSchema = z.strictObject({
+  params: profileTrackIdParamsSchema,
 });
 export const updateTasteOverridesRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
@@ -84,7 +108,12 @@ export type UpdateProfilePreferencesRequest = z.infer<typeof updateProfilePrefer
 export type GenerateProgramRequest = z.infer<typeof generateProgramRequestSchema>;
 export type SavePlaybackCheckpointRequest = z.infer<typeof savePlaybackCheckpointRequestSchema>;
 export type MusicSearchRequest = z.infer<typeof musicSearchRequestSchema>;
+export type CreateLibraryItemRequest = z.infer<typeof createLibraryItemRequestSchema>;
+export type LibraryListRequest = z.infer<typeof libraryListRequestSchema>;
 export type ImportPlaylistRequest = z.infer<typeof importPlaylistRequestSchema>;
+export type PlaylistImportSnapshotRequest = z.infer<typeof playlistImportSnapshotRequestSchema>;
+export type TrackLyricsRequest = z.infer<typeof trackLyricsRequestSchema>;
+export type AudioResolutionRequest = z.infer<typeof audioResolutionRequestSchema>;
 export type UpdateTasteOverridesRequest = z.infer<typeof updateTasteOverridesRequestSchema>;
 export type CreateFeedbackRequest = z.infer<typeof createFeedbackRequestSchema>;
 export type UpdateDeviceSettingsRequest = z.infer<typeof updateDeviceSettingsRequestSchema>;
