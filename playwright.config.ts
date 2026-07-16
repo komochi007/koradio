@@ -11,7 +11,7 @@ export default defineConfig({
   snapshotPathTemplate: "{testDir}/__screenshots__/{testFilePath}/{projectName}/{arg}{ext}",
   webServer: {
     command: "pnpm build && pnpm start",
-    url: "http://127.0.0.1:49373/api/v1/health",
+    url: "http://127.0.0.1:49373/",
     reuseExistingServer: false,
     timeout: 120_000,
     env: {

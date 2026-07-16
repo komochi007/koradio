@@ -2,7 +2,7 @@ import { colorTokens } from "@koradio/design-tokens";
 import type { CSSProperties, ReactElement } from "react";
 import { useEffect, useState } from "react";
 
-import { connectEvents, fetchHealth, resolveApiOrigin } from "./transport.js";
+import { createServiceTransport, resolveApiOrigin, type ServiceConnection } from "./transport.js";
 
 type LinkStatus = "checking" | "connected" | "failed";
 
@@ -24,21 +24,21 @@ export function App(): ReactElement {
 
   useEffect(() => {
     let active = true;
-    let connection: Awaited<ReturnType<typeof connectEvents>> | undefined;
-    const apiOrigin = resolveApiOrigin();
+    let connection: ServiceConnection | undefined;
+    const transport = createServiceTransport(resolveApiOrigin());
 
     setHealthStatus("checking");
     setEventStatus("checking");
 
-    void fetchHealth(apiOrigin)
+    void transport
+      .fetchHealth()
       .then(() => {
         if (!active) {
           return;
         }
 
         setHealthStatus("connected");
-        return connectEvents(
-          apiOrigin,
+        return transport.connectEvents(
           () => {
             if (active) {
               setEventStatus("connected");

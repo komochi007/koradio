@@ -15,22 +15,22 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { createMockHealthSnapshot } from "../integrations/mock-provider-health.js";
 import { bootstrapDatabase } from "../platform/db/database.js";
 import { createAllowedOrigins, type RuntimeConfig } from "./config.js";
-import { createSessionState } from "./session.js";
+import { enforceApiSecurity, isAllowedOrigin } from "./security.js";
+import { createSessionState, type SessionState } from "./session.js";
 
 export interface CreateAppOptions {
   config: RuntimeConfig;
   selectedPort: number;
-}
-
-function isAllowedOrigin(origin: string | undefined, allowedOrigins: Set<string>): boolean {
-  return origin !== undefined && allowedOrigins.has(origin);
+  session?: SessionState;
+  webSocketAuthenticationTimeoutMs?: number;
 }
 
 export async function createApp(options: CreateAppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
   const database = await bootstrapDatabase({ dataRoot: options.config.dataRoot });
   const allowedOrigins = createAllowedOrigins(options.config, options.selectedPort);
-  const session = createSessionState();
+  const session = options.session ?? createSessionState();
+  const webSocketAuthenticationTimeoutMs = options.webSocketAuthenticationTimeoutMs ?? 2_000;
 
   app.addHook("onClose", () => {
     database.close();
@@ -38,46 +38,52 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
 
   await app.register(cors, {
     origin(origin, callback) {
-      callback(null, origin === undefined || allowedOrigins.has(origin));
+      callback(null, origin === undefined || isAllowedOrigin(origin, allowedOrigins));
     },
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key"],
   });
   await app.register(websocket);
 
-  app.get("/api/v1/health", () => healthResponseSchema.parse(createMockHealthSnapshot()));
-
-  app.post("/api/v1/session/bootstrap", async (request, reply) => {
-    if (!isAllowedOrigin(request.headers.origin, allowedOrigins)) {
-      return reply.code(403).send({
-        code: "ORIGIN_NOT_ALLOWED",
-        message: "Origin is not allowed",
-      });
+  app.addHook("preValidation", (request, reply, done) => {
+    if (enforceApiSecurity(request, reply, { allowedOrigins, session })) {
+      done();
     }
-
-    reply.header("Cache-Control", "no-store");
-    return sessionBootstrapResponseSchema.parse(session.bootstrap);
   });
 
-  app.get("/api/v1/events", { websocket: true }, (socket, request) => {
-    if (!isAllowedOrigin(request.headers.origin, allowedOrigins)) {
-      socket.close(1008, "Origin not allowed");
-      return;
-    }
+  app.get("/api/v1/health", () => healthResponseSchema.parse(createMockHealthSnapshot()));
 
+  app.post("/api/v1/session/bootstrap", (_request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    reply.header("Pragma", "no-cache");
+    reply.header("Vary", "Origin");
+    return sessionBootstrapResponseSchema.parse(session.issue());
+  });
+
+  app.get("/api/v1/events", { websocket: true }, (socket) => {
     const authenticationTimeout = setTimeout(() => {
       socket.close(1008, "Authentication required");
-    }, 2_000);
+    }, webSocketAuthenticationTimeoutMs);
+    authenticationTimeout.unref();
+    socket.once("close", () => {
+      clearTimeout(authenticationTimeout);
+    });
 
-    socket.once("message", (rawMessage) => {
+    socket.once("message", (rawMessage, isBinary) => {
       let decoded: unknown;
 
       try {
+        if (isBinary) {
+          throw new TypeError("Authentication message must be a text frame");
+        }
         const serialized = Array.isArray(rawMessage)
           ? Buffer.concat(rawMessage).toString("utf8")
           : rawMessage instanceof ArrayBuffer
             ? Buffer.from(rawMessage).toString("utf8")
             : rawMessage.toString("utf8");
+        if (Buffer.byteLength(serialized) > 4_096) {
+          throw new TypeError("Authentication message is too large");
+        }
         decoded = JSON.parse(serialized);
       } catch {
         clearTimeout(authenticationTimeout);
@@ -86,7 +92,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       }
 
       const command = sessionAuthenticateSchema.safeParse(decoded);
-      if (!command.success || !session.isValid(command.data.accessToken)) {
+      if (!command.success || session.validate(command.data.accessToken).status !== "valid") {
         clearTimeout(authenticationTimeout);
         socket.close(1008, "Authentication failed");
         return;

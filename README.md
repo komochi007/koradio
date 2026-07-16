@@ -2,9 +2,9 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 contracts, database and local I/O security foundations complete · Mock mode only**
+> Status: **S1 engineering scaffold complete · S2 contracts, database, local I/O and HTTP security foundations complete · Mock mode only**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service 最小骨架，以及 SQLite/Drizzle migration、首次数据目录 bootstrap、macOS Keychain Secret Store、受控 File Store 与结构化脱敏日志；仍只提供 Mock health、事件连接和 App Shell，不代表 Koradio 产品功能已经实现
+> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service 最小骨架，以及 SQLite/Drizzle migration、首次数据目录 bootstrap、macOS Keychain Secret Store、受控 File Store、结构化脱敏日志和本地 Session/Origin 防护；仍只提供 Mock health、事件连接和 App Shell，不代表 Koradio 产品功能已经实现
 
 ## 1. 项目入口
 
@@ -46,7 +46,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 视觉差异裁决、自动 QA、Figma 派生镜像与开发交接映射已建立
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、完整根命令族与 GitHub Actions CI 已实装并由真实 run 验证
-- [x] Development 双进程、Production 同源静态托管、loopback 端口、精确 Origin 与最小内存 Session/WS 首消息认证已实装；完整 REST/WS 防护和负向安全矩阵待 S2-04
+- [x] Development 双进程、Production 同源静态托管、loopback 端口、精确 Origin、短期内存 Session、REST Bearer 与 WebSocket 首消息认证已实装；非法 Origin、过期/URL/持久化 token 和未认证连接均有负向验证
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 已接受 native launcher + 外部浏览器 PWA，当前仅限受控本机个人使用，尚未实装
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；尚未实装
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
@@ -55,6 +55,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 完整 v1 公共 Contracts 已用 Zod 固化：REST DTO/command、显式 `profileId`、`Idempotency-Key`、异步 job、WebSocket event 与安全 error envelope 均有正反向和兼容性测试
 - [x] SQLite/Drizzle 平台底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；业务 owner schema 尚未实现
 - [x] Secret Store、File Store 与脱敏日志平台边界已实现：macOS Keychain 往返、headless 稳定错误、受控引用、扩展名/MIME/大小/重定向限制和敏感信息清除已验证；尚未接入 DeviceSettings 或真实 Provider
+- [x] 本地 HTTP 安全边界已完成：每次 bootstrap 签发短期进程内 token，REST 与 WebSocket 共享校验，Web 只在内存持有 token，并支持 401 后重新 bootstrap 的重连基础
 - [ ] Provider adapters 尚未实现
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
@@ -63,7 +64,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ### Agent safety note
 
-当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 Mock skeleton 的开发/生产启动、REST health、认证后 WebSocket 事件、同源静态托管、SQLite 平台 bootstrap、受控 File Store 和脱敏日志。macOS 登录会话还可验证真实 Keychain 往返；这些证据只证明工程、数据与本地 I/O 安全底座连通，不证明 Profile、Program、播放、业务数据模型或真实 Provider 行为；真实 Provider adapter、TTS helper、业务模块和安装包仍不存在。
+当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 Mock skeleton 的开发/生产启动、认证 REST health、认证后 WebSocket 事件、同源静态托管、SQLite 平台 bootstrap、受控 File Store、脱敏日志和内存 Session/Origin 安全矩阵。macOS 登录会话还可验证真实 Keychain 往返；这些证据只证明工程、数据、本地 I/O 与 loopback HTTP 安全底座连通，不证明 Profile、Program、播放、业务数据模型或真实 Provider 行为；真实 Provider adapter、TTS helper、业务模块和安装包仍不存在。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -72,7 +73,7 @@ AI Agent **不得**：
 - 把目标目录树描述成现有代码。
 - 把目标技术栈描述成已安装依赖。
 - 把尚未实装的 macOS 平台/包装 CI 或产品行为测试覆盖描述成已经可运行的事实。
-- 把 S1 最小 Session/Origin 骨架描述为已经完成 S2-04 的全部安全防护。
+- 把本地 Session 描述为云账号、Profile 登录或远程访问认证。
 - 把 ADR 0003 的已接受架构描述为已经实现，或把本地 ad-hoc 产物描述为已通过 Developer ID 签名公证、可公开分发。
 - 声称产品功能、真实 Provider、播放或业务数据库模型可以运行。
 - 从参考图推断尚未写入权威文档的业务规则。
@@ -191,7 +192,7 @@ Fastify Local Service
 | API | REST `/api/v1` + WebSocket events | Health/session/events skeleton verified |
 | Development topology | Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` | Implemented and verified |
 | Production topology | Same-origin PWA / REST / WebSocket on loopback, preferred port `49373` with bounded fallback `49373-49383` | S1 static serving and strict smoke verified |
-| Local session | `POST /api/v1/session/bootstrap`, memory-only token, exact Origin allowlist, WebSocket first-message auth | Minimal S1 implementation · S2 hardening pending |
+| Local session | `POST /api/v1/session/bootstrap`, memory-only short-lived token, exact Origin allowlist, REST Bearer, WebSocket first-message auth | S2 hardening implemented and verified |
 | Runtime validation | Zod 4.4.3 | Complete v1 public REST/WS contracts verified；Provider/Codex internal schemas planned |
 | Database | Node 24 `node:sqlite` / SQLite 3.53.2 | Platform bootstrap implemented and verified · domain schema planned |
 | ORM / migrations | Drizzle ORM + Drizzle Kit 1.0.0-rc.4 | Runtime migration and generation flow verified · domain tables planned |
@@ -205,12 +206,13 @@ Fastify Local Service
 | Lint / format | ESLint 10.7.0 + typescript-eslint 8.64.0 + Prettier 3.9.5 | Configured and verified |
 | CI | GitHub Actions | Linux quality/browser jobs configured and verified |
 
-已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 决定；S1 最小骨架已实装：
+已由 [ADR 0002](docs/adr/0002-runtime-topology.md) 决定；S2 本地安全边界已实装：
 
 - Development / production 拓扑、端口、进程关系、session bootstrap 与 Origin allowlist。
 - Development 使用 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373`。
 - Production 使用同源 Local Service，首选 `49373`，仅允许 `49373-49383` 有界 fallback。
 - Token 通过 `POST /api/v1/session/bootstrap` 的 `no-store` JSON 响应进入浏览器内存；WebSocket 不使用 URL token。
+- REST 使用 Bearer token，WebSocket 在握手校验 Origin 后以首条 `session.authenticate` 消息认证；过期或进程重启后的 token 均失效。
 
 由 [ADR 0003](docs/adr/0003-macos-packaging.md) 决定但尚未实装：
 
@@ -444,7 +446,7 @@ pnpm check
 - 已有完整 v1 wire contracts，但除 S1 health/session/events 外，对应业务 route 和 use case 尚未实现。
 - 没有真实 Codex、NetEase 或 TTS Adapter；运行时只允许 `mock`。
 - 最小 App Shell 只展示 REST、WebSocket 和 Mock Provider 连通状态。
-- S1 Session 只覆盖内存 bootstrap、精确 Origin 与 WS 首消息认证；完整安全防护由 S2-04 完成。
+- Session 只保护本地 HTTP 边界，不代表云账号或 Profile 身份；浏览器不会从 LocalStorage、SessionStorage、IndexedDB 或 Cookie 恢复 token。
 
 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 的完整根 script 名和 CI 安装合同已实装。`pnpm check` 聚合非浏览器合并门；[GitHub Actions CI](https://github.com/komochi007/koradio/actions/workflows/ci.yml) 在 `main` push、Pull Request 和手动触发时执行 frozen install、`check`、三浏览器 E2E、axe 与 Chromium 视觉回归。macOS 平台和包装探针仍由后续对应任务建立。
 
@@ -511,11 +513,11 @@ pnpm check
 
 ## 9. 下一实现起点
 
-S1 工程脚手架阶段门已关闭，`S2-01`～`S2-03` 的公共 Contracts、SQLite/Drizzle 与本地 I/O 安全底座已通过验证。下一关键任务是 `S2-04`：
+S1 工程脚手架阶段门已关闭，`S2-01`～`S2-04` 的公共 Contracts、SQLite/Drizzle、本地 I/O 与 HTTP 安全底座已通过验证。下一关键任务是 `S2-05`：
 
-- 扩展 S1 最小 session 为 REST / WebSocket 一致认证。
-- 覆盖非法 Origin、过期 token、URL/浏览器持久化 token 和未认证 WebSocket。
-- 保持本地会话只驻留内存，不引入云账号或 Profile 身份边界。
+- 实现 DeviceSettings 与 ProfilePreferences 的明确 owner。
+- 建立脱敏 Health 与数据目录迁移底座。
+- 验证设备/Profile 配置隔离、迁移成功/回滚/重复请求和完全离线 contracts。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。
 

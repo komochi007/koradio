@@ -298,6 +298,7 @@ describe("platform security boundaries", () => {
     });
 
     logger.error("provider.failed", {
+      accessToken: secret,
       apiKey: secret,
       authorization: `Bearer ${secret}`,
       error: new Error(`Provider failed with ${secret} at /Users/kleinblue/Koradio`),
@@ -315,6 +316,7 @@ describe("platform security boundaries", () => {
     expect(entries).toEqual([
       {
         data: {
+          accessToken: "[REDACTED]",
           apiKey: "[REDACTED]",
           authorization: "[REDACTED]",
           error: {
