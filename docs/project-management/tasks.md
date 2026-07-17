@@ -12,9 +12,9 @@
 | 问题 | 直接答案 |
 |---|---|
 | 当前工程阶段 | S4 P0 核心产品体验；S3 核心领域与 Provider 后端阶段门已通过 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01` |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-02` |
 | 当前活动任务 | 无 |
-| 初始下一任务 | 按依赖选择 `S4-02` |
+| 初始下一任务 | 按依赖选择 `S4-03` |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
 | 状态事实源 | 只修改本文件；GitHub Issue/Project 只写入“外部引用” |
@@ -122,7 +122,7 @@ AI 执行任务时按固定顺序操作：
 | ID / 任务 | 状态 | 优先级 | 目的 | 依赖 | 输入 | 范围边界 | 验收标准 | 交付物 / 计划路径 | 验证方式 | 负责人 / 外部引用 | 阻塞条件 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `S4-01` 实现 App Shell、本地 Session 与离线只读入口 | 已完成 | Critical | 建立路由、Query、事件重连和服务断线恢复，让 App 在在线与完全离线时行为确定。 | S1-03、S2-04 | 架构 Frontend、用户流程异常页和 VDA-17。 | 实现应用组合和只读 Settings 入口，不在完全离线时缓存或恢复敏感配置；未明确列出的实现和功能不在本任务范围内。 | 在线会话可建立；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/web/src/app/`、`apps/web/src/shared/`、同源 SPA routes、静态 App Shell Service Worker、VDA-17 离线异常页和只读 Settings；Radio/Profile 业务 UI、Settings 写入、Audio Engine 与敏感远端状态缓存保持范围外。 | `pnpm check` 通过：11 个 unit 文件 37 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、2 个 component 文件 5 个用例、coverage 33 个文件 160 个用例与完整 build；三浏览器 E2E 10 个通过、2 个按浏览器能力跳过，Chromium 静态缓存检查、token 非持久化、断线/重连、axe、Reduce Motion、键盘路由、1 个视觉回归和 VDA-17 人工对照通过。 | 项目所有者 / 无 | Service Worker 只缓存同源静态 App Shell，显式绕过 `/api/`、非 GET 与跨源请求；完全离线时不恢复 Session、配置或 Secret，原阻塞条件未发生。 |
-| `S4-02` 实现 Onboarding、Profile 与 Settings UI | 待开始 | Critical | 让首次用户完成档案创建、核心服务配置和连接检测，并安全切换 Profile。 | S3-01、S2-05、S4-01 | PRD 功能 1/6、页面 01～03/14～15 和用户流程。 | 实现 P0 配置和偏好，不包含 P1 Taste 编辑；未明确列出的实现和功能不在本任务范围内。 | 字段、密钥遮蔽、TTS 可选、主题回滚、Profile 切换取消/保存/停止顺序均符合权威文档；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 profiles、device-settings、profile-preferences frontend features 及测试。 | 组件测试、首次启动/Profile 切换 E2E、键盘/ARIA 和视觉回归。 | 待分配 / 无 | 后端配置或 Profile contract 未稳定；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S4-02` 实现 Onboarding、Profile 与 Settings UI | 已完成 | Critical | 让首次用户完成档案创建、核心服务配置和连接检测，并安全切换 Profile。 | S3-01、S2-05、S4-01 | PRD 功能 1/6、页面 01～03/14～15 和用户流程。 | 实现 P0 配置和偏好，不包含 P1 Taste 编辑；未明确列出的实现和功能不在本任务范围内。 | 字段、密钥遮蔽、TTS 可选、主题回滚、Profile 切换取消/保存/停止顺序均符合权威文档；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/web/src/features/profiles/`、`device-settings/`、`profile-preferences/`、共享鉴权 API client、首启/安全切换应用组合、Dark/Light/System 单列 UI、组件/E2E 与 9 张专项视觉基线；Taste、Radio 与 Audio Engine 保持范围外。 | `pnpm check` 通过：11 个 unit 文件 37 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、2 个 component 文件 10 个用例、coverage 33 个文件 165 个用例与完整 build；三浏览器 E2E 22 个通过、20 个按 Chromium 专项能力跳过，首启配置、Profile 切换、axe、键盘、TTS 降级、主题回滚、静态缓存、Dark/Light 与三组响应式视觉回归均通过；`pnpm test:visual` 通过。 | 项目所有者 / 无 | 后端配置与 Profile contract 已稳定；服务端既有集成测试继续验证切换取消、丢弃迟到事件、checkpoint、停止与原子更新顺序，原阻塞条件未发生。 |
 | `S4-03` 实现 Radio 三态与节目生成交互 | 待开始 | Critical | 交付场景输入、生成阶段、旧节目保留和新节目原子切换的核心电台体验。 | S3-06、S3-07、S4-01 | PRD 功能 2、Radio 04～06、VDA handoff。 | 实现页面状态、commands 和 events，不维护页面级播放事实源；未明确列出的实现和功能不在本任务范围内。 | 空态/生成态/播放态共用骨架；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 radio/programs frontend features、生产 tokens 适配和测试。 | Mock E2E、事件乱序/失败恢复、Dark/Light/响应式视觉回归。 | 待分配 / 无 | 视觉主源与产品语义冲突；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S4-04` 实现唯一 Audio Engine 与多标签租约 | 待开始 | Critical | 让 play、pause、seek、切段、媒体错误和 checkpoint 由唯一浏览器事实源控制，避免多标签双主。 | S3-04、S4-01 | 架构播放状态、`2s/5s` TTL lease 和 checkpoint 规则。 | 实现 audio facade、预加载和租约；未明确列出的实现和功能不在本任务范围内。 | 单一实例、确定性状态转换、边界 checkpoint、epoch 丢弃迟到命令、接管前保存并停止原主控；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 `apps/web/src/audio/`、lease coordinator 和确定性测试。 | play/pause/seek/切段/media error 单元测试与双标签 E2E。 | 待分配 / 无 | 目标浏览器的自动播放策略无法满足流程；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 | `S4-05` 实现 Detail Sheet、歌词与串讲跟随 | 待开始 | High | 用同一播放时间线提供全屏沉浸节目详情，并在 DJ/歌曲段间切换串讲和歌词主内容。 | S4-03、S4-04 | PRD 功能 4、页面 07～08、设计动效与无障碍规则。 | Sheet 只保留单一播放/暂停，不加入封面、切歌、喜欢或更多按钮；未明确列出的实现和功能不在本任务范围内。 | DJ/歌词高亮、缺少时间戳估算、无歌词降级、关闭不中断播放、Focus trap/Esc/焦点回归正确；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 Detail UI、timed text 派生逻辑、动效和测试。 | 确定性时间线测试、键盘/Reduce Motion、视觉回归和播放不中断 E2E。 | 待分配 / 无 | Audio snapshot 无法稳定派生高亮；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |

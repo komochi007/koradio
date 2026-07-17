@@ -64,23 +64,13 @@ describe("web service transport", () => {
 
     await expect(transport.fetchHealth()).resolves.toEqual(health);
     expect(fetchMock).toHaveBeenCalledTimes(4);
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      "http://127.0.0.1:49373/api/v1/health",
-      expect.objectContaining({
-        headers: {
-          Authorization: `Bearer ${firstToken}`,
-        },
-      }),
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("http://127.0.0.1:49373/api/v1/health");
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("Authorization")).toBe(
+      `Bearer ${firstToken}`,
     );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      4,
-      "http://127.0.0.1:49373/api/v1/health",
-      expect.objectContaining({
-        headers: {
-          Authorization: `Bearer ${secondToken}`,
-        },
-      }),
+    expect(fetchMock.mock.calls[3]?.[0]).toBe("http://127.0.0.1:49373/api/v1/health");
+    expect(new Headers(fetchMock.mock.calls[3]?.[1]?.headers).get("Authorization")).toBe(
+      `Bearer ${secondToken}`,
     );
   });
 

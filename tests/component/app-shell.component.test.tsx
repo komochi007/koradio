@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { HealthResponse, V1Event } from "@koradio/contracts";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import type { HealthResponse, Profile, ProfileContext, V1Event } from "@koradio/contracts";
+import { afterEach, describe, expect, it, vi, type MockedFunction } from "vitest";
 
 import { App } from "../../apps/web/src/app/app.js";
 import type { ServiceConnection, ServiceTransport } from "../../apps/web/src/shared/transport.js";
@@ -19,6 +19,51 @@ const health: HealthResponse = {
   checkedAt: "2026-07-17T08:00:00.000Z",
 };
 
+const primaryProfile: Profile = {
+  id: "00000000-0000-4000-8000-000000000010",
+  radioName: "After Midnight",
+  nickname: "Komo",
+  avatarRef: null,
+  frequentGenres: ["Dream Pop", "Ambient"],
+  defaultScenario: "安静地写东西",
+  createdAt: "2026-07-17T08:00:00.000Z",
+  updatedAt: "2026-07-17T08:00:00.000Z",
+};
+
+const secondaryProfile: Profile = {
+  ...primaryProfile,
+  id: "00000000-0000-4000-8000-000000000011",
+  radioName: "Morning Lines",
+  nickname: "Lin",
+};
+
+function profileContext(profile: Profile = primaryProfile): ProfileContext {
+  return {
+    profile,
+    preferences: {
+      profileId: profile.id,
+      themeMode: "dark",
+      djLanguage: "zh-CN",
+      djVoiceStyle: "british-soft-radio",
+      updatedAt: "2026-07-17T08:00:00.000Z",
+    },
+  };
+}
+
+function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function parseRequestBody(init: RequestInit | undefined): unknown {
+  if (typeof init?.body !== "string") {
+    throw new TypeError("Expected a JSON request body");
+  }
+  return JSON.parse(init.body) as unknown;
+}
+
 function createHealthEvent(): V1Event {
   return {
     eventId: "00000000-0000-4000-8000-000000000001",
@@ -31,7 +76,99 @@ function createHealthEvent(): V1Event {
   };
 }
 
-function createOnlineTransport(): ServiceTransport {
+function createOnlineTransport(
+  options: {
+    empty?: boolean;
+    failTheme?: boolean;
+    profiles?: Profile[];
+    ttsStatus?: "available" | "degraded" | "unavailable";
+  } = {},
+): ServiceTransport & { request: MockedFunction<ServiceTransport["request"]> } {
+  const storedProfiles = options.profiles ?? (options.empty === true ? [] : [primaryProfile]);
+  let current = options.empty === true ? null : profileContext(storedProfiles[0]);
+  const request = vi.fn<(path: string, init?: RequestInit) => Promise<Response>>((path, init) => {
+    const method = init?.method ?? "GET";
+    if (path === "/api/v1/profiles" && method === "GET") {
+      return Promise.resolve(jsonResponse({ items: storedProfiles }));
+    }
+    if (path === "/api/v1/profiles/current" && method === "GET") {
+      return Promise.resolve(jsonResponse({ current }));
+    }
+    if (path === "/api/v1/profiles" && method === "POST") {
+      const command = parseRequestBody(init) as {
+        avatarRef?: string | null;
+        defaultScenario?: string;
+        frequentGenres?: string[];
+        nickname: string;
+        radioName: string;
+      };
+      const profile: Profile = {
+        ...command,
+        id: "00000000-0000-4000-8000-000000000012",
+        avatarRef: command.avatarRef ?? null,
+        frequentGenres: command.frequentGenres ?? [],
+        defaultScenario: command.defaultScenario ?? "",
+        createdAt: "2026-07-17T08:00:00.000Z",
+        updatedAt: "2026-07-17T08:00:00.000Z",
+      };
+      storedProfiles.push(profile);
+      return Promise.resolve(jsonResponse(profile, 201));
+    }
+    if (path === "/api/v1/profiles/current" && method === "PUT") {
+      const body = parseRequestBody(init) as { profileId: string };
+      const selected = storedProfiles.find((profile) => profile.id === body.profileId);
+      current = selected === undefined ? null : profileContext(selected);
+      return Promise.resolve(jsonResponse({ current }));
+    }
+    if (path === "/api/v1/device-settings") {
+      return Promise.resolve(
+        jsonResponse({
+          dataRoot: "/tmp/koradio-test",
+          codexCommand: "/usr/local/bin/codex",
+          updatedAt: "2026-07-17T08:00:00.000Z",
+        }),
+      );
+    }
+    if (path === "/api/v1/device-settings/data-root-migrations" && method === "POST") {
+      return Promise.resolve(jsonResponse({ jobId: "00000000-0000-4000-8000-000000000080" }, 202));
+    }
+    if (path === "/api/v1/health/services") {
+      return Promise.resolve(
+        jsonResponse({
+          items: [
+            ["local-service", "available", "Local Service is ready"],
+            ["codex", "available", "Codex command is configured"],
+            ["netease", "available", "Built-in provider is available"],
+            ["tts", options.ttsStatus ?? "available", "Apple system TTS snapshot"],
+          ].map(([service, status, redactedSummary]) => ({
+            service,
+            status,
+            redactedSummary,
+            checkedAt: "2026-07-17T08:00:00.000Z",
+          })),
+        }),
+      );
+    }
+    if (path.endsWith("/preferences") && method === "PATCH") {
+      const command = parseRequestBody(init) as Partial<ProfileContext["preferences"]>;
+      if (options.failTheme === true && command.themeMode !== undefined) {
+        return Promise.resolve(
+          jsonResponse(
+            {
+              code: "PROFILE_PREFERENCES_SAVE_FAILED",
+              message: "Preferences could not be saved",
+              retryable: true,
+              correlationId: "00000000-0000-4000-8000-000000000099",
+            },
+            500,
+          ),
+        );
+      }
+      return Promise.resolve(jsonResponse({ ...current?.preferences, ...command }));
+    }
+    throw new Error(`Unhandled test request: ${method} ${path}`);
+  });
+
   return {
     clearSession: vi.fn(),
     connectEvents(onEvent): Promise<ServiceConnection> {
@@ -41,6 +178,7 @@ function createOnlineTransport(): ServiceTransport {
       return Promise.resolve({ close: vi.fn() });
     },
     fetchHealth: vi.fn().mockResolvedValue(health),
+    request,
   };
 }
 
@@ -49,6 +187,7 @@ function createOfflineTransport(): ServiceTransport {
     clearSession: vi.fn(),
     connectEvents: vi.fn(),
     fetchHealth: vi.fn().mockRejectedValue(new Error("offline")),
+    request: vi.fn().mockRejectedValue(new Error("offline")),
   };
 }
 
@@ -72,6 +211,7 @@ function createReconnectingTransport(): ServiceTransport & {
   );
 
   return {
+    ...createOnlineTransport(),
     clearSession: vi.fn(),
     connectEvents,
     fetchHealth: vi.fn().mockResolvedValue(health),
@@ -83,6 +223,7 @@ function createDisconnectingTransport(): ServiceTransport & { failEvents: () => 
   let healthAttempt = 0;
 
   return {
+    ...createOnlineTransport(),
     clearSession: vi.fn(),
     connectEvents(onEvent, onFailure): Promise<ServiceConnection> {
       failEvents = onFailure;
@@ -124,7 +265,7 @@ describe("App Shell", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Library" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
     expect(window.location.pathname).toBe("/settings");
   });
 
@@ -169,5 +310,101 @@ describe("App Shell", () => {
     });
 
     expect(await screen.findByRole("heading", { name: "Koradio 服务未连接" })).toBeTruthy();
+  });
+
+  it("creates and selects the first local profile before entering Radio", async () => {
+    window.history.replaceState(null, "", "/radio");
+    const transport = createOnlineTransport({ empty: true });
+    render(<App transport={transport} />);
+
+    expect(await screen.findByRole("heading", { name: "创建电台档案" })).toBeTruthy();
+    fireEvent.change(screen.getByRole("textbox", { name: /电台名称/ }), {
+      target: { value: "Quiet Frequency" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /你的昵称/ }), {
+      target: { value: "Klein" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /默认场景/ }), {
+      target: { value: "周末整理房间" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存并进入 Koradio" }));
+
+    expect(await screen.findByRole("heading", { name: "Radio" })).toBeTruthy();
+    expect(
+      transport.request.mock.calls.some(
+        ([path, init]) => path === "/api/v1/profiles" && init?.method === "POST",
+      ),
+    ).toBe(true);
+    expect(
+      transport.request.mock.calls.some(
+        ([path, init]) => path === "/api/v1/profiles/current" && init?.method === "PUT",
+      ),
+    ).toBe(true);
+  });
+
+  it("switches profiles only after the coordinated server command succeeds", async () => {
+    window.history.replaceState(null, "", "/radio");
+    const transport = createOnlineTransport({ profiles: [primaryProfile, secondaryProfile] });
+    render(<App transport={transport} />);
+
+    expect(await screen.findByRole("heading", { name: "Radio" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "切换档案" }));
+    fireEvent.click(await screen.findByRole("button", { name: "选择档案：Morning Lines" }));
+
+    expect(await screen.findByRole("heading", { name: "Radio" })).toBeTruthy();
+    expect(
+      transport.request.mock.calls.some(
+        ([path, init]) =>
+          path === "/api/v1/profiles/current" &&
+          init?.method === "PUT" &&
+          typeof init.body === "string" &&
+          init.body.includes(secondaryProfile.id),
+      ),
+    ).toBe(true);
+  });
+
+  it("rolls back an immediate theme preview when persistence fails", async () => {
+    window.history.replaceState(null, "", "/settings");
+    render(<App transport={createOnlineTransport({ failTheme: true })} />);
+
+    expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: "Light" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("已恢复到之前的主题");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(screen.getByRole("radio", { name: "Dark" }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("treats degraded TTS as optional and never exposes secret inputs", async () => {
+    window.history.replaceState(null, "", "/settings");
+    render(<App transport={createOnlineTransport({ ttsStatus: "degraded" })} />);
+
+    expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
+    expect(screen.queryByLabelText(/API Key|Cookie|密钥/)).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: "Test" }));
+
+    expect(await screen.findByText("3 OF 4 SERVICES AVAILABLE")).toBeTruthy();
+    expect(screen.getByText(/你仍然可以生成和播放节目/)).toBeTruthy();
+    expect(screen.queryByText("NOT CONFIGURED")).toBeNull();
+  });
+
+  it("starts data-root migration as an idempotent safe command", async () => {
+    window.history.replaceState(null, "", "/settings");
+    const transport = createOnlineTransport();
+    render(<App transport={transport} />);
+
+    expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "新的数据目录" }), {
+      target: { value: "/tmp/koradio-migrated" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "安全迁移数据目录" }));
+
+    expect(await screen.findByText(/迁移已安全启动/)).toBeTruthy();
+    const migrationCall = transport.request.mock.calls.find(
+      ([path]) => path === "/api/v1/device-settings/data-root-migrations",
+    );
+    expect(migrationCall?.[1]?.method).toBe("POST");
+    expect(new Headers(migrationCall?.[1]?.headers).has("Idempotency-Key")).toBe(true);
   });
 });

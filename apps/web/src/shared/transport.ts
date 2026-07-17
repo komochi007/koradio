@@ -18,6 +18,7 @@ export interface ServiceTransport {
     onFailure: () => void,
   ): Promise<ServiceConnection>;
   fetchHealth(signal?: AbortSignal): Promise<HealthResponse>;
+  request(path: string, init?: RequestInit): Promise<Response>;
 }
 
 interface MemorySession {
@@ -99,25 +100,26 @@ export function createServiceTransport(candidateOrigin: string): ServiceTranspor
 
   async function authenticatedFetch(
     path: string,
-    signal: AbortSignal | undefined,
+    init: RequestInit = {},
     retryAfterRefresh = true,
   ): Promise<Response> {
     const currentSession = await getSession();
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${currentSession.accessToken}`);
     const response = await fetch(`${apiOrigin}${path}`, {
+      ...init,
       cache: "no-store",
       credentials: "omit",
-      headers: {
-        Authorization: `Bearer ${currentSession.accessToken}`,
-      },
+      headers,
       redirect: "error",
       referrerPolicy: "no-referrer",
-      signal: signal ?? null,
+      signal: init.signal ?? null,
     });
 
     if (response.status === 401 && retryAfterRefresh) {
       session = undefined;
       await getSession(true);
-      return authenticatedFetch(path, signal, false);
+      return authenticatedFetch(path, init, false);
     }
 
     return response;
@@ -178,13 +180,22 @@ export function createServiceTransport(candidateOrigin: string): ServiceTranspor
       };
     },
     async fetchHealth(signal) {
-      const response = await authenticatedFetch("/api/v1/health", signal);
+      const response = await authenticatedFetch(
+        "/api/v1/health",
+        signal === undefined ? {} : { signal },
+      );
       if (!response.ok) {
         throw new Error("Local Service health check failed");
       }
 
       const payload: unknown = await response.json();
       return healthResponseSchema.parse(payload);
+    },
+    request(path, init) {
+      if (!path.startsWith("/api/v1/") || path.includes("//")) {
+        throw new TypeError("Koradio API request path is invalid");
+      }
+      return authenticatedFetch(path, init);
     },
   };
 }

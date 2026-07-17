@@ -1,6 +1,39 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+async function ensureCurrentProfile(page: import("@playwright/test").Page): Promise<void> {
+  const createHeading = page.getByRole("heading", { name: "创建电台档案" });
+  const destination = await Promise.race([
+    createHeading.waitFor().then(() => "create" as const),
+    page
+      .getByRole("heading", { name: "Radio" })
+      .waitFor()
+      .then(() => "radio" as const),
+  ]);
+  if (destination === "create") {
+    await page.getByRole("textbox", { name: /电台名称/ }).fill("E2E Local Radio");
+    await page.getByRole("textbox", { name: /你的昵称/ }).fill("E2E Listener");
+    await page.getByRole("button", { name: "保存并进入 Koradio" }).click();
+    const afterCreate = await Promise.race([
+      page
+        .getByRole("heading", { name: "设置", exact: true })
+        .waitFor()
+        .then(() => "settings" as const),
+      page
+        .getByRole("heading", { name: "Radio" })
+        .waitFor()
+        .then(() => "radio" as const),
+    ]);
+    if (afterCreate === "settings") {
+      await page.getByRole("textbox", { name: "Codex 命令路径" }).fill("codex");
+      await page.getByRole("button", { name: "保存配置" }).click();
+      await expect(page.getByText("配置已保存。")).toBeVisible();
+      await page.getByRole("button", { name: "Radio" }).click();
+    }
+  }
+  await expect(page.getByRole("heading", { name: "Radio" })).toBeVisible();
+}
+
 test("routes the online App Shell with an in-memory session", async ({ context, page }) => {
   let bootstrapToken: string | undefined;
   page.on("response", async (response) => {
@@ -24,11 +57,11 @@ test("routes the online App Shell with an in-memory session", async ({ context, 
   });
   await page.goto("http://127.0.0.1:49373/radio");
 
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeVisible();
+  await ensureCurrentProfile(page);
   await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page).toHaveURL("http://127.0.0.1:49373/settings");
-  await expect(page.getByRole("heading", { name: "Settings" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeFocused();
   await expect.poll(() => bootstrapToken).toBeDefined();
 
   if (bootstrapToken === undefined) {
@@ -90,7 +123,7 @@ test("recovers from a disconnected Local Service through read-only Settings", as
   await page.unroute("**/api/v1/session/bootstrap");
   await page.getByRole("button", { name: "重新连接" }).click();
   await expect(page).toHaveURL("http://127.0.0.1:49373/radio");
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeVisible();
+  await ensureCurrentProfile(page);
   await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
 });
 
@@ -102,6 +135,7 @@ test("serves only the static App Shell from cache while fully offline", async ({
   test.skip(browserName !== "chromium", "CacheStorage inspection is covered once in Chromium");
 
   await page.goto("http://127.0.0.1:49373/radio");
+  await ensureCurrentProfile(page);
   await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
   await page.evaluate(async () => navigator.serviceWorker.ready);
   await page.reload();

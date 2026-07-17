@@ -1,4 +1,9 @@
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
+import type {
+  CurrentProfileResponse,
+  ProfileContext,
+  ProfileListResponse,
+} from "@koradio/contracts";
 import { Component, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
 import {
@@ -6,6 +11,9 @@ import {
   resolveApiOrigin,
   type ServiceTransport,
 } from "../shared/transport.js";
+import { SettingsExperience } from "../features/device-settings/index.js";
+import { applyTheme } from "../features/profile-preferences/index.js";
+import { getCurrentProfile, getProfiles, ProfileExperience } from "../features/profiles/index.js";
 import { ConnectingPage, OfflinePage, OfflineSettingsPage, OnlineShellPage } from "./pages.js";
 import { createAppQueryClient } from "./query-client.js";
 import { useAppRouter } from "./router.js";
@@ -58,6 +66,25 @@ function AppComposition({ transport }: { transport: ServiceTransport }): ReactEl
   const connection = useServiceConnection(transport);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const reconnectingFromOffline = useRef(false);
+  const queryClient = useQueryClient();
+  const [profilesOpen, setProfilesOpen] = useState(false);
+  const profiles = useQuery({
+    queryKey: ["profiles"],
+    queryFn: () => getProfiles(transport),
+    enabled: connection.state === "online" || connection.state === "reconnecting",
+  });
+  const currentProfile = useQuery({
+    queryKey: ["current-profile"],
+    queryFn: () => getCurrentProfile(transport),
+    enabled: connection.state === "online" || connection.state === "reconnecting",
+  });
+  const currentTheme = currentProfile.data?.current?.preferences.themeMode;
+
+  useEffect(() => {
+    if (currentTheme !== undefined) {
+      applyTheme(currentTheme);
+    }
+  }, [currentTheme]);
 
   useEffect(() => {
     if (connection.state === "offline") {
@@ -93,11 +120,91 @@ function AppComposition({ transport }: { transport: ServiceTransport }): ReactEl
     return <ConnectingPage />;
   }
 
+  if (profiles.isLoading || currentProfile.isLoading) {
+    return <ConnectingPage />;
+  }
+
+  if (
+    profiles.isError ||
+    currentProfile.isError ||
+    profiles.data === undefined ||
+    currentProfile.data === undefined
+  ) {
+    return (
+      <div className="app-surface fatal-error" role="alert">
+        <p>PROFILE DATA ERROR</p>
+        <h1>本地档案暂时无法读取</h1>
+        <button
+          className="button button--primary"
+          type="button"
+          onClick={() => void Promise.all([profiles.refetch(), currentProfile.refetch()])}
+        >
+          重新读取
+        </button>
+      </div>
+    );
+  }
+
+  const setCurrent = (current: ProfileContext): void => {
+    queryClient.setQueryData<CurrentProfileResponse>(["current-profile"], { current });
+    setProfilesOpen(false);
+    if (
+      currentProfile.data.current === null &&
+      connection.health?.providers.codex === "unavailable"
+    ) {
+      navigate("/settings");
+    }
+  };
+
+  if (currentProfile.data.current === null || profilesOpen) {
+    return (
+      <ProfileExperience
+        current={currentProfile.data.current}
+        initialMode={profiles.data.items.length === 0 ? "create" : "select"}
+        profiles={profiles.data.items}
+        transport={transport}
+        onCancel={
+          currentProfile.data.current === null
+            ? undefined
+            : () => {
+                setProfilesOpen(false);
+              }
+        }
+        onProfileChanged={setCurrent}
+        onProfilesChanged={async () => {
+          const result = await profiles.refetch();
+          if (result.data !== undefined)
+            queryClient.setQueryData<ProfileListResponse>(["profiles"], result.data);
+        }}
+      />
+    );
+  }
+
+  if (route.id === "settings") {
+    return (
+      <SettingsExperience
+        current={currentProfile.data.current}
+        health={connection.health}
+        navigate={navigate}
+        onCurrentChanged={setCurrent}
+        onOpenProfiles={() => {
+          setProfilesOpen(true);
+        }}
+        reconnecting={connection.state === "reconnecting"}
+        transport={transport}
+      />
+    );
+  }
+
   return (
     <OnlineShellPage
       headingRef={headingRef}
       health={connection.health}
       navigate={navigate}
+      current={currentProfile.data.current}
+      onOpenProfiles={() => {
+        setProfilesOpen(true);
+      }}
       reconnecting={connection.state === "reconnecting"}
       route={route}
     />

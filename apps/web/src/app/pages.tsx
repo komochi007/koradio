@@ -1,4 +1,4 @@
-import type { HealthResponse } from "@koradio/contracts";
+import type { HealthResponse, ProfileContext } from "@koradio/contracts";
 import type { ReactElement, RefObject } from "react";
 
 import { Brand, PrimaryNavigation, Status } from "../shared/ui.js";
@@ -136,9 +136,11 @@ export function OfflineSettingsPage({ navigate, reconnect }: SharedPageProps): R
 }
 
 interface OnlineShellPageProps {
+  current: ProfileContext;
   headingRef: RefObject<HTMLHeadingElement | null>;
   health: HealthResponse;
   navigate: (path: string) => void;
+  onOpenProfiles: () => void;
   reconnecting: boolean;
   route: AppRoute;
 }
@@ -150,9 +152,11 @@ const providerLabels: Record<keyof HealthResponse["providers"], string> = {
 };
 
 export function OnlineShellPage({
+  current,
   headingRef,
   health,
   navigate,
+  onOpenProfiles,
   reconnecting,
   route,
 }: OnlineShellPageProps): ReactElement {
@@ -160,9 +164,19 @@ export function OnlineShellPage({
     <div className="app-surface online-page">
       <header className="topbar">
         <Brand />
-        <Status tone={reconnecting ? "pending" : "connected"}>
-          {reconnecting ? "EVENTS RECONNECTING" : "LOCAL SERVICE CONNECTED"}
-        </Status>
+        <div className="topbar-tools">
+          <Status tone={reconnecting ? "pending" : "connected"}>
+            {reconnecting ? "EVENTS RECONNECTING" : "LOCAL SERVICE CONNECTED"}
+          </Status>
+          <button
+            className="profile-tool"
+            type="button"
+            onClick={onOpenProfiles}
+            aria-label="切换档案"
+          >
+            {Array.from(current.profile.nickname).slice(0, 2).join("")}
+          </button>
+        </div>
       </header>
       <main className="online-panel">
         <div className="page-heading">
