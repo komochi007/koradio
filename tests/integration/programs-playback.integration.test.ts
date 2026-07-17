@@ -214,6 +214,14 @@ describe("S3-04 Programs and Playback persistence", () => {
       database.client.prepare("SELECT COUNT(*) AS count FROM dj_script_segment").get(),
     ).toEqual({ count: 0 });
     database.client.exec("DROP TRIGGER fail_program_timeline");
+    expect(() =>
+      programs.commit(programDetailSchema.parse(programDetail), () => {
+        throw new Error("generation job finalization failed");
+      }),
+    ).toThrow(ProgramWriteError);
+    expect(database.client.prepare("SELECT COUNT(*) AS count FROM program").get()).toEqual({
+      count: 0,
+    });
 
     const textOnly = programs.commit(makeTextOnlyProgram());
     expect(textOnly.timeline).toHaveLength(1);

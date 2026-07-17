@@ -16,6 +16,7 @@ import {
   errorEnvelopeSchema,
   feedbackEventSchema,
   feedbackPersistedEventSchema,
+  generateProgramRequestSchema,
   healthResponseSchema,
   jobAcceptedResponseSchema,
   libraryItemSchema,
@@ -29,6 +30,8 @@ import {
   playbackSnapshotRequestSchema,
   programDetailRequestSchema,
   programDetailSchema,
+  programGenerationSnapshotRequestSchema,
+  programGenerationSnapshotSchema,
   programListRequestSchema,
   programListResponseSchema,
   profileAvatarUploadResponseSchema,
@@ -51,6 +54,8 @@ import {
   updateTasteOverridesRequestSchema,
 } from "@koradio/contracts";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
+
+import { createMockCodexProvider, createMockTtsProvider } from "../integrations/index.js";
 
 import {
   DataRootMigrationConflictError,
@@ -95,9 +100,16 @@ import {
 import {
   ProgramCursorError,
   ProgramDataError,
+  ProgramGenerationConflictError,
+  ProgramGenerationDataError,
+  ProgramGenerationNotFoundError,
   ProgramNotFoundError,
+  createProgramGenerationRepository,
+  createProgramGenerationService,
   createProgramRepository,
   createProgramService,
+  type CodexProvider,
+  type TtsProvider,
 } from "../modules/programs/index.js";
 import {
   AvatarUploadError,
@@ -136,9 +148,12 @@ export interface CreateAppOptions {
   migrationRuntimeCoordinator?: DataRootMigrationRuntimeCoordinator;
   profileSwitchRuntimeCoordinator?: ProfileSwitchRuntimeCoordinator;
   musicProvider?: MusicProvider;
+  codexProvider?: CodexProvider;
+  generationTimeoutMs?: number;
   programFeedbackTargets?: Pick<FeedbackTargetResolver, "programExists">;
   requestRestart?: (request: DataRootRestartRequest) => Promise<void>;
   session?: SessionState;
+  ttsProvider?: TtsProvider;
   webSocketAuthenticationTimeoutMs?: number;
 }
 
@@ -184,6 +199,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     repository: createProfileRepository(database.client),
     tasteDefaults,
   });
+  let cancelProgramGeneration: (profileId: string) => Promise<void> = () => Promise.resolve();
   const profileContext = createProfileContextService({
     profiles,
     preferences: profilePreferences,
@@ -192,11 +208,17 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
         options.config.initialDataRoot ?? options.config.dataRoot,
         bootstrapPath,
       ),
-    runtimeCoordinator: options.profileSwitchRuntimeCoordinator ?? {
-      cancelGeneration: () => Promise.resolve(),
-      checkpointPlayback: () => Promise.resolve(),
-      discardLateEvents: () => Promise.resolve(),
-      stopPlayback: () => Promise.resolve(),
+    runtimeCoordinator: {
+      async cancelGeneration(profileId) {
+        await cancelProgramGeneration(profileId);
+        await options.profileSwitchRuntimeCoordinator?.cancelGeneration(profileId);
+      },
+      checkpointPlayback: (profileId) =>
+        options.profileSwitchRuntimeCoordinator?.checkpointPlayback(profileId) ?? Promise.resolve(),
+      discardLateEvents: (profileId) =>
+        options.profileSwitchRuntimeCoordinator?.discardLateEvents(profileId) ?? Promise.resolve(),
+      stopPlayback: (profileId) =>
+        options.profileSwitchRuntimeCoordinator?.stopPlayback(profileId) ?? Promise.resolve(),
     },
     writeCurrentProfileId: (profileId) =>
       writeCurrentProfileId(bootstrapPath, options.config.dataRoot, profileId),
@@ -234,6 +256,20 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     mode: options.config.providerMode,
   });
   const eventHub = createEventHub();
+  const programGeneration = createProgramGenerationService({
+    codex: options.codexProvider ?? createMockCodexProvider(),
+    events: eventHub,
+    library,
+    preferences: profilePreferences,
+    programs,
+    repository: createProgramGenerationRepository(database.client),
+    taste,
+    ...(options.generationTimeoutMs === undefined
+      ? {}
+      : { timeoutMs: options.generationTimeoutMs }),
+    tts: options.ttsProvider ?? createMockTtsProvider(),
+  });
+  cancelProgramGeneration = (profileId) => programGeneration.cancelProfile(profileId);
   const dataRootMigration = createDataRootMigrationService({
     bootstrapPath,
     checkpointDatabase: () => {
@@ -245,12 +281,17 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       eventHub.publish(event);
     },
     ...(options.requestRestart === undefined ? {} : { requestRestart: options.requestRestart }),
-    runtimeCoordinator: options.migrationRuntimeCoordinator ?? {
-      checkpointPlayback: () => {
-        database.client.exec("PRAGMA wal_checkpoint(TRUNCATE)");
-        return Promise.resolve();
+    runtimeCoordinator: {
+      checkpointPlayback:
+        options.migrationRuntimeCoordinator?.checkpointPlayback ??
+        (() => {
+          database.client.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+          return Promise.resolve();
+        }),
+      async pauseGenerationAndPlayback() {
+        await programGeneration.close();
+        await options.migrationRuntimeCoordinator?.pauseGenerationAndPlayback();
       },
-      pauseGenerationAndPlayback: () => Promise.resolve(),
     },
     sourceDataRoot: options.config.dataRoot,
   });
@@ -259,6 +300,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const webSocketAuthenticationTimeoutMs = options.webSocketAuthenticationTimeoutMs ?? 2_000;
 
   app.addHook("onClose", async () => {
+    await programGeneration.close();
     await library.close();
     database.close();
   });
@@ -591,6 +633,103 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       }
       if (error instanceof ProfilePreferencesNotFoundError || error instanceof ProfileDataError) {
         return sendApiError(reply, 500, "PROFILE_UNREADABLE", "Profile could not be read", false);
+      }
+      throw error;
+    }
+  });
+
+  app.post("/api/v1/profiles/:profileId/program-generations", (request, reply) => {
+    const parsed = generateProgramRequestSchema.safeParse({
+      params: request.params,
+      headers: {
+        "idempotency-key": request.headers["idempotency-key"],
+      },
+      body: request.body,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PROGRAM_GENERATION_VALIDATION_FAILED",
+        "Program generation request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      const snapshot = programGeneration.start(
+        parsed.data.params.profileId,
+        parsed.data.body,
+        parsed.data.headers["idempotency-key"],
+      );
+      return reply.status(202).send(jobAcceptedResponseSchema.parse({ jobId: snapshot.jobId }));
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProgramGenerationConflictError) {
+        return sendApiError(
+          reply,
+          409,
+          "PROGRAM_GENERATION_ALREADY_RUNNING",
+          "Another program generation is already running",
+          true,
+        );
+      }
+      if (error instanceof ProgramGenerationDataError) {
+        return sendApiError(
+          reply,
+          500,
+          "PROGRAM_GENERATION_UNAVAILABLE",
+          "Program generation could not be started",
+          true,
+        );
+      }
+      throw error;
+    }
+  });
+
+  app.get("/api/v1/profiles/:profileId/program-generations/:jobId", (request, reply) => {
+    const parsed = programGenerationSnapshotRequestSchema.safeParse({
+      params: request.params,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PROGRAM_GENERATION_VALIDATION_FAILED",
+        "Program generation request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return programGenerationSnapshotSchema.parse(
+        programGeneration.get(parsed.data.params.profileId, parsed.data.params.jobId),
+      );
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProgramGenerationNotFoundError) {
+        return sendApiError(
+          reply,
+          404,
+          "PROGRAM_GENERATION_NOT_FOUND",
+          "Program generation was not found",
+          false,
+        );
+      }
+      if (error instanceof ProgramGenerationDataError) {
+        return sendApiError(
+          reply,
+          500,
+          "PROGRAM_GENERATION_UNREADABLE",
+          "Program generation could not be read",
+          true,
+        );
       }
       throw error;
     }

@@ -215,9 +215,17 @@ export function createTtsAdapter(options: CreateTtsAdapterOptions): TtsProvider 
         if (!voices.success) {
           throw new TtsAdapterError("output_invalid");
         }
-        const selectedVoice = voices.data.voices.find(
-          (voice) => voice.identifier === parsedCommand.data.voiceIdentifier,
-        );
+        const eligibleVoices = voices.data.voices
+          .filter(
+            (voice) => !voice.isPersonalVoice && voice.language === parsedCommand.data.language,
+          )
+          .sort((left, right) => left.identifier.localeCompare(right.identifier));
+        const selectedVoice =
+          parsedCommand.data.voiceIdentifier === undefined
+            ? eligibleVoices[0]
+            : eligibleVoices.find(
+                (voice) => voice.identifier === parsedCommand.data.voiceIdentifier,
+              );
         if (
           selectedVoice === undefined ||
           selectedVoice.isPersonalVoice ||
@@ -229,7 +237,10 @@ export function createTtsAdapter(options: CreateTtsAdapterOptions): TtsProvider 
         const synthesisResult = await runner({
           ...commonInvocation,
           args: ["synthesize", "--json"],
-          input: JSON.stringify(parsedCommand.data),
+          input: JSON.stringify({
+            ...parsedCommand.data,
+            voiceIdentifier: selectedVoice.identifier,
+          }),
         });
         if (synthesisResult.exitCode !== 0) {
           throw new TtsAdapterError("helper_unavailable");

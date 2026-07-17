@@ -86,7 +86,7 @@ export const ttsMarkerSchema = z.strictObject({
 export const ttsSynthesisCommandSchema = z.strictObject({
   text: z.string().trim().min(1).max(5000),
   language: djLanguageSchema,
-  voiceIdentifier: z.string().trim().min(1).max(200),
+  voiceIdentifier: z.string().trim().min(1).max(200).optional(),
   voiceStyle: djVoiceStyleSchema,
 });
 

@@ -38,7 +38,7 @@ export interface CreateProgramServiceOptions {
 }
 
 export interface ProgramService {
-  commit(detail: ProgramDetail): ProgramDetail;
+  commit(detail: ProgramDetail, finalize?: () => void): ProgramDetail;
   completeProgram(profileId: string, programId: string): boolean;
   findProgram(profileId: string, programId: string): Program | null;
   get(profileId: string, programId: string): ProgramDetail;
@@ -73,7 +73,7 @@ export function createProgramService(options: CreateProgramServiceOptions): Prog
   }
 
   return {
-    commit(detail) {
+    commit(detail, finalize) {
       const canonical = programDetailSchema.parse({
         ...detail,
         tracks: options.tracks.getTracks(detail.program.trackIds),
@@ -86,6 +86,7 @@ export function createProgramService(options: CreateProgramServiceOptions): Prog
           djScripts: canonical.djScripts,
         });
         options.timeline.insert(canonical.program.id, canonical.timeline);
+        finalize?.();
         options.client.exec("COMMIT");
         return canonical;
       } catch {

@@ -54,7 +54,7 @@ export interface LibraryService {
   addItem(profileId: string, trackId: string, idempotencyKey: string): LibraryItem;
   close(): Promise<void>;
   getImport(profileId: string, jobId: string): PlaylistImportSnapshot;
-  getLyrics(trackId: string): Promise<TrackLyrics>;
+  getLyrics(trackId: string, signal?: AbortSignal): Promise<TrackLyrics>;
   getTracks(trackIds: string[]): MusicTrack[];
   hasTrack(trackId: string): boolean;
   importPlaylist(
@@ -63,9 +63,9 @@ export interface LibraryService {
     idempotencyKey: string,
   ): PlaylistImportSnapshot;
   list(profileId: string, cursor?: string, limit?: number): LibraryListResponse;
-  resolveAudio(trackId: string): Promise<AudioResolution>;
-  search(keyword: string): Promise<MusicSearchResponse>;
-  searchWithFallback(keywords: string[]): Promise<MusicSearchResponse>;
+  resolveAudio(trackId: string, signal?: AbortSignal): Promise<AudioResolution>;
+  search(keyword: string, signal?: AbortSignal): Promise<MusicSearchResponse>;
+  searchWithFallback(keywords: string[], signal?: AbortSignal): Promise<MusicSearchResponse>;
 }
 
 export function createLibraryService(options: CreateLibraryServiceOptions): LibraryService {
@@ -87,7 +87,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
 
   options.repository.recoverInterruptedImports(now().toISOString());
 
-  async function searchOne(keyword: string): Promise<MusicSearchResponse> {
+  async function searchOne(keyword: string, signal?: AbortSignal): Promise<MusicSearchResponse> {
     const cacheKey = `${options.provider.source}:${keyword.trim().toLowerCase()}`;
     const cached = searchCache.get(cacheKey);
     if (cached !== undefined) {
@@ -96,7 +96,10 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
 
     let providerResponse: unknown;
     try {
-      providerResponse = await options.provider.search(keyword);
+      providerResponse = await options.provider.search(
+        keyword,
+        signal === undefined ? {} : { signal },
+      );
     } catch (error) {
       if (
         error instanceof MusicProviderResponseError ||
@@ -193,7 +196,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       }
       return playlistImportSnapshotSchema.parse(snapshot);
     },
-    async getLyrics(trackId) {
+    async getLyrics(trackId, signal) {
       const track = options.repository.findTrack(trackId);
       if (track === null) {
         throw new LibraryTrackNotFoundError();
@@ -206,7 +209,10 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
 
       let providerResponse: unknown;
       try {
-        providerResponse = await options.provider.getLyrics(track.sourceTrackId);
+        providerResponse = await options.provider.getLyrics(
+          track.sourceTrackId,
+          signal === undefined ? {} : { signal },
+        );
       } catch (error) {
         if (
           error instanceof MusicProviderResponseError ||
@@ -249,7 +255,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
     list(profileId, cursor, limit) {
       return options.repository.list(profileId, cursor, limit);
     },
-    async resolveAudio(trackId) {
+    async resolveAudio(trackId, signal) {
       const track = options.repository.findTrack(trackId);
       if (track === null) {
         throw new LibraryTrackNotFoundError();
@@ -263,7 +269,10 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       const current = now();
       let providerResponse: unknown;
       try {
-        providerResponse = await options.provider.resolveAudio(track.sourceTrackId);
+        providerResponse = await options.provider.resolveAudio(
+          track.sourceTrackId,
+          signal === undefined ? {} : { signal },
+        );
       } catch (error) {
         if (
           error instanceof MusicProviderResponseError ||
@@ -281,16 +290,16 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       );
       return audioResolutionSchema.parse(resolution);
     },
-    search(keyword) {
-      return searchOne(keyword);
+    search(keyword, signal) {
+      return searchOne(keyword, signal);
     },
-    async searchWithFallback(keywords) {
+    async searchWithFallback(keywords, signal) {
       const candidates = [
         ...new Set(keywords.map((keyword) => keyword.trim()).filter(Boolean)),
       ].slice(0, 3);
       let response = musicSearchResponseSchema.parse({ items: [] });
       for (const keyword of candidates) {
-        response = await searchOne(keyword);
+        response = await searchOne(keyword, signal);
         if (response.items.length > 0) {
           return response;
         }

@@ -22,12 +22,14 @@ import {
   playlistSourceSchema,
   playbackCheckpointSchema,
   playbackTimelineItemSchema,
+  playableAudioRefSchema,
   profileListResponseSchema,
   profileAvatarUploadResponseSchema,
   profileContextSchema,
   profilePreferencesSchema,
   profileSchema,
   programDetailSchema,
+  programGenerationSnapshotSchema,
   programListResponseSchema,
   programSchema,
   savePlaybackCheckpointCommandSchema,
@@ -273,6 +275,16 @@ describe("v1 resource and command contracts", () => {
     expect(djScriptSegmentSchema.parse(djScript)).toEqual(djScript);
     expect(playbackTimelineItemSchema.parse(djTimelineItem)).toEqual(djTimelineItem);
     expect(playbackTimelineItemSchema.parse(trackTimelineItem)).toEqual(trackTimelineItem);
+    expect(
+      playbackTimelineItemSchema.parse({
+        ...trackTimelineItem,
+        resolvedAudioRef: "https://media.example.com/temporary/space-song.m4a",
+      }),
+    ).toMatchObject({
+      kind: "track",
+      resolvedAudioRef: "https://media.example.com/temporary/space-song.m4a",
+    });
+    expect(playableAudioRefSchema.parse("tts/program/intro.aiff")).toBe("tts/program/intro.aiff");
     expect(programDetailSchema.parse(programDetail)).toEqual(programDetail);
     expect(programListResponseSchema.parse({ items: [program] }).items).toHaveLength(1);
     expect(generateProgramCommandSchema.parse({ scenarioText: "夜晚写作" })).toEqual({
@@ -290,6 +302,89 @@ describe("v1 resource and command contracts", () => {
         leaseEpoch: 2,
       }),
     ).toMatchObject({ status: "paused", leaseEpoch: 2 });
+  });
+
+  it("accepts recoverable generation snapshots and enforces terminal consistency", () => {
+    expect(
+      programGenerationSnapshotSchema.parse({
+        jobId: ids.job,
+        profileId: ids.profile,
+        status: "queued",
+        stage: "queued",
+        sequence: 0,
+        createdAt: now,
+        updatedAt: now,
+      }).status,
+    ).toBe("queued");
+    expect(
+      programGenerationSnapshotSchema.parse({
+        jobId: ids.job,
+        profileId: ids.profile,
+        status: "running",
+        stage: "resolving_tracks",
+        sequence: 2,
+        createdAt: now,
+        updatedAt: now,
+      }).sequence,
+    ).toBe(2);
+    expect(
+      programGenerationSnapshotSchema.parse({
+        jobId: ids.job,
+        profileId: ids.profile,
+        status: "succeeded",
+        stage: "completed",
+        sequence: 4,
+        programId: ids.program,
+        createdAt: now,
+        updatedAt: now,
+      }).programId,
+    ).toBe(ids.program);
+    expect(
+      programGenerationSnapshotSchema.safeParse({
+        jobId: ids.job,
+        profileId: ids.profile,
+        status: "succeeded",
+        stage: "committing",
+        sequence: 3,
+        createdAt: now,
+        updatedAt: now,
+      }).success,
+    ).toBe(false);
+    expect(
+      programGenerationSnapshotSchema.safeParse({
+        jobId: ids.job,
+        profileId: ids.profile,
+        status: "succeeded",
+        stage: "completed",
+        sequence: 3,
+        createdAt: now,
+        updatedAt: now,
+      }).success,
+    ).toBe(false);
+    expect(
+      programGenerationSnapshotSchema.safeParse({
+        jobId: ids.job,
+        profileId: ids.profile,
+        status: "failed",
+        stage: "planning",
+        sequence: 0,
+        programId: ids.program,
+        createdAt: now,
+        updatedAt: now,
+        errorCode: "PROGRAM_GENERATION_FAILED",
+      }).success,
+    ).toBe(false);
+    expect(
+      programGenerationSnapshotSchema.safeParse({
+        jobId: ids.job,
+        profileId: ids.profile,
+        status: "queued",
+        stage: "planning",
+        sequence: 0,
+        createdAt: now,
+        updatedAt: now,
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects empty programs, text-only DJ timeline items and invalid checkpoints", () => {

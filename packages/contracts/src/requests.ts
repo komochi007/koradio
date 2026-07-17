@@ -113,6 +113,9 @@ export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
 export type SelectCurrentProfileRequest = z.infer<typeof selectCurrentProfileRequestSchema>;
 export type UpdateProfilePreferencesRequest = z.infer<typeof updateProfilePreferencesRequestSchema>;
 export type GenerateProgramRequest = z.infer<typeof generateProgramRequestSchema>;
+export type ProgramGenerationSnapshotRequest = z.infer<
+  typeof programGenerationSnapshotRequestSchema
+>;
 export type ProgramListRequest = z.infer<typeof programListRequestSchema>;
 export type PlaybackSnapshotRequest = z.infer<typeof playbackSnapshotRequestSchema>;
 export type SavePlaybackCheckpointRequest = z.infer<typeof savePlaybackCheckpointRequestSchema>;

@@ -23,7 +23,8 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台，由浏览器 PWA 
 |---|---|---|
 | Profile、Taste、Program、PlaybackTimeline、Feedback | Backend + SQLite | Durable |
 | 媒体时间、暂停、seek、媒体错误 | Browser Audio Engine | Checkpoint only |
-| 生成任务、服务健康状态 | Backend runtime | Snapshot |
+| 生成任务 | Backend durable metadata + runtime executor | SQLite Job + ordered events + REST Snapshot |
+| 服务健康状态 | Backend runtime | Snapshot |
 | Sheet、draft、筛选等 UI 状态 | Frontend feature | None |
 | dataRoot、Codex 命令路径 | Backend DeviceSettings | Device durable |
 | NetEase、TTS 能力状态 | Backend runtime | Snapshot |
@@ -173,6 +174,8 @@ sequenceDiagram
 
 阻断失败不得改变正在播放的旧节目。文字降级 DJ 只保留在 Program segment；只有取得真实音频引用的 `dj` segment 才进入 PlaybackTimeline。
 
+生成 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，场景草稿在 Program 原子提交前只存在于内存。服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`；同一幂等键返回该终态，新幂等键才启动重试。DJ 音频按确定性位置进入时间线：全部 `intro` 位于首曲前、至多一个 `segue` 位于每首后续曲目前、全部 `outro` 位于末曲后，多余脚本只保留文字。
+
 反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Codex context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。
 Feedback target 必须先通过 owner 提供的公开 Port 校验：歌曲目标由 Library 校验，节目目标由 Programs 校验；production composition 使用真实 Programs owner，只有模块测试可注入确定性 Programs target resolver。
@@ -181,7 +184,7 @@ Feedback target 必须先通过 owner 提供的公开 Port 校验：歌曲目标
 | State class | Owner | Synchronization |
 |---|---|---|
 | Durable domain state | Backend modules | REST reads、commands、events |
-| Async job state | Backend runtime | Ordered events + REST snapshot fallback |
+| Async job state | Backend durable metadata + runtime executor | Ordered events + REST snapshot fallback |
 | Live media state | Browser Audio Engine | Local subscription + throttled checkpoint |
 | Cached remote state | TanStack Query | Event patch or invalidation |
 | Cross-component UI | Feature-local Zustand | In-memory only |
@@ -223,7 +226,7 @@ stateDiagram-v2
 | Profile resources | `/api/v1/profiles/:profileId/*` | 显式 ownership |
 | Profile avatar upload | `/api/v1/profile-avatars` | 单文件 multipart 上传，只返回 `avatars/` 受控引用 |
 | Current profile | `/api/v1/profiles/current` | 读取或切换本机当前 Profile context；选择不是登录 |
-| Programs | `GET .../programs`、`GET .../programs/:programId`、`.../program-generations` | 分页历史、按需详情与异步生成；generation 路由由后续任务实现 |
+| Programs | `GET .../programs`、`GET .../programs/:programId`、`POST/GET .../program-generations` | 分页历史、按需详情、异步生成受理与恢复 snapshot |
 | Playback | `GET .../playback`、`PUT .../playback/checkpoints` | 最新低频 snapshot 与带 `leaseEpoch` 的 checkpoint |
 | Library | `.../library`, `.../music-searches` | 候选池与外部搜索 |
 | Taste / Feedback | `.../taste`, `.../feedback-events` | projection 与事实事件 |
@@ -235,7 +238,7 @@ stateDiagram-v2
 - Zod schema 是 wire contract 唯一运行时定义，TypeScript 类型由 schema 推导。
 - S2 v1 contract 已在 `packages/contracts/src/` 实装：公共标识使用 UUID，时间使用 ISO 8601 UTC，媒体时长与位置使用毫秒，音量使用 `0-1`。
 - Profile-owned request contract 通过 route params 显式携带 `profileId`；创建类 request contract 同时要求规范化后的 `idempotency-key` header，外部 HTTP 名称仍为 `Idempotency-Key`。
-- v1 command、DTO、event 与 error schema 拒绝未知字段；受控文件引用只允许 `avatars/`、`lyrics/`、`media/`、`tts/` 命名空间，不接受 URL、绝对路径或裸文件名。
+- v1 command、DTO、event 与 error schema 拒绝未知字段；文件引用只允许 `avatars/`、`lyrics/`、`media/`、`tts/` 受控命名空间，不接受绝对路径或裸文件名；Track timeline 的 `resolvedAudioRef` 另允许 Music Adapter 已验证的短期 HTTPS URL，持久身份仍是 `trackId` 与 Provider source identity。
 - Event envelope 固定包含 `eventId`、`eventType`、`version`、可选 `profileId`、`correlationId`、`sequence`、`occurredAt`、`payload`。
 - v1 Event types：`generation.planned`、`generation.tracks-resolved`、`generation.degraded`、`generation.completed`、`program.committed`、`playback.snapshot`、`feedback.persisted`、`service.health.changed`、`data_root_migration.stage_changed`。WebSocket 不发布高频 position progress。
 - 创建命令接受 `Idempotency-Key`；重复请求返回原结果或当前 job。
@@ -312,6 +315,7 @@ erDiagram
 | `data_root_migration` | DeviceSettings | `jobId` + idempotency key；迁移阶段与回滚状态 |
 | `music_track` | Library | `id` + source identity；归一化曲目 |
 | `program` | Programs | `id` + `profileId`；节目快照 |
+| `program_generation_job` | Programs | `jobId` + `profileId` + idempotency key；持久阶段、终态和事件 sequence，不保存场景草稿 |
 | `program_track` | Programs | `programId`、position、`trackId`；有序 Library 曲目引用 |
 | `dj_script_segment` | Programs | `id` + `programId`；文本、时序、TTS ref |
 | `playback_timeline_item` | Playback | `programId`、position、`kind`；带音频 `dj` 或 `track` 判别联合 |
@@ -459,7 +463,7 @@ native/
 - FileStore 拒绝路径越界和未允许扩展名；媒体下载限制超时、大小、MIME 与重定向。
 - Codex 通过参数数组启动，禁止拼接 shell command；命令路径需验证。
 - Apple 系统 TTS 通过固定路径的 bundled native helper 调用；参数使用数组，DJ 文本经结构化 stdin 传递而不得进入 argv，stdout 只允许脱敏 JSON 结果。
-- v1 只枚举并使用当前设备已安装的标准系统语音；每次合成前验证 voice identifier 仍在可用列表，不请求 Personal Voice 授权。
+- v1 只枚举并使用当前设备已安装的标准系统语音；显式 voice identifier 每次合成前验证仍在可用列表，未显式指定时按语言和 identifier 排序确定性选择首个匹配语音，不请求 Personal Voice 授权。
 - TTS helper 输出的 PCM/音频元数据必须校验，目标文件只能由 FileStore 分配；超时或取消时终止 helper 并忽略迟到输出。
 - DB 与缓存使用当前用户最小权限且备份无明文密钥；错误只暴露稳定 code 与安全 message。
 ## 18. Technical Decisions

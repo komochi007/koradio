@@ -247,7 +247,6 @@ describe("TTS adapter", () => {
         {
           text,
           language: "zh-CN",
-          voiceIdentifier: "com.apple.voice.compact.zh-CN.Tingting",
           voiceStyle: "british-soft-radio",
         },
         { correlationId: providerCorrelationId },
@@ -262,6 +261,7 @@ describe("TTS adapter", () => {
     expect(invocations[1]?.args).toEqual(["synthesize", "--json"]);
     expect(invocations.flatMap(({ args }) => args)).not.toContain(text);
     expect(invocations[1]?.input).toContain(text);
+    expect(invocations[1]?.input).toContain("com.apple.voice.compact.zh-CN.Tingting");
   });
 
   it("rejects Personal Voice, invalid audio and timeout with safe stable errors", async () => {

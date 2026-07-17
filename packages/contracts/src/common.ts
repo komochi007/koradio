@@ -24,8 +24,12 @@ export const controlledFileRefSchema = z
   .string()
   .max(300)
   .regex(
-    /^(?:avatars|lyrics|media|tts)\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+\.(?:aac|json|lrc|m4a|mp3|png|jpe?g|wav|webp)$/,
+    /^(?:avatars|lyrics|media|tts)\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-]+\.(?:aac|aiff|caf|json|lrc|m4a|mp3|png|jpe?g|wav|webp)$/,
   );
+export const playableAudioRefSchema = z.union([
+  controlledFileRefSchema,
+  z.url().refine((value) => value.startsWith("https://") && !/^https:\/\/[^/]*@/u.test(value)),
+]);
 export const pageQuerySchema = z.strictObject({
   cursor: cursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),

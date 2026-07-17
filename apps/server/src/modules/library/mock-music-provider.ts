@@ -37,13 +37,12 @@ export function createMockMusicProvider(): MusicProvider {
   return {
     source: "netease",
     search(keyword) {
-      const normalized = keyword.trim().toLowerCase();
+      const tokens = keyword.trim().toLowerCase().split(/\s+/u).filter(Boolean);
       return Promise.resolve({
-        items: tracks.filter((track) =>
-          [track.title, track.artist, track.album].some((value) =>
-            value.toLowerCase().includes(normalized),
-          ),
-        ),
+        items: tracks.filter((track) => {
+          const searchable = `${track.title} ${track.artist} ${track.album}`.toLowerCase();
+          return tokens.every((token) => searchable.includes(token));
+        }),
       });
     },
     importPlaylist(playlistRef) {

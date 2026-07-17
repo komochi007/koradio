@@ -4,6 +4,7 @@ import {
   controlledFileRefSchema,
   cursorSchema,
   occurredAtSchema,
+  playableAudioRefSchema,
   profileIdSchema,
   programIdSchema,
   timelineItemIdSchema,
@@ -37,7 +38,7 @@ export const trackTimelineItemSchema = z.strictObject({
   kind: z.literal("track"),
   position: z.number().int().nonnegative(),
   trackId: trackIdSchema,
-  resolvedAudioRef: controlledFileRefSchema,
+  resolvedAudioRef: playableAudioRefSchema,
   durationMs: z.number().int().positive(),
 });
 export const playbackTimelineItemSchema = z.discriminatedUnion("kind", [
