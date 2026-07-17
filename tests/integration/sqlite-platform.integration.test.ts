@@ -43,14 +43,14 @@ describe("SQLite platform bootstrap", () => {
     try {
       expect(readScalar(context.client, "PRAGMA foreign_keys")).toBe(1);
       expect(readScalar(context.client, "PRAGMA journal_mode")).toBe("wal");
-      expect(readScalar(context.client, "PRAGMA user_version")).toBe(5);
-      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(5);
+      expect(readScalar(context.client, "PRAGMA user_version")).toBe(6);
+      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(6);
       expect(
         readScalar(
           context.client,
-          "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('device_settings', 'profile_preferences', 'data_root_migration', 'profile', 'taste_overrides', 'taste_projection', 'feedback_event', 'music_track', 'playlist_source', 'library_item', 'playlist_import_job')",
+          "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('device_settings', 'profile_preferences', 'data_root_migration', 'profile', 'taste_overrides', 'taste_projection', 'feedback_event', 'music_track', 'playlist_source', 'library_item', 'playlist_import_job', 'program', 'program_track', 'dj_script_segment', 'playback_timeline_item', 'playback_checkpoint')",
         ),
-      ).toBe(11);
+      ).toBe(16);
 
       context.client.exec(`
         CREATE TABLE parent (id INTEGER PRIMARY KEY);
@@ -79,8 +79,8 @@ describe("SQLite platform bootstrap", () => {
 
     const second = await bootstrapDatabase({ dataRoot });
     try {
-      expect(readScalar(second.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(5);
-      expect(readScalar(second.client, "PRAGMA user_version")).toBe(5);
+      expect(readScalar(second.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(6);
+      expect(readScalar(second.client, "PRAGMA user_version")).toBe(6);
     } finally {
       second.close();
     }
@@ -95,10 +95,14 @@ describe("SQLite platform bootstrap", () => {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
-    expect(migrationDirectories.at(-1)).toBe("20260716210000_add_feedback_taste_memory");
+    expect(migrationDirectories.at(-1)).toBe("20260717110000_add_programs_playback_domain");
+    const feedbackMigrationIndex = migrationDirectories.indexOf(
+      "20260716210000_add_feedback_taste_memory",
+    );
+    expect(feedbackMigrationIndex).toBeGreaterThan(0);
 
     await Promise.all(
-      migrationDirectories.slice(0, -1).map((directory) =>
+      migrationDirectories.slice(0, feedbackMigrationIndex).map((directory) =>
         cp(join(defaultMigrationsFolder, directory), join(previousMigrations, directory), {
           recursive: true,
         }),

@@ -76,9 +76,13 @@ export const playbackCheckpointSchema = z.strictObject({
   status: playbackStatusSchema,
   savedAt: occurredAtSchema,
 });
-export const savePlaybackCheckpointCommandSchema = playbackCheckpointSchema.omit({
-  savedAt: true,
-});
+export const savePlaybackCheckpointCommandSchema = playbackCheckpointSchema
+  .omit({
+    savedAt: true,
+  })
+  .extend({
+    leaseEpoch: z.number().int().nonnegative(),
+  });
 
 export type DjScriptSegment = z.infer<typeof djScriptSegmentSchema>;
 export type PlaybackTimelineItem = z.infer<typeof playbackTimelineItemSchema>;

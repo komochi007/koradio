@@ -287,8 +287,9 @@ describe("v1 resource and command contracts", () => {
         positionMs: 1000,
         volume: 1,
         status: "paused",
+        leaseEpoch: 2,
       }),
-    ).toMatchObject({ status: "paused" });
+    ).toMatchObject({ status: "paused", leaseEpoch: 2 });
   });
 
   it("rejects empty programs, text-only DJ timeline items and invalid checkpoints", () => {
@@ -304,6 +305,17 @@ describe("v1 resource and command contracts", () => {
       }).success,
     ).toBe(false);
     expect(playbackCheckpointSchema.safeParse({ ...checkpoint, volume: 2 }).success).toBe(false);
+    expect(
+      savePlaybackCheckpointCommandSchema.safeParse({
+        profileId: checkpoint.profileId,
+        programId: checkpoint.programId,
+        timelineItemId: checkpoint.timelineItemId,
+        positionMs: checkpoint.positionMs,
+        volume: checkpoint.volume,
+        status: checkpoint.status,
+        leaseEpoch: -1,
+      }).success,
+    ).toBe(false);
   });
 
   it("accepts track and program feedback while preserving append-only identity", () => {

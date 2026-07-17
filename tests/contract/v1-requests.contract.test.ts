@@ -9,8 +9,10 @@ import {
   libraryListRequestSchema,
   musicSearchRequestSchema,
   playlistImportSnapshotRequestSchema,
+  playbackSnapshotRequestSchema,
   programDetailRequestSchema,
   programGenerationSnapshotRequestSchema,
+  programListRequestSchema,
   savePlaybackCheckpointRequestSchema,
   selectCurrentProfileRequestSchema,
   trackLyricsRequestSchema,
@@ -136,6 +138,7 @@ describe("v1 REST request contracts", () => {
           positionMs: 1000,
           volume: 0.5,
           status: "paused",
+          leaseEpoch: 2,
         },
       }),
     ).toMatchObject({ params });
@@ -188,6 +191,8 @@ describe("v1 REST request contracts", () => {
         params: { profileId: ids.profile, programId: ids.program },
       }),
     ).toMatchObject({ params: { profileId: ids.profile } });
+    expect(programListRequestSchema.parse({ params, query: { limit: "20" } }).query.limit).toBe(20);
+    expect(playbackSnapshotRequestSchema.parse({ params })).toEqual({ params });
     expect(
       programGenerationSnapshotRequestSchema.parse({
         params: { profileId: ids.profile, jobId: ids.job },

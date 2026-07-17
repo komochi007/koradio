@@ -1,7 +1,7 @@
 # Koradio Engineering Rules
 
 > Scope: Koradio 的所有源码、配置、测试、migration 与工程文档  
-> Status: Active engineering law；S1/S2 已完成，S3-01 Profiles、S3-02 Library、S3-03 Feedback/Taste 后端已实现，其余产品业务仍待后续任务
+> Status: Active engineering law；S1/S2 已完成，S3-01 Profiles、S3-02 Library、S3-03 Feedback/Taste、S3-04 Programs/Playback 后端已实现，其余产品业务仍待后续任务
 > Keywords: `MUST`、`MUST NOT`、`ALWAYS`、`NEVER` 均为强制要求
 
 ## 1. 权威与适用性

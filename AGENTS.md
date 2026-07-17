@@ -37,7 +37,7 @@
 
 ## 3. 当前阶段保护
 
-当前项目已完成 S1 工程脚手架、S2 平台底座以及 S3-01 Profiles、S3-02 Library、S3-03 Feedback/Taste 后端，正在推进 S3 后端业务；产品 UI、节目、播放与真实 Provider 仍未实现。
+当前项目已完成 S1 工程脚手架、S2 平台底座以及 S3-01 Profiles、S3-02 Library、S3-03 Feedback/Taste、S3-04 Programs/Playback 后端，正在推进 S3 后端业务；产品 UI、节目生成/事件编排、浏览器播放与真实 Provider 仍未实现。
 
 - 不得声称尚不存在的业务代码、平台能力、脚本或依赖已经可用。
 - 不得把 `architecture.md` 的目标目录当作真实目录。

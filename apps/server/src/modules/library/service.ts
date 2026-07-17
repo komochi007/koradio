@@ -11,6 +11,7 @@ import {
   type LibraryItem,
   type LibraryListResponse,
   type MusicSearchResponse,
+  type MusicTrack,
   type PlaylistImportSnapshot,
   type TrackLyrics,
 } from "@koradio/contracts";
@@ -54,6 +55,7 @@ export interface LibraryService {
   close(): Promise<void>;
   getImport(profileId: string, jobId: string): PlaylistImportSnapshot;
   getLyrics(trackId: string): Promise<TrackLyrics>;
+  getTracks(trackIds: string[]): MusicTrack[];
   hasTrack(trackId: string): boolean;
   importPlaylist(
     profileId: string,
@@ -199,6 +201,15 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       const lyrics = parseProviderLyricsResult(providerResponse, track.id);
       lyricsCache.set(cacheKey, lyrics);
       return trackLyricsSchema.parse(lyrics);
+    },
+    getTracks(trackIds) {
+      return trackIds.map((trackId) => {
+        const track = options.repository.findTrack(trackId);
+        if (track === null) {
+          throw new LibraryTrackNotFoundError();
+        }
+        return track;
+      });
     },
     hasTrack(trackId) {
       return options.repository.findTrack(trackId) !== null;

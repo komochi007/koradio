@@ -25,11 +25,18 @@ import {
   musicSearchResponseSchema,
   playlistImportSnapshotRequestSchema,
   playlistImportSnapshotSchema,
+  playbackCheckpointSchema,
+  playbackSnapshotRequestSchema,
+  programDetailRequestSchema,
+  programDetailSchema,
+  programListRequestSchema,
+  programListResponseSchema,
   profileAvatarUploadResponseSchema,
   profileIdParamsSchema,
   profileListResponseSchema,
   profileSchema,
   selectCurrentProfileRequestSchema,
+  savePlaybackCheckpointRequestSchema,
   serviceHealthListResponseSchema,
   serviceHealthChangedEventSchema,
   sessionAuthenticateSchema,
@@ -76,6 +83,22 @@ import {
   createMockMusicProvider,
   type MusicProvider,
 } from "../modules/library/index.js";
+import {
+  PlaybackDataError,
+  PlaybackPolicyError,
+  PlaybackTargetNotFoundError,
+  PlaybackWriteError,
+  createPlaybackCheckpointService,
+  createPlaybackRepository,
+  createPlaybackTimelineService,
+} from "../modules/playback/index.js";
+import {
+  ProgramCursorError,
+  ProgramDataError,
+  ProgramNotFoundError,
+  createProgramRepository,
+  createProgramService,
+} from "../modules/programs/index.js";
 import {
   AvatarUploadError,
   AvatarReferenceError,
@@ -182,11 +205,26 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     provider: options.musicProvider ?? createMockMusicProvider(),
     repository: createLibraryRepository(database.client),
   });
+  const playbackRepository = createPlaybackRepository(database.client);
+  const playbackTimeline = createPlaybackTimelineService(playbackRepository);
+  const programs = createProgramService({
+    client: database.client,
+    repository: createProgramRepository(database.client),
+    timeline: playbackTimeline,
+    tracks: library,
+  });
+  const playback = createPlaybackCheckpointService({
+    client: database.client,
+    programs,
+    repository: playbackRepository,
+  });
   const feedback = createFeedbackService({
     client: database.client,
     repository: createFeedbackRepository(database.client),
     targets: {
-      programExists: options.programFeedbackTargets?.programExists ?? (() => false),
+      programExists:
+        options.programFeedbackTargets?.programExists ??
+        ((profileId, programId) => programs.hasProgram(profileId, programId)),
       trackExists: (_profileId, trackId) => library.hasTrack(trackId),
     },
     tasteRepository,
@@ -553,6 +591,181 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       }
       if (error instanceof ProfilePreferencesNotFoundError || error instanceof ProfileDataError) {
         return sendApiError(reply, 500, "PROFILE_UNREADABLE", "Profile could not be read", false);
+      }
+      throw error;
+    }
+  });
+
+  app.get("/api/v1/profiles/:profileId/programs", (request, reply) => {
+    const parsed = programListRequestSchema.safeParse({
+      params: request.params,
+      query: request.query,
+    });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PROGRAM_LIST_VALIDATION_FAILED",
+        "Program list request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return programListResponseSchema.parse(
+        programs.list(
+          parsed.data.params.profileId,
+          parsed.data.query.cursor,
+          parsed.data.query.limit,
+        ),
+      );
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProgramCursorError) {
+        return sendApiError(
+          reply,
+          400,
+          "PROGRAM_CURSOR_INVALID",
+          "Program cursor is invalid",
+          false,
+        );
+      }
+      if (error instanceof ProgramDataError) {
+        return sendApiError(reply, 500, "PROGRAMS_UNREADABLE", "Programs could not be read", true);
+      }
+      throw error;
+    }
+  });
+
+  app.get("/api/v1/profiles/:profileId/programs/:programId", (request, reply) => {
+    const parsed = programDetailRequestSchema.safeParse({ params: request.params });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PROGRAM_DETAIL_VALIDATION_FAILED",
+        "Program detail request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return programDetailSchema.parse(
+        programs.get(parsed.data.params.profileId, parsed.data.params.programId),
+      );
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProgramNotFoundError) {
+        return sendApiError(reply, 404, "PROGRAM_NOT_FOUND", "Program was not found", false);
+      }
+      if (error instanceof ProgramDataError) {
+        return sendApiError(reply, 500, "PROGRAM_UNREADABLE", "Program could not be read", true);
+      }
+      throw error;
+    }
+  });
+
+  app.get("/api/v1/profiles/:profileId/playback", (request, reply) => {
+    const parsed = playbackSnapshotRequestSchema.safeParse({ params: request.params });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PLAYBACK_SNAPSHOT_VALIDATION_FAILED",
+        "Playback snapshot request is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      const checkpoint = playback.get(parsed.data.params.profileId);
+      if (checkpoint === null) {
+        return sendApiError(
+          reply,
+          404,
+          "PLAYBACK_SNAPSHOT_NOT_FOUND",
+          "Playback snapshot was not found",
+          false,
+        );
+      }
+      return playbackCheckpointSchema.parse(checkpoint);
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof PlaybackDataError) {
+        return sendApiError(
+          reply,
+          500,
+          "PLAYBACK_SNAPSHOT_UNREADABLE",
+          "Playback snapshot could not be read",
+          true,
+        );
+      }
+      throw error;
+    }
+  });
+
+  app.put("/api/v1/profiles/:profileId/playback/checkpoints", (request, reply) => {
+    const parsed = savePlaybackCheckpointRequestSchema.safeParse({
+      params: request.params,
+      body: request.body,
+    });
+    if (!parsed.success || parsed.data.params.profileId !== parsed.data.body.profileId) {
+      return sendApiError(
+        reply,
+        400,
+        "PLAYBACK_CHECKPOINT_VALIDATION_FAILED",
+        "Playback checkpoint is invalid",
+        false,
+      );
+    }
+
+    try {
+      profiles.get(parsed.data.params.profileId);
+      return playbackCheckpointSchema.parse(
+        playback.save(parsed.data.params.profileId, parsed.data.body),
+      );
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof PlaybackTargetNotFoundError) {
+        return sendApiError(
+          reply,
+          404,
+          "PLAYBACK_TARGET_NOT_FOUND",
+          "Playback target was not found",
+          false,
+        );
+      }
+      if (error instanceof PlaybackPolicyError) {
+        if (error.code === "PLAYBACK_LEASE_STALE") {
+          return sendApiError(reply, 409, "PLAYBACK_LEASE_STALE", "Playback lease is stale", false);
+        }
+        return sendApiError(
+          reply,
+          400,
+          "PLAYBACK_CHECKPOINT_INVALID",
+          "Playback checkpoint is invalid",
+          false,
+        );
+      }
+      if (error instanceof PlaybackDataError || error instanceof PlaybackWriteError) {
+        return sendApiError(
+          reply,
+          500,
+          "PLAYBACK_CHECKPOINT_WRITE_FAILED",
+          "Playback checkpoint could not be stored",
+          true,
+        );
       }
       throw error;
     }

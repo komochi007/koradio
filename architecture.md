@@ -175,7 +175,7 @@ sequenceDiagram
 
 反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Codex context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。
-Feedback target 必须先通过 owner 提供的公开 Port 校验：歌曲目标由 Library 校验，节目目标由 Programs 校验；S3-04 接入真实 Programs owner 前，composition 可注入确定性 Programs target resolver 进行模块验收。
+Feedback target 必须先通过 owner 提供的公开 Port 校验：歌曲目标由 Library 校验，节目目标由 Programs 校验；production composition 使用真实 Programs owner，只有模块测试可注入确定性 Programs target resolver。
 ## 7. State Management Strategy
 
 | State class | Owner | Synchronization |
@@ -223,8 +223,8 @@ stateDiagram-v2
 | Profile resources | `/api/v1/profiles/:profileId/*` | 显式 ownership |
 | Profile avatar upload | `/api/v1/profile-avatars` | 单文件 multipart 上传，只返回 `avatars/` 受控引用 |
 | Current profile | `/api/v1/profiles/current` | 读取或切换本机当前 Profile context；选择不是登录 |
-| Programs | `.../programs`, `.../program-generations` | 历史与异步生成 |
-| Playback | `.../playback`, `.../playback/checkpoints` | snapshot 与 checkpoint |
+| Programs | `GET .../programs`、`GET .../programs/:programId`、`.../program-generations` | 分页历史、按需详情与异步生成；generation 路由由后续任务实现 |
+| Playback | `GET .../playback`、`PUT .../playback/checkpoints` | 最新低频 snapshot 与带 `leaseEpoch` 的 checkpoint |
 | Library | `.../library`, `.../music-searches` | 候选池与外部搜索 |
 | Taste / Feedback | `.../taste`, `.../feedback-events` | projection 与事实事件 |
 | Device settings | `/api/v1/device-settings` | 设备级非敏感配置与 Secret Store 引用 |
@@ -312,13 +312,16 @@ erDiagram
 | `data_root_migration` | DeviceSettings | `jobId` + idempotency key；迁移阶段与回滚状态 |
 | `music_track` | Library | `id` + source identity；归一化曲目 |
 | `program` | Programs | `id` + `profileId`；节目快照 |
+| `program_track` | Programs | `programId`、position、`trackId`；有序 Library 曲目引用 |
 | `dj_script_segment` | Programs | `id` + `programId`；文本、时序、TTS ref |
 | `playback_timeline_item` | Playback | `programId`、position、`kind`；带音频 `dj` 或 `track` 判别联合 |
-| `playback_checkpoint` | Playback | `profileId`；低频可恢复 snapshot |
+| `playback_checkpoint` | Playback | `profileId`、`leaseEpoch`；每个 Profile 最新的低频可恢复 snapshot |
 | `feedback_event` | Feedback | `id` + `profileId`；固定 type 的 append-only 事实 |
 
 - 开启 foreign keys、WAL 和版本化 migration；禁止运行时自动重建数据表。
-- Program、segments、timeline items 在单个事务中提交，避免半成品节目；文字 DJ segment 不生成 timeline item。
+- Programs 通过 Playback 的公开事务写入 Port，在单个事务中提交 Program、ordered track refs、segments 与 timeline items，避免半成品节目；文字 DJ segment 不生成 timeline item。
+- checkpoint 写入校验 Program/timeline ownership、item position、时长和 `leaseEpoch`；低于已保存 epoch 的写入被拒绝，`completed` 只允许在最后一个 item 的精确结束边界，并与 Program 完成状态同事务提交。
+- Programs 历史详情只通过 Library 的公开 API 重建曲目元数据，不直接读取 Library owner 表。
 - 播放 URL 是短期资源；历史以 source identity 恢复，FileStore 只返回 data root 内的安全相对引用。
 - 头像上传 adapter 只返回 data root 内受控 `avatarRef`，拒绝任意 URL、绝对路径或裸文件名。
 - Profile 删除如未来被授权，只能通过 application use case 处理记录与文件，UI 不执行级联删除。

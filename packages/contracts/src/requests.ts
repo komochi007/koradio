@@ -50,8 +50,15 @@ export const generateProgramRequestSchema = z.strictObject({
 export const programDetailRequestSchema = z.strictObject({
   params: profileProgramIdParamsSchema,
 });
+export const programListRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+  query: pageQuerySchema,
+});
 export const programGenerationSnapshotRequestSchema = z.strictObject({
   params: profileJobIdParamsSchema,
+});
+export const playbackSnapshotRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
 });
 export const savePlaybackCheckpointRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
@@ -106,6 +113,8 @@ export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
 export type SelectCurrentProfileRequest = z.infer<typeof selectCurrentProfileRequestSchema>;
 export type UpdateProfilePreferencesRequest = z.infer<typeof updateProfilePreferencesRequestSchema>;
 export type GenerateProgramRequest = z.infer<typeof generateProgramRequestSchema>;
+export type ProgramListRequest = z.infer<typeof programListRequestSchema>;
+export type PlaybackSnapshotRequest = z.infer<typeof playbackSnapshotRequestSchema>;
 export type SavePlaybackCheckpointRequest = z.infer<typeof savePlaybackCheckpointRequestSchema>;
 export type MusicSearchRequest = z.infer<typeof musicSearchRequestSchema>;
 export type CreateLibraryItemRequest = z.infer<typeof createLibraryItemRequestSchema>;
