@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3-01～S3-06 backend complete · runtime defaults to Mock mode**
+> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · runtime defaults to Mock mode**
 > Audience: AI Coding Agents、开发者、维护者  
 > Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service 骨架，以及 SQLite/Drizzle migration、首次数据目录 bootstrap、Profiles、Library、Feedback/Taste、Programs/Playback、异步节目生成、受控文件/秘密、脱敏日志和本地 Session/Origin 防护；Codex CLI、NetEase `linuxapi` 与 native TTS helper adapters 已实现并通过边界测试，生成 application 可注入这些 Ports 但产品默认仍使用确定性 Mock Provider，且没有产品 UI、浏览器播放或 bundled native TTS helper
 
@@ -62,6 +62,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] Feedback 与 Taste 记忆后端已实现：七类固定反馈按 Profile append-only 幂等写入，同事务按稳定 replay order 更新可重建 TasteProjection；人工 TasteOverrides 独立版本化并优先合并为只读 EffectiveTaste
 - [x] Programs 与 Playback 领域后端已实现：Program、ordered track refs、DJ segments 与判别式 timeline 单事务提交，文字 DJ 不伪造音频项；分页历史和详情按 Profile 隔离，checkpoint 校验 owner、位置、完成边界与 `leaseEpoch`
 - [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、超时、内部取消、迟到结果隔离、TTS/歌词/曲目降级和重启中断收敛均已验证；Program 与 Job 成功终态同事务提交
+- [x] Mock Provider 后端闭环已验收：合法场景通过 REST 异步受理后可原子提交至少一首可播放曲目、开场文字与判别式 timeline；Codex 错误/非法计划、三次搜歌耗尽、全曲不可用、TTS/歌词/部分曲目降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
 - [x] Codex、NetEase 与 TTS Provider adapters 已实现：参数数组启动、stdin-only 敏感正文、运行时 schema、超时/取消、受限子进程环境、媒体 URL/DNS/redirect/Range/MIME 校验、受控音频写入和脱敏错误均有专项测试；生成编排已接入，bundled native helper 保持范围外
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
@@ -71,7 +72,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ### Agent safety note
 
-当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 Mock skeleton 的开发/生产启动、认证 REST health、认证后 WebSocket 事件、Profiles CRUD/current context、Library 搜索/导入/缓存/恶意响应拒绝、七类 Feedback 追加/撤销/幂等/并发、TasteProjection 回放重建、TasteOverrides 优先合并与 Profile 隔离、Program 原子提交/回滚/历史恢复、判别式 timeline、低频 checkpoint/lease 与完成边界、头像上传安全、ProfilePreferences、Provider adapter mapping/超时/取消/恶意响应/媒体 URL 安全、脱敏服务快照、同源静态托管、SQLite bootstrap、数据目录迁移、受控 File Store、脱敏日志和内存 Session/Origin 安全矩阵。macOS 登录会话还可验证真实 Keychain 往返；受控本机已验证 NetEase 搜索、歌词、歌单与播放 URL smoke，但这些证据不证明节目生成 job、Codex 实际节目生成、TTS native helper、浏览器播放、产品 UI 或安装包可运行。
+当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 Mock skeleton 的开发/生产启动、认证 REST health、认证后 WebSocket 事件、Profiles CRUD/current context、Library 搜索/导入/缓存/恶意响应拒绝、七类 Feedback 追加/撤销/幂等/并发、TasteProjection 回放重建、TasteOverrides 优先合并与 Profile 隔离、Program 原子提交/回滚/历史恢复、Mock Provider 场景生成后端闭环、判别式 timeline、低频 checkpoint/lease 与完成边界、头像上传安全、ProfilePreferences、Provider adapter mapping/超时/取消/恶意响应/媒体 URL 安全、脱敏服务快照、同源静态托管、SQLite bootstrap、数据目录迁移、受控 File Store、脱敏日志和内存 Session/Origin 安全矩阵。macOS 登录会话还可验证真实 Keychain 往返；受控本机已验证 NetEase 搜索、歌词、歌单与播放 URL smoke，但这些证据不证明 Codex 与 NetEase 的真实节目生成组合、TTS native helper、浏览器播放、产品 UI 或安装包可运行。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -82,7 +83,7 @@ AI Agent **不得**：
 - 把尚未实装的 macOS 平台/包装 CI 或产品行为测试覆盖描述成已经可运行的事实。
 - 把本地 Session 描述为云账号、Profile 登录或远程访问认证。
 - 把 ADR 0003 的已接受架构描述为已经实现，或把本地 ad-hoc 产物描述为已通过 Developer ID 签名公证、可公开分发。
-- 声称产品 UI、Provider 生成编排、TTS native helper 或浏览器播放可以运行。
+- 声称产品 UI、真实 Provider 产品运行组合、TTS native helper 或浏览器播放可以运行。
 - 从参考图推断尚未写入权威文档的业务规则。
 
 ## 3. 产品快照
@@ -284,7 +285,9 @@ Koradio/
 │       │   │   ├── feedback/
 │       │   │   ├── profile-preferences/
 │       │   │   ├── library/
+│       │   │   ├── playback/
 │       │   │   ├── profiles/
+│       │   │   ├── programs/
 │       │   │   └── taste/
 │       │   └── platform/
 │       │       ├── db/
@@ -325,6 +328,7 @@ Koradio/
 │   └── project-management/
 │       ├── README.md
 │       ├── roadmap.md
+│       ├── s3-07-mock-backend-acceptance.md
 │       ├── tasks.md
 │       └── release-checklist.md
 └── design/
@@ -380,7 +384,7 @@ Koradio/
 
 ### 目标源码目录
 
-> `apps/*` 与 `packages/*` 边界 manifest 已存在，`apps/server/src/platform/{db,events,files,logging,secrets}` 与 `modules/{device-settings,profile-preferences,profiles,library,taste,feedback}/` 已落地；以下其余业务 module、Web feature、Audio Engine 与 native helper 结构仍来自 `architecture.md`，尚不存在。
+> `apps/*` 与 `packages/*` 边界 manifest 已存在，Server 的八个业务 module、integrations 与 platform 边界均已落地；以下 Web feature、Audio Engine 与 native helper 结构仍来自 `architecture.md`，尚不存在。
 
 ```text
 apps/
@@ -457,7 +461,7 @@ pnpm check
 
 - 已有 OS 数据目录 bootstrap、SQLite connection、Drizzle migration runner、Profile/TasteProjection/TasteOverrides/FeedbackEvent/DeviceSettings/ProfilePreferences/MusicTrack/PlaylistSource/LibraryItem/import job/Program/ProgramTrack/DjScriptSegment/PlaybackTimelineItem/PlaybackCheckpoint owner 表，以及同时保存 active data root 与 current Profile 的原子 bootstrap 指针。
 - 已有 macOS Keychain Secret Store、受控 File Store 和结构化脱敏 logger；DeviceSettings 只持久化非敏感配置，TTS Adapter 只向受控 File Store 写入已校验音频。
-- 已有 Profiles、Library、Feedback、Taste、Programs 与 Playback application/persistence/public API、MusicProvider Port、确定性 Mock、真实 Programs/Library 反馈目标校验和可重建 projection；没有节目生成 job、事件排序或 Provider orchestration。
+- 已有 Profiles、Library、Feedback、Taste、Programs 与 Playback application/persistence/public API、持久节目生成 Job、有序事件、Provider orchestration、MusicProvider Port、确定性 Mock、真实 Programs/Library 反馈目标校验和可重建 projection；Mock Provider 后端闭环已通过固定 fixture 验收。
 - 已有完整 v1 wire contracts；health/session/events、Profiles、Library、Feedback、Taste、Programs 历史/详情、Playback snapshot/checkpoint、DeviceSettings、ProfilePreferences 和数据目录迁移已有 route/use case。
 - 已有 Codex、NetEase 与 TTS Adapter 及确定性 Mock；application composition 仍只使用 `mock`，native TTS helper 尚不存在。
 - 最小 App Shell 只展示 REST、WebSocket 和 Mock Provider 连通状态。
@@ -528,11 +532,11 @@ pnpm check
 
 ## 9. 下一实现起点
 
-S1 工程脚手架、S2 平台阶段门与 `S3-01`～`S3-06` 后端任务已关闭。下一关键任务是 `S3-07`：
+S1 工程脚手架、S2 平台阶段门与 S3 后端阶段门已关闭。下一关键任务是 `S4-01`：
 
-- 用确定性 Mock Provider 验收从场景提交到 Program/Timeline 原子提交的完整后端闭环。
-- 覆盖核心成功流、阻断失败和全部降级分支，不依赖外部额度完成 CI。
-- 保持真实 Provider 只做受控 smoke，bundled native helper 继续由包装任务交付。
+- 重构 Web App Shell、路由、session 与 shared transport，为 P0 产品页面建立稳定组合入口。
+- 保持当前页面仍是连接探针的事实，不提前声称 Radio、Audio Engine 或产品 UI 已实现。
+- 继续以已验收的 Mock Provider 后端闭环支撑后续 P0 前端开发；bundled native helper 仍由包装任务交付。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。
 

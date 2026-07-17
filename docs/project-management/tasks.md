@@ -11,10 +11,10 @@
 
 | 问题 | 直接答案 |
 |---|---|
-| 当前工程阶段 | S3 核心领域与 Provider 后端；S2 平台、数据与安全阶段门已通过 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-06` |
-| 当前活动任务 | 无；`S3-06` 已完成 |
-| 初始下一任务 | 按依赖选择 `S3-07` |
+| 当前工程阶段 | S4 P0 核心产品体验；S3 核心领域与 Provider 后端阶段门已通过 |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07` |
+| 当前活动任务 | 无；`S3-07` 已完成 |
+| 初始下一任务 | 按依赖选择 `S4-01` |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
 | 状态事实源 | 只修改本文件；GitHub Issue/Project 只写入“外部引用” |
@@ -53,7 +53,7 @@ AI 执行任务时按固定顺序操作：
 | S0 基线与关键决策 | 8 | 0 | 0 | 0 | 0 | 8 |
 | S1 工程脚手架 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S2 平台、数据与安全底座 | 5 | 0 | 0 | 0 | 0 | 5 |
-| S3 核心领域与 Provider 后端 | 6 | 1 | 0 | 0 | 0 | 7 |
+| S3 核心领域与 Provider 后端 | 7 | 0 | 0 | 0 | 0 | 7 |
 | S4 P0 核心产品体验 | 0 | 6 | 0 | 0 | 0 | 6 |
 | S5 P1 全量功能 | 0 | 4 | 0 | 0 | 0 | 4 |
 | S6 集成、质量与安全加固 | 0 | 5 | 0 | 0 | 0 | 5 |
@@ -113,7 +113,7 @@ AI 执行任务时按固定顺序操作：
 | `S3-04` 实现 Programs 与 Playback 领域模型 | 已完成 | Critical | 建立节目快照、DJ 段、判别式播放时间线和低频 checkpoint，保证新节目原子切换。 | S3-01、S3-02、S3-03 | PRD 功能 2～4、架构 Program generation 和数据库设计。 | 实现领域/application/persistence，不创建浏览器 `HTMLAudio`；未明确列出的实现和功能不在本任务范围内。 | Program、segments、timeline 在单事务提交；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 Programs/Playback domain、application、persistence 与 public API，新增 v6 migration、Program history/detail 和 Playback snapshot/checkpoint REST、`leaseEpoch` fencing contract 及专项测试；Program generation job、事件排序、浏览器 `HTMLAudio` 和真实 Provider 保持范围外。 | `pnpm check` 通过：33 个 unit、57 个 contract、38 个 integration、1 个 component、129 个 coverage tests 与完整 build；三浏览器 6 个 E2E、1 个 Chromium 视觉测试、migration generate 回读和 `git diff --check` 通过。单事务提交/触发器回滚、文字 DJ 降级、判别联合顺序、历史重启恢复、Profile 隔离、checkpoint owner/时长/完成边界、Program 同事务完成、旧 lease 拒绝和真实 Program feedback target 均已验证。 | 项目所有者 / 无 | owner 与事务边界已按架构实现；未发现阻塞，生成 orchestration、事件与 Browser Audio Engine 分别由 S3-06、S4-04 负责。 |
 | `S3-05` 实现 Codex、NetEase 与 TTS Adapters | 已完成 | Critical | 通过 Port 隔离外部服务，把不可信响应转换为 Koradio 归一化模型。 | S0-06、S2-03、S3-02 | Provider 可行性 ADR、contracts 和 secrets/files 平台。 | Adapter 只做协议翻译、校验和 I/O，不决定业务降级或泄露供应商结构；未明确列出的实现和功能不在本任务范围内。 | Codex 使用参数数组启动；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/server/src/integrations/` 下 Codex CLI、NetEase `linuxapi`、native TTS helper Adapters、受限进程 runner 与确定性 Mock，新增 Programs Provider Ports/schemas、Provider fixtures 和专项测试；生成 Job/事件编排、业务降级、浏览器播放、native helper 二进制和公开分发保持范围外。 | `pnpm check` 通过：35 个 unit、57 个 contract、48 个 integration、1 个 component、141 个 coverage tests 与完整 build；三浏览器 6 个 E2E、1 个 Chromium 视觉测试、`git diff --check` 通过。参数数组/stdin-only、受限环境、mapping、schema 二次校验、超时、取消、恶意响应、媒体域名/DNS/redirect/Range/MIME、标准语音/音频签名/受控写入、脱敏错误与 Mock 可重复性均已验证；受控本机 NetEase 搜索、歌词、歌单和播放 URL smoke 通过，Codex 实际生成与 native helper 留待其运行时交付后验证。 | 项目所有者 / 无 | Adapter 协议与 ADR 0004 一致，原阻塞条件未发生；application composition 由 S3-06 负责，bundled native helper 由 S7 包装任务负责。 |
 | `S3-06` 实现生成 Job、事件排序与恢复 Snapshot | 已完成 | Critical | 让长时间节目生成可取消、超时、重试、去重、重连和恢复，而不让 HTTP 请求占用完整管线。 | S3-04、S3-05、S2-01 | 架构异步任务、event envelope 和 idempotency 规则。 | 实现 Programs application orchestration 和 event hub，不推送逐帧播放进度；未明确列出的实现和功能不在本任务范围内。 | 返回 `202 + jobId`；同时满足“输入”所引用权威文档的适用验收项。 | 已创建持久 generation job migration/repository、异步 runner、有序 event publisher、POST 受理与 GET Snapshot endpoints；接入 Profile 切换、数据目录迁移和服务关闭取消，并同步 Contracts、架构与真实状态文档。 | `pnpm check` 通过：35 个 unit、58 个 contract、54 个 integration、1 个 component、148 个 coverage tests 与完整 build；三浏览器 6 个 E2E、1 个 Chromium 视觉测试和 migration generate 回读通过。幂等重复、每 Profile 单活、确定性 DJ 排布、持久 sequence、取消、Provider 超时/迟到、REST 重连、崩溃重启收敛和 Program/Job 同事务完成均已验证。 | 项目所有者 / 无 | 持久 Job 在重启时把遗留 `queued` / `running` 安全收敛为 `PROGRAM_GENERATION_INTERRUPTED`，同一幂等键返回原终态；原阻塞条件未发生。 |
-| `S3-07` 打通 Mock Provider 后端闭环 | 待开始 | Critical | 证明从场景提交到 Program/Timeline 原子提交的完整后端闭环可重复运行。 | S3-01、S3-02、S3-03、S3-04、S3-05、S3-06 | 全部后端模块和固定 Provider fixtures。 | 以 Mock 作为确定性验收，真实 Provider 只做受控 smoke，不依赖外部额度完成 CI；未明确列出的实现和功能不在本任务范围内。 | 合法场景生成至少一首可播放曲目和开场文字；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建跨模块集成测试、事务 fixture 和后端闭环验收记录。 | 核心成功流、全部阻断/降级分支和数据库快照断言。 | 待分配 / 无 | 任一模块绕过公开入口或事务不能保证原子性；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S3-07` 打通 Mock Provider 后端闭环 | 已完成 | Critical | 证明从场景提交到 Program/Timeline 原子提交的完整后端闭环可重复运行。 | S3-01、S3-02、S3-03、S3-04、S3-05、S3-06 | 全部后端模块和固定 Provider fixtures。 | 以 Mock 作为确定性验收，真实 Provider 只做受控 smoke，不依赖外部额度完成 CI；未明确列出的实现和功能不在本任务范围内。 | 合法场景生成至少一首可播放曲目和开场文字；同时满足“输入”所引用权威文档的适用验收项。 | 已创建固定 Program generation Provider fixture、跨模块 Mock 后端闭环 integration 与验收记录；未修改生产行为，不调用真实 Provider，不实现产品 UI、Browser Audio Engine 或 bundled native helper。 | `pnpm check` 通过：35 个 unit、58 个 contract、60 个 integration、1 个 component、154 个 coverage tests 与完整 build；三浏览器 6 个 E2E 和 1 个 Chromium 视觉测试通过。REST 成功流、三次搜索 fallback、Codex 错误/非法计划、全曲不可用、TTS/歌词/部分曲目降级、旧 Program 不变、事件 sequence、事务触发器回滚和数据库快照均已验证。 | 项目所有者 / [验收记录](s3-07-mock-backend-acceptance.md) | 全部模块通过公开 application API 或 REST 组合，Program/segments/timeline 与 Job 成功终态保持同事务；原阻塞条件未发生。 |
 
 ### S4｜P0 核心产品体验
 
