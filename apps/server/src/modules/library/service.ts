@@ -97,7 +97,13 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
     let providerResponse: unknown;
     try {
       providerResponse = await options.provider.search(keyword);
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof MusicProviderResponseError ||
+        error instanceof MusicProviderUnavailableError
+      ) {
+        throw error;
+      }
       throw new MusicProviderUnavailableError();
     }
     const response = parseProviderSearchResult(providerResponse);
@@ -115,7 +121,13 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       let providerResponse: unknown;
       try {
         providerResponse = await options.provider.importPlaylist(playlistRef);
-      } catch {
+      } catch (error) {
+        if (
+          error instanceof MusicProviderResponseError ||
+          error instanceof MusicProviderUnavailableError
+        ) {
+          throw error;
+        }
         throw new MusicProviderUnavailableError();
       }
       const imported = parseProviderPlaylistResult(providerResponse);
@@ -195,7 +207,13 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       let providerResponse: unknown;
       try {
         providerResponse = await options.provider.getLyrics(track.sourceTrackId);
-      } catch {
+      } catch (error) {
+        if (
+          error instanceof MusicProviderResponseError ||
+          error instanceof MusicProviderUnavailableError
+        ) {
+          throw error;
+        }
         throw new MusicProviderUnavailableError();
       }
       const lyrics = parseProviderLyricsResult(providerResponse, track.id);
@@ -246,7 +264,13 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       let providerResponse: unknown;
       try {
         providerResponse = await options.provider.resolveAudio(track.sourceTrackId);
-      } catch {
+      } catch (error) {
+        if (
+          error instanceof MusicProviderResponseError ||
+          error instanceof MusicProviderUnavailableError
+        ) {
+          throw error;
+        }
         throw new MusicProviderUnavailableError();
       }
       const resolution = parseProviderAudioResult(providerResponse, track.id, current);

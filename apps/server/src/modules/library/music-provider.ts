@@ -56,10 +56,14 @@ export type ProviderPlaylistResult = z.infer<typeof providerPlaylistResultSchema
 
 export interface MusicProvider {
   readonly source: "netease";
-  search(keyword: string): Promise<unknown>;
-  importPlaylist(playlistRef: string): Promise<unknown>;
-  getLyrics(sourceTrackId: string): Promise<unknown>;
-  resolveAudio(sourceTrackId: string): Promise<unknown>;
+  search(keyword: string, options?: MusicProviderCallOptions): Promise<unknown>;
+  importPlaylist(playlistRef: string, options?: MusicProviderCallOptions): Promise<unknown>;
+  getLyrics(sourceTrackId: string, options?: MusicProviderCallOptions): Promise<unknown>;
+  resolveAudio(sourceTrackId: string, options?: MusicProviderCallOptions): Promise<unknown>;
+}
+
+export interface MusicProviderCallOptions {
+  signal?: AbortSignal;
 }
 
 export class MusicProviderResponseError extends Error {
@@ -70,9 +74,18 @@ export class MusicProviderResponseError extends Error {
 }
 
 export class MusicProviderUnavailableError extends Error {
-  constructor() {
-    super("Music provider is unavailable");
+  readonly reason: "cancelled" | "timeout" | "unavailable";
+
+  constructor(reason: "cancelled" | "timeout" | "unavailable" = "unavailable") {
+    super(
+      reason === "cancelled"
+        ? "Music provider request was cancelled"
+        : reason === "timeout"
+          ? "Music provider request timed out"
+          : "Music provider is unavailable",
+    );
     this.name = "MusicProviderUnavailableError";
+    this.reason = reason;
   }
 }
 
