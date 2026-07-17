@@ -1,6 +1,6 @@
 # Koradio System Architecture
 
-> Status: Target Architecture · S1 runnable skeleton, S2 platform foundations and S3 backend domain/provider loop implemented
+> Status: Target Architecture · S1 runnable skeleton, S2 platform foundations, S3 backend loop and S4-01 Frontend App Shell implemented
 > Scope: Local-first Web/PWA MVP  
 > Audience: AI Coding Agents, maintainers, system architects  
 > Sources: `docs/prd.md`, `docs/user-flow.md`, `design/design.md`

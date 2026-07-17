@@ -36,7 +36,9 @@ describe("local session state", () => {
       processSecret: new Uint8Array(32).fill(9),
     });
     const issued = firstProcess.issue();
-    const modified = `${issued.accessToken.slice(0, -1)}x`;
+    const signatureStart = issued.accessToken.lastIndexOf(".") + 1;
+    const replacement = issued.accessToken[signatureStart] === "x" ? "y" : "x";
+    const modified = `${issued.accessToken.slice(0, signatureStart)}${replacement}${issued.accessToken.slice(signatureStart + 1)}`;
 
     expect(firstProcess.validate("not-a-token")).toEqual({ status: "invalid" });
     expect(firstProcess.validate(modified)).toEqual({ status: "invalid" });

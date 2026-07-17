@@ -1,10 +1,7 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-test("connects with an in-memory session and rejects persisted tokens", async ({
-  context,
-  page,
-}) => {
+test("routes the online App Shell with an in-memory session", async ({ context, page }) => {
   let bootstrapToken: string | undefined;
   page.on("response", async (response) => {
     if (
@@ -25,12 +22,13 @@ test("connects with an in-memory session and rejects persisted tokens", async ({
   await page.addInitScript(() => {
     localStorage.setItem("koradio-session-token", "persisted-token-must-be-rejected");
   });
-  await page.goto("http://127.0.0.1:49373/");
+  await page.goto("http://127.0.0.1:49373/radio");
 
-  await expect(page.getByRole("heading", { name: "声音系统，等待节目。" })).toBeVisible();
-  await expect(page.getByTestId("health-status")).toHaveText("已连接");
-  await expect(page.getByTestId("event-status")).toHaveText("已连接");
-  await expect(page.getByText("MOCK", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Radio" })).toBeVisible();
+  await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:49373/settings");
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeFocused();
   await expect.poll(() => bootstrapToken).toBeDefined();
 
   if (bootstrapToken === undefined) {
@@ -64,7 +62,7 @@ test("connects with an in-memory session and rejects persisted tokens", async ({
   }));
   const serializedBrowserState = JSON.stringify(browserState);
   expect(serializedBrowserState).not.toContain(bootstrapToken);
-  expect(browserState.href).toBe("http://127.0.0.1:49373/");
+  expect(browserState.href).toBe("http://127.0.0.1:49373/settings");
   expect(browserState.localStorage).toEqual({
     "koradio-session-token": "persisted-token-must-be-rejected",
   });
@@ -73,4 +71,55 @@ test("connects with an in-memory session and rejects persisted tokens", async ({
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);
+});
+
+test("recovers from a disconnected Local Service through read-only Settings", async ({ page }) => {
+  await page.route("**/api/v1/session/bootstrap", async (route) => route.abort());
+  await page.goto("http://127.0.0.1:49373/radio");
+
+  await expect(page.getByRole("heading", { name: "Koradio 服务未连接" })).toBeVisible();
+  await page.getByRole("button", { name: "前往 Settings" }).click();
+  await expect(page.getByRole("heading", { name: "设置暂时只读" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "保存配置" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "测试连接" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "迁移数据目录" })).toBeDisabled();
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+
+  await page.unroute("**/api/v1/session/bootstrap");
+  await page.getByRole("button", { name: "重新连接" }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:49373/radio");
+  await expect(page.getByRole("heading", { name: "Radio" })).toBeVisible();
+  await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
+});
+
+test("serves only the static App Shell from cache while fully offline", async ({
+  browserName,
+  context,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "CacheStorage inspection is covered once in Chromium");
+
+  await page.goto("http://127.0.0.1:49373/radio");
+  await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
+  await page.evaluate(async () => navigator.serviceWorker.ready);
+  await page.reload();
+  await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
+
+  const cachedUrls = await page.evaluate(async () => {
+    const names = await caches.keys();
+    const requests = await Promise.all(names.map(async (name) => (await caches.open(name)).keys()));
+    return requests.flat().map((request) => request.url);
+  });
+  expect(cachedUrls.some((url) => url.includes("/api/v1"))).toBe(false);
+
+  await context.setOffline(true);
+  try {
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Koradio 服务未连接" })).toBeVisible();
+    await expect(page.getByText("APP SHELL · READ ONLY")).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
 });

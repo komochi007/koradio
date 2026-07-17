@@ -2,7 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./app.js";
-import "./styles.css";
+import { registerAppShellServiceWorker } from "./app/service-worker.js";
+import "./app/app.css";
 
 const root = document.querySelector<HTMLElement>("#root");
 if (root === null) {
@@ -14,3 +15,5 @@ createRoot(root).render(
     <App />
   </StrictMode>,
 );
+
+void registerAppShellServiceWorker();

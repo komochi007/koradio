@@ -1473,6 +1473,9 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       root: options.config.webRoot,
       wildcard: false,
     });
+    for (const appShellRoute of ["/radio", "/library", "/taste", "/programs", "/settings"]) {
+      app.get(appShellRoute, (_request, reply) => reply.sendFile("index.html"));
+    }
   }
 
   await app.ready();
