@@ -2,6 +2,7 @@ import type { HealthResponse, ProfileContext } from "@koradio/contracts";
 import type { ReactElement, RefObject } from "react";
 
 import type { AudioEngineFacade } from "../audio/index.js";
+import { LibraryExperience } from "../features/library/index.js";
 import { RadioExperience } from "../features/radio/index.js";
 import { CurrentProgramFeedback } from "../features/feedback/index.js";
 import type { AppEventBus } from "../shared/events.js";
@@ -183,6 +184,22 @@ export function OnlineShellPage({
         key={current.profile.id}
         navigate={navigate}
         onCurrentChanged={onCurrentChanged}
+        onOpenProfiles={onOpenProfiles}
+        reconnecting={reconnecting}
+        transport={transport}
+      />
+    );
+  }
+
+  if (route.id === "library") {
+    return (
+      <LibraryExperience
+        audioEngine={audioEngine}
+        current={current}
+        headingRef={headingRef}
+        health={health}
+        key={current.profile.id}
+        navigate={navigate}
         onOpenProfiles={onOpenProfiles}
         reconnecting={reconnecting}
         transport={transport}

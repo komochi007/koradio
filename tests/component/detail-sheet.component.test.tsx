@@ -95,10 +95,12 @@ function audioEngine(pause = vi.fn(() => Promise.resolve())): AudioEngineFacade 
     next: vi.fn(() => Promise.resolve()),
     pause,
     play: vi.fn(() => Promise.resolve()),
+    previewTrack: vi.fn(() => Promise.resolve()),
     prepareForProfileSwitch: vi.fn(() => Promise.resolve()),
     previous: vi.fn(() => Promise.resolve()),
     seek: vi.fn(() => Promise.resolve()),
     setVolume: vi.fn(),
+    stopPreview: vi.fn(() => Promise.resolve()),
     subscribe: vi.fn(() => () => undefined),
   };
 }

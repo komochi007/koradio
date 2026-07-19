@@ -348,6 +348,139 @@ describe("Audio Engine", () => {
     await engine.destroy();
   });
 
+  it("previews through the single audio element and restores the program paused", async () => {
+    const audio = new FakeAudio();
+    const transport = createTransport();
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport,
+    });
+    await engine.loadProgram(program, { autoplay: true });
+    audio.currentTime = 4;
+    audio.emit("timeupdate");
+
+    await engine.previewTrack({
+      trackId: program.tracks[1]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      durationMs: 20_000,
+    });
+    expect(latestCheckpointRequest(transport)).toMatchObject({
+      timelineItemId: program.timeline[0]?.id,
+      positionMs: 4_000,
+      status: "paused",
+    });
+    expect(audio.src).toBe("https://media.example.test/preview.mp3");
+    expect(engine.getSnapshot()).toMatchObject({
+      state: "paused",
+      positionMs: 4_000,
+      preview: {
+        trackId: program.tracks[1]?.id,
+        state: "playing",
+      },
+    });
+
+    audio.currentTime = 1.5;
+    audio.emit("timeupdate");
+    expect(engine.getSnapshot()).toMatchObject({
+      positionMs: 4_000,
+      preview: { positionMs: 1_500 },
+    });
+    audio.emit("ended");
+    expect(engine.getSnapshot()).toMatchObject({
+      state: "paused",
+      currentIndex: 0,
+      positionMs: 4_000,
+    });
+    expect(engine.getSnapshot().preview).toBeUndefined();
+    expect(audio.src).toBe("https://media.example.test/first.mp3");
+    expect(audio.currentTime).toBe(4);
+
+    await engine.previewTrack({
+      trackId: program.tracks[1]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      durationMs: 20_000,
+    });
+    await engine.stopPreview();
+    expect(engine.getSnapshot().preview).toBeUndefined();
+    expect(engine.getSnapshot()).toMatchObject({ state: "paused", positionMs: 4_000 });
+  });
+
+  it("keeps preview failures recoverable and never advances the program", async () => {
+    const audio = new FakeAudio();
+    const lease = new FakeLease();
+    const engine = createAudioEngine({
+      audio,
+      lease,
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: false });
+    audio.playResult = () => Promise.reject(new DOMException("blocked", "NotAllowedError"));
+
+    await engine.previewTrack({
+      trackId: program.tracks[1]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      durationMs: 20_000,
+    });
+    expect(engine.getSnapshot()).toMatchObject({
+      currentIndex: 0,
+      state: "paused",
+      preview: { state: "paused", mediaError: "autoplay_blocked" },
+    });
+
+    audio.playResult = () => Promise.resolve();
+    await engine.previewTrack({
+      trackId: program.tracks[1]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      durationMs: 20_000,
+    });
+    audio.emit("waiting");
+    expect(engine.getSnapshot().preview?.state).toBe("loading");
+    audio.emit("playing");
+    expect(engine.getSnapshot().preview?.state).toBe("playing");
+    audio.fail();
+    expect(engine.getSnapshot()).toMatchObject({
+      currentIndex: 0,
+      state: "paused",
+      preview: { state: "failed", mediaError: "media_failed" },
+    });
+    expect(audio.src).toBe("https://media.example.test/first.mp3");
+    await engine.stopPreview();
+    expect(engine.getSnapshot().preview).toBeUndefined();
+
+    audio.playResult = () => Promise.reject(new Error("decoder failed"));
+    await engine.previewTrack({
+      trackId: program.tracks[1]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      durationMs: 20_000,
+    });
+    expect(engine.getSnapshot()).toMatchObject({
+      currentIndex: 0,
+      state: "paused",
+      preview: { state: "failed", mediaError: "media_failed" },
+    });
+    await engine.stopPreview();
+
+    let resolvePreview: (() => void) | undefined;
+    audio.playResult = () =>
+      new Promise<void>((resolve) => {
+        resolvePreview = resolve;
+      });
+    lease.setState({ ownership: "passive", profileId });
+    const pendingPreview = engine.previewTrack({
+      trackId: program.tracks[1]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      durationMs: 20_000,
+    });
+    lease.setState({ ownership: "passive", profileId });
+    resolvePreview?.();
+    await pendingPreview;
+    expect(audio.pause).toHaveBeenCalled();
+    expect(engine.getSnapshot().preview).toBeUndefined();
+  });
+
   it("autoplays a fresh program and advances through ended segments to completion", async () => {
     const audio = new FakeAudio();
     const engine = createAudioEngine({

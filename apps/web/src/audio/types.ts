@@ -4,6 +4,20 @@ export type AudioOwnership = "active" | "passive";
 export type AudioPlaybackState =
   "idle" | "ready" | "playing" | "paused" | "buffering" | "completed" | "failed";
 
+export interface AudioPreviewSnapshot {
+  trackId: string;
+  state: "loading" | "playing" | "paused" | "failed";
+  positionMs: number;
+  durationMs: number;
+  mediaError: "autoplay_blocked" | "media_failed" | undefined;
+}
+
+export interface PreviewTrackOptions {
+  trackId: string;
+  resolvedAudioRef: string;
+  durationMs: number;
+}
+
 export interface AudioEngineSnapshot {
   ownership: AudioOwnership;
   state: AudioPlaybackState;
@@ -18,6 +32,7 @@ export interface AudioEngineSnapshot {
   leaseEpoch: number | undefined;
   mediaError: "autoplay_blocked" | "media_failed" | "queue_exhausted" | undefined;
   checkpointError: boolean;
+  preview?: AudioPreviewSnapshot | undefined;
 }
 
 export interface LoadProgramOptions {
@@ -36,6 +51,8 @@ export interface AudioEngineFacade {
   previous(): Promise<void>;
   seek(positionMs: number): Promise<void>;
   setVolume(volume: number): void;
+  previewTrack(options: PreviewTrackOptions): Promise<void>;
+  stopPreview(): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
 

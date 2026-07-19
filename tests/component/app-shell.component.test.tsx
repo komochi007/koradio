@@ -174,10 +174,12 @@ function createTestAudioEngine(): AudioEngineFacade {
     next: () => Promise.resolve(),
     pause: () => Promise.resolve(),
     play: () => Promise.resolve(),
+    previewTrack: () => Promise.resolve(),
     prepareForProfileSwitch: () => Promise.resolve(),
     previous: () => Promise.resolve(),
     seek: () => Promise.resolve(),
     setVolume() {},
+    stopPreview: () => Promise.resolve(),
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

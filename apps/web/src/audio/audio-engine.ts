@@ -13,6 +13,7 @@ import type {
   AudioPlaybackState,
   LeasePlaybackSnapshot,
   LoadProgramOptions,
+  PreviewTrackOptions,
 } from "./types.js";
 
 interface AudioElementLike {
@@ -42,6 +43,13 @@ interface CreateAudioEngineOptions {
   now?: () => number;
   preloader?: AudioPreloader;
   transport: ServiceTransport;
+}
+
+interface PreviewContext {
+  trackId: string;
+  durationMs: number;
+  returnIndex: number | undefined;
+  returnPositionMs: number;
 }
 
 const initialSnapshot: AudioEngineSnapshot = {
@@ -103,9 +111,12 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   let lastCheckpointAt = 0;
   let loadVersion = 0;
   let expectedSource: string | undefined;
+  let previewContext: PreviewContext | undefined;
   let destroyed = false;
 
   async function yieldPlayback(): Promise<void> {
+    previewContext = undefined;
+    update({ preview: undefined });
     await checkpoint(snapshot.state === "completed" ? "completed" : "paused");
     stopMedia();
   }
@@ -118,6 +129,18 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
 
   function currentItem(): PlaybackTimelineItem | undefined {
     return program?.timeline[currentIndex];
+  }
+
+  function activePreviewTrackId(): string | undefined {
+    return previewContext?.trackId;
+  }
+
+  function isCurrentPreview(version: number, trackId: string): boolean {
+    return (
+      version === loadVersion &&
+      activePreviewTrackId() === trackId &&
+      lease.getState().ownership === "active"
+    );
   }
 
   function remoteSnapshot(value: LeasePlaybackSnapshot): AudioEngineSnapshot {
@@ -211,8 +234,115 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       durationMs: item.durationMs,
       volume: audio.volume,
       mediaError: undefined,
+      preview: undefined,
     });
     preloadNext();
+  }
+
+  function restoreAfterPreview(failedPreview?: AudioEngineSnapshot["preview"]): void {
+    const returning = previewContext;
+    if (returning === undefined) return;
+    previewContext = undefined;
+    stopMedia();
+    update({ preview: undefined });
+    if (program !== undefined && returning.returnIndex !== undefined) {
+      setCurrentItem(returning.returnIndex, returning.returnPositionMs, "paused");
+    }
+    if (failedPreview !== undefined) {
+      update({ preview: failedPreview });
+    }
+  }
+
+  async function previewTrack(preview: PreviewTrackOptions): Promise<void> {
+    if (lease.getState().ownership !== "active") {
+      await lease.requestTakeover();
+      update({
+        ownership: "active",
+        leaseEpoch: lease.getState().epoch,
+      });
+    }
+    if (lease.getState().ownership !== "active") return;
+    if (previewContext === undefined) {
+      const item = currentItem();
+      if (item !== undefined) {
+        audio.pause();
+        update({ state: "paused" });
+        await checkpoint("paused");
+      }
+      previewContext = {
+        trackId: preview.trackId,
+        durationMs: preview.durationMs,
+        returnIndex: item === undefined ? undefined : currentIndex,
+        returnPositionMs: item === undefined ? 0 : snapshot.positionMs,
+      };
+    } else {
+      previewContext = {
+        ...previewContext,
+        trackId: preview.trackId,
+        durationMs: preview.durationMs,
+      };
+    }
+    loadVersion += 1;
+    const version = loadVersion;
+    audio.pause();
+    audio.src = preview.resolvedAudioRef;
+    expectedSource = audio.src;
+    audio.preload = "auto";
+    audio.load();
+    audio.currentTime = 0;
+    preloader.clear();
+    update({
+      preview: {
+        trackId: preview.trackId,
+        state: "loading",
+        positionMs: 0,
+        durationMs: preview.durationMs,
+        mediaError: undefined,
+      },
+    });
+    try {
+      await audio.play();
+      if (!isCurrentPreview(version, preview.trackId)) {
+        audio.pause();
+        return;
+      }
+      update({
+        preview: {
+          trackId: preview.trackId,
+          state: "playing",
+          positionMs: 0,
+          durationMs: preview.durationMs,
+          mediaError: undefined,
+        },
+      });
+    } catch (error) {
+      if (!isCurrentPreview(version, preview.trackId)) {
+        audio.pause();
+        return;
+      }
+      const autoplayBlocked = error instanceof DOMException && error.name === "NotAllowedError";
+      update({
+        preview: {
+          trackId: preview.trackId,
+          state: autoplayBlocked ? "paused" : "failed",
+          positionMs: 0,
+          durationMs: preview.durationMs,
+          mediaError: autoplayBlocked ? "autoplay_blocked" : "media_failed",
+        },
+      });
+      if (!autoplayBlocked) {
+        restoreAfterPreview(snapshot.preview);
+      }
+    }
+  }
+
+  function stopPreview(): Promise<void> {
+    if (previewContext === undefined) {
+      if (snapshot.preview !== undefined) update({ preview: undefined });
+      return Promise.resolve();
+    }
+    restoreAfterPreview();
+    return Promise.resolve();
   }
 
   async function checkpoint(status?: "playing" | "paused" | "completed" | "failed"): Promise<void> {
@@ -362,6 +492,15 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   }
 
   audio.addEventListener("timeupdate", () => {
+    if (previewContext !== undefined && snapshot.preview !== undefined) {
+      update({
+        preview: {
+          ...snapshot.preview,
+          positionMs: clamp(Math.round(audio.currentTime * 1000), 0, previewContext.durationMs),
+        },
+      });
+      return;
+    }
     const item = currentItem();
     if (
       expectedSource === undefined ||
@@ -376,21 +515,41 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     }
   });
   audio.addEventListener("waiting", () => {
+    if (previewContext !== undefined && snapshot.preview !== undefined) {
+      update({ preview: { ...snapshot.preview, state: "loading" } });
+      return;
+    }
     if (expectedSource !== undefined && snapshot.state === "playing") {
       update({ state: "buffering" });
     }
   });
   audio.addEventListener("playing", () => {
+    if (previewContext !== undefined && snapshot.preview !== undefined) {
+      update({ preview: { ...snapshot.preview, state: "playing" } });
+      return;
+    }
     if (expectedSource !== undefined && lease.getState().ownership === "active") {
       update({ state: "playing" });
     }
   });
   audio.addEventListener("ended", () => {
+    if (previewContext !== undefined) {
+      restoreAfterPreview();
+      return;
+    }
     if (expectedSource !== undefined && lease.getState().ownership === "active") {
       void advance("ended");
     }
   });
   audio.addEventListener("error", () => {
+    if (previewContext !== undefined && snapshot.preview !== undefined && audio.error !== null) {
+      restoreAfterPreview({
+        ...snapshot.preview,
+        state: "failed",
+        mediaError: "media_failed",
+      });
+      return;
+    }
     if (
       expectedSource !== undefined &&
       lease.getState().ownership === "active" &&
@@ -403,8 +562,9 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
 
   lease.subscribe((leaseState) => {
     if (leaseState.ownership === "passive") {
+      previewContext = undefined;
       stopMedia();
-      update({ ownership: "passive", leaseEpoch: undefined });
+      update({ ownership: "passive", leaseEpoch: undefined, preview: undefined });
     } else {
       update({ ownership: "active", leaseEpoch: leaseState.epoch });
     }
@@ -451,6 +611,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     },
     getSnapshot: () => snapshot,
     async loadProgram(nextProgram, loadOptions: LoadProgramOptions) {
+      await stopPreview();
       await this.activateProfile(nextProgram.program.profileId);
       if (program?.program.id === nextProgram.program.id) return;
       if (program !== undefined && lease.getState().ownership === "active") await yieldPlayback();
@@ -478,6 +639,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       await checkpoint("paused");
     },
     play: () => playCurrent(true),
+    previewTrack,
     async prepareForProfileSwitch() {
       await yieldPlayback();
       lease.release();
@@ -510,6 +672,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       audio.volume = next;
       update({ volume: next });
     },
+    stopPreview,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
