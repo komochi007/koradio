@@ -1,4 +1,4 @@
-import { QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CurrentProfileResponse,
   ProfileContext,
@@ -17,7 +17,7 @@ import { SettingsExperience } from "../features/device-settings/index.js";
 import { applyTheme } from "../features/profile-preferences/index.js";
 import { getCurrentProfile, getProfiles, ProfileExperience } from "../features/profiles/index.js";
 import { ConnectingPage, OfflinePage, OfflineSettingsPage, OnlineShellPage } from "./pages.js";
-import { createAppQueryClient } from "./query-client.js";
+import { createAppQueryClient, QueryClientProvider } from "./query-client.js";
 import { useAppRouter } from "./router.js";
 import { useServiceConnection } from "./use-service-connection.js";
 

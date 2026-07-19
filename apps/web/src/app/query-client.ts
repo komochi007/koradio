@@ -1,5 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 
+export { QueryClientProvider } from "@tanstack/react-query";
+
 export const serviceHealthQueryKey = ["service-health"] as const;
 
 export function createAppQueryClient(): QueryClient {

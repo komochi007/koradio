@@ -8,6 +8,7 @@ import {
 import { radioTokens } from "@koradio/design-tokens";
 import {
   useEffect,
+  useRef,
   useState,
   type CSSProperties,
   type ReactElement,
@@ -24,6 +25,7 @@ import { applyTheme, updateProfilePreferences } from "../profile-preferences/ind
 import { Brand, PrimaryNavigation } from "../../shared/ui.js";
 import type { AppEventBus } from "../../shared/events.js";
 import type { ServiceTransport } from "../../shared/transport.js";
+import { DetailSheet, DetailSheetBoundary } from "./detail-sheet.js";
 import { useRadioProgram, type RadioViewState } from "./use-radio-program.js";
 import "./radio.css";
 
@@ -460,6 +462,10 @@ export function RadioExperience({
   const radio = useRadioProgram({ eventBus, profileId: current.profile.id, transport });
   const audio = useAudioSnapshot(audioEngine);
   const [themeError, setThemeError] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailUnavailable, setDetailUnavailable] = useState(false);
+  const [detailError, setDetailError] = useState(false);
+  const detailOpenerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     headingRef.current?.focus();
   }, [headingRef]);
@@ -544,8 +550,19 @@ export function RadioExperience({
         <button
           className={`radio-dj-status radio-dj-status--${radio.viewState}`}
           type="button"
-          aria-label="节目详情将在 Detail Sheet 接入后可用"
-          disabled
+          aria-expanded={detailOpen}
+          aria-haspopup="dialog"
+          aria-label={radio.program === null ? "查看节目详情" : "打开当前节目详情"}
+          onClick={() => {
+            if (radio.program === null) {
+              setDetailUnavailable(true);
+              return;
+            }
+            setDetailError(false);
+            setDetailUnavailable(false);
+            setDetailOpen(true);
+          }}
+          ref={detailOpenerRef}
         >
           <span>
             <i aria-hidden="true" />
@@ -553,9 +570,11 @@ export function RadioExperience({
             <span>
               {radio.viewState === "generating"
                 ? "THINKING"
-                : radio.viewState === "playing"
-                  ? "PLAYING"
-                  : "LIVE"}
+                : audio.currentItem?.kind === "dj"
+                  ? "SPEAKING"
+                  : radio.viewState === "playing"
+                    ? "PLAYING"
+                    : "LIVE"}
             </span>
           </span>
           <b aria-hidden="true">⌃</b>
@@ -647,7 +666,39 @@ export function RadioExperience({
           播放继续，但历史记录暂未保存
         </p>
       )}
+      {detailUnavailable && (
+        <p className="radio-toast radio-toast--error" role="status">
+          先生成一段电台，再查看节目详情
+        </p>
+      )}
+      {detailError && (
+        <p className="radio-toast radio-toast--error" role="status">
+          节目详情暂时不可用，播放继续
+        </p>
+      )}
       <PrimaryNavigation active="radio" onNavigate={navigate} />
+      {detailOpen && radio.program !== null && (
+        <DetailSheetBoundary
+          key={radio.program.program.id}
+          onFailure={() => {
+            setDetailOpen(false);
+            setDetailError(true);
+            window.queueMicrotask(() => detailOpenerRef.current?.focus());
+          }}
+        >
+          <DetailSheet
+            audio={audio}
+            audioEngine={audioEngine}
+            onClosed={() => {
+              setDetailOpen(false);
+              window.queueMicrotask(() => detailOpenerRef.current?.focus());
+            }}
+            profileId={current.profile.id}
+            program={radio.program}
+            transport={transport}
+          />
+        </DetailSheetBoundary>
+      )}
     </div>
   );
 }
