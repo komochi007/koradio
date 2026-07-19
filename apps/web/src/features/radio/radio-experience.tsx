@@ -15,6 +15,11 @@ import {
   type SyntheticEvent,
 } from "react";
 
+import {
+  type AudioEngineFacade,
+  type AudioEngineSnapshot,
+  useAudioSnapshot,
+} from "../../audio/index.js";
 import { applyTheme, updateProfilePreferences } from "../profile-preferences/index.js";
 import { Brand, PrimaryNavigation } from "../../shared/ui.js";
 import type { AppEventBus } from "../../shared/events.js";
@@ -23,6 +28,7 @@ import { useRadioProgram, type RadioViewState } from "./use-radio-program.js";
 import "./radio.css";
 
 interface RadioExperienceProps {
+  audioEngine: AudioEngineFacade;
   current: ProfileContext;
   eventBus: AppEventBus;
   headingRef: RefObject<HTMLHeadingElement | null>;
@@ -40,6 +46,7 @@ type IconName =
   | "more"
   | "next"
   | "pause"
+  | "play"
   | "previous"
   | "queue"
   | "send"
@@ -53,6 +60,7 @@ const iconPaths: Record<IconName, ReactElement> = {
   more: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
   next: <path d="m7 5 9 7-9 7Zm10 0v14" />,
   pause: <path d="M8 5v14m8-14v14" />,
+  play: <path d="m8 5 11 7-11 7Z" />,
   previous: <path d="m17 5-9 7 9 7ZM7 5v14" />,
   queue: <path d="M4 7h11M4 12h11M4 17h11m4-10v10l3-2" />,
   send: <path d="m4 5 16 7-16 7 3-7Zm3 7h13" />,
@@ -162,10 +170,14 @@ function RadioTime({
 }
 
 function RadioMain({
+  audioEngine,
+  audio,
   program,
   stage,
   state,
 }: {
+  audioEngine: AudioEngineFacade;
+  audio: AudioEngineSnapshot;
   program: ProgramDetail | null;
   stage: ProgramGenerationStage | undefined;
   state: RadioViewState;
@@ -193,7 +205,12 @@ function RadioMain({
       </section>
     );
   }
-  const current = orderedTracks(program)[0];
+  const tracks = new Map(program.tracks.map((track) => [track.id, track]));
+  const current =
+    audio.currentItem?.kind === "track" ? tracks.get(audio.currentItem.trackId) : undefined;
+  const active = audio.ownership === "active";
+  const playing = audio.state === "playing" || audio.state === "buffering";
+  const progress = audio.durationMs === 0 ? 0 : (audio.positionMs / audio.durationMs) * 100;
   return (
     <section className="radio-main radio-main--playing" aria-label="当前节目">
       <article className="radio-player">
@@ -217,23 +234,61 @@ function RadioMain({
             </button>
           </div>
         </div>
-        <div className="radio-player__progress" aria-label="播放进度将在 Audio Engine 接入后可用">
-          <span>00:00</span>
-          <i />
-          <span>{formatDuration(current?.durationMs ?? 1)}</span>
+        <div className="radio-player__progress">
+          <span>{formatDuration(audio.positionMs)}</span>
+          <input
+            aria-label="播放进度"
+            type="range"
+            min={0}
+            max={Math.max(1, audio.durationMs)}
+            step={1000}
+            value={audio.positionMs}
+            disabled={!active}
+            style={{ "--radio-progress": `${String(progress)}%` } as CSSProperties}
+            onChange={(event) => {
+              void audioEngine.seek(Number(event.target.value));
+            }}
+          />
+          <span>{formatDuration(audio.durationMs || current?.durationMs || 1)}</span>
         </div>
-        <div className="radio-player__controls" aria-label="播放控制将在 Audio Engine 接入后可用">
-          {(["volume", "previous", "pause", "next", "queue"] as const).map((name) => (
-            <button
-              className={name === "pause" ? "radio-player__pause" : ""}
-              key={name}
-              type="button"
-              aria-label={`${name}，将在 Audio Engine 接入后可用`}
-              disabled
-            >
-              <Icon name={name} />
-            </button>
-          ))}
+        <div className="radio-player__controls" aria-label="播放控制">
+          <button
+            type="button"
+            aria-label={audio.volume === 0 ? "恢复音量" : "静音"}
+            disabled={!active}
+            onClick={() => {
+              audioEngine.setVolume(audio.volume === 0 ? 1 : 0);
+            }}
+          >
+            <Icon name="volume" />
+          </button>
+          <button
+            type="button"
+            aria-label="上一段"
+            disabled={!active}
+            onClick={() => void audioEngine.previous()}
+          >
+            <Icon name="previous" />
+          </button>
+          <button
+            className="radio-player__pause"
+            type="button"
+            aria-label={active ? (playing ? "暂停" : "播放") : "接管并播放"}
+            onClick={() => void (active && playing ? audioEngine.pause() : audioEngine.play())}
+          >
+            <Icon name={playing ? "pause" : "play"} />
+          </button>
+          <button
+            type="button"
+            aria-label="下一段"
+            disabled={!active}
+            onClick={() => void audioEngine.next()}
+          >
+            <Icon name="next" />
+          </button>
+          <button type="button" aria-label="队列管理将在后续任务接入" disabled>
+            <Icon name="queue" />
+          </button>
         </div>
       </article>
     </section>
@@ -241,9 +296,11 @@ function RadioMain({
 }
 
 function RadioQueue({
+  currentTrackId,
   program,
   state,
 }: {
+  currentTrackId: string | undefined;
   program: ProgramDetail | null;
   state: RadioViewState;
 }): ReactElement {
@@ -276,33 +333,36 @@ function RadioQueue({
         </div>
       ) : (
         <ol>
-          {tracks.map((track, index) => (
-            <li
-              className={
-                index === 0
-                  ? "radio-queue__track radio-queue__track--current"
-                  : "radio-queue__track"
-              }
-              key={track.id}
-            >
-              <span>
-                {index === 0 ? (
-                  <i className="radio-equalizer" aria-label="当前曲目" role="img">
-                    <b />
-                    <b />
-                    <b />
-                  </i>
-                ) : (
-                  String(index + 1).padStart(2, "0")
-                )}
-              </span>
-              <span>
-                <strong>{track.title}</strong>
-                <small>{track.artist}</small>
-              </span>
-              <span>{formatDuration(track.durationMs)}</span>
-            </li>
-          ))}
+          {tracks.map((track, index) => {
+            const isCurrent = track.id === currentTrackId;
+            return (
+              <li
+                className={
+                  isCurrent
+                    ? "radio-queue__track radio-queue__track--current"
+                    : "radio-queue__track"
+                }
+                key={track.id}
+              >
+                <span>
+                  {isCurrent ? (
+                    <i className="radio-equalizer" aria-label="当前曲目" role="img">
+                      <b />
+                      <b />
+                      <b />
+                    </i>
+                  ) : (
+                    String(index + 1).padStart(2, "0")
+                  )}
+                </span>
+                <span>
+                  <strong>{track.title}</strong>
+                  <small>{track.artist}</small>
+                </span>
+                <span>{formatDuration(track.durationMs)}</span>
+              </li>
+            );
+          })}
         </ol>
       )}
     </section>
@@ -387,6 +447,7 @@ function RadioDialogue({
 }
 
 export function RadioExperience({
+  audioEngine,
   current,
   eventBus,
   headingRef,
@@ -397,10 +458,20 @@ export function RadioExperience({
   transport,
 }: RadioExperienceProps): ReactElement {
   const radio = useRadioProgram({ eventBus, profileId: current.profile.id, transport });
+  const audio = useAudioSnapshot(audioEngine);
   const [themeError, setThemeError] = useState(false);
   useEffect(() => {
     headingRef.current?.focus();
   }, [headingRef]);
+  useEffect(() => {
+    if (radio.program !== null) {
+      void audioEngine.loadProgram(radio.program, {
+        autoplay: radio.autoplayProgramId === radio.program.program.id,
+      });
+    } else {
+      void audioEngine.activateProfile(current.profile.id);
+    }
+  }, [audioEngine, current.profile.id, radio.autoplayProgramId, radio.program]);
   const themeMutation = useMutation({
     mutationFn: (themeMode: "dark" | "light") =>
       updateProfilePreferences(transport, current.profile.id, { themeMode }),
@@ -456,8 +527,20 @@ export function RadioExperience({
       </header>
       <main className="radio-scroll" aria-busy={radio.initialLoading || undefined}>
         <RadioTime headingRef={headingRef} state={radio.viewState} />
-        <RadioMain program={radio.program} stage={radio.stage} state={radio.viewState} />
-        <RadioQueue program={radio.program} state={radio.viewState} />
+        <RadioMain
+          audio={audio}
+          audioEngine={audioEngine}
+          program={radio.program}
+          stage={radio.stage}
+          state={radio.viewState}
+        />
+        <RadioQueue
+          currentTrackId={
+            audio.currentItem?.kind === "track" ? audio.currentItem.trackId : undefined
+          }
+          program={radio.program}
+          state={radio.viewState}
+        />
         <button
           className={`radio-dj-status radio-dj-status--${radio.viewState}`}
           type="button"
@@ -548,6 +631,20 @@ export function RadioExperience({
       {themeError && (
         <p className="radio-toast radio-toast--error" role="status">
           主题保存失败，已恢复到之前的主题
+        </p>
+      )}
+      {audio.mediaError !== undefined && (
+        <p className="radio-toast radio-toast--error" role="status">
+          {audio.mediaError === "autoplay_blocked"
+            ? "浏览器阻止了自动播放，请按播放继续"
+            : audio.mediaError === "queue_exhausted"
+              ? "当前队列无法继续播放，请重新生成节目"
+              : "当前音频无法播放，正在尝试下一段"}
+        </p>
+      )}
+      {audio.checkpointError && (
+        <p className="radio-toast radio-toast--error" role="status">
+          播放继续，但历史记录暂未保存
         </p>
       )}
       <PrimaryNavigation active="radio" onNavigate={navigate} />

@@ -11,6 +11,7 @@ import type {
 import { afterEach, describe, expect, it, vi, type MockedFunction } from "vitest";
 
 import { App } from "../../apps/web/src/app/app.js";
+import type { AudioEngineFacade, AudioEngineSnapshot } from "../../apps/web/src/audio/index.js";
 import type { ServiceConnection, ServiceTransport } from "../../apps/web/src/shared/transport.js";
 
 const health: HealthResponse = {
@@ -125,6 +126,62 @@ function createHealthEvent(): V1Event {
     sequence: 1,
     occurredAt: "2026-07-17T08:00:00.000Z",
     payload: health,
+  };
+}
+
+function createTestAudioEngine(): AudioEngineFacade {
+  let snapshot: AudioEngineSnapshot = {
+    ownership: "active",
+    state: "idle",
+    profileId: undefined,
+    programId: undefined,
+    currentItem: undefined,
+    currentIndex: 0,
+    itemCount: 0,
+    positionMs: 0,
+    durationMs: 0,
+    volume: 1,
+    leaseEpoch: 1,
+    mediaError: undefined,
+    checkpointError: false,
+  };
+  const listeners = new Set<() => void>();
+  const publish = (): void => {
+    for (const listener of listeners) listener();
+  };
+  return {
+    activateProfile(nextProfileId) {
+      snapshot = { ...snapshot, profileId: nextProfileId };
+      publish();
+      return Promise.resolve();
+    },
+    destroy: () => Promise.resolve(),
+    getSnapshot: () => snapshot,
+    loadProgram(nextProgram) {
+      const currentItem = nextProgram.timeline[0];
+      snapshot = {
+        ...snapshot,
+        state: "paused",
+        profileId: nextProgram.program.profileId,
+        programId: nextProgram.program.id,
+        currentItem,
+        itemCount: nextProgram.timeline.length,
+        durationMs: currentItem?.durationMs ?? 0,
+      };
+      publish();
+      return Promise.resolve();
+    },
+    next: () => Promise.resolve(),
+    pause: () => Promise.resolve(),
+    play: () => Promise.resolve(),
+    prepareForProfileSwitch: () => Promise.resolve(),
+    previous: () => Promise.resolve(),
+    seek: () => Promise.resolve(),
+    setVolume() {},
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
   };
 }
 
@@ -361,7 +418,7 @@ afterEach(() => {
 describe("App Shell", () => {
   it("establishes an online session and provides keyboard-routable navigation", async () => {
     window.history.replaceState(null, "", "/radio");
-    render(<App transport={createOnlineTransport()} />);
+    render(<App audioEngine={createTestAudioEngine()} transport={createOnlineTransport()} />);
 
     const heading = await screen.findByRole("heading", { name: "Radio" });
     expect(screen.getAllByText("LIVE").length).toBeGreaterThan(0);
@@ -379,7 +436,7 @@ describe("App Shell", () => {
 
   it("exposes only read-only Settings controls while the service is offline", async () => {
     window.history.replaceState(null, "", "/radio");
-    render(<App transport={createOfflineTransport()} />);
+    render(<App audioEngine={createTestAudioEngine()} transport={createOfflineTransport()} />);
 
     expect(await screen.findByRole("heading", { name: "Koradio 服务未连接" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "前往 Settings" }));
@@ -396,7 +453,7 @@ describe("App Shell", () => {
   it("reconnects the event stream after a connection failure", async () => {
     window.history.replaceState(null, "", "/radio");
     const transport = createReconnectingTransport();
-    render(<App transport={transport} />);
+    render(<App audioEngine={createTestAudioEngine()} transport={transport} />);
 
     await waitFor(
       () => {
@@ -410,7 +467,7 @@ describe("App Shell", () => {
   it("enters the offline recovery page when the connected service stops", async () => {
     window.history.replaceState(null, "", "/radio");
     const transport = createDisconnectingTransport();
-    render(<App transport={transport} />);
+    render(<App audioEngine={createTestAudioEngine()} transport={transport} />);
 
     expect(await screen.findByRole("heading", { name: "Radio" })).toBeTruthy();
     act(() => {
@@ -423,7 +480,7 @@ describe("App Shell", () => {
   it("creates and selects the first local profile before entering Radio", async () => {
     window.history.replaceState(null, "", "/radio");
     const transport = createOnlineTransport({ empty: true });
-    render(<App transport={transport} />);
+    render(<App audioEngine={createTestAudioEngine()} transport={transport} />);
 
     expect(await screen.findByRole("heading", { name: "创建电台档案" })).toBeTruthy();
     fireEvent.change(screen.getByRole("textbox", { name: /电台名称/ }), {
@@ -453,7 +510,7 @@ describe("App Shell", () => {
   it("switches profiles only after the coordinated server command succeeds", async () => {
     window.history.replaceState(null, "", "/radio");
     const transport = createOnlineTransport({ profiles: [primaryProfile, secondaryProfile] });
-    render(<App transport={transport} />);
+    render(<App audioEngine={createTestAudioEngine()} transport={transport} />);
 
     expect(await screen.findByRole("heading", { name: "Radio" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "切换档案" }));
@@ -473,7 +530,12 @@ describe("App Shell", () => {
 
   it("rolls back an immediate theme preview when persistence fails", async () => {
     window.history.replaceState(null, "", "/settings");
-    render(<App transport={createOnlineTransport({ failTheme: true })} />);
+    render(
+      <App
+        audioEngine={createTestAudioEngine()}
+        transport={createOnlineTransport({ failTheme: true })}
+      />,
+    );
 
     expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: "Light" }));
@@ -485,7 +547,12 @@ describe("App Shell", () => {
 
   it("treats degraded TTS as optional and never exposes secret inputs", async () => {
     window.history.replaceState(null, "", "/settings");
-    render(<App transport={createOnlineTransport({ ttsStatus: "degraded" })} />);
+    render(
+      <App
+        audioEngine={createTestAudioEngine()}
+        transport={createOnlineTransport({ ttsStatus: "degraded" })}
+      />,
+    );
 
     expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
     expect(screen.queryByLabelText(/API Key|Cookie|密钥/)).toBeNull();
@@ -499,7 +566,7 @@ describe("App Shell", () => {
   it("starts data-root migration as an idempotent safe command", async () => {
     window.history.replaceState(null, "", "/settings");
     const transport = createOnlineTransport();
-    render(<App transport={transport} />);
+    render(<App audioEngine={createTestAudioEngine()} transport={transport} />);
 
     expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Change" }));
@@ -519,7 +586,7 @@ describe("App Shell", () => {
   it("moves through Radio empty, generating, and committed program states", async () => {
     window.history.replaceState(null, "", "/radio");
     const transport = createOnlineTransport({ generation: "succeeded" });
-    render(<App transport={transport} />);
+    render(<App audioEngine={createTestAudioEngine()} transport={transport} />);
 
     expect(await screen.findByText("NO SESSION ON AIR")).toBeTruthy();
     fireEvent.change(screen.getByRole("textbox", { name: "告诉 DJ 当前场景" }), {
@@ -541,6 +608,7 @@ describe("App Shell", () => {
     window.history.replaceState(null, "", "/radio");
     render(
       <App
+        audioEngine={createTestAudioEngine()}
         transport={createOnlineTransport({
           generation: "failed",
           latestProgram: generatedProgram,

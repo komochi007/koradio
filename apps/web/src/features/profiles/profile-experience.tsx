@@ -21,6 +21,7 @@ import type { ServiceTransport } from "../../shared/transport.js";
 import { createProfile, selectProfile, updateProfile, uploadAvatar } from "./api.js";
 
 interface ProfileExperienceProps {
+  beforeProfileChange: () => Promise<void>;
   current: ProfileContext | null;
   initialMode: "create" | "select";
   onCancel: (() => void) | undefined;
@@ -432,7 +433,10 @@ export function ProfileExperience(props: ProfileExperienceProps): ReactElement {
   const [editing, setEditing] = useState<Profile>();
   const [selectionError, setSelectionError] = useState<string>();
   const select = useMutation({
-    mutationFn: (profile: Profile) => selectProfile(props.transport, profile.id),
+    mutationFn: async (profile: Profile) => {
+      await props.beforeProfileChange();
+      return selectProfile(props.transport, profile.id);
+    },
     onSuccess: (result) => {
       if (result.current !== null) props.onProfileChanged(result.current);
     },
@@ -457,6 +461,7 @@ export function ProfileExperience(props: ProfileExperienceProps): ReactElement {
             setMode("select");
             return;
           }
+          await props.beforeProfileChange();
           const result = await selectProfile(props.transport, profile.id);
           if (result.current !== null) props.onProfileChanged(result.current);
         }}

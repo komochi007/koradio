@@ -1,6 +1,7 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const profile = {
   id: "00000000-0000-4000-8000-000000000010",
   radioName: "After Midnight",
@@ -98,15 +99,35 @@ const program = {
   ],
 };
 
+function wav(durationMs: number): Buffer {
+  const sampleRate = 8_000;
+  const sampleCount = Math.floor((sampleRate * durationMs) / 1_000);
+  const dataSize = sampleCount * 2;
+  const result = Buffer.alloc(44 + dataSize);
+  result.write("RIFF", 0);
+  result.writeUInt32LE(36 + dataSize, 4);
+  result.write("WAVEfmt ", 8);
+  result.writeUInt32LE(16, 16);
+  result.writeUInt16LE(1, 20);
+  result.writeUInt16LE(1, 22);
+  result.writeUInt32LE(sampleRate, 24);
+  result.writeUInt32LE(sampleRate * 2, 28);
+  result.writeUInt16LE(2, 32);
+  result.writeUInt16LE(16, 34);
+  result.write("data", 36);
+  result.writeUInt32LE(dataSize, 40);
+  return result;
+}
+
 async function ensureProfile(page: Page): Promise<void> {
-  await page.goto("http://127.0.0.1:49373/radio");
+  await page.goto(`${appOrigin}/radio`);
   const destination = await Promise.race([
     page
       .getByRole("heading", { name: "创建电台档案" })
       .waitFor()
       .then(() => "create" as const),
     page
-      .getByRole("heading", { name: "Radio" })
+      .getByRole("heading", { name: "Radio", exact: true })
       .waitFor()
       .then(() => "radio" as const),
   ]);
@@ -120,7 +141,7 @@ async function ensureProfile(page: Page): Promise<void> {
         .waitFor()
         .then(() => "settings" as const),
       page
-        .getByRole("heading", { name: "Radio" })
+        .getByRole("heading", { name: "Radio", exact: true })
         .waitFor()
         .then(() => "radio" as const),
     ]);
@@ -131,7 +152,7 @@ async function ensureProfile(page: Page): Promise<void> {
       await page.getByRole("button", { name: "Radio" }).click();
     }
   }
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeVisible();
 }
 
 async function mockRadio(
@@ -169,6 +190,45 @@ async function mockRadio(
   await page.route(/\/api\/v1\/profiles\/[^/]+\/programs\/[^/?]+$/, (route) =>
     route.fulfill({ json: program }),
   );
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/playback$/, (route) =>
+    route.fulfill({
+      status: 404,
+      json: {
+        code: "PLAYBACK_SNAPSHOT_NOT_FOUND",
+        message: "Playback snapshot was not found",
+        retryable: false,
+        correlationId: "00000000-0000-4000-8000-000000000099",
+      },
+    }),
+  );
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/playback\/checkpoints$/, async (route) => {
+    const command = route.request().postDataJSON() as {
+      profileId: string;
+      programId: string;
+      timelineItemId: string;
+      positionMs: number;
+      volume: number;
+      status: string;
+    };
+    await route.fulfill({
+      json: {
+        profileId: command.profileId,
+        programId: command.programId,
+        timelineItemId: command.timelineItemId,
+        positionMs: command.positionMs,
+        volume: command.volume,
+        status: command.status,
+        savedAt: "2026-07-19T08:00:00.000Z",
+      },
+    });
+  });
+  await page.route("https://media.example.test/**", (route) =>
+    route.fulfill({
+      body: wav(20_000),
+      contentType: "audio/wav",
+      headers: { "Accept-Ranges": "bytes", "Cache-Control": "no-store" },
+    }),
+  );
   await page.route(/\/api\/v1\/profiles\/[^/]+\/program-generations$/, (route) =>
     route.fulfill({
       status: 202,
@@ -188,8 +248,12 @@ async function mockRadio(
       },
     }),
   );
-  await page.goto("http://127.0.0.1:49373/radio");
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeFocused();
+  await page.goto(`${appOrigin}/radio`);
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeFocused();
+  if (options.program === true) {
+    await page.getByRole("button", { name: "播放", exact: true }).click();
+    await expect(page.getByRole("button", { name: "暂停", exact: true })).toBeEnabled();
+  }
   if (options.generation === true) {
     await page
       .getByRole("textbox", { name: "告诉 DJ 当前场景" })

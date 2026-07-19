@@ -27,6 +27,7 @@ export function useRadioProgram({ eventBus, profileId, transport }: UseRadioProg
   const [generation, dispatch] = useReducer(reduceProgramGeneration, initialProgramGenerationState);
   const [draft, setDraft] = useState("");
   const [pendingScenario, setPendingScenario] = useState<string>();
+  const [autoplayProgramId, setAutoplayProgramId] = useState<string>();
   const [validationError, setValidationError] = useState<string>();
   const activeRef = useRef(generation.active);
   const resolvingProgramRef = useRef<string | undefined>(undefined);
@@ -56,6 +57,7 @@ export function useRadioProgram({ eventBus, profileId, transport }: UseRadioProg
         ) {
           setDraft("");
           setPendingScenario(undefined);
+          setAutoplayProgramId(event.payload.program.id);
           queryClient.setQueryData(["programs", "latest", profileId], event.payload);
         }
         dispatch({ type: "generation.event", event, profileId });
@@ -106,6 +108,7 @@ export function useRadioProgram({ eventBus, profileId, transport }: UseRadioProg
         .then((program) => {
           setDraft("");
           setPendingScenario(undefined);
+          setAutoplayProgramId(program.program.id);
           queryClient.setQueryData(["programs", "latest", profileId], program);
           dispatch({ type: "generation.committed", program });
         })
@@ -180,6 +183,7 @@ export function useRadioProgram({ eventBus, profileId, transport }: UseRadioProg
       : "playing";
 
   return {
+    autoplayProgramId,
     draft,
     failure: generation.failure,
     initialError: latestProgram.isError,
@@ -201,6 +205,7 @@ export function useRadioProgram({ eventBus, profileId, transport }: UseRadioProg
     validationError,
     viewState,
   } satisfies {
+    autoplayProgramId: string | undefined;
     draft: string;
     failure: typeof generation.failure;
     initialError: boolean;

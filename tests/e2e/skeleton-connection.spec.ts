@@ -1,12 +1,13 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 async function ensureCurrentProfile(page: import("@playwright/test").Page): Promise<void> {
   const createHeading = page.getByRole("heading", { name: "创建电台档案" });
   const destination = await Promise.race([
     createHeading.waitFor().then(() => "create" as const),
     page
-      .getByRole("heading", { name: "Radio" })
+      .getByRole("heading", { name: "Radio", exact: true })
       .waitFor()
       .then(() => "radio" as const),
   ]);
@@ -20,7 +21,7 @@ async function ensureCurrentProfile(page: import("@playwright/test").Page): Prom
         .waitFor()
         .then(() => "settings" as const),
       page
-        .getByRole("heading", { name: "Radio" })
+        .getByRole("heading", { name: "Radio", exact: true })
         .waitFor()
         .then(() => "radio" as const),
     ]);
@@ -31,14 +32,14 @@ async function ensureCurrentProfile(page: import("@playwright/test").Page): Prom
       await page.getByRole("button", { name: "Radio" }).click();
     }
   }
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeVisible();
 }
 
 test("routes the online App Shell with an in-memory session", async ({ context, page }) => {
   let bootstrapToken: string | undefined;
   page.on("response", async (response) => {
     if (
-      response.url() === "http://127.0.0.1:49373/api/v1/session/bootstrap" &&
+      response.url() === `${appOrigin}/api/v1/session/bootstrap` &&
       response.request().method() === "POST"
     ) {
       const payload: unknown = await response.json();
@@ -55,12 +56,12 @@ test("routes the online App Shell with an in-memory session", async ({ context, 
   await page.addInitScript(() => {
     localStorage.setItem("koradio-session-token", "persisted-token-must-be-rejected");
   });
-  await page.goto("http://127.0.0.1:49373/radio");
+  await page.goto(`${appOrigin}/radio`);
 
   await ensureCurrentProfile(page);
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeFocused();
   await page.getByRole("button", { name: "Settings" }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:49373/settings");
+  await expect(page).toHaveURL(`${appOrigin}/settings`);
   await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeFocused();
   await expect.poll(() => bootstrapToken).toBeDefined();
 
@@ -95,10 +96,13 @@ test("routes the online App Shell with an in-memory session", async ({ context, 
   }));
   const serializedBrowserState = JSON.stringify(browserState);
   expect(serializedBrowserState).not.toContain(bootstrapToken);
-  expect(browserState.href).toBe("http://127.0.0.1:49373/settings");
-  expect(browserState.localStorage).toEqual({
-    "koradio-session-token": "persisted-token-must-be-rejected",
-  });
+  expect(browserState.href).toBe(`${appOrigin}/settings`);
+  expect(browserState.localStorage["koradio-session-token"]).toBe(
+    "persisted-token-must-be-rejected",
+  );
+  expect(Object.keys(browserState.localStorage).sort()).toEqual(
+    ["koradio-session-token", "koradio.playback.lease.v1"].sort(),
+  );
   expect(browserState.sessionStorage).toEqual({});
   await expect(context.cookies()).resolves.toEqual([]);
 
@@ -108,7 +112,7 @@ test("routes the online App Shell with an in-memory session", async ({ context, 
 
 test("recovers from a disconnected Local Service through read-only Settings", async ({ page }) => {
   await page.route("**/api/v1/session/bootstrap", async (route) => route.abort());
-  await page.goto("http://127.0.0.1:49373/radio");
+  await page.goto(`${appOrigin}/radio`);
 
   await expect(page.getByRole("heading", { name: "Koradio 服务未连接" })).toBeVisible();
   await page.getByRole("button", { name: "前往 Settings" }).click();
@@ -122,9 +126,9 @@ test("recovers from a disconnected Local Service through read-only Settings", as
 
   await page.unroute("**/api/v1/session/bootstrap");
   await page.getByRole("button", { name: "重新连接" }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:49373/radio");
+  await expect(page).toHaveURL(`${appOrigin}/radio`);
   await ensureCurrentProfile(page);
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeFocused();
 });
 
 test("serves only the static App Shell from cache while fully offline", async ({
@@ -134,12 +138,12 @@ test("serves only the static App Shell from cache while fully offline", async ({
 }) => {
   test.skip(browserName !== "chromium", "CacheStorage inspection is covered once in Chromium");
 
-  await page.goto("http://127.0.0.1:49373/radio");
+  await page.goto(`${appOrigin}/radio`);
   await ensureCurrentProfile(page);
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeFocused();
   await page.evaluate(async () => navigator.serviceWorker.ready);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeFocused();
 
   const cachedUrls = await page.evaluate(async () => {
     const names = await caches.keys();

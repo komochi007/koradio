@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const e2ePort = process.env.KORADIO_E2E_PORT ?? "49373";
+const e2eOrigin = `http://127.0.0.1:${e2ePort}`;
+
 export default defineConfig({
   testDir: "./tests",
   outputDir: "test-results",
@@ -11,19 +14,20 @@ export default defineConfig({
   snapshotPathTemplate: "{testDir}/__screenshots__/{testFilePath}/{projectName}/{arg}{ext}",
   webServer: {
     command: "pnpm build && pnpm start",
-    url: "http://127.0.0.1:49373/",
+    url: `${e2eOrigin}/`,
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
       NODE_ENV: "production",
       KORADIO_HOST: "127.0.0.1",
-      KORADIO_PORT: "49373",
+      KORADIO_PORT: e2ePort,
       KORADIO_PROVIDER_MODE: "mock",
       KORADIO_STRICT_PORT: "true",
       KORADIO_DATA_DIR: "test-results/koradio-data",
     },
   },
   use: {
+    baseURL: e2eOrigin,
     trace: "retain-on-failure",
   },
   projects: [

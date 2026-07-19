@@ -1,6 +1,7 @@
 import type { HealthResponse, ProfileContext } from "@koradio/contracts";
 import type { ReactElement, RefObject } from "react";
 
+import type { AudioEngineFacade } from "../audio/index.js";
 import { RadioExperience } from "../features/radio/index.js";
 import type { AppEventBus } from "../shared/events.js";
 import type { ServiceTransport } from "../shared/transport.js";
@@ -139,6 +140,7 @@ export function OfflineSettingsPage({ navigate, reconnect }: SharedPageProps): R
 }
 
 interface OnlineShellPageProps {
+  audioEngine: AudioEngineFacade;
   current: ProfileContext;
   eventBus: AppEventBus;
   headingRef: RefObject<HTMLHeadingElement | null>;
@@ -158,6 +160,7 @@ const providerLabels: Record<keyof HealthResponse["providers"], string> = {
 };
 
 export function OnlineShellPage({
+  audioEngine,
   current,
   eventBus,
   headingRef,
@@ -172,6 +175,7 @@ export function OnlineShellPage({
   if (route.id === "radio") {
     return (
       <RadioExperience
+        audioEngine={audioEngine}
         current={current}
         eventBus={eventBus}
         headingRef={headingRef}

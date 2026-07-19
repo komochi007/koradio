@@ -6,6 +6,7 @@ import type {
 } from "@koradio/contracts";
 import { Component, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
+import { createAudioEngine, type AudioEngineFacade } from "../audio/index.js";
 import {
   createServiceTransport,
   resolveApiOrigin,
@@ -21,6 +22,7 @@ import { useAppRouter } from "./router.js";
 import { useServiceConnection } from "./use-service-connection.js";
 
 interface AppProps {
+  audioEngine?: AudioEngineFacade;
   transport?: ServiceTransport;
 }
 
@@ -62,7 +64,13 @@ class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState>
   }
 }
 
-function AppComposition({ transport }: { transport: ServiceTransport }): ReactElement {
+function AppComposition({
+  audioEngine,
+  transport,
+}: {
+  audioEngine: AudioEngineFacade;
+  transport: ServiceTransport;
+}): ReactElement {
   const [eventBus] = useState(createAppEventBus);
   const { navigate, replace, route } = useAppRouter();
   const connection = useServiceConnection(transport, eventBus.publish);
@@ -91,6 +99,7 @@ function AppComposition({ transport }: { transport: ServiceTransport }): ReactEl
   useEffect(() => {
     if (connection.state === "offline") {
       reconnectingFromOffline.current = true;
+      void audioEngine.prepareForProfileSwitch();
       return;
     }
 
@@ -98,7 +107,7 @@ function AppComposition({ transport }: { transport: ServiceTransport }): ReactEl
       reconnectingFromOffline.current = false;
       replace("/radio");
     }
-  }, [connection.state, replace]);
+  }, [audioEngine, connection.state, replace]);
 
   useEffect(() => {
     if (connection.state === "online" || connection.state === "reconnecting") {
@@ -161,6 +170,7 @@ function AppComposition({ transport }: { transport: ServiceTransport }): ReactEl
   if (currentProfile.data.current === null || profilesOpen) {
     return (
       <ProfileExperience
+        beforeProfileChange={() => audioEngine.prepareForProfileSwitch()}
         current={currentProfile.data.current}
         initialMode={profiles.data.items.length === 0 ? "create" : "select"}
         profiles={profiles.data.items}
@@ -200,6 +210,7 @@ function AppComposition({ transport }: { transport: ServiceTransport }): ReactEl
 
   return (
     <OnlineShellPage
+      audioEngine={audioEngine}
       headingRef={headingRef}
       health={connection.health}
       navigate={navigate}
@@ -216,16 +227,26 @@ function AppComposition({ transport }: { transport: ServiceTransport }): ReactEl
   );
 }
 
-export function App({ transport }: AppProps): ReactElement {
+export function App({ audioEngine, transport }: AppProps): ReactElement {
   const [queryClient] = useState(createAppQueryClient);
   const [serviceTransport] = useState(
     () => transport ?? createServiceTransport(resolveApiOrigin()),
+  );
+  const [serviceAudioEngine] = useState(
+    () => audioEngine ?? createAudioEngine({ transport: serviceTransport }),
+  );
+
+  useEffect(
+    () => () => {
+      void serviceAudioEngine.destroy();
+    },
+    [serviceAudioEngine],
   );
 
   return (
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AppComposition transport={serviceTransport} />
+        <AppComposition audioEngine={serviceAudioEngine} transport={serviceTransport} />
       </QueryClientProvider>
     </AppErrorBoundary>
   );

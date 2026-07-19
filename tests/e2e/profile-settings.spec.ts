@@ -1,6 +1,7 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const profile = {
   id: "00000000-0000-4000-8000-000000000020",
   radioName: "After Midnight",
@@ -64,14 +65,14 @@ async function mockProfileWorkspace(
 }
 
 async function ensureProfile(page: Page): Promise<void> {
-  await page.goto("http://127.0.0.1:49373/radio");
+  await page.goto(`${appOrigin}/radio`);
   const destination = await Promise.race([
     page
       .getByRole("heading", { name: "创建电台档案" })
       .waitFor()
       .then(() => "create" as const),
     page
-      .getByRole("heading", { name: "Radio" })
+      .getByRole("heading", { name: "Radio", exact: true })
       .waitFor()
       .then(() => "radio" as const),
   ]);
@@ -85,7 +86,7 @@ async function ensureProfile(page: Page): Promise<void> {
         .waitFor()
         .then(() => "settings" as const),
       page
-        .getByRole("heading", { name: "Radio" })
+        .getByRole("heading", { name: "Radio", exact: true })
         .waitFor()
         .then(() => "radio" as const),
     ]);
@@ -96,7 +97,7 @@ async function ensureProfile(page: Page): Promise<void> {
       await page.getByRole("button", { name: "Radio" }).click();
     }
   }
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeVisible();
 }
 
 async function fillFrozenProfile(page: Page): Promise<void> {
@@ -126,7 +127,7 @@ test("creates a second profile and switches through the coordinated command", as
   );
   await page.getByRole("button", { name: "保存并进入 Koradio" }).click();
   await createSelection;
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "切换档案" }).click();
   const selector = page.getByRole("button", { name: /^选择档案：/ }).first();
@@ -137,7 +138,7 @@ test("creates a second profile and switches through the coordinated command", as
   await selector.click();
   const request = await switchRequest;
   expect(request.postDataJSON()).toHaveProperty("profileId");
-  await expect(page.getByRole("heading", { name: "Radio" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeVisible();
 });
 
 test("profile create is keyboard accessible and matches the frozen layout", async ({
@@ -147,7 +148,7 @@ test("profile create is keyboard accessible and matches the frozen layout", asyn
   test.skip(browserName !== "chromium", "visual baseline is captured once in Chromium");
   await page.setViewportSize({ width: 960, height: 1600 });
   await mockProfileWorkspace(page, { current: false });
-  await page.goto("http://127.0.0.1:49373/radio");
+  await page.goto(`${appOrigin}/radio`);
 
   await expect(page.getByRole("heading", { name: "创建电台档案" })).toBeFocused();
   await page.keyboard.press("Tab");
@@ -168,7 +169,7 @@ for (const theme of ["dark", "light"] as const) {
     test.skip(browserName !== "chromium", "visual baseline is captured once in Chromium");
     await page.setViewportSize({ width: 960, height: 1600 });
     await mockProfileWorkspace(page, { current: true, theme });
-    await page.goto("http://127.0.0.1:49373/settings");
+    await page.goto(`${appOrigin}/settings`);
 
     await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeFocused();
     await expect(page.getByText("3 SERVICES ONLINE")).toBeVisible();
@@ -195,7 +196,7 @@ for (const viewport of responsiveViewports) {
     test.skip(browserName !== "chromium", "responsive baselines are captured once in Chromium");
     await page.setViewportSize(viewport);
     await mockProfileWorkspace(page, { current: false });
-    await page.goto("http://127.0.0.1:49373/radio");
+    await page.goto(`${appOrigin}/radio`);
     await fillFrozenProfile(page);
     await page.evaluate(() => {
       window.scrollTo(0, 0);
@@ -213,7 +214,7 @@ for (const viewport of responsiveViewports) {
     test.skip(browserName !== "chromium", "responsive baselines are captured once in Chromium");
     await page.setViewportSize(viewport);
     await mockProfileWorkspace(page, { current: true });
-    await page.goto("http://127.0.0.1:49373/settings");
+    await page.goto(`${appOrigin}/settings`);
     await expect(page.getByRole("textbox", { name: "Codex 命令路径" })).toBeVisible();
     await expect(page.getByRole("radio", { name: "Dark" })).toBeVisible();
     await expect(page.getByText("数据路径")).toBeVisible();
