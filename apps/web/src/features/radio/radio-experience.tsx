@@ -22,6 +22,7 @@ import {
   useAudioSnapshot,
 } from "../../audio/index.js";
 import { applyTheme, updateProfilePreferences } from "../profile-preferences/index.js";
+import { FeedbackNotice, useFeedback } from "../feedback/index.js";
 import { Brand, PrimaryNavigation } from "../../shared/ui.js";
 import type { AppEventBus } from "../../shared/events.js";
 import type { ServiceTransport } from "../../shared/transport.js";
@@ -174,16 +175,20 @@ function RadioTime({
 function RadioMain({
   audioEngine,
   audio,
+  feedback,
   program,
   stage,
   state,
 }: {
   audioEngine: AudioEngineFacade;
   audio: AudioEngineSnapshot;
+  feedback: ReturnType<typeof useFeedback>;
   program: ProgramDetail | null;
   stage: ProgramGenerationStage | undefined;
   state: RadioViewState;
 }): ReactElement {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
   if (state === "generating") {
     return (
       <section className="radio-main radio-main--generating" role="status" aria-busy="true">
@@ -213,6 +218,13 @@ function RadioMain({
   const active = audio.ownership === "active";
   const playing = audio.state === "playing" || audio.state === "buffering";
   const progress = audio.durationMs === 0 ? 0 : (audio.positionMs / audio.durationMs) * 100;
+  const currentTrackId = current?.id;
+  const liked = currentTrackId === undefined ? false : feedback.isLiked(currentTrackId);
+  const disliked = currentTrackId === undefined ? false : feedback.isDisliked(currentTrackId);
+  const likePending =
+    currentTrackId === undefined ? false : feedback.isPending("track_like", currentTrackId);
+  const dislikePending =
+    currentTrackId === undefined ? false : feedback.isPending("track_dislike", currentTrackId);
   return (
     <section className="radio-main radio-main--playing" aria-label="当前节目">
       <article className="radio-player">
@@ -227,13 +239,71 @@ function RadioMain({
                 : `${current.artist} · ${current.album}`}
             </p>
           </div>
-          <div className="radio-player__actions">
-            <button type="button" aria-label="喜欢当前歌曲，将在反馈功能接入后可用" disabled>
+          <div
+            className="radio-player__actions"
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setMoreOpen(false);
+            }}
+          >
+            <button
+              className={
+                liked
+                  ? "radio-feedback-action radio-feedback-action--active"
+                  : "radio-feedback-action"
+              }
+              type="button"
+              aria-label={liked ? "取消喜欢当前歌曲" : "喜欢当前歌曲"}
+              aria-pressed={liked}
+              aria-busy={likePending || undefined}
+              disabled={currentTrackId === undefined || likePending}
+              onClick={() => {
+                if (currentTrackId !== undefined) feedback.toggleLike(currentTrackId);
+              }}
+            >
               <Icon name="heart" />
             </button>
-            <button type="button" aria-label="更多播放操作，将在播放功能接入后可用" disabled>
+            <button
+              type="button"
+              aria-label="更多播放操作"
+              aria-haspopup="menu"
+              aria-expanded={moreOpen}
+              disabled={currentTrackId === undefined}
+              onClick={() => {
+                setMoreOpen((open) => !open);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setMoreOpen(false);
+              }}
+              ref={moreButtonRef}
+            >
               <Icon name="more" />
             </button>
+            {moreOpen && currentTrackId !== undefined && (
+              <div
+                className="radio-feedback-menu"
+                role="menu"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setMoreOpen(false);
+                    moreButtonRef.current?.focus();
+                  }
+                }}
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  aria-busy={dislikePending || undefined}
+                  disabled={dislikePending}
+                  onClick={() => {
+                    feedback.toggleDislike(currentTrackId);
+                    setMoreOpen(false);
+                    moreButtonRef.current?.focus();
+                  }}
+                >
+                  {disliked ? "撤销不喜欢当前歌曲" : "不喜欢当前歌曲"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <div className="radio-player__progress">
@@ -282,9 +352,12 @@ function RadioMain({
           </button>
           <button
             type="button"
-            aria-label="下一段"
+            aria-label={currentTrackId === undefined ? "下一段" : "跳过当前歌曲"}
             disabled={!active}
-            onClick={() => void audioEngine.next()}
+            onClick={() => {
+              if (currentTrackId !== undefined) feedback.recordSkip(currentTrackId);
+              void audioEngine.next();
+            }}
           >
             <Icon name="next" />
           </button>
@@ -461,6 +534,7 @@ export function RadioExperience({
 }: RadioExperienceProps): ReactElement {
   const radio = useRadioProgram({ eventBus, profileId: current.profile.id, transport });
   const audio = useAudioSnapshot(audioEngine);
+  const feedback = useFeedback({ eventBus, profileId: current.profile.id, transport });
   const [themeError, setThemeError] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailUnavailable, setDetailUnavailable] = useState(false);
@@ -536,6 +610,7 @@ export function RadioExperience({
         <RadioMain
           audio={audio}
           audioEngine={audioEngine}
+          feedback={feedback}
           program={radio.program}
           stage={radio.stage}
           state={radio.viewState}
@@ -676,6 +751,7 @@ export function RadioExperience({
           节目详情暂时不可用，播放继续
         </p>
       )}
+      <FeedbackNotice notice={feedback.notice} onDismiss={feedback.dismissNotice} />
       <PrimaryNavigation active="radio" onNavigate={navigate} />
       {detailOpen && radio.program !== null && (
         <DetailSheetBoundary

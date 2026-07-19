@@ -11,10 +11,10 @@
 
 | 问题 | 直接答案 |
 |---|---|
-| 当前工程阶段 | S4 P0 核心产品体验；S3 核心领域与 Provider 后端阶段门已通过 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-05` |
+| 当前工程阶段 | S5 P1 全量功能；S4 P0 核心产品体验阶段门已通过 |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06` |
 | 当前活动任务 | 无 |
-| 初始下一任务 | 开始 `S4-06` |
+| 初始下一任务 | 开始 `S5-01` |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
 | 状态事实源 | 只修改本文件；GitHub Issue/Project 只写入“外部引用” |
@@ -54,7 +54,7 @@ AI 执行任务时按固定顺序操作：
 | S1 工程脚手架 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S2 平台、数据与安全底座 | 5 | 0 | 0 | 0 | 0 | 5 |
 | S3 核心领域与 Provider 后端 | 7 | 0 | 0 | 0 | 0 | 7 |
-| S4 P0 核心产品体验 | 5 | 1 | 0 | 0 | 0 | 6 |
+| S4 P0 核心产品体验 | 6 | 0 | 0 | 0 | 0 | 6 |
 | S5 P1 全量功能 | 0 | 4 | 0 | 0 | 0 | 4 |
 | S6 集成、质量与安全加固 | 0 | 5 | 0 | 0 | 0 | 5 |
 | S7 macOS 打包与发布工程 | 0 | 5 | 0 | 0 | 0 | 5 |
@@ -126,7 +126,7 @@ AI 执行任务时按固定顺序操作：
 | `S4-03` 实现 Radio 三态与节目生成交互 | 已完成 | Critical | 交付场景输入、生成阶段、旧节目保留和新节目原子切换的核心电台体验。 | S3-06、S3-07、S4-01 | PRD 功能 2、Radio 04～06、VDA handoff。 | 实现页面状态、commands 和 events，不维护页面级播放事实源；未明确列出的实现和功能不在本任务范围内。 | 空态/生成态/播放态共用骨架；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/web/src/features/radio/`、`programs/`、应用事件总线、Radio 生产 tokens、状态/组件/E2E 测试与 7 张专项视觉基线；播放与反馈控件只保留禁用视觉入口，Browser Audio Engine、Detail Sheet 和反馈行为保持范围外。 | `pnpm check` 通过：12 个 unit 文件 39 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、2 个 component 文件 12 个用例、coverage 34 个文件 169 个用例与完整 build；三浏览器 E2E 32 个通过、34 个按 Chromium 专项能力跳过，Mock 生成、事件乱序/重复 Snapshot/失败恢复、axe、键盘焦点、Dark/Light、`390×844`/`834×1194`/`1440×1200` 响应式视觉回归和 VDA-17 人工对照通过；`pnpm test:visual` 通过。 | 项目所有者 / 无 | Radio 三态共享 `816px` rail、`340px` 主内容和 `288px` DJ 对话骨架；页面通过 generation command、REST Snapshot 与全局有序事件恢复，只在完整 Program 可读后原子替换，原阻塞条件未发生。 |
 | `S4-04` 实现唯一 Audio Engine 与多标签租约 | 已完成 | Critical | 让 play、pause、seek、切段、媒体错误和 checkpoint 由唯一浏览器事实源控制，避免多标签双主。 | S3-04、S4-01 | 架构播放状态、`2s/5s` TTL lease 和 checkpoint 规则。 | 实现 audio facade、预加载和租约；未明确列出的实现和功能不在本任务范围内。 | 单一实例、确定性状态转换、边界 checkpoint、epoch 丢弃迟到命令、接管前保存并停止原主控；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/web/src/audio/` 的唯一 `HTMLAudio` facade、checkpoint API、下一段预加载与 lease coordinator，并接入 App Shell、Radio 控件、原子节目自动播放和 Profile 安全切换；Detail Sheet、反馈 UI、native helper 与真实 Provider 产品运行组合保持范围外。 | `pnpm check` 通过：14 个 unit 文件 62 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、2 个 component 文件 12 个用例、coverage 36 个文件 192 个用例与完整 build；Audio 专项 statements 95.37%、branches 90.47%、functions 100%、lines 97.34%；三浏览器 E2E 35 个通过、34 个按 Chromium 专项能力跳过，双标签接管、原主控 checkpoint/停播、新 epoch、自动播放降级、媒体错误跳段、键盘/axe、7 张 Radio 冻结视觉基线及 `pnpm test:visual` 均通过。 | 项目所有者 / 无 | 单一 facade 持有唯一媒体实例；lease 每 `2s` 续约、`5s` 过期，并通过 BroadcastChannel、storage/focus/poll fallback 和 canonical storage reread 处理乱序交付；接管只在原主控保存并释放后完成，迟到 checkpoint 由 epoch fencing 拒绝，原阻塞条件未发生。 |
 | `S4-05` 实现 Detail Sheet、歌词与串讲跟随 | 已完成 | High | 用同一播放时间线提供全屏沉浸节目详情，并在 DJ/歌曲段间切换串讲和歌词主内容。 | S4-03、S4-04 | PRD 功能 4、页面 07～08、设计动效与无障碍规则。 | Sheet 只保留单一播放/暂停，不加入封面、切歌、喜欢或更多按钮；未明确列出的实现和功能不在本任务范围内。 | DJ/歌词高亮、缺少时间戳估算、无歌词降级、关闭不中断播放、Focus trap/Esc/焦点回归正确；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/web/src/features/radio/detail-sheet.tsx`、Detail 样式、歌词 API、timed text 派生逻辑、Radio 组合、unit/component/E2E 测试与 6 张专项视觉基线；反馈 UI、native helper 与真实 Provider 产品运行组合保持范围外。 | `pnpm check` 通过：15 个 unit 文件 66 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、3 个 component 文件 16 个用例、coverage 38 个文件 200 个用例与完整 build；三浏览器 E2E 53 个通过、46 个按浏览器能力跳过，DJ/歌词跟随、时间估算、无歌词降级、关闭播放不中断、拖拽、Focus trap/Esc/焦点回归、axe、Reduce Motion、Dark/Light 与 `390×844`/`834×1194`/`1440×1200` 响应式视觉回归均通过；`pnpm test:visual` 和 VDA-17 人工对照通过。 | 项目所有者 / 无 | Detail 与 Radio 订阅同一 Audio facade snapshot；关闭覆盖层不调用 pause，歌词与串讲高亮均由 canonical timeline 的位置派生，原阻塞条件未发生。 |
-| `S4-06` 实现反馈 UI 并通过 P0 阶段门 | 待开始 | Critical | 完成喜欢、撤销、不喜欢、撤销、跳过和节目反馈闭环，并验证全部 P0 用户路径。 | S3-03、S4-02、S4-03、S4-04、S4-05 | PRD 功能 5、反馈流程和 P0 验收矩阵。 | Radio 心形只表示喜欢歌曲；未明确列出的实现和功能不在本任务范围内。 | 乐观状态可回滚，播放不中断，P0 成功/失败 E2E、键盘、Reduce Motion 和视觉基线通过；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 feedback frontend feature、P0 E2E 和阶段验收记录。 | 七类反馈事件、写入失败、撤销、Profile 隔离和完整 P0 流程测试。 | 待分配 / 无 | 任一 P0 权威验收无法通过；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S4-06` 实现反馈 UI 并通过 P0 阶段门 | 已完成 | Critical | 完成喜欢、撤销、不喜欢、撤销、跳过和节目反馈闭环，并验证全部 P0 用户路径。 | S3-03、S4-02、S4-03、S4-04、S4-05 | PRD 功能 5、反馈流程和 P0 验收矩阵。 | Radio 心形只表示喜欢歌曲；未明确列出的实现和功能不在本任务范围内。 | 乐观状态可回滚，播放不中断，P0 成功/失败 E2E、键盘、Reduce Motion 和视觉基线通过；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/web/src/features/feedback/`，接入 Radio Heart/More/skip 与 Programs 当前节目收藏入口，扩展反馈时序 token，新增 unit/component/E2E、2 张更新视觉基线和 [P0 阶段验收记录](s4-06-p0-acceptance.md)；Library/Taste 产品页、Programs 历史/复用、native helper 与真实 Provider 产品运行组合保持范围外。 | `pnpm check` 通过：16 个 unit 文件 68 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、4 个 component 文件 19 个用例、coverage 40 个文件 205 个用例与完整 build；三浏览器 E2E 56 个通过、46 个按既有浏览器能力跳过，七类事件、写入失败与 3 秒回滚、撤销、播放不中断、Profile 隔离、键盘、axe、Reduce Motion、响应式和视觉回归通过；`pnpm test:visual` 与 VDA-17 人工对照通过。 | 项目所有者 / [P0 阶段验收记录](s4-06-p0-acceptance.md) | 七类反馈和全部 P0 权威验收均已通过，原阻塞条件未发生。 |
 
 ### S5｜P1 全量功能
 

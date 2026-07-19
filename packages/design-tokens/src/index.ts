@@ -42,3 +42,9 @@ export const radioTokens = {
   timeSize: "80px",
   timeSizeMobile: "56px",
 } as const;
+
+export const feedbackTokens = {
+  optimisticRollbackMs: 3_000,
+  successNoticeMs: 2_400,
+  errorNoticeMinMs: 5_000,
+} as const;

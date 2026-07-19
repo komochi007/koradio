@@ -1,0 +1,91 @@
+.feedback-toast {
+  position: fixed;
+  z-index: 12;
+  top: 116px;
+  left: 50%;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 6px 8px 6px 16px;
+  border: 1px solid var(--kr-border);
+  border-radius: 999px;
+  color: var(--kr-text-secondary);
+  background: var(--kr-surface);
+  font:
+    600 12px/20px "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  transform: translateX(-50%);
+}
+
+.feedback-toast--success {
+  border-color: var(--kr-accent);
+}
+
+.feedback-toast--error {
+  color: var(--kr-error);
+}
+
+.feedback-toast button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  background: transparent;
+  font-size: 20px;
+}
+
+.program-feedback {
+  display: flex;
+  min-height: 160px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  margin-top: 52px;
+  padding: 28px;
+  border: 1px solid var(--kr-border);
+  border-radius: 20px;
+  background: var(--kr-surface);
+}
+
+.program-feedback h2,
+.program-feedback p {
+  margin: 0;
+}
+
+.program-feedback h2 {
+  margin-bottom: 12px;
+  font-size: 24px;
+}
+
+.program-feedback small {
+  display: block;
+  margin-top: 8px;
+  color: var(--kr-text-tertiary);
+}
+
+.program-feedback__button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 767px) {
+  .feedback-toast {
+    top: 88px;
+    width: calc(100% - 40px);
+    justify-content: space-between;
+    border-radius: 16px;
+  }
+
+  .program-feedback {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 20px;
+  }
+}

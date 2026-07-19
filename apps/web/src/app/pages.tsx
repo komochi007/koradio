@@ -3,6 +3,7 @@ import type { ReactElement, RefObject } from "react";
 
 import type { AudioEngineFacade } from "../audio/index.js";
 import { RadioExperience } from "../features/radio/index.js";
+import { CurrentProgramFeedback } from "../features/feedback/index.js";
 import type { AppEventBus } from "../shared/events.js";
 import type { ServiceTransport } from "../shared/transport.js";
 import { Brand, PrimaryNavigation, Status } from "../shared/ui.js";
@@ -215,6 +216,14 @@ export function OnlineShellPage({
           </h1>
           <p>本地 Session、Query 缓存与事件通道已由 App Shell 统一组合。</p>
         </div>
+        {route.id === "programs" && (
+          <CurrentProgramFeedback
+            eventBus={eventBus}
+            key={current.profile.id}
+            profileId={current.profile.id}
+            transport={transport}
+          />
+        )}
         <section className="connection-ledger" aria-label="本地连接状态">
           <article>
             <span>01</span>
