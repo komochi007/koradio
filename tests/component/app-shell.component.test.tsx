@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { HealthResponse, Profile, ProfileContext, V1Event } from "@koradio/contracts";
+import type {
+  HealthResponse,
+  Profile,
+  ProfileContext,
+  ProgramDetail,
+  V1Event,
+} from "@koradio/contracts";
 import { afterEach, describe, expect, it, vi, type MockedFunction } from "vitest";
 
 import { App } from "../../apps/web/src/app/app.js";
@@ -35,6 +41,52 @@ const secondaryProfile: Profile = {
   id: "00000000-0000-4000-8000-000000000011",
   radioName: "Morning Lines",
   nickname: "Lin",
+};
+
+const generatedProgram: ProgramDetail = {
+  program: {
+    id: "00000000-0000-4000-8000-000000000070",
+    profileId: primaryProfile.id,
+    scenarioText: "今晚写东西，安静但不要太困",
+    title: "After Hours, Soft Focus",
+    status: "ready",
+    trackIds: ["00000000-0000-4000-8000-000000000071"],
+    createdAt: "2026-07-17T08:00:00.000Z",
+  },
+  djScripts: [
+    {
+      id: "00000000-0000-4000-8000-000000000072",
+      programId: "00000000-0000-4000-8000-000000000070",
+      type: "intro",
+      language: "zh-CN",
+      text: "先让声音替房间留一点呼吸。",
+      displayText: "先让声音替房间留一点呼吸。",
+      estimatedTiming: true,
+      ttsAudioRef: null,
+    },
+  ],
+  tracks: [
+    {
+      id: "00000000-0000-4000-8000-000000000071",
+      source: "netease",
+      sourceTrackId: "fixture-if",
+      title: "If",
+      artist: "Bread",
+      album: "Manna",
+      durationMs: 155_000,
+      lyricStatus: "available",
+    },
+  ],
+  timeline: [
+    {
+      id: "00000000-0000-4000-8000-000000000073",
+      kind: "track",
+      position: 0,
+      trackId: "00000000-0000-4000-8000-000000000071",
+      resolvedAudioRef: "https://media.example.test/if.mp3",
+      durationMs: 155_000,
+    },
+  ],
 };
 
 function profileContext(profile: Profile = primaryProfile): ProfileContext {
@@ -80,12 +132,15 @@ function createOnlineTransport(
   options: {
     empty?: boolean;
     failTheme?: boolean;
+    generation?: "failed" | "succeeded";
+    latestProgram?: ProgramDetail;
     profiles?: Profile[];
     ttsStatus?: "available" | "degraded" | "unavailable";
   } = {},
 ): ServiceTransport & { request: MockedFunction<ServiceTransport["request"]> } {
   const storedProfiles = options.profiles ?? (options.empty === true ? [] : [primaryProfile]);
   let current = options.empty === true ? null : profileContext(storedProfiles[0]);
+  let generationSnapshotReads = 0;
   const request = vi.fn<(path: string, init?: RequestInit) => Promise<Response>>((path, init) => {
     const method = init?.method ?? "GET";
     if (path === "/api/v1/profiles" && method === "GET") {
@@ -93,6 +148,61 @@ function createOnlineTransport(
     }
     if (path === "/api/v1/profiles/current" && method === "GET") {
       return Promise.resolve(jsonResponse({ current }));
+    }
+    if (path.endsWith("/programs?limit=1") && method === "GET") {
+      return Promise.resolve(
+        jsonResponse({
+          items: options.latestProgram === undefined ? [] : [options.latestProgram.program],
+        }),
+      );
+    }
+    if (path.endsWith(`/programs/${generatedProgram.program.id}`) && method === "GET") {
+      return Promise.resolve(jsonResponse(options.latestProgram ?? generatedProgram));
+    }
+    if (path.endsWith("/program-generations") && method === "POST") {
+      return Promise.resolve(jsonResponse({ jobId: "00000000-0000-4000-8000-000000000074" }, 202));
+    }
+    if (path.endsWith("/program-generations/00000000-0000-4000-8000-000000000074")) {
+      generationSnapshotReads += 1;
+      const terminal = generationSnapshotReads > 1;
+      if (!terminal) {
+        return Promise.resolve(
+          jsonResponse({
+            jobId: "00000000-0000-4000-8000-000000000074",
+            profileId: primaryProfile.id,
+            status: "running",
+            stage: "resolving_tracks",
+            sequence: 2,
+            createdAt: "2026-07-17T08:00:00.000Z",
+            updatedAt: "2026-07-17T08:00:01.000Z",
+          }),
+        );
+      }
+      return Promise.resolve(
+        jsonResponse(
+          options.generation === "failed"
+            ? {
+                jobId: "00000000-0000-4000-8000-000000000074",
+                profileId: primaryProfile.id,
+                status: "failed",
+                stage: "resolving_tracks",
+                sequence: 3,
+                errorCode: "PROGRAM_GENERATION_NO_PLAYABLE_TRACKS",
+                createdAt: "2026-07-17T08:00:00.000Z",
+                updatedAt: "2026-07-17T08:00:02.000Z",
+              }
+            : {
+                jobId: "00000000-0000-4000-8000-000000000074",
+                profileId: primaryProfile.id,
+                status: "succeeded",
+                stage: "completed",
+                sequence: 4,
+                programId: generatedProgram.program.id,
+                createdAt: "2026-07-17T08:00:00.000Z",
+                updatedAt: "2026-07-17T08:00:02.000Z",
+              },
+        ),
+      );
     }
     if (path === "/api/v1/profiles" && method === "POST") {
       const command = parseRequestBody(init) as {
@@ -254,9 +364,7 @@ describe("App Shell", () => {
     render(<App transport={createOnlineTransport()} />);
 
     const heading = await screen.findByRole("heading", { name: "Radio" });
-    await waitFor(() => {
-      expect(screen.getByText("LOCAL SERVICE CONNECTED")).toBeTruthy();
-    });
+    expect(screen.getAllByText("LIVE").length).toBeGreaterThan(0);
     expect(document.activeElement).toBe(heading);
 
     const radio = screen.getByRole("button", { name: "Radio" });
@@ -293,7 +401,7 @@ describe("App Shell", () => {
     await waitFor(
       () => {
         expect(transport.connectEvents).toHaveBeenCalledTimes(2);
-        expect(screen.getByText("LOCAL SERVICE CONNECTED")).toBeTruthy();
+        expect(screen.getByRole("heading", { name: "Radio" })).toBeTruthy();
       },
       { timeout: 2_000 },
     );
@@ -304,7 +412,7 @@ describe("App Shell", () => {
     const transport = createDisconnectingTransport();
     render(<App transport={transport} />);
 
-    expect(await screen.findByText("LOCAL SERVICE CONNECTED")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Radio" })).toBeTruthy();
     act(() => {
       transport.failEvents();
     });
@@ -406,5 +514,50 @@ describe("App Shell", () => {
     );
     expect(migrationCall?.[1]?.method).toBe("POST");
     expect(new Headers(migrationCall?.[1]?.headers).has("Idempotency-Key")).toBe(true);
+  });
+
+  it("moves through Radio empty, generating, and committed program states", async () => {
+    window.history.replaceState(null, "", "/radio");
+    const transport = createOnlineTransport({ generation: "succeeded" });
+    render(<App transport={transport} />);
+
+    expect(await screen.findByText("NO SESSION ON AIR")).toBeTruthy();
+    fireEvent.change(screen.getByRole("textbox", { name: "告诉 DJ 当前场景" }), {
+      target: { value: "今晚写东西，安静但不要太困" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "发送给 DJ" }));
+
+    expect(await screen.findByText("TUNING YOUR STATION...")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "If" })).toBeTruthy();
+    expect(screen.getByText("ON AIR")).toBeTruthy();
+    const generationCall = transport.request.mock.calls.find(([path]) =>
+      path.endsWith("/program-generations"),
+    );
+    expect(generationCall?.[1]?.method).toBe("POST");
+    expect(new Headers(generationCall?.[1]?.headers).has("Idempotency-Key")).toBe(true);
+  });
+
+  it("restores the draft and keeps the old program when generation fails", async () => {
+    window.history.replaceState(null, "", "/radio");
+    render(
+      <App
+        transport={createOnlineTransport({
+          generation: "failed",
+          latestProgram: generatedProgram,
+        })}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { name: "If" })).toBeTruthy();
+    fireEvent.change(screen.getByRole("textbox", { name: "告诉 DJ 当前场景" }), {
+      target: { value: "雨夜读书" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "发送给 DJ" }));
+
+    expect(await screen.findByText("NO TRACKS FOUND")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "If" })).toBeTruthy();
+    expect(screen.getByRole<HTMLInputElement>("textbox", { name: "告诉 DJ 当前场景" }).value).toBe(
+      "雨夜读书",
+    );
   });
 });

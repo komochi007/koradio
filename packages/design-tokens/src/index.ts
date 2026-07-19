@@ -32,3 +32,13 @@ export const layoutTokens = {
   pageSafeInset: "56px",
   minimumTargetSize: "44px",
 } as const;
+
+export const radioTokens = {
+  railWidth: "816px",
+  mainHeight: "340px",
+  playerHeight: "340px",
+  dialogueHeight: "288px",
+  sceneInputHeight: "88px",
+  timeSize: "80px",
+  timeSizeMobile: "56px",
+} as const;

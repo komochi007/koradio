@@ -22,7 +22,10 @@ function applyEvent(queryClient: ReturnType<typeof useQueryClient>, event: V1Eve
   }
 }
 
-export function useServiceConnection(transport: ServiceTransport): ServiceConnectionSnapshot {
+export function useServiceConnection(
+  transport: ServiceTransport,
+  onEvent?: (event: V1Event) => void,
+): ServiceConnectionSnapshot {
   const queryClient = useQueryClient();
   const [eventAttempt, setEventAttempt] = useState(0);
   const [eventConnected, setEventConnected] = useState(false);
@@ -62,6 +65,7 @@ export function useServiceConnection(transport: ServiceTransport): ServiceConnec
           }
 
           applyEvent(queryClient, event);
+          onEvent?.(event);
           setEventConnected(true);
         },
         () => {
@@ -93,7 +97,7 @@ export function useServiceConnection(transport: ServiceTransport): ServiceConnec
       }
       connection?.close();
     };
-  }, [eventAttempt, queryClient, refetchHealth, serviceAvailable, transport]);
+  }, [eventAttempt, onEvent, queryClient, refetchHealth, serviceAvailable, transport]);
 
   if (healthQuery.isPending) {
     return {

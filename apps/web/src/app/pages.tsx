@@ -1,6 +1,9 @@
 import type { HealthResponse, ProfileContext } from "@koradio/contracts";
 import type { ReactElement, RefObject } from "react";
 
+import { RadioExperience } from "../features/radio/index.js";
+import type { AppEventBus } from "../shared/events.js";
+import type { ServiceTransport } from "../shared/transport.js";
 import { Brand, PrimaryNavigation, Status } from "../shared/ui.js";
 import type { AppRoute } from "./router.js";
 
@@ -137,12 +140,15 @@ export function OfflineSettingsPage({ navigate, reconnect }: SharedPageProps): R
 
 interface OnlineShellPageProps {
   current: ProfileContext;
+  eventBus: AppEventBus;
   headingRef: RefObject<HTMLHeadingElement | null>;
   health: HealthResponse;
   navigate: (path: string) => void;
+  onCurrentChanged: (current: ProfileContext) => void;
   onOpenProfiles: () => void;
   reconnecting: boolean;
   route: AppRoute;
+  transport: ServiceTransport;
 }
 
 const providerLabels: Record<keyof HealthResponse["providers"], string> = {
@@ -153,13 +159,32 @@ const providerLabels: Record<keyof HealthResponse["providers"], string> = {
 
 export function OnlineShellPage({
   current,
+  eventBus,
   headingRef,
   health,
   navigate,
+  onCurrentChanged,
   onOpenProfiles,
   reconnecting,
   route,
+  transport,
 }: OnlineShellPageProps): ReactElement {
+  if (route.id === "radio") {
+    return (
+      <RadioExperience
+        current={current}
+        eventBus={eventBus}
+        headingRef={headingRef}
+        key={current.profile.id}
+        navigate={navigate}
+        onCurrentChanged={onCurrentChanged}
+        onOpenProfiles={onOpenProfiles}
+        reconnecting={reconnecting}
+        transport={transport}
+      />
+    );
+  }
+
   return (
     <div className="app-surface online-page">
       <header className="topbar">

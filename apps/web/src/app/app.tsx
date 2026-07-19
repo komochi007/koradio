@@ -11,6 +11,7 @@ import {
   resolveApiOrigin,
   type ServiceTransport,
 } from "../shared/transport.js";
+import { createAppEventBus } from "../shared/events.js";
 import { SettingsExperience } from "../features/device-settings/index.js";
 import { applyTheme } from "../features/profile-preferences/index.js";
 import { getCurrentProfile, getProfiles, ProfileExperience } from "../features/profiles/index.js";
@@ -62,8 +63,9 @@ class AppErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState>
 }
 
 function AppComposition({ transport }: { transport: ServiceTransport }): ReactElement {
+  const [eventBus] = useState(createAppEventBus);
   const { navigate, replace, route } = useAppRouter();
-  const connection = useServiceConnection(transport);
+  const connection = useServiceConnection(transport, eventBus.publish);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const reconnectingFromOffline = useRef(false);
   const queryClient = useQueryClient();
@@ -202,11 +204,14 @@ function AppComposition({ transport }: { transport: ServiceTransport }): ReactEl
       health={connection.health}
       navigate={navigate}
       current={currentProfile.data.current}
+      onCurrentChanged={setCurrent}
       onOpenProfiles={() => {
         setProfilesOpen(true);
       }}
+      eventBus={eventBus}
       reconnecting={connection.state === "reconnecting"}
       route={route}
+      transport={transport}
     />
   );
 }

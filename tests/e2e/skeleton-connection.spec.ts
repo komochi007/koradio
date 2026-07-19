@@ -58,7 +58,7 @@ test("routes the online App Shell with an in-memory session", async ({ context, 
   await page.goto("http://127.0.0.1:49373/radio");
 
   await ensureCurrentProfile(page);
-  await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Radio" })).toBeFocused();
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page).toHaveURL("http://127.0.0.1:49373/settings");
   await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeFocused();
@@ -124,7 +124,7 @@ test("recovers from a disconnected Local Service through read-only Settings", as
   await page.getByRole("button", { name: "重新连接" }).click();
   await expect(page).toHaveURL("http://127.0.0.1:49373/radio");
   await ensureCurrentProfile(page);
-  await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Radio" })).toBeFocused();
 });
 
 test("serves only the static App Shell from cache while fully offline", async ({
@@ -136,10 +136,10 @@ test("serves only the static App Shell from cache while fully offline", async ({
 
   await page.goto("http://127.0.0.1:49373/radio");
   await ensureCurrentProfile(page);
-  await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Radio" })).toBeFocused();
   await page.evaluate(async () => navigator.serviceWorker.ready);
   await page.reload();
-  await expect(page.getByText("LOCAL SERVICE CONNECTED")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Radio" })).toBeFocused();
 
   const cachedUrls = await page.evaluate(async () => {
     const names = await caches.keys();
