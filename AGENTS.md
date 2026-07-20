@@ -37,7 +37,7 @@
 
 ## 3. 当前阶段保护
 
-当前项目已完成 S1 工程脚手架、S2 平台底座、S3 核心领域与 Provider 后端阶段门，以及 S4-01～S4-05 App Shell、Profile/Settings、Radio 三态/节目生成交互、唯一 Audio Engine/多标签租约和 Detail Sheet/歌词与串讲跟随，下一关键任务是 S4-06 反馈 UI 与 P0 阶段门；bundled native TTS helper 与真实 Provider 产品运行组合仍未实现。
+当前项目已完成 S1 工程脚手架、S2 平台底座、S3 核心领域与 Provider 后端、S4 P0 核心产品体验和 S5 P1 全量功能阶段门；九项能力与 15 个页面状态已有真实产品和内部 E2E 证据，下一关键任务是 S6-01 跨层失败矩阵；bundled native TTS helper 与真实 Provider 产品运行组合仍未实现。
 
 - 不得声称尚不存在的业务代码、平台能力、脚本或依赖已经可用。
 - 不得把 `architecture.md` 的目标目录当作真实目录。

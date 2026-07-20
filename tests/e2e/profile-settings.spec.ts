@@ -182,6 +182,36 @@ for (const theme of ["dark", "light"] as const) {
   });
 }
 
+test.describe("service diagnostics", () => {
+  test.use({ serviceWorkers: "block" });
+
+  test("exposes redacted health and optional TTS degradation", async ({ browserName, page }) => {
+    await page.setViewportSize({ width: 960, height: 1600 });
+    await mockProfileWorkspace(page, { current: true });
+    await page.goto(`${appOrigin}/settings`);
+
+    await page.getByRole("button", { name: "查看" }).first().click();
+    await expect(page.getByRole("heading", { name: "服务检测", exact: true })).toBeFocused();
+    await expect(page.getByText("3 OF 4 SERVICES AVAILABLE")).toBeVisible();
+    await expect(page.getByText("核心播放服务可用，语音串讲将暂时降级为文字。")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Apple Text to Speech" })).toBeVisible();
+    await expect(page.getByText("你仍然可以生成和播放节目，歌曲播放不受影响。")).toBeVisible();
+    await expect(page.getByRole("button", { name: "返回 Radio" })).toBeEnabled();
+    await expect(page.getByLabel(/API Key|Cookie|密钥/)).toHaveCount(0);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+    if (browserName === "chromium") {
+      await expect(page).toHaveScreenshot("settings-diagnostics-dark.png", {
+        animations: "disabled",
+        fullPage: false,
+      });
+    }
+
+    await page.getByRole("button", { name: "修改配置" }).click();
+    await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeVisible();
+  });
+});
+
 const responsiveViewports = [
   { name: "mobile", width: 390, height: 844 },
   { name: "tablet", width: 834, height: 1194 },

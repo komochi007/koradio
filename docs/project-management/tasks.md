@@ -11,10 +11,10 @@
 
 | 问题 | 直接答案 |
 |---|---|
-| 当前工程阶段 | S5 P1 全量功能；S4 P0 核心产品体验阶段门已通过 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06`、`S5-01`～`S5-03` |
+| 当前工程阶段 | S6 集成、质量与安全加固；S5 P1 全量功能阶段门已通过 |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06`、`S5-01`～`S5-04` |
 | 当前活动任务 | 无 |
-| 初始下一任务 | `S5-04`（Ready） |
+| 初始下一任务 | `S6-01`（Ready） |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
 | 状态事实源 | 只修改本文件；GitHub Issue/Project 只写入“外部引用” |
@@ -55,7 +55,7 @@ AI 执行任务时按固定顺序操作：
 | S2 平台、数据与安全底座 | 5 | 0 | 0 | 0 | 0 | 5 |
 | S3 核心领域与 Provider 后端 | 7 | 0 | 0 | 0 | 0 | 7 |
 | S4 P0 核心产品体验 | 6 | 0 | 0 | 0 | 0 | 6 |
-| S5 P1 全量功能 | 3 | 1 | 0 | 0 | 0 | 4 |
+| S5 P1 全量功能 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S6 集成、质量与安全加固 | 0 | 5 | 0 | 0 | 0 | 5 |
 | S7 macOS 打包与发布工程 | 0 | 5 | 0 | 0 | 0 | 5 |
 | S8 全量外部测试与 Release Candidate | 0 | 4 | 0 | 0 | 0 | 4 |
@@ -137,7 +137,7 @@ AI 执行任务时按固定顺序操作：
 | `S5-01` 实现 Library 搜索、试听与歌单导入 | 已完成 | High | 让用户准备候选音乐来源，并把搜索和导入结果安全归一化到本地音乐库。 | S3-02、S4-01 | PRD 功能 7、页面 09 和 Library 变体。 | 只支持 v1 网易云源，不引入多音乐源聚合或推荐控制；未明确列出的实现和功能不在本任务范围内。 | 搜索、试听、加入候选池、导入、空库、无结果、服务异常和分页/缓存行为正确；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/web/src/features/library/` 的 Library 页面、API queries/commands 与 VDA-17 页面状态，接入 App Shell；扩展唯一 Audio Engine 以承载试听并在结束后恢复原节目位置且保持暂停；新增 unit/component/E2E 与 Chromium 视觉基线。 | `pnpm check` 通过：16 个 unit 文件 70 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、5 个 component 文件 22 个用例、coverage 41 个文件 210 个用例与完整 build；Audio 专项 statements 95.06%、branches 90.16%、functions 100%、lines 96.90%；Library 受控 Provider E2E 在 Chromium/Firefox 6 个通过、WebKit 3 个按受控路由能力跳过，搜索/试听/加入/分页/导入、空库/无结果/服务异常、输入保留、键盘、axe、移动端溢出和 Chromium 视觉回归通过。 | 项目所有者 / 无 | 导入 API 能力与 S0-06 一致；试听复用唯一 Audio Engine，原阻塞条件未发生。 |
 | `S5-02` 实现 Taste 查看与人工编辑 | 已完成 | High | 让用户看懂自动形成的品味，并编辑不会被后续重建覆盖的人工规则。 | S3-03、S4-01 | PRD 功能 8、页面 10～11 和字段限制。 | 展示 projection/overrides/effective 结果，不允许 UI 直接重写反馈历史；未明确列出的实现和功能不在本任务范围内。 | 标签、避雷、场景规则、数量限制、保存失败回滚和重建后人工规则保留均正确；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/web/src/features/taste/` 的 Taste 概览、编辑表单、GET query 与只写 overrides 的 PATCH command，接入 App Shell；补齐稳定 Taste 写入错误映射，新增 unit/component/integration/E2E 与 6 张 Chromium 视觉基线。 | `pnpm check` 通过：17 个 unit 文件 74 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、6 个 component 文件 26 个用例、coverage 43 个文件 218 个用例与完整 build；三浏览器 E2E 70 个通过、53 个按既有浏览器能力跳过，Taste 受控 E2E 在 Chromium/Firefox 8 个通过、WebKit 4 个按受控路由能力跳过；projection/overrides/effective 分层、字段限制、稳定去重/排序、保存失败保留草稿且服务端结果不变、重建保留人工规则、Profile 隔离、键盘/焦点、axe、Reduce Motion、Dark/Light 与 `390×844`/`834×1194`/`1440×1200` 视觉回归均通过，`pnpm test:visual` 和 VDA-17 人工对照通过。 | 项目所有者 / 无 | UI 仅提交 TasteOverrides，未改写反馈历史；人工规则优先级和字段限制与权威合同一致，原阻塞条件未发生。 |
 | `S5-03` 实现 Programs 历史、复用与收藏 | 已完成 | High | 让用户回看节目、复用场景、重播可用串讲，并在唯一节目入口收藏或撤销收藏。 | S3-04、S4-01 | PRD 功能 9、页面 12～13 和历史恢复规则。 | 历史以 Provider source identity 恢复；未明确列出的实现和功能不在本任务范围内。 | 分页列表、详情、场景复用、串讲音频缺失降级、收藏/撤销和失败恢复正确；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `apps/web/src/features/programs/` 的分页历史、详情、七日摘要与 source identity 曲目恢复；接入唯一 Audio Engine 的历史串讲重播、TTS 缺失文字降级、只填充 Radio 草稿的场景复用及 Feedback 收藏/撤销；新增 unit/component/E2E 与 7 张 Chromium 视觉基线。 | `pnpm check` 通过：18 个 unit 文件 76 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、7 个 component 文件 30 个用例、coverage 45 个文件 224 个用例与完整 build，coverage statements 80.82%、branches 72.16%、functions 83.49%、lines 81.41%；三浏览器 E2E 76 个通过、56 个按既有浏览器能力显式跳过，Programs 在 Chromium/Firefox 6 个通过、WebKit 3 个按受控路由能力跳过；分页、详情、串讲重播/缺失降级、复用不自动生成与失败恢复、收藏事件、Profile 隔离、键盘/焦点、axe、Reduce Motion、Dark/Light 与 `390×844`/`834×1194`/`1440×1200` 视觉回归通过，`pnpm test:visual` 与 VDA-17 人工对照通过。 | 项目所有者 / 无 | 历史使用既有 Program detail 的稳定 Provider source identity 恢复，重播只读取受控 `audioRef`，原阻塞条件未发生。 |
-| `S5-04` 完成全量功能验收 | 待开始 | Critical | 确认九项能力和 15 个页面状态全部由真实产品实现承载，为内部加固和包装提供功能完整基线。 | S4-06、S5-01、S5-02、S5-03 | PRD、用户流程、VDA handoff 和全部功能测试。 | 做功能完整性验收，不提前开始外部 Beta 或发布；未明确列出的实现和功能不在本任务范围内。 | P0/P1 能力、页面、异常恢复和 Profile/设备配置边界均有通过证据，不依赖静态 fixture 模拟产品事实；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建全量功能验收记录和可追溯矩阵。 | 需求—流程—页面—contract—测试双向追溯和完整内部 E2E。 | 待分配 / 无 | 任一 P0/P1 验收缺失或仍由 fixture 代替真实能力；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S5-04` 完成全量功能验收 | 已完成 | Critical | 确认九项能力和 15 个页面状态全部由真实产品实现承载，为内部加固和包装提供功能完整基线。 | S4-06、S5-01、S5-02、S5-03 | PRD、用户流程、VDA handoff 和全部功能测试。 | 做功能完整性验收，不提前开始外部 Beta 或发布；未明确列出的实现和功能不在本任务范围内。 | P0/P1 能力、页面、异常恢复和 Profile/设备配置边界均有通过证据，不依赖静态 fixture 模拟产品事实；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 [全量功能验收记录和可追溯矩阵](s5-04-full-function-acceptance.md)，并补齐 Settings 服务检测页的三浏览器产品 E2E、axe 与 Chromium 视觉基线；真实 Provider 组合、native helper、包装和外部 Beta 保持范围外。 | `pnpm check` 通过：18 个 unit 文件 76 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、7 个 component 文件 30 个用例、coverage 45 个文件 224 个用例与完整 build，coverage statements 80.82%、branches 72.16%、functions 83.49%、lines 81.41%；三浏览器完整 E2E 79 个通过、56 个按既有浏览器/视觉能力显式跳过，服务检测专项三浏览器通过，`pnpm test:visual` 通过；九项能力、15 页面、异常恢复与 Profile/设备边界双向人工追踪通过。 | 项目所有者 / [S5-04 验收记录](s5-04-full-function-acceptance.md) | 九项能力和 15 页面均由真实产品、contracts 与测试承载；fixture 只驱动受控 Port/失败注入，原阻塞条件未发生。 |
 
 ### S6｜集成、质量与安全加固
 
