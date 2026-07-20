@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · runtime defaults to Mock mode**
+> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · S6 quality hardening complete through S6-04 · runtime defaults to Mock mode**
 > Audience: AI Coding Agents、开发者、维护者  
 > Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；后端领域、平台与 Provider adapters 已实现并通过边界测试，产品默认仍使用确定性 Mock Provider，bundled native TTS helper 尚未实现
 
@@ -70,6 +70,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] S6-01 跨层失败矩阵已通过：[S6-01 验收记录](docs/project-management/s6-01-failure-matrix-acceptance.md) 覆盖生成、播放、反馈和事件重连故障并保护旧节目
 - [x] S6-02 数据生命周期矩阵已通过：[S6-02 验收记录](docs/project-management/s6-02-data-lifecycle-compatibility.md) 覆盖首次目录、v6 生产旧库升级、八阶段迁移回滚、真实 SHA-256 校验和成功/失败恢复
 - [x] S6-03 安全、隐私与依赖审计已通过：[S6-03 审计记录](docs/project-management/s6-03-security-privacy-dependency-audit.md) 覆盖 loopback/Origin/session、文件与 Provider 恶意输入、日志/API 脱敏、依赖漏洞、license 与发布风险
+- [x] S6-04 性能、缓存、长时播放与无障碍回归已通过：[S6-04 验收记录](docs/project-management/s6-04-performance-accessibility-acceptance.md) 覆盖有界缓存、八小时等价播放、checkpoint 节流、静态 App Shell 白名单、三浏览器 axe/键盘/Focus、Reduce Motion、200% zoom 与代表 viewport
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
 - [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证
 - [x] `pnpm check`、Linux 常规质量门、三浏览器 E2E、axe 与视觉回归已进入 GitHub Actions
@@ -552,10 +553,10 @@ pnpm check
 
 ## 9. 下一实现起点
 
-S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门和 S5 全量功能阶段门均已关闭，`S6-01` 跨层失败矩阵、`S6-02` 数据生命周期矩阵与 `S6-03` 安全/依赖审计已通过。下一关键任务是 `S6-04`：
+S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门和 S5 全量功能阶段门均已关闭，`S6-01` 跨层失败矩阵、`S6-02` 数据生命周期矩阵、`S6-03` 安全/依赖审计与 `S6-04` 性能/无障碍回归已通过。下一关键任务是 `S6-05`：
 
-- 验证长时播放、缓存增长、性能与资源回收边界。
-- 扩大跨浏览器、键盘、Focus、Reduce Motion、响应式和无障碍回归证据。
+- 在干净环境重跑 typecheck、lint、format、分层测试、build、安全、a11y 与视觉检查。
+- 汇总并关闭全部内部质量缺口，复核显式跳过项没有隐藏关键能力缺口。
 - 不提前开始外部 Beta、包装或发布；真实 Provider 产品运行组合与 bundled native helper 仍由后续任务交付。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。

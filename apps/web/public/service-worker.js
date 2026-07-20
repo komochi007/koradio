@@ -1,5 +1,10 @@
 const CACHE_NAME = "koradio-app-shell-v1";
 const APP_SHELL_URL = "/";
+const APP_SHELL_PATHS = new Set(["/", "/index.html", "/manifest.webmanifest"]);
+
+function isStaticAppShellRequest(url) {
+  return APP_SHELL_PATHS.has(url.pathname) || url.pathname.startsWith("/assets/");
+}
 
 globalThis.addEventListener("install", (event) => {
   event.waitUntil(globalThis.caches.open(CACHE_NAME).then((cache) => cache.add(APP_SHELL_URL)));
@@ -26,7 +31,7 @@ globalThis.addEventListener("fetch", (event) => {
   if (
     request.method !== "GET" ||
     url.origin !== globalThis.location.origin ||
-    url.pathname.startsWith("/api/")
+    (!isStaticAppShellRequest(url) && request.mode !== "navigate")
   ) {
     return;
   }

@@ -12,9 +12,9 @@
 | 问题 | 直接答案 |
 |---|---|
 | 当前工程阶段 | S6 集成、质量与安全加固；S5 P1 全量功能阶段门已通过 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06`、`S5-01`～`S5-04`、`S6-01`～`S6-03` |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06`、`S5-01`～`S5-04`、`S6-01`～`S6-04` |
 | 当前活动任务 | 无 |
-| 初始下一任务 | `S6-04`（Ready） |
+| 初始下一任务 | `S6-05`（Ready） |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
 | 状态事实源 | 只修改本文件；GitHub Issue/Project 只写入“外部引用” |
@@ -56,7 +56,7 @@ AI 执行任务时按固定顺序操作：
 | S3 核心领域与 Provider 后端 | 7 | 0 | 0 | 0 | 0 | 7 |
 | S4 P0 核心产品体验 | 6 | 0 | 0 | 0 | 0 | 6 |
 | S5 P1 全量功能 | 4 | 0 | 0 | 0 | 0 | 4 |
-| S6 集成、质量与安全加固 | 3 | 2 | 0 | 0 | 0 | 5 |
+| S6 集成、质量与安全加固 | 4 | 1 | 0 | 0 | 0 | 5 |
 | S7 macOS 打包与发布工程 | 0 | 5 | 0 | 0 | 0 | 5 |
 | S8 全量外部测试与 Release Candidate | 0 | 4 | 0 | 0 | 0 | 4 |
 | S9 v1.0 发布与稳定期 | 0 | 4 | 0 | 0 | 0 | 4 |
@@ -148,7 +148,7 @@ AI 执行任务时按固定顺序操作：
 | `S6-01` 关闭生成、播放与事件失败矩阵 | 已完成 | Critical | 保证核心依赖失败、媒体错误和事件重连都有确定结果且不破坏旧节目。 | S5-04、S3-07 | PRD 异常处理、用户流程异常清单和工程测试规则。 | 补齐失败恢复和 regression，不通过吞错或放宽断言完成；未明确列出的实现和功能不在本任务范围内。 | Codex 非法输出、无歌、TTS 降级、无歌词、单曲/全队列失败、反馈回滚、乱序/重连全部覆盖；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `tests/fixtures/s6-failure-matrix.ts`、`tests/e2e/failure-matrix.spec.ts` 和 `s6-01-failure-matrix-acceptance.md`；补强 Mock Provider 数据库失败快照与生成状态乱序 regression。 | `pnpm check` 通过：18 个 unit 文件 76 个用例、7 个 contract 文件 58 个用例、13 个 integration 文件 60 个用例、7 个 component 文件 30 个用例、45 个 coverage 文件 224 个用例与 build 全部通过；三浏览器 E2E 89 个通过、61 个显式能力跳过，视觉门 1 个通过；失败矩阵在 Chromium/Firefox 10 个通过，旧 Program、数据库、Audio 状态与回滚均已断言。 | 项目所有者 / [S6-01 验收记录](s6-01-failure-matrix-acceptance.md) | 固定 Provider Port、浏览器 route 与数据库/Audio 快照已稳定注入全部目标失败；WebKit 受控 route 限制保留给 S6-04，阻塞条件未发生。 |
 | `S6-02` 关闭数据生命周期、迁移与恢复矩阵 | 已完成 | Critical | 证明首次启动、版本升级、数据目录迁移、备份和回滚不会静默损坏或删除用户数据。 | S2-05、S5-04 | 架构迁移协议、测试数据库和文件 fixture。 | 验证受控路径，不自动清理旧目录、备份或用户文件；未明确列出的实现和功能不在本任务范围内。 | 首次目录、迁移成功、各阶段失败、重复命令、旧版本升级、备份校验和恢复均通过；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `tests/fixtures/data-lifecycle.ts`、`tests/helpers/data-lifecycle.ts`、`tests/integration/data-lifecycle-recovery.integration.test.ts` 和 `s6-02-data-lifecycle-compatibility.md`；扩展 production 旧库升级与首次启动验证，并为迁移服务增加内部操作注入边界。 | `pnpm check` 通过：18 个 unit 文件 76 个用例、7 个 contract 文件 58 个用例、14 个 integration 文件 73 个用例、7 个 component 文件 30 个用例、46 个 coverage 文件 237 个用例与 build 全部通过；三浏览器 E2E 89 个通过、61 个显式能力跳过，视觉门 1 个通过；S6-02 专项 4 文件 33 个用例覆盖 v6→v7、八阶段回滚、真实 SHA-256 篡改、重复命令和成功/失败恢复。 | 项目所有者 / [S6-02 验收记录](s6-02-data-lifecycle-compatibility.md) | 固定 production 旧库样本与临时数据根可稳定构造全部目标场景；所有失败保持旧数据可读且不删除源、备份或部分目标，阻塞条件未发生。 |
 | `S6-03` 完成安全、隐私与依赖审计 | 已完成 | Critical | 验证本地 HTTP、秘密、文件、日志、Provider 输入和供应链不会泄露敏感数据或扩大攻击面。 | S2-03、S2-04、S5-04 | `AI_RULES.md` 安全规则、依赖清单和发布目标。 | 覆盖 v1 本地威胁模型；未明确列出的实现和功能不在本任务范围内。 | loopback/Origin/session、路径越界、MIME/大小、重定向、日志/错误脱敏、依赖漏洞和 license 风险有结论；同时满足“输入”所引用权威文档的适用验收项。 | 已扩展 `platform-security.integration.test.ts` 与 `skeleton-server.integration.test.ts`，新增 parser 错误脱敏兜底、符号链接/流式大小回归、`scripts/security/audit-licenses.mjs`、`pnpm audit:dependencies` 和 [S6-03 审计记录](s6-03-security-privacy-dependency-audit.md)。 | `pnpm audit:dependencies` 通过：完整依赖树无已知漏洞，89 个生产依赖条目 license allowlist 通过；安全专项 18 用例、`pnpm check` 240 coverage 用例/完整 build、三浏览器 E2E 89 通过/61 既有显式跳过和视觉门 1 通过；日志/API、供应链与 Provider 发布风险人工复核通过。 | 项目所有者 / [S6-03 审计记录](s6-03-security-privacy-dependency-audit.md) | 当前 Personal Local Preview 无未缓解 Critical/High；NetEase 非官方协议通过禁止外部分发、Port 隔离与 S7 公开发布硬门缓解，不授权公开发布，原阻塞条件未发生。 |
-| `S6-04` 完成性能、缓存、长时播放与无障碍回归 | 待开始 | High | 确认长时间使用、缓存增长、响应式和辅助技术不会破坏核心电台体验。 | S5-04 | 架构性能规则、设计无障碍规范和代表 viewport。 | 按可观察瓶颈优化，不提前引入微服务、真实频谱或大规模遥测；未明确列出的实现和功能不在本任务范围内。 | 缓存有容量/过期/清理策略；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建 soak/performance、a11y 和视觉回归测试及报告。 | 长时运行、内存/CPU 观察、自动 a11y、键盘脚本和基线截图对比。 | 待分配 / 无 | 性能修复要求改变事实源或视觉骨架；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
+| `S6-04` 完成性能、缓存、长时播放与无障碍回归 | 已完成 | High | 确认长时间使用、缓存增长、响应式和辅助技术不会破坏核心电台体验。 | S5-04 | 架构性能规则、设计无障碍规范和代表 viewport。 | 按可观察瓶颈优化，不提前引入微服务、真实频谱或大规模遥测；未明确列出的实现和功能不在本任务范围内。 | 缓存有容量/过期/清理策略；同时满足“输入”所引用权威文档的适用验收项。 | 已创建 `performance-soak.test.ts`、`accessibility-regression.spec.ts`、200% zoom Chromium 基线和 [S6-04 验收记录](s6-04-performance-accessibility-acceptance.md)；修复 checkpoint 同区间并发洪泛与 Service Worker 动态资源缓存。 | `pnpm check` 通过：19 个 unit 文件 79 个用例、7 个 contract 文件 58 个用例、14 个 integration 文件 76 个用例、7 个 component 文件 30 个用例、47 个 coverage 文件 243 个用例及 build；八小时等价 115,200 次更新、250,000 次缓存 churn、三浏览器五页面 axe/键盘/Focus、Reduce Motion、代表 viewport、44px 命中区、200% zoom、94 个 E2E 通过/65 个既有显式跳过和视觉门 1 个通过。 | 项目所有者 / [S6-04 验收记录](s6-04-performance-accessibility-acceptance.md) | 修复保持 Browser Audio Engine 事实源和 VDA-17 骨架不变；真实 Provider 长时播放、native TTS 缓存与 VoiceOver 人工走查已如实留待对应实现/包装阶段，阻塞条件未发生。 |
 | `S6-05` 通过内部全质量门 | 待开始 | Critical | 形成可进入包装阶段的质量基线，证明所有合并前检查和关键非功能验收一致通过。 | S6-01、S6-02、S6-03、S6-04 | 全部测试、审计和功能验收结果。 | 汇总并关闭质量缺口，不以删除测试、跳过用例或手工改数据通过；未明确列出的实现和功能不在本任务范围内。 | typecheck、lint、format、unit、contract、integration、component、E2E、build、安全、a11y、视觉检查全部通过；同时满足“输入”所引用权威文档的适用验收项。 | 计划创建内部质量门报告、缺口清单和可追溯 CI 证据。 | 在干净环境执行完整质量流水线并复核无跳过关键用例。 | 待分配 / 无 | 任一 Critical 门失败或检查无法运行；解除要求：修复该条件，或先取得相应用户决策并更新权威文档/ADR。 |
 
 ### S7｜macOS 打包与发布工程

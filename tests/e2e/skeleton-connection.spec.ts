@@ -144,6 +144,10 @@ test("serves only the static App Shell from cache while fully offline", async ({
   await page.evaluate(async () => navigator.serviceWorker.ready);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeFocused();
+  await page.evaluate(async () => {
+    await fetch("/radio");
+    await fetch("/tts/00000000-0000-4000-8000-000000000001.wav");
+  });
 
   const cachedUrls = await page.evaluate(async () => {
     const names = await caches.keys();
@@ -151,6 +155,8 @@ test("serves only the static App Shell from cache while fully offline", async ({
     return requests.flat().map((request) => request.url);
   });
   expect(cachedUrls.some((url) => url.includes("/api/v1"))).toBe(false);
+  expect(cachedUrls.some((url) => new URL(url).pathname === "/radio")).toBe(false);
+  expect(cachedUrls.some((url) => new URL(url).pathname.startsWith("/tts/"))).toBe(false);
 
   await context.setOffline(true);
   try {

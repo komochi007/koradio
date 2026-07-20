@@ -370,6 +370,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       resolvedStatus === "completed"
         ? item.durationMs
         : clamp(snapshot.positionMs, 0, item.durationMs);
+    lastCheckpointAt = now();
     try {
       await savePlaybackCheckpoint(options.transport, {
         profileId,
@@ -380,7 +381,6 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         status: resolvedStatus,
         leaseEpoch: epoch,
       });
-      lastCheckpointAt = now();
       update({ checkpointError: false });
     } catch (error) {
       if (

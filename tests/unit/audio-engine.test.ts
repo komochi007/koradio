@@ -577,6 +577,60 @@ describe("Audio Engine", () => {
     expect(engine.getSnapshot().checkpointError).toBe(true);
   });
 
+  it("keeps high-frequency progress updates to one checkpoint per interval", async () => {
+    let currentTime = 0;
+    let resolveCheckpoint: ((response: Response) => void) | undefined;
+    const audio = new FakeAudio();
+    const transport = createTransport();
+    const request = vi.fn((_path: string, init?: RequestInit) => {
+      if ((init?.method ?? "GET") === "GET") {
+        return Promise.resolve(
+          new Response(errorEnvelope("PLAYBACK_SNAPSHOT_NOT_FOUND"), { status: 404 }),
+        );
+      }
+      return new Promise<Response>((resolve) => {
+        resolveCheckpoint = resolve;
+      });
+    });
+    transport.request = request;
+    const engine = createAudioEngine({
+      audio,
+      checkpointIntervalMs: 1_000,
+      lease: new FakeLease(),
+      now: () => currentTime,
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport,
+    });
+    await engine.loadProgram(program, { autoplay: false });
+    await engine.play();
+
+    currentTime = 1_001;
+    for (let index = 0; index < 2_000; index += 1) {
+      audio.currentTime = (index % 9) + 1;
+      audio.emit("timeupdate");
+    }
+    expect(request).toHaveBeenCalledTimes(2);
+
+    resolveCheckpoint?.(
+      new Response(
+        JSON.stringify({
+          profileId,
+          programId,
+          timelineItemId: program.timeline[0]?.id,
+          positionMs: 1_000,
+          volume: 1,
+          status: "playing",
+          savedAt: "2026-07-19T08:00:00.000Z",
+        }),
+        { status: 200 },
+      ),
+    );
+    await flushAsync();
+    currentTime = 2_002;
+    audio.emit("timeupdate");
+    expect(request).toHaveBeenCalledTimes(3);
+  });
+
   it("mirrors the active tab snapshot and takes over before playing", async () => {
     const audio = new FakeAudio();
     const lease = new FakeLease();
