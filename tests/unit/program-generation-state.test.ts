@@ -153,6 +153,20 @@ describe("Radio program generation state", () => {
     expect(state.active?.sequence).toBe(3);
     expect(state.program).toBe(oldProgram);
 
+    const afterStaleSnapshot = reduceProgramGeneration(state, {
+      type: "generation.snapshot",
+      snapshot: {
+        jobId,
+        profileId,
+        status: "running",
+        stage: "planning",
+        sequence: 1,
+        createdAt: "2026-07-19T12:00:00.000Z",
+        updatedAt: "2026-07-19T12:00:01.000Z",
+      },
+    });
+    expect(afterStaleSnapshot).toBe(state);
+
     state = reduceProgramGeneration(state, {
       type: "generation.event",
       profileId,

@@ -92,6 +92,9 @@ export function reduceProgramGeneration(
     if (active === undefined || action.snapshot.jobId !== active.jobId) {
       return state;
     }
+    if (action.snapshot.sequence < active.sequence) {
+      return state;
+    }
     if (action.snapshot.status === "failed" || action.snapshot.status === "canceled") {
       return {
         ...state,

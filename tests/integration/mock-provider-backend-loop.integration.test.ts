@@ -54,6 +54,7 @@ import {
   s3SecondaryTrackFixture,
   s3TtsFixture,
 } from "../fixtures/program-generation.js";
+import { s6GenerationFailureCases } from "../fixtures/s6-failure-matrix.js";
 
 const origin = "http://127.0.0.1:49373";
 const openApps: Awaited<ReturnType<typeof createApp>>[] = [];
@@ -331,6 +332,7 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
   });
 
   it("blocks provider errors and invalid plans without replacing the last committed Program", async () => {
+    const invalidFailure = s6GenerationFailureCases[0];
     let mode: "success" | "provider-error" | "invalid" = "success";
     const codex: CodexProvider = {
       plan() {
@@ -373,7 +375,7 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
     await harness.generation.waitForIdle();
     expect(harness.generation.get(harness.profile.id, invalid.jobId)).toMatchObject({
       status: "failed",
-      errorCode: "PROGRAM_GENERATION_PLAN_INVALID",
+      errorCode: invalidFailure.code,
     });
     expect(harness.programs.list(harness.profile.id).items).toEqual([
       expect.objectContaining({ id: committed.programId, scenarioText: s3GenerationScenario }),
@@ -388,26 +390,60 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
   });
 
   it("exhausts three deterministic search attempts and refuses an empty Program", async () => {
+    const noTracksFailure = s6GenerationFailureCases[1];
     const searchInvocations: string[] = [];
+    const emptyPlan = {
+      ...s3GenerationPlanFixture,
+      musicQueries: s3GenerationPlanFixture.musicQueries.map((query, index) => ({
+        ...query,
+        keyword: `S6 empty ${String(index + 1)}`,
+      })),
+    };
+    const playableMusic = createFixtureMusicProvider();
+    const emptyMusic = createFixtureMusicProvider({ searchEmpty: true, searchInvocations });
+    let searchEmpty = false;
     const harness = await createHarness({
-      music: createFixtureMusicProvider({ searchEmpty: true, searchInvocations }),
+      codex: {
+        plan() {
+          return Promise.resolve(searchEmpty ? emptyPlan : s3GenerationPlanFixture);
+        },
+      },
+      music: {
+        ...playableMusic,
+        search(keyword, options) {
+          return (searchEmpty ? emptyMusic : playableMusic).search(keyword, options);
+        },
+      },
     });
+    const succeeded = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: s3GenerationScenario },
+      "s6-01-existing-program",
+    );
+    await harness.generation.waitForIdle();
+    const committed = harness.generation.get(harness.profile.id, succeeded.jobId);
+    expect(committed.status).toBe("succeeded");
+
+    searchEmpty = true;
     const started = harness.generation.start(
       harness.profile.id,
       { scenarioText: s3GenerationScenario },
-      "s3-07-search-empty",
+      "s6-01-search-empty",
     );
     await harness.generation.waitForIdle();
     expect(harness.generation.get(harness.profile.id, started.jobId)).toMatchObject({
       status: "failed",
-      errorCode: "PROGRAM_GENERATION_NO_PLAYABLE_TRACKS",
+      errorCode: noTracksFailure.code,
     });
-    expect(searchInvocations).toEqual(["S3 first empty", "S3 second empty", "S3 playable"]);
+    expect(searchInvocations).toEqual(["S6 empty 1", "S6 empty 2", "S6 empty 3"]);
+    expect(harness.programs.list(harness.profile.id).items).toEqual([
+      expect.objectContaining({ id: committed.programId, scenarioText: s3GenerationScenario }),
+    ]);
     expect(readProgramSnapshot(harness.database.client)).toEqual({
-      programs: 0,
-      tracks: 0,
-      scripts: 0,
-      timeline: 0,
+      programs: 1,
+      tracks: 1,
+      scripts: 1,
+      timeline: 2,
     });
     await closeHarness(harness);
   });
