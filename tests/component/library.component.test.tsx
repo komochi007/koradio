@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   AudioEngineFacade,
   AudioEngineSnapshot,
-  PreviewTrackOptions,
+  PreviewAudioOptions,
 } from "../../apps/web/src/audio/index.js";
 import { createAppQueryClient, QueryClientProvider } from "../../apps/web/src/app/query-client.js";
 import { LibraryExperience } from "../../apps/web/src/features/library/index.js";
@@ -80,7 +80,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 function audioEngine(): AudioEngineFacade & {
-  previewTrack: ReturnType<typeof vi.fn<(options: PreviewTrackOptions) => Promise<void>>>;
+  previewAudio: ReturnType<typeof vi.fn<(options: PreviewAudioOptions) => Promise<void>>>;
   stopPreview: ReturnType<typeof vi.fn<() => Promise<void>>>;
 } {
   let snapshot: AudioEngineSnapshot = {
@@ -102,11 +102,12 @@ function audioEngine(): AudioEngineFacade & {
   const publish = (): void => {
     for (const listener of listeners) listener();
   };
-  const previewTrack = vi.fn((options: PreviewTrackOptions) => {
+  const previewAudio = vi.fn((options: PreviewAudioOptions) => {
     snapshot = {
       ...snapshot,
       preview: {
-        trackId: options.trackId,
+        kind: options.kind,
+        previewId: options.previewId,
         state: "playing",
         positionMs: 0,
         durationMs: options.durationMs,
@@ -131,7 +132,7 @@ function audioEngine(): AudioEngineFacade & {
     play: () => Promise.resolve(),
     prepareForProfileSwitch: () => Promise.resolve(),
     previous: () => Promise.resolve(),
-    previewTrack,
+    previewAudio,
     seek: () => Promise.resolve(),
     setVolume() {},
     stopPreview,
@@ -283,7 +284,7 @@ describe("S5-01 Library experience", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "试听 Space Song" }));
     await waitFor(() => {
-      expect(engine.previewTrack).toHaveBeenCalledTimes(1);
+      expect(engine.previewAudio).toHaveBeenCalledTimes(1);
     });
     expect(screen.getByRole("button", { name: "停止试听 Space Song" })).toBeTruthy();
     cleanup();

@@ -4,7 +4,15 @@ import type {
   ProfileContext,
   ProfileListResponse,
 } from "@koradio/contracts";
-import { Component, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import {
+  Component,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 import { createAudioEngine, type AudioEngineFacade } from "../audio/index.js";
 import {
@@ -78,6 +86,10 @@ function AppComposition({
   const reconnectingFromOffline = useRef(false);
   const queryClient = useQueryClient();
   const [profilesOpen, setProfilesOpen] = useState(false);
+  const [reusedScenario, setReusedScenario] = useState<{
+    profileId: string;
+    scenarioText: string;
+  }>();
   const profiles = useQuery({
     queryKey: ["profiles"],
     queryFn: () => getProfiles(transport),
@@ -89,6 +101,19 @@ function AppComposition({
     enabled: connection.state === "online" || connection.state === "reconnecting",
   });
   const currentTheme = currentProfile.data?.current?.preferences.themeMode;
+  const consumeReusedScenario = useCallback((): void => {
+    setReusedScenario(undefined);
+  }, []);
+  const reuseScenario = useCallback(
+    (scenarioText: string): boolean => {
+      const current = currentProfile.data?.current;
+      if (connection.state !== "online" || current === null || current === undefined) return false;
+      setReusedScenario({ profileId: current.profile.id, scenarioText });
+      navigate("/radio");
+      return true;
+    },
+    [connection.state, currentProfile.data?.current, navigate],
+  );
 
   useEffect(() => {
     if (currentTheme !== undefined) {
@@ -157,6 +182,7 @@ function AppComposition({
   }
 
   const setCurrent = (current: ProfileContext): void => {
+    setReusedScenario(undefined);
     queryClient.setQueryData<CurrentProfileResponse>(["current-profile"], { current });
     setProfilesOpen(false);
     if (
@@ -215,10 +241,17 @@ function AppComposition({
       health={connection.health}
       navigate={navigate}
       current={currentProfile.data.current}
+      initialRadioScenario={
+        reusedScenario?.profileId === currentProfile.data.current.profile.id
+          ? reusedScenario.scenarioText
+          : undefined
+      }
       onCurrentChanged={setCurrent}
       onOpenProfiles={() => {
         setProfilesOpen(true);
       }}
+      onRadioScenarioConsumed={consumeReusedScenario}
+      onReuseScenario={reuseScenario}
       eventBus={eventBus}
       reconnecting={connection.state === "reconnecting"}
       route={route}

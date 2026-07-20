@@ -6,6 +6,7 @@ import {
   type JobAcceptedResponse,
   type ProgramDetail,
   type ProgramGenerationSnapshot,
+  type ProgramListResponse,
 } from "@koradio/contracts";
 
 import { createIdempotencyKey, jsonRequest, requestJson } from "../../shared/api.js";
@@ -17,11 +18,26 @@ export async function getLatestProgram(
 ): Promise<ProgramDetail | null> {
   const programs = await requestJson(
     transport,
-    `/api/v1/profiles/${profileId}/programs?limit=1`,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/programs?limit=1`,
     programListResponseSchema,
   );
   const latest = programs.items[0];
   return latest === undefined ? null : getProgram(transport, profileId, latest.id);
+}
+
+export function getPrograms(
+  transport: ServiceTransport,
+  profileId: string,
+  cursor?: string,
+  limit = 4,
+): Promise<ProgramListResponse> {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (cursor !== undefined) query.set("cursor", cursor);
+  return requestJson(
+    transport,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/programs?${query.toString()}`,
+    programListResponseSchema,
+  );
 }
 
 export function getProgram(
@@ -31,7 +47,7 @@ export function getProgram(
 ): Promise<ProgramDetail> {
   return requestJson(
     transport,
-    `/api/v1/profiles/${profileId}/programs/${programId}`,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/programs/${encodeURIComponent(programId)}`,
     programDetailSchema,
   );
 }
@@ -43,7 +59,7 @@ export function getProgramGeneration(
 ): Promise<ProgramGenerationSnapshot> {
   return requestJson(
     transport,
-    `/api/v1/profiles/${profileId}/program-generations/${jobId}`,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/program-generations/${encodeURIComponent(jobId)}`,
     programGenerationSnapshotSchema,
   );
 }
@@ -58,7 +74,7 @@ export function generateProgram(
   headers.set("Idempotency-Key", createIdempotencyKey());
   return requestJson(
     transport,
-    `/api/v1/profiles/${profileId}/program-generations`,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/program-generations`,
     jobAcceptedResponseSchema,
     { ...request, headers },
   );

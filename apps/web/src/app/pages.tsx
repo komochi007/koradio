@@ -3,8 +3,8 @@ import type { ReactElement, RefObject } from "react";
 
 import type { AudioEngineFacade } from "../audio/index.js";
 import { LibraryExperience } from "../features/library/index.js";
+import { ProgramsExperience } from "../features/programs/index.js";
 import { RadioExperience } from "../features/radio/index.js";
-import { CurrentProgramFeedback } from "../features/feedback/index.js";
 import { TasteExperience } from "../features/taste/index.js";
 import type { AppEventBus } from "../shared/events.js";
 import type { ServiceTransport } from "../shared/transport.js";
@@ -148,9 +148,12 @@ interface OnlineShellPageProps {
   eventBus: AppEventBus;
   headingRef: RefObject<HTMLHeadingElement | null>;
   health: HealthResponse;
+  initialRadioScenario: string | undefined;
   navigate: (path: string) => void;
   onCurrentChanged: (current: ProfileContext) => void;
   onOpenProfiles: () => void;
+  onRadioScenarioConsumed: () => void;
+  onReuseScenario: (scenarioText: string) => boolean;
   reconnecting: boolean;
   route: AppRoute;
   transport: ServiceTransport;
@@ -168,9 +171,12 @@ export function OnlineShellPage({
   eventBus,
   headingRef,
   health,
+  initialRadioScenario,
   navigate,
   onCurrentChanged,
   onOpenProfiles,
+  onRadioScenarioConsumed,
+  onReuseScenario,
   reconnecting,
   route,
   transport,
@@ -182,10 +188,12 @@ export function OnlineShellPage({
         current={current}
         eventBus={eventBus}
         headingRef={headingRef}
+        initialScenarioDraft={initialRadioScenario}
         key={current.profile.id}
         navigate={navigate}
         onCurrentChanged={onCurrentChanged}
         onOpenProfiles={onOpenProfiles}
+        onScenarioDraftConsumed={onRadioScenarioConsumed}
         reconnecting={reconnecting}
         transport={transport}
       />
@@ -222,6 +230,23 @@ export function OnlineShellPage({
     );
   }
 
+  if (route.id === "programs") {
+    return (
+      <ProgramsExperience
+        audioEngine={audioEngine}
+        current={current}
+        eventBus={eventBus}
+        headingRef={headingRef}
+        key={current.profile.id}
+        navigate={navigate}
+        onOpenProfiles={onOpenProfiles}
+        onReuseScenario={onReuseScenario}
+        reconnecting={reconnecting}
+        transport={transport}
+      />
+    );
+  }
+
   return (
     <div className="app-surface online-page">
       <header className="topbar">
@@ -248,14 +273,6 @@ export function OnlineShellPage({
           </h1>
           <p>本地 Session、Query 缓存与事件通道已由 App Shell 统一组合。</p>
         </div>
-        {route.id === "programs" && (
-          <CurrentProgramFeedback
-            eventBus={eventBus}
-            key={current.profile.id}
-            profileId={current.profile.id}
-            transport={transport}
-          />
-        )}
         <section className="connection-ledger" aria-label="本地连接状态">
           <article>
             <span>01</span>

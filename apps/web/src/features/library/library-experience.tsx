@@ -266,8 +266,9 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
   );
   const searchTracks = search.data?.items ?? [];
   const previewingTrackId =
-    audio.preview?.state === "playing" || audio.preview?.state === "loading"
-      ? audio.preview.trackId
+    (audio.preview?.state === "playing" || audio.preview?.state === "loading") &&
+    audio.preview.kind === "track"
+      ? audio.preview.previewId
       : undefined;
 
   const addMutation = useMutation({
@@ -296,8 +297,9 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
     mutationFn: async (track: MusicTrack) => {
       await props.audioEngine.activateProfile(profileId);
       const resolution = await resolveTrackAudio(props.transport, profileId, track.id);
-      await props.audioEngine.previewTrack({
-        trackId: track.id,
+      await props.audioEngine.previewAudio({
+        kind: "track",
+        previewId: track.id,
         resolvedAudioRef: resolution.resolvedAudioRef,
         durationMs: track.durationMs,
       });

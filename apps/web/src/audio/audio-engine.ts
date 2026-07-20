@@ -13,7 +13,7 @@ import type {
   AudioPlaybackState,
   LeasePlaybackSnapshot,
   LoadProgramOptions,
-  PreviewTrackOptions,
+  PreviewAudioOptions,
 } from "./types.js";
 
 interface AudioElementLike {
@@ -46,7 +46,8 @@ interface CreateAudioEngineOptions {
 }
 
 interface PreviewContext {
-  trackId: string;
+  kind: "dj" | "track";
+  previewId: string;
   durationMs: number;
   returnIndex: number | undefined;
   returnPositionMs: number;
@@ -131,14 +132,14 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     return program?.timeline[currentIndex];
   }
 
-  function activePreviewTrackId(): string | undefined {
-    return previewContext?.trackId;
+  function activePreviewId(): string | undefined {
+    return previewContext?.previewId;
   }
 
-  function isCurrentPreview(version: number, trackId: string): boolean {
+  function isCurrentPreview(version: number, previewId: string): boolean {
     return (
       version === loadVersion &&
-      activePreviewTrackId() === trackId &&
+      activePreviewId() === previewId &&
       lease.getState().ownership === "active"
     );
   }
@@ -253,7 +254,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     }
   }
 
-  async function previewTrack(preview: PreviewTrackOptions): Promise<void> {
+  async function previewAudio(preview: PreviewAudioOptions): Promise<void> {
     if (lease.getState().ownership !== "active") {
       await lease.requestTakeover();
       update({
@@ -270,7 +271,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         await checkpoint("paused");
       }
       previewContext = {
-        trackId: preview.trackId,
+        kind: preview.kind,
+        previewId: preview.previewId,
         durationMs: preview.durationMs,
         returnIndex: item === undefined ? undefined : currentIndex,
         returnPositionMs: item === undefined ? 0 : snapshot.positionMs,
@@ -278,7 +280,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     } else {
       previewContext = {
         ...previewContext,
-        trackId: preview.trackId,
+        kind: preview.kind,
+        previewId: preview.previewId,
         durationMs: preview.durationMs,
       };
     }
@@ -293,7 +296,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     preloader.clear();
     update({
       preview: {
-        trackId: preview.trackId,
+        kind: preview.kind,
+        previewId: preview.previewId,
         state: "loading",
         positionMs: 0,
         durationMs: preview.durationMs,
@@ -302,13 +306,14 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     });
     try {
       await audio.play();
-      if (!isCurrentPreview(version, preview.trackId)) {
+      if (!isCurrentPreview(version, preview.previewId)) {
         audio.pause();
         return;
       }
       update({
         preview: {
-          trackId: preview.trackId,
+          kind: preview.kind,
+          previewId: preview.previewId,
           state: "playing",
           positionMs: 0,
           durationMs: preview.durationMs,
@@ -316,14 +321,15 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         },
       });
     } catch (error) {
-      if (!isCurrentPreview(version, preview.trackId)) {
+      if (!isCurrentPreview(version, preview.previewId)) {
         audio.pause();
         return;
       }
       const autoplayBlocked = error instanceof DOMException && error.name === "NotAllowedError";
       update({
         preview: {
-          trackId: preview.trackId,
+          kind: preview.kind,
+          previewId: preview.previewId,
           state: autoplayBlocked ? "paused" : "failed",
           positionMs: 0,
           durationMs: preview.durationMs,
@@ -639,7 +645,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       await checkpoint("paused");
     },
     play: () => playCurrent(true),
-    previewTrack,
+    previewAudio,
     async prepareForProfileSwitch() {
       await yieldPlayback();
       lease.release();

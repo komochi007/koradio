@@ -361,8 +361,9 @@ describe("Audio Engine", () => {
     audio.currentTime = 4;
     audio.emit("timeupdate");
 
-    await engine.previewTrack({
-      trackId: program.tracks[1]?.id ?? "",
+    await engine.previewAudio({
+      kind: "track",
+      previewId: program.tracks[1]?.id ?? "",
       resolvedAudioRef: "https://media.example.test/preview.mp3",
       durationMs: 20_000,
     });
@@ -376,7 +377,8 @@ describe("Audio Engine", () => {
       state: "paused",
       positionMs: 4_000,
       preview: {
-        trackId: program.tracks[1]?.id,
+        kind: "track",
+        previewId: program.tracks[1]?.id,
         state: "playing",
       },
     });
@@ -397,8 +399,9 @@ describe("Audio Engine", () => {
     expect(audio.src).toBe("https://media.example.test/first.mp3");
     expect(audio.currentTime).toBe(4);
 
-    await engine.previewTrack({
-      trackId: program.tracks[1]?.id ?? "",
+    await engine.previewAudio({
+      kind: "track",
+      previewId: program.tracks[1]?.id ?? "",
       resolvedAudioRef: "https://media.example.test/preview.mp3",
       durationMs: 20_000,
     });
@@ -419,8 +422,9 @@ describe("Audio Engine", () => {
     await engine.loadProgram(program, { autoplay: false });
     audio.playResult = () => Promise.reject(new DOMException("blocked", "NotAllowedError"));
 
-    await engine.previewTrack({
-      trackId: program.tracks[1]?.id ?? "",
+    await engine.previewAudio({
+      kind: "track",
+      previewId: program.tracks[1]?.id ?? "",
       resolvedAudioRef: "https://media.example.test/preview.mp3",
       durationMs: 20_000,
     });
@@ -431,8 +435,9 @@ describe("Audio Engine", () => {
     });
 
     audio.playResult = () => Promise.resolve();
-    await engine.previewTrack({
-      trackId: program.tracks[1]?.id ?? "",
+    await engine.previewAudio({
+      kind: "track",
+      previewId: program.tracks[1]?.id ?? "",
       resolvedAudioRef: "https://media.example.test/preview.mp3",
       durationMs: 20_000,
     });
@@ -451,8 +456,9 @@ describe("Audio Engine", () => {
     expect(engine.getSnapshot().preview).toBeUndefined();
 
     audio.playResult = () => Promise.reject(new Error("decoder failed"));
-    await engine.previewTrack({
-      trackId: program.tracks[1]?.id ?? "",
+    await engine.previewAudio({
+      kind: "track",
+      previewId: program.tracks[1]?.id ?? "",
       resolvedAudioRef: "https://media.example.test/preview.mp3",
       durationMs: 20_000,
     });
@@ -469,8 +475,9 @@ describe("Audio Engine", () => {
         resolvePreview = resolve;
       });
     lease.setState({ ownership: "passive", profileId });
-    const pendingPreview = engine.previewTrack({
-      trackId: program.tracks[1]?.id ?? "",
+    const pendingPreview = engine.previewAudio({
+      kind: "track",
+      previewId: program.tracks[1]?.id ?? "",
       resolvedAudioRef: "https://media.example.test/preview.mp3",
       durationMs: 20_000,
     });

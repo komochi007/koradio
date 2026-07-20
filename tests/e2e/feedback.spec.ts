@@ -179,17 +179,17 @@ test("persists seven feedback events, rolls back failures, and keeps playback ru
   eventTypes.push((skipRequest.postDataJSON() as { type: string }).type);
 
   await page.getByRole("button", { name: "Programs" }).click();
-  await expect(page.getByRole("heading", { name: "Programs", exact: true })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "节目", exact: true })).toBeFocused();
   const favoriteRequest = await feedbackRequest(page, () =>
-    page.getByRole("button", { name: "收藏当前节目" }).press("Space"),
+    page.getByRole("button", { name: /^收藏节目 / }).press("Space"),
   );
   eventTypes.push((favoriteRequest.postDataJSON() as { type: string }).type);
-  await expect(page.getByRole("button", { name: "取消收藏节目" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: /^取消收藏节目 / })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
   const favoriteRemovedRequest = await feedbackRequest(page, () =>
-    page.getByRole("button", { name: "取消收藏节目" }).click(),
+    page.getByRole("button", { name: /^取消收藏节目 / }).click(),
   );
   eventTypes.push((favoriteRemovedRequest.postDataJSON() as { type: string }).type);
 

@@ -50,7 +50,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 已接受 native launcher + 外部浏览器 PWA，当前仅限受控本机个人使用，尚未实装
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；三个 Backend Adapter 与生成运行时编排已实现，bundled native helper 仍待后续任务
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
-- [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Radio 三态、节目生成 command/Snapshot/有序事件与失败恢复、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入，以及 Taste 自动投影/人工规则/有效结果查看与编辑已接入，Programs 历史/复用仍待 S5
+- [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Radio 三态、节目生成 command/Snapshot/有序事件与失败恢复、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
 - [x] Fastify Local Service health/session/events、Profiles、Library、Feedback、Taste、Programs、Playback、异步节目生成、DeviceSettings、ProfilePreferences 与数据目录迁移路由已实现；生成命令立即返回 `202 + jobId`，终态可通过 REST Snapshot 恢复
 - [x] 完整 v1 公共 Contracts 已用 Zod 固化：REST DTO/command、显式 `profileId`、`Idempotency-Key`、异步 job、WebSocket event 与安全 error envelope 均有正反向和兼容性测试
 - [x] SQLite/Drizzle 底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；Profile、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已落地
@@ -72,7 +72,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ### Agent safety note
 
-当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 App Shell 路由、内存 Session、事件重连、服务断线恢复、完全离线静态壳、Profile/Settings、Radio 三态/生成恢复、Browser Audio Engine、多标签接管、Detail 跟随和反馈闭环；后端还可验证 Profiles、Library、Feedback/Taste、Programs/Playback、Mock Provider 生成闭环、Provider adapter 边界、同源托管、SQLite、数据目录迁移、受控文件/秘密、脱敏日志和 Session/Origin 安全矩阵。macOS 登录会话还可验证真实 Keychain 往返；受控本机已验证 NetEase smoke，但这些证据不证明 Codex 与 NetEase 的真实节目生成组合、TTS native helper 或安装包可运行。
+当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 App Shell 路由、内存 Session、事件重连、服务断线恢复、完全离线静态壳、Profile/Settings、Radio 三态/生成恢复、Browser Audio Engine、多标签接管、Detail 跟随、反馈闭环和 Library/Taste/Programs 三个 P1 页面；后端还可验证 Profiles、Library、Feedback/Taste、Programs/Playback、Mock Provider 生成闭环、Provider adapter 边界、同源托管、SQLite、数据目录迁移、受控文件/秘密、脱敏日志和 Session/Origin 安全矩阵。macOS 登录会话还可验证真实 Keychain 往返；受控本机已验证 NetEase smoke，但这些证据不证明 Codex 与 NetEase 的真实节目生成组合、TTS native helper 或安装包可运行。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -479,7 +479,7 @@ pnpm check
 - 已有 Profiles、Library、Feedback、Taste、Programs 与 Playback application/persistence/public API、持久节目生成 Job、有序事件、Provider orchestration、MusicProvider Port、确定性 Mock、真实 Programs/Library 反馈目标校验和可重建 projection；Mock Provider 后端闭环已通过固定 fixture 验收。
 - 已有完整 v1 wire contracts；health/session/events、Profiles、Library、Feedback、Taste、Programs 历史/详情、Playback snapshot/checkpoint、DeviceSettings、ProfilePreferences 和数据目录迁移已有 route/use case。
 - 已有 Codex、NetEase 与 TTS Adapter 及确定性 Mock；application composition 仍只使用 `mock`，native TTS helper 尚不存在。
-- App Shell 提供五个一级 route、TanStack Query health snapshot、内存 Session、WebSocket 事件重连、完全离线异常页和只读 Settings；在线模式已提供 Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题/DJ 偏好、四服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、节目 generation command、Snapshot/有序事件恢复、原子节目替换、喜欢/不喜欢/跳过/节目收藏反馈、Library 搜索/试听/候选池/分页/缓存与网易云歌单导入，以及按 Profile 隔离的 Taste 投影/人工规则/有效结果查看、字段约束和只写 overrides 的人工编辑；Programs route 只提供当前节目收藏入口，历史/复用仍待 S5。
+- App Shell 提供五个一级 route、TanStack Query health snapshot、内存 Session、WebSocket 事件重连、完全离线异常页和只读 Settings；在线模式已提供 Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题/DJ 偏好、四服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、节目 generation command、Snapshot/有序事件恢复、原子节目替换、喜欢/不喜欢/跳过/节目收藏反馈、Library 搜索/试听/候选池/分页/缓存与网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看、字段约束和只写 overrides 的人工编辑，以及 Programs 分页历史、详情、Provider source identity 恢复、可用串讲重播、文字降级、场景草稿复用和收藏/撤销。
 - Session 只保护本地 HTTP 边界，不代表云账号或 Profile 身份；浏览器不会从 LocalStorage、SessionStorage、IndexedDB 或 Cookie 恢复 token。
 
 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 的完整根 script 名和 CI 安装合同已实装。`pnpm check` 聚合非浏览器合并门；[GitHub Actions CI](https://github.com/komochi007/koradio/actions/workflows/ci.yml) 在 `main` push、Pull Request 和手动触发时执行 frozen install、`check`、三浏览器 E2E、axe 与 Chromium 视觉回归。macOS 平台和包装探针仍由后续对应任务建立。
@@ -547,11 +547,11 @@ pnpm check
 
 ## 9. 下一实现起点
 
-S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门、`S5-01` Library 页面与 `S5-02` Taste 页面已关闭。下一关键任务是 `S5-03`：
+S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门，以及 `S5-01` Library、`S5-02` Taste、`S5-03` Programs 三个 P1 页面任务已关闭。下一关键任务是 `S5-04`：
 
-- 实现 Programs 历史、详情、场景复用与收藏/撤销，复用已完成的 Programs/Feedback 后端 API。
-- 验证分页、串讲音频缺失降级、场景复用失败恢复、收藏事件、Profile 隔离、键盘与视觉恢复路径。
-- 保持 P1 页面建设与已通过的 P0 反馈/播放闭环解耦；bundled native helper 仍由包装任务交付。
+- 对 PRD 九项能力、15 个页面状态、用户流程、contracts 与真实产品测试做双向追溯。
+- 验收 P0/P1 正常路径、异常恢复、Profile 隔离与设备配置边界，形成全量功能验收记录。
+- 不提前开始外部 Beta、包装或发布；bundled native helper 仍由后续包装任务交付。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。
 

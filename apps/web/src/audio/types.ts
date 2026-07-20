@@ -5,15 +5,17 @@ export type AudioPlaybackState =
   "idle" | "ready" | "playing" | "paused" | "buffering" | "completed" | "failed";
 
 export interface AudioPreviewSnapshot {
-  trackId: string;
+  kind: "dj" | "track";
+  previewId: string;
   state: "loading" | "playing" | "paused" | "failed";
   positionMs: number;
   durationMs: number;
   mediaError: "autoplay_blocked" | "media_failed" | undefined;
 }
 
-export interface PreviewTrackOptions {
-  trackId: string;
+export interface PreviewAudioOptions {
+  kind: "dj" | "track";
+  previewId: string;
   resolvedAudioRef: string;
   durationMs: number;
 }
@@ -51,7 +53,7 @@ export interface AudioEngineFacade {
   previous(): Promise<void>;
   seek(positionMs: number): Promise<void>;
   setVolume(volume: number): void;
-  previewTrack(options: PreviewTrackOptions): Promise<void>;
+  previewAudio(options: PreviewAudioOptions): Promise<void>;
   stopPreview(): Promise<void>;
   subscribe(listener: () => void): () => void;
 }

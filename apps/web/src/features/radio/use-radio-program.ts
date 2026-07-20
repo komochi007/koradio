@@ -18,14 +18,20 @@ export type RadioViewState = "empty" | "generating" | "playing";
 
 interface UseRadioProgramOptions {
   eventBus: AppEventBus;
+  initialDraft: string | undefined;
   profileId: string;
   transport: ServiceTransport;
 }
 
-export function useRadioProgram({ eventBus, profileId, transport }: UseRadioProgramOptions) {
+export function useRadioProgram({
+  eventBus,
+  initialDraft,
+  profileId,
+  transport,
+}: UseRadioProgramOptions) {
   const queryClient = useQueryClient();
   const [generation, dispatch] = useReducer(reduceProgramGeneration, initialProgramGenerationState);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialDraft ?? "");
   const [pendingScenario, setPendingScenario] = useState<string>();
   const [autoplayProgramId, setAutoplayProgramId] = useState<string>();
   const [validationError, setValidationError] = useState<string>();

@@ -35,9 +35,11 @@ interface RadioExperienceProps {
   current: ProfileContext;
   eventBus: AppEventBus;
   headingRef: RefObject<HTMLHeadingElement | null>;
+  initialScenarioDraft: string | undefined;
   navigate: (path: string) => void;
   onCurrentChanged: (current: ProfileContext) => void;
   onOpenProfiles: () => void;
+  onScenarioDraftConsumed: () => void;
   reconnecting: boolean;
   transport: ServiceTransport;
 }
@@ -526,13 +528,20 @@ export function RadioExperience({
   current,
   eventBus,
   headingRef,
+  initialScenarioDraft,
   navigate,
   onCurrentChanged,
   onOpenProfiles,
+  onScenarioDraftConsumed,
   reconnecting,
   transport,
 }: RadioExperienceProps): ReactElement {
-  const radio = useRadioProgram({ eventBus, profileId: current.profile.id, transport });
+  const radio = useRadioProgram({
+    eventBus,
+    initialDraft: initialScenarioDraft,
+    profileId: current.profile.id,
+    transport,
+  });
   const audio = useAudioSnapshot(audioEngine);
   const feedback = useFeedback({ eventBus, profileId: current.profile.id, transport });
   const [themeError, setThemeError] = useState(false);
@@ -540,9 +549,26 @@ export function RadioExperience({
   const [detailUnavailable, setDetailUnavailable] = useState(false);
   const [detailError, setDetailError] = useState(false);
   const detailOpenerRef = useRef<HTMLButtonElement>(null);
+  const sceneInputRef = useRef<HTMLInputElement>(null);
+  const [reuseNotice, setReuseNotice] = useState(initialScenarioDraft !== undefined);
   useEffect(() => {
     headingRef.current?.focus();
   }, [headingRef]);
+  useEffect(() => {
+    if (initialScenarioDraft === undefined) return;
+    setReuseNotice(true);
+    onScenarioDraftConsumed();
+    window.setTimeout(() => sceneInputRef.current?.focus(), 0);
+  }, [initialScenarioDraft, onScenarioDraftConsumed]);
+  useEffect(() => {
+    if (!reuseNotice) return;
+    const timer = window.setTimeout(() => {
+      setReuseNotice(false);
+    }, 5_000);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [reuseNotice]);
   useEffect(() => {
     if (radio.program !== null) {
       void audioEngine.loadProgram(radio.program, {
@@ -680,6 +706,7 @@ export function RadioExperience({
         </label>
         <input
           id="radio-scene"
+          ref={sceneInputRef}
           value={radio.viewState === "generating" ? "" : radio.draft}
           onChange={(event) => {
             radio.setDraft(event.target.value);
@@ -725,6 +752,11 @@ export function RadioExperience({
       {themeError && (
         <p className="radio-toast radio-toast--error" role="status">
           主题保存失败，已恢复到之前的主题
+        </p>
+      )}
+      {reuseNotice && (
+        <p className="radio-toast" role="status">
+          已带着这个场景回到 Radio
         </p>
       )}
       {audio.mediaError !== undefined && (
