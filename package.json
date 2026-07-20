@@ -25,6 +25,9 @@
     "test:e2e": "playwright test tests/e2e",
     "test:visual": "playwright test tests/visual --project=chromium",
     "test:coverage": "vitest run --coverage",
+    "audit:security": "pnpm audit --audit-level high",
+    "audit:licenses": "node scripts/security/audit-licenses.mjs",
+    "audit:dependencies": "pnpm audit:security && pnpm audit:licenses",
     "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test:unit && pnpm test:contract && pnpm test:integration && pnpm test:component && pnpm test:coverage && pnpm build"
   },
   "devDependencies": {

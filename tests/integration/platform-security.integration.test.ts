@@ -1,4 +1,4 @@
-import { mkdtemp, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -144,6 +144,25 @@ describe("platform security boundaries", () => {
     }
   });
 
+  it("rejects a controlled reference replaced by a symbolic link", async () => {
+    if (process.platform === "win32") {
+      return;
+    }
+
+    const dataRoot = await mkdtemp(join(tmpdir(), "koradio-file-store-link-"));
+    const store = createLocalFileStore({ dataRoot });
+    const externalFile = join(dataRoot, "outside.txt");
+    const controlledDirectory = join(dataRoot, "files", "avatars");
+    const reference = "avatars/00000000-0000-4000-8000-000000000000.png";
+    await mkdir(controlledDirectory, { mode: 0o700, recursive: true });
+    await writeFile(externalFile, "private file", { mode: 0o600 });
+    await symlink(externalFile, join(controlledDirectory, reference.split("/")[1] ?? ""));
+
+    await expect(store.read(reference)).rejects.toMatchObject({
+      code: "invalid_reference",
+    });
+  });
+
   it("enforces extension, MIME, body size and redirect limits before storing downloads", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "koradio-download-store-"));
     const allowedOrigins = new Set(["https://media.example.test"]);
@@ -282,6 +301,28 @@ describe("platform security boundaries", () => {
         url: "https://media.example.test/slow",
       }),
     ).rejects.toMatchObject({ code: "download_timeout" });
+  });
+
+  it("enforces the streamed body limit when Content-Length is absent", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "koradio-download-stream-limit-"));
+    const store = createLocalFileStore({
+      dataRoot,
+      fetchImplementation: createFetchFixture([
+        new Response(Buffer.alloc(2 * 1_048_576 + 1), {
+          headers: { "content-type": "text/plain" },
+          status: 200,
+        }),
+      ]),
+    });
+
+    await expect(
+      store.download({
+        allowedOrigins: new Set(["https://lyrics.example.test"]),
+        extension: "txt",
+        namespace: "lyrics",
+        url: "https://lyrics.example.test/song",
+      }),
+    ).rejects.toMatchObject({ code: "file_too_large" });
   });
 
   it("redacts secrets, sensitive bodies, credentials and user paths from structured logs", () => {

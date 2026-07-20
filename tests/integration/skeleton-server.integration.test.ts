@@ -122,6 +122,33 @@ describe("S2 local session and Origin security", () => {
     expect(serializedHeaders).not.toContain(bootstrap.accessToken);
   });
 
+  it("converts parser failures into a stable error envelope without raw diagnostics", async () => {
+    const app = await createTestApp();
+    const bootstrap = await bootstrapSession(app);
+    const sensitiveBody = '{"radioName":"private scenario",';
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/profiles",
+      headers: {
+        authorization: `Bearer ${bootstrap.accessToken}`,
+        "content-type": "application/json",
+        origin,
+      },
+      payload: sensitiveBody,
+    });
+    const serialized = response.body;
+
+    expect(response.statusCode).toBe(400);
+    expect(errorEnvelopeSchema.parse(response.json<unknown>())).toMatchObject({
+      code: "REQUEST_INVALID",
+      message: "Request is invalid",
+      retryable: false,
+    });
+    expect(serialized).not.toContain("private scenario");
+    expect(serialized).not.toContain("SyntaxError");
+    expect(serialized).not.toContain("stack");
+  });
+
   it("rejects malformed, unapproved and cross-site Origins", async () => {
     const app = await createTestApp();
     const developmentApp = await createApp({

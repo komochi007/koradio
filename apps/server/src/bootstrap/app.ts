@@ -177,6 +177,32 @@ function sendApiError(
 
 export async function createApp(options: CreateAppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
+  app.setErrorHandler((error, _request, reply) => {
+    const statusCode =
+      error !== null &&
+      typeof error === "object" &&
+      "statusCode" in error &&
+      typeof error.statusCode === "number"
+        ? error.statusCode
+        : undefined;
+    if (statusCode !== undefined && statusCode >= 400 && statusCode < 500) {
+      return sendApiError(
+        reply,
+        statusCode,
+        statusCode === 413 ? "REQUEST_TOO_LARGE" : "REQUEST_INVALID",
+        statusCode === 413 ? "Request is too large" : "Request is invalid",
+        false,
+      );
+    }
+
+    return sendApiError(
+      reply,
+      500,
+      "INTERNAL_SERVER_ERROR",
+      "Request could not be completed",
+      true,
+    );
+  });
   const database = await bootstrapDatabase({ dataRoot: options.config.dataRoot });
   const bootstrapPath =
     options.config.dataRootBootstrapPath ??

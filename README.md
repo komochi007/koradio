@@ -69,6 +69,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] S5 全量功能阶段门已通过：[S5-04 验收记录](docs/project-management/s5-04-full-function-acceptance.md) 将九项能力、15 个页面、异常恢复及 Profile/设备配置边界追踪到真实产品、contracts 与完整内部 E2E
 - [x] S6-01 跨层失败矩阵已通过：[S6-01 验收记录](docs/project-management/s6-01-failure-matrix-acceptance.md) 覆盖生成、播放、反馈和事件重连故障并保护旧节目
 - [x] S6-02 数据生命周期矩阵已通过：[S6-02 验收记录](docs/project-management/s6-02-data-lifecycle-compatibility.md) 覆盖首次目录、v6 生产旧库升级、八阶段迁移回滚、真实 SHA-256 校验和成功/失败恢复
+- [x] S6-03 安全、隐私与依赖审计已通过：[S6-03 审计记录](docs/project-management/s6-03-security-privacy-dependency-audit.md) 覆盖 loopback/Origin/session、文件与 Provider 恶意输入、日志/API 脱敏、依赖漏洞、license 与发布风险
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
 - [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证
 - [x] `pnpm check`、Linux 常规质量门、三浏览器 E2E、axe 与视觉回归已进入 GitHub Actions
@@ -472,6 +473,7 @@ pnpm test:coverage
 pnpm exec playwright install chromium firefox webkit
 pnpm test:e2e
 pnpm test:visual
+pnpm audit:dependencies
 pnpm check
 ```
 
@@ -550,10 +552,10 @@ pnpm check
 
 ## 9. 下一实现起点
 
-S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门和 S5 全量功能阶段门均已关闭，`S6-01` 跨层失败矩阵与 `S6-02` 数据生命周期矩阵已通过。下一关键任务是 `S6-03`：
+S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门和 S5 全量功能阶段门均已关闭，`S6-01` 跨层失败矩阵、`S6-02` 数据生命周期矩阵与 `S6-03` 安全/依赖审计已通过。下一关键任务是 `S6-04`：
 
-- 审计 loopback、Origin/session、路径越界、MIME/大小、重定向、日志与错误脱敏边界。
-- 复核依赖漏洞、license 与 Provider 发布风险，形成可追溯的安全风险结论。
+- 验证长时播放、缓存增长、性能与资源回收边界。
+- 扩大跨浏览器、键盘、Focus、Reduce Motion、响应式和无障碍回归证据。
 - 不提前开始外部 Beta、包装或发布；真实 Provider 产品运行组合与 bundled native helper 仍由后续任务交付。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。
