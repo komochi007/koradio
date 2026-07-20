@@ -5,6 +5,7 @@ import type { AudioEngineFacade } from "../audio/index.js";
 import { LibraryExperience } from "../features/library/index.js";
 import { RadioExperience } from "../features/radio/index.js";
 import { CurrentProgramFeedback } from "../features/feedback/index.js";
+import { TasteExperience } from "../features/taste/index.js";
 import type { AppEventBus } from "../shared/events.js";
 import type { ServiceTransport } from "../shared/transport.js";
 import { Brand, PrimaryNavigation, Status } from "../shared/ui.js";
@@ -198,6 +199,20 @@ export function OnlineShellPage({
         current={current}
         headingRef={headingRef}
         health={health}
+        key={current.profile.id}
+        navigate={navigate}
+        onOpenProfiles={onOpenProfiles}
+        reconnecting={reconnecting}
+        transport={transport}
+      />
+    );
+  }
+
+  if (route.id === "taste") {
+    return (
+      <TasteExperience
+        current={current}
+        headingRef={headingRef}
         key={current.profile.id}
         navigate={navigate}
         onOpenProfiles={onOpenProfiles}

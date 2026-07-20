@@ -45,6 +45,13 @@ export class TasteNotFoundError extends Error {
   }
 }
 
+export class TasteWriteError extends Error {
+  constructor() {
+    super("Taste data could not be stored");
+    this.name = "TasteWriteError";
+  }
+}
+
 export interface TasteRepository {
   getOverrides(profileId: string): TasteOverridesRecord | null;
   getProjection(profileId: string): TasteProjection | null;
@@ -196,13 +203,18 @@ export function createTasteRepository(client: DatabaseSync): TasteRepository {
       );
     },
     updateOverrides(profileId, command, updatedAt) {
-      const result = updateOverrides.run(
-        JSON.stringify(command.tags),
-        JSON.stringify(command.avoidRules),
-        JSON.stringify(command.sceneRules),
-        updatedAt,
-        profileId,
-      );
+      let result: ReturnType<typeof updateOverrides.run>;
+      try {
+        result = updateOverrides.run(
+          JSON.stringify(command.tags),
+          JSON.stringify(command.avoidRules),
+          JSON.stringify(command.sceneRules),
+          updatedAt,
+          profileId,
+        );
+      } catch {
+        throw new TasteWriteError();
+      }
       if (result.changes === 0) {
         return null;
       }

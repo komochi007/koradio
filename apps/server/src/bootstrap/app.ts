@@ -126,6 +126,7 @@ import {
 import {
   TasteDataError,
   TasteNotFoundError,
+  TasteWriteError,
   createTasteDefaultsService,
   createTasteRepository,
   createTasteService,
@@ -957,6 +958,15 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     } catch (error) {
       if (error instanceof ProfileNotFoundError) {
         return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof TasteWriteError) {
+        return sendApiError(
+          reply,
+          500,
+          "TASTE_WRITE_FAILED",
+          "Taste overrides could not be stored",
+          true,
+        );
       }
       if (
         error instanceof ProfileDataError ||

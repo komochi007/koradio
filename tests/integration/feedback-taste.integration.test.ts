@@ -313,6 +313,39 @@ describe("S3-03 Feedback and Taste memory backend", () => {
     const database = new DatabaseSync(join(context.dataRoot, "koradio.sqlite"));
     try {
       database.exec(`
+        CREATE TRIGGER fail_taste_overrides
+        BEFORE UPDATE ON taste_overrides
+        BEGIN
+          SELECT RAISE(ABORT, 'taste override write failed');
+        END;
+      `);
+      const failedTasteWrite = await context.app.inject({
+        method: "PATCH",
+        url: `/api/v1/profiles/${firstProfile.id}/taste`,
+        headers,
+        payload: {
+          tags: ["should-not-persist"],
+          avoidRules: [],
+          sceneRules: [],
+        },
+      });
+      expect(failedTasteWrite.statusCode).toBe(500);
+      expect(errorEnvelopeSchema.parse(failedTasteWrite.json<unknown>())).toMatchObject({
+        code: "TASTE_WRITE_FAILED",
+        retryable: true,
+      });
+      database.exec("DROP TRIGGER fail_taste_overrides");
+
+      const rolledBackTasteResponse = await context.app.inject({
+        method: "GET",
+        url: `/api/v1/profiles/${firstProfile.id}/taste`,
+        headers,
+      });
+      const rolledBackTaste = tasteResponseSchema.parse(rolledBackTasteResponse.json<unknown>());
+      expect(rolledBackTaste.overrides).toEqual(updatedTaste.overrides);
+      expect(rolledBackTaste.effective).toEqual(updatedTaste.effective);
+
+      database.exec(`
         CREATE TRIGGER fail_feedback_projection
         BEFORE UPDATE ON taste_projection
         BEGIN
