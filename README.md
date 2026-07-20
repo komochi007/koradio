@@ -67,6 +67,8 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] Codex、NetEase 与 TTS Provider adapters 已实现：参数数组启动、stdin-only 敏感正文、运行时 schema、超时/取消、受限子进程环境、媒体 URL/DNS/redirect/Range/MIME 校验、受控音频写入和脱敏错误均有专项测试；生成编排已接入，bundled native helper 保持范围外
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
 - [x] S5 全量功能阶段门已通过：[S5-04 验收记录](docs/project-management/s5-04-full-function-acceptance.md) 将九项能力、15 个页面、异常恢复及 Profile/设备配置边界追踪到真实产品、contracts 与完整内部 E2E
+- [x] S6-01 跨层失败矩阵已通过：[S6-01 验收记录](docs/project-management/s6-01-failure-matrix-acceptance.md) 覆盖生成、播放、反馈和事件重连故障并保护旧节目
+- [x] S6-02 数据生命周期矩阵已通过：[S6-02 验收记录](docs/project-management/s6-02-data-lifecycle-compatibility.md) 覆盖首次目录、v6 生产旧库升级、八阶段迁移回滚、真实 SHA-256 校验和成功/失败恢复
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
 - [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证
 - [x] `pnpm check`、Linux 常规质量门、三浏览器 E2E、axe 与视觉回归已进入 GitHub Actions
@@ -548,10 +550,10 @@ pnpm check
 
 ## 9. 下一实现起点
 
-S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门和 S5 全量功能阶段门均已关闭，`S6-01` 跨层失败矩阵已通过。下一关键任务是 `S6-02`：
+S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门和 S5 全量功能阶段门均已关闭，`S6-01` 跨层失败矩阵与 `S6-02` 数据生命周期矩阵已通过。下一关键任务是 `S6-03`：
 
-- 关闭首次启动、版本升级、数据目录迁移、备份和回滚的数据生命周期矩阵。
-- 使用故障阶段注入、校验和、bootstrap 指针与旧数据可读性检查，保证失败不会静默损坏或删除用户数据。
+- 审计 loopback、Origin/session、路径越界、MIME/大小、重定向、日志与错误脱敏边界。
+- 复核依赖漏洞、license 与 Provider 发布风险，形成可追溯的安全风险结论。
 - 不提前开始外部 Beta、包装或发布；真实 Provider 产品运行组合与 bundled native helper 仍由后续任务交付。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。

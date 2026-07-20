@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, readdir, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 
 import { bootstrapDatabase } from "../../apps/server/src/platform/db/database.js";
 import { defaultMigrationsFolder } from "../../apps/server/src/platform/db/migrations.js";
+import { s6LegacyData } from "../fixtures/data-lifecycle.js";
+import { installS6LegacyMigrations, seedS6LegacyData } from "../helpers/data-lifecycle.js";
 
 interface TestMigration {
   sql: string;
@@ -36,6 +38,23 @@ function readScalar(client: DatabaseSync, sql: string): SQLOutputValue | undefin
 }
 
 describe("SQLite platform bootstrap", () => {
+  it("creates and migrates a missing first-start data root with private permissions", async () => {
+    const parent = await createTemporaryDirectory("koradio-first-start-parent-");
+    const dataRoot = join(parent, "Koradio");
+    const context = await bootstrapDatabase({ dataRoot });
+
+    try {
+      expect(readScalar(context.client, "PRAGMA user_version")).toBe(7);
+      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(7);
+      if (process.platform !== "win32") {
+        expect((await stat(dataRoot)).mode & 0o777).toBe(0o700);
+        expect((await stat(context.databasePath)).mode & 0o777).toBe(0o600);
+      }
+    } finally {
+      context.close();
+    }
+  });
+
   it("migrates an empty data root and enforces database pragmas", async () => {
     const dataRoot = await createTemporaryDirectory("koradio-empty-db-");
     const context = await bootstrapDatabase({ dataRoot });
@@ -231,6 +250,80 @@ describe("SQLite platform bootstrap", () => {
         upgraded.client.prepare("SELECT id, version, label FROM migration_probe").get(),
       ).toEqual({ id: 1, version: 2, label: "v2" });
       expect(readScalar(upgraded.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(2);
+    } finally {
+      upgraded.close();
+    }
+  });
+
+  it("upgrades the last production schema while preserving representative user data", async () => {
+    const dataRoot = await createTemporaryDirectory("koradio-s6-legacy-db-");
+    const legacyMigrations = await createTemporaryDirectory("koradio-s6-legacy-migrations-");
+    await installS6LegacyMigrations(defaultMigrationsFolder, legacyMigrations);
+
+    const legacy = await bootstrapDatabase({ dataRoot, migrationsFolder: legacyMigrations });
+    await seedS6LegacyData(legacy.client, dataRoot);
+    expect(readScalar(legacy.client, "PRAGMA user_version")).toBe(6);
+    legacy.close();
+
+    const upgraded = await bootstrapDatabase({ dataRoot });
+    try {
+      expect(readScalar(upgraded.client, "PRAGMA user_version")).toBe(7);
+      expect(readScalar(upgraded.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(7);
+      expect(
+        upgraded.client
+          .prepare(
+            `
+              SELECT radio_name, nickname, avatar_ref
+              FROM profile
+              WHERE id = ?
+            `,
+          )
+          .get(s6LegacyData.profileId),
+      ).toEqual({
+        radio_name: "Legacy Signals",
+        nickname: "Legacy",
+        avatar_ref: s6LegacyData.avatarRef,
+      });
+      expect(
+        upgraded.client
+          .prepare(
+            `
+              SELECT tags_json, avoid_rules_json, scene_rules_json, version
+              FROM taste_overrides
+              WHERE profile_id = ?
+            `,
+          )
+          .get(s6LegacyData.profileId),
+      ).toEqual({
+        tags_json: '["ambient"]',
+        avoid_rules_json: '["harsh treble"]',
+        scene_rules_json: '["夜晚写作"]',
+        version: 3,
+      });
+      expect(
+        upgraded.client
+          .prepare(
+            `
+              SELECT p.title, d.text, c.position_ms, c.lease_epoch
+              FROM program p
+              JOIN dj_script_segment d ON d.program_id = p.id
+              JOIN playback_checkpoint c ON c.program_id = p.id
+              WHERE p.id = ?
+            `,
+          )
+          .get(s6LegacyData.programId),
+      ).toEqual({
+        title: "Legacy Session",
+        text: "旧串讲必须保留",
+        position_ms: s6LegacyData.checkpointPositionMs,
+        lease_epoch: 4,
+      });
+      expect(
+        upgraded.client.prepare("SELECT COUNT(*) AS count FROM program_generation_job").get(),
+      ).toEqual({ count: 0 });
+      expect(
+        await readFile(join(dataRoot, "files", ...s6LegacyData.avatarRef.split("/")), "utf8"),
+      ).toBe("s6-legacy-avatar-bytes");
     } finally {
       upgraded.close();
     }

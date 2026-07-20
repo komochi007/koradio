@@ -44,6 +44,7 @@ export interface CreateDataRootMigrationServiceOptions {
   checkpointDatabase?: () => Promise<void>;
   deviceSettings: DeviceSettingsService;
   now?: () => Date;
+  operations?: Partial<DataRootMigrationOperations>;
   publish: (event: DataRootMigrationStageChangedEvent) => void;
   requestRestart?: (request: DataRootRestartRequest) => Promise<void>;
   runtimeCoordinator?: DataRootMigrationRuntimeCoordinator;
@@ -58,6 +59,17 @@ export interface DataRootMigrationService {
     created: boolean;
     jobId: string;
   };
+}
+
+export interface DataRootMigrationOperations {
+  copyAndVerify: (
+    source: string,
+    destination: string,
+    options?: { destinationExists?: boolean },
+  ) => Promise<void>;
+  validateTarget: (sourceDataRoot: string, targetDataRoot: string) => Promise<string>;
+  verifyTargetDatabase: (dataRoot: string) => Promise<void>;
+  writeActiveDataRoot: (bootstrapPath: string, dataRoot: string) => Promise<void>;
 }
 
 export async function recordDataRootRestartFailure(request: DataRootRestartRequest): Promise<void> {
@@ -162,7 +174,7 @@ async function createManifest(root: string): Promise<ManifestEntry[]> {
   return entries;
 }
 
-async function copyDirectory(
+export async function copyDataRootForMigration(
   source: string,
   destination: string,
   options: { destinationExists?: boolean } = {},
@@ -188,7 +200,7 @@ async function copyDirectory(
     }
 
     if (entry.isDirectory()) {
-      await copyDirectory(sourcePath, destinationPath);
+      await copyDataRootForMigration(sourcePath, destinationPath);
       continue;
     }
 
@@ -206,21 +218,30 @@ async function copyDirectory(
   }
 }
 
-async function copyAndVerify(
-  source: string,
-  destination: string,
-  options: { destinationExists?: boolean } = {},
-): Promise<void> {
-  const sourceManifest = await createManifest(source);
-  await copyDirectory(source, destination, options);
-  const destinationManifest = await createManifest(destination);
-
+function assertMatchingManifests(
+  sourceManifest: ManifestEntry[],
+  destinationManifest: ManifestEntry[],
+): void {
   if (JSON.stringify(destinationManifest) !== JSON.stringify(sourceManifest)) {
     throw new MigrationFailure(
       "COPY_VERIFICATION_FAILED",
       "Copied data root did not match the source manifest",
     );
   }
+}
+
+export async function verifyDataRootCopy(source: string, destination: string): Promise<void> {
+  assertMatchingManifests(await createManifest(source), await createManifest(destination));
+}
+
+async function copyAndVerify(
+  source: string,
+  destination: string,
+  options: { destinationExists?: boolean } = {},
+): Promise<void> {
+  const sourceManifest = await createManifest(source);
+  await copyDataRootForMigration(source, destination, options);
+  assertMatchingManifests(sourceManifest, await createManifest(destination));
 }
 
 async function validateTarget(sourceDataRoot: string, targetDataRoot: string): Promise<string> {
@@ -258,6 +279,18 @@ async function validateTarget(sourceDataRoot: string, targetDataRoot: string): P
   return resolvedTarget;
 }
 
+async function verifyTargetDatabase(dataRoot: string): Promise<void> {
+  const targetDatabase = await bootstrapDatabase({ dataRoot });
+  targetDatabase.close();
+}
+
+export const defaultDataRootMigrationOperations: DataRootMigrationOperations = {
+  copyAndVerify,
+  validateTarget,
+  verifyTargetDatabase,
+  writeActiveDataRoot,
+};
+
 function resolveFailureCode(error: unknown): string {
   if (error instanceof MigrationFailure) {
     return error.code;
@@ -285,6 +318,10 @@ export function createDataRootMigrationService(
   };
   const requestRestart = options.requestRestart ?? (() => Promise.resolve());
   const checkpointDatabase = options.checkpointDatabase ?? (() => Promise.resolve());
+  const operations: DataRootMigrationOperations = {
+    ...defaultDataRootMigrationOperations,
+    ...options.operations,
+  };
   const runningJobs = new Set<string>();
   let sequence = 0;
 
@@ -361,7 +398,7 @@ export function createDataRootMigrationService(
     errorCode: string,
   ): Promise<void> {
     updateSource(record, "rolling_back", "running", errorCode);
-    await writeActiveDataRoot(options.bootstrapPath, options.sourceDataRoot);
+    await operations.writeActiveDataRoot(options.bootstrapPath, options.sourceDataRoot);
     options.deviceSettings.updateDataRoot(options.sourceDataRoot);
 
     if (targetDataRoot !== undefined) {
@@ -380,7 +417,10 @@ export function createDataRootMigrationService(
 
     try {
       let current = updateSource(record, "validating", "running");
-      targetDataRoot = await validateTarget(options.sourceDataRoot, record.targetDataRoot);
+      targetDataRoot = await operations.validateTarget(
+        options.sourceDataRoot,
+        record.targetDataRoot,
+      );
 
       current = updateSource(current, "pausing", "running");
       await runtimeCoordinator.pauseGenerationAndPlayback();
@@ -390,22 +430,21 @@ export function createDataRootMigrationService(
 
       current = updateSource(current, "backing_up", "running");
       await checkpointDatabase();
-      await copyAndVerify(options.sourceDataRoot, record.backupDataRoot);
+      await operations.copyAndVerify(options.sourceDataRoot, record.backupDataRoot);
 
       current = updateSource(current, "copying", "running");
       await checkpointDatabase();
-      await copyAndVerify(options.sourceDataRoot, targetDataRoot, {
+      await operations.copyAndVerify(options.sourceDataRoot, targetDataRoot, {
         destinationExists: true,
       });
 
       current = updateSource(current, "verifying", "running");
-      const targetDatabase = await bootstrapDatabase({ dataRoot: targetDataRoot });
-      targetDatabase.close();
+      await operations.verifyTargetDatabase(targetDataRoot);
 
       current = updateSource(current, "switching", "running");
       options.deviceSettings.updateDataRoot(targetDataRoot);
       await updateTarget(targetDataRoot, current, "switching", "running");
-      await writeActiveDataRoot(options.bootstrapPath, targetDataRoot);
+      await operations.writeActiveDataRoot(options.bootstrapPath, targetDataRoot);
 
       current = updateSource(current, "restarting", "running");
       await updateTarget(targetDataRoot, current, "restarting", "running");
