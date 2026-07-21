@@ -1,6 +1,7 @@
 .DS_Store
 **/.DS_Store
 node_modules/
+artifacts/
 .pnpm-store/
 dist/
 *.tsbuildinfo

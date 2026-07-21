@@ -421,7 +421,11 @@ packages/
 └── design-tokens/                  # shared visual tokens
 native/
 └── macos/
-    └── tts-helper/                 # AVSpeechSynthesizer bridge; planned, not implemented
+    └── tts-helper/                 # AVSpeechSynthesizer bridge
+packaging/
+└── macos/                           # launcher and Node entitlements
+scripts/
+└── release/                         # local package build and verification
 ```
 
 - 文件按共同变化的 feature 聚合，不建全局技术层目录；每个 module 只有一个公开入口。
