@@ -256,14 +256,21 @@ test("Detail degrades clearly when lyrics are unavailable", async ({ browserName
   ).toBeEnabled();
   if (browserName === "chromium") {
     const handle = page.locator(".detail-drag-handle");
-    const box = await handle.boundingBox();
-    expect(box).not.toBeNull();
-    if (box !== null) {
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 160, { steps: 8 });
-      await page.mouse.up();
-    }
+    await handle.evaluate((element) => {
+      Object.defineProperties(element, {
+        releasePointerCapture: { value: () => undefined },
+        setPointerCapture: { value: () => undefined },
+      });
+      element.dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: true, clientY: 40, pointerId: 1 }),
+      );
+      element.dispatchEvent(
+        new PointerEvent("pointermove", { bubbles: true, clientY: 200, pointerId: 1 }),
+      );
+      element.dispatchEvent(
+        new PointerEvent("pointerup", { bubbles: true, clientY: 200, pointerId: 1 }),
+      );
+    });
   } else {
     await page.getByRole("button", { name: "关闭节目详情，播放继续" }).click();
   }
