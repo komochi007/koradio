@@ -1,6 +1,8 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { installPlayableMedia } from "./playable-media.js";
+
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const profileId = "00000000-0000-4000-8000-000000000510";
 const programId = "00000000-0000-4000-8000-000000000570";
@@ -8,6 +10,10 @@ const trackId = "00000000-0000-4000-8000-000000000571";
 const segmentId = "00000000-0000-4000-8000-000000000572";
 
 test.use({ serviceWorkers: "block" });
+
+test.beforeEach(async ({ page }) => {
+  await installPlayableMedia(page);
+});
 
 const profile = {
   id: profileId,

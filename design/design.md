@@ -130,7 +130,7 @@ Dark 为产品默认主题，适合夜间使用和 Radio 核心页面。
 * **Text Primary**：`#F3F5F7`
 * **Text Secondary**：`#A9B0BA`
 * **Text Tertiary**：`#737B87`
-* **Text Disabled**：`#505761`
+* **Text Disabled**：`#8F98A5`
 * **Text Inverse**：`#111317`
 
 #### 状态颜色
@@ -305,7 +305,7 @@ Detail Sheet 使用专属的沉浸色面：上半区为深色声场 `#090A0C`，
   --kr-color-text-primary: #f3f5f7;
   --kr-color-text-secondary: #a9b0ba;
   --kr-color-text-tertiary: #737b87;
-  --kr-color-text-disabled: #505761;
+  --kr-color-text-disabled: #8f98a5;
   --kr-color-text-inverse: #111317;
 
   --kr-color-success: #55b978;

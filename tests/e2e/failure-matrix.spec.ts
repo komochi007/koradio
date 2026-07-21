@@ -8,6 +8,7 @@ import {
   s6OldProgram,
   s6Profile,
 } from "../fixtures/s6-failure-matrix.js";
+import { installPlayableMedia } from "./playable-media.js";
 
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 
@@ -164,6 +165,7 @@ test("invalid Codex output and exhausted search keep the old Program and Audio s
 }) => {
   test.skip(browserName === "webkit", "WebKit cannot stably route the controlled S6 API matrix");
   test.setTimeout(45_000);
+  await installPlayableMedia(page);
   await mockProgram(page, { media: "working", program: s6OldProgram });
   let accepted = 0;
   await page.route(/\/api\/v1\/profiles\/[^/]+\/program-generations$/, async (route) => {
@@ -212,6 +214,7 @@ test("TTS and lyrics degradation keep a text-only Program playable", async ({
   page,
 }) => {
   test.skip(browserName === "webkit", "WebKit cannot stably route the controlled S6 API matrix");
+  await installPlayableMedia(page);
   await mockProgram(page, { media: "working", program: s6DegradedProgram });
   await openRadio(page);
   await expect(page.getByText("语音不可用时，这段文字仍然保留。")).toBeVisible();
@@ -276,6 +279,7 @@ test("feedback failure rolls back UI without stopping the active Program", async
   page,
 }) => {
   test.skip(browserName === "webkit", "WebKit cannot stably route the controlled S6 API matrix");
+  await installPlayableMedia(page);
   await mockProgram(page, { media: "working", program: s6OldProgram });
   let failedWrites = 0;
   await page.route(/\/api\/v1\/profiles\/[^/]+\/feedback-events$/, async (route) => {

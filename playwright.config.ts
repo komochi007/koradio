@@ -2,6 +2,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 const e2ePort = process.env.KORADIO_E2E_PORT ?? "49373";
 const e2eOrigin = `http://127.0.0.1:${e2ePort}`;
+const snapshotPathTemplate = process.env.CI
+  ? "{testDir}/__screenshots__/linux/{testFilePath}/{projectName}/{arg}{ext}"
+  : "{testDir}/__screenshots__/{testFilePath}/{projectName}/{arg}{ext}";
 
 export default defineConfig({
   testDir: "./tests",
@@ -11,7 +14,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
-  snapshotPathTemplate: "{testDir}/__screenshots__/{testFilePath}/{projectName}/{arg}{ext}",
+  snapshotPathTemplate,
   webServer: {
     command: "pnpm build && pnpm start",
     url: `${e2eOrigin}/`,

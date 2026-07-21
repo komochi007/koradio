@@ -1,6 +1,8 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page, type Request, type Route } from "@playwright/test";
 
+import { installPlayableMedia } from "./playable-media.js";
+
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const feedbackRoute = /\/api\/v1\/profiles\/[^/]+\/feedback-events$/;
 const feedbackRouteGlob = "**/api/v1/profiles/*/feedback-events";
@@ -82,6 +84,7 @@ test("persists seven feedback events, rolls back failures, and keeps playback ru
   page,
 }) => {
   test.setTimeout(60_000);
+  await installPlayableMedia(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 960, height: 1600 });
   await page.route("https://media.example.invalid/**", (route) =>

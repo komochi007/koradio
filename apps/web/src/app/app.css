@@ -303,7 +303,7 @@ h1[tabindex="-1"]:focus-visible {
 }
 
 .button:disabled {
-  color: #505761;
+  color: #8f98a5;
   background: #0d0f12;
   border-color: var(--kr-border-subtle);
   cursor: not-allowed;
