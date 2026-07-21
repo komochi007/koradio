@@ -2,14 +2,14 @@
 
 > 验收日期：2026-07-21
 > 任务：`S6-05` 通过内部全质量门
-> 基线提交：`3b0b56a6dd91bdaeec6b563e3f35e057065e04a4`
+> 基线提交：`a23851e595b57e5a492f9b39c95ff7b454a578f3`
 > 结论：通过
 
 ## 1. 范围与结论
 
 本次在干净、冻结安装环境重跑合并质量门、依赖审计、三浏览器产品 E2E 与 Chromium 视觉门，并复核 S6-01～S6-04 的失败恢复、数据生命周期、安全/供应链、性能与无障碍证据。验证使用确定性 Mock Provider，不调用真实 Codex 或 NetEase Provider；不开始 macOS 包装、签名、公证或外部测试。
 
-所有 S6-05 验收项均通过。测试未删除、断言未放宽、数据 fixture 未被手工改写以规避失败。S6 阶段门关闭，下一关键路径为 S7-01 的本地 macOS 包装工程；这不授权外部分发。
+已关闭 Linux 视觉基线、禁用按钮对比度、跨浏览器媒体状态与详情/反馈交互稳定性缺口。测试未删除、断言未放宽、数据 fixture 未被手工改写以规避失败。S6 阶段门关闭，下一关键路径为 S7-01 的本地 macOS 包装工程；这不授权外部分发。
 
 ## 2. 可复现环境
 
@@ -29,7 +29,7 @@
 |---|---|---|
 | 格式、类型、lint、分层测试、coverage、build | `pnpm check` | 通过：19 unit / 79 tests、7 contract / 58 tests、14 integration / 76 tests、7 component / 30 tests、47 coverage 文件 / 243 tests，以及完整 build |
 | 安全与生产依赖 | `pnpm audit:dependencies` | 通过：无已知 High+ 漏洞；89 个生产依赖条目均符合 Apache-2.0、BSD-3-Clause、BlueOak-1.0.0、ISC 或 MIT allowlist |
-| 三浏览器 E2E 与自动无障碍 | `pnpm test:e2e` | 通过：159 个已配置测试零失败；94 个执行通过、65 个显式能力跳过 |
+| 三浏览器 E2E 与自动无障碍 | `pnpm test:e2e` | 通过：94 个执行通过、65 个既有显式能力跳过；最终 CI 无失败、无 flaky |
 | 视觉回归 | `pnpm test:visual` | 通过：Chromium 1 个确定性截图测试 |
 | 无障碍与响应式 | `tests/e2e/accessibility-regression.spec.ts` 已包含在完整 E2E | Chromium、Firefox、WebKit 的五个一级页面 axe、键盘、Focus、Reduce Motion 通过；Chromium 另覆盖 44px 命中区与 200% 等价重排 |
 | 既有 S6 交叉复核 | S6-01～S6-04 验收记录 | 通过：失败恢复、迁移/回滚、安全/隐私/依赖、缓存/长时播放/视觉与无障碍的专项证据均仍由本次完整流水线覆盖 |
@@ -38,7 +38,7 @@
 
 ## 4. 跳过用例审计与缺口清单
 
-本次没有 Critical 质量缺口，也没有未运行的必需门。
+本次没有 Critical 质量缺口，也没有未运行的必需门。Linux Chromium 使用单独的 40 张 CI 实际渲染基线；macOS 原有基线保持不变。Playwright 失败时会上传短期诊断产物。
 
 65 个 E2E 跳过均为测试文件内声明的既有、非关键能力分工，未在本任务新增或扩大：
 
@@ -51,9 +51,9 @@
 
 ## 5. CI 可追溯性
 
-[CI workflow](../../.github/workflows/ci.yml) 固定完整 SHA 的 `actions/checkout` 与 `actions/setup-node`，使用 `.nvmrc`、Corepack `0.35.0`、pnpm `11.13.0` 和 `pnpm install --frozen-lockfile`。其 `quality` job 运行 `pnpm check`；`browser` job 在其后运行 `pnpm test:e2e` 与 `pnpm test:visual`。本次本地命令与 CI 门一一对应，并额外重跑 `pnpm audit:dependencies`。
+[CI workflow](../../.github/workflows/ci.yml) 固定完整 SHA 的 `actions/checkout` 与 `actions/setup-node`，使用 `.nvmrc`、Corepack `0.35.0`、pnpm `11.13.0` 和 `pnpm install --frozen-lockfile`。其 `quality` job 运行 `pnpm check`；`browser` job 在其后运行 `pnpm test:e2e` 与 `pnpm test:visual`。失败时上传 7 天保留期的 Playwright 诊断产物。本次本地命令与 CI 门一一对应，并额外重跑 `pnpm audit:dependencies`。
 
-本记录基线提交、命令、精确运行版本、测试入口和 workflow 路径共同构成可追溯证据；推送到 `main` 后该 workflow 会对本次状态/记录提交再次执行相同的 CI 门。
+最终 [CI 运行 29818894532](https://github.com/komochi007/koradio/actions/runs/29818894532) 在 `a23851e` 上完成：Quality and build、Browser and visual 均通过，E2E 无失败和 flaky，视觉门 1 个通过。初始失败运行与中间 Linux 基线产物仅用于定位，不作为验收结论。
 
 ## 6. 阶段结论
 
