@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · S6 quality hardening complete through S6-05 · S7-02 local macOS lifecycle verification complete · runtime defaults to Mock mode**
+> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · S6 quality hardening complete through S6-05 · S7-02 local macOS lifecycle verification complete · external distribution deferred · runtime defaults to Mock mode**
 > Audience: AI Coding Agents、开发者、维护者  
 > Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；后端领域、平台与 Provider adapters 已实现并通过边界测试，产品默认仍使用确定性 Mock Provider；arm64 个人预览 macOS 包装、native TTS helper 与两版本生命周期已验证，真实 Provider 产品组合仍未验收
 
@@ -558,10 +558,10 @@ pnpm verify:package:macos <path-to-Koradio.app>
 
 ## 9. 下一实现起点
 
-S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门、S5 全量功能阶段门和 S6 集成、质量与安全阶段门均已关闭；S7-02 的 arm64 受控本机安装生命周期已完成。下一关键任务是 `S7-03`：
+S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门、S5 全量功能阶段门和 S6 集成、质量与安全阶段门均已关闭；S7-02 的 arm64 受控本机安装生命周期已完成。当前继续 Personal Local Preview 开发，不以 `S7-03` 为当前阻塞：
 
-- 建立 Developer ID 签名、公证、校验和和发布证据流水线；凭据只进入受控 Keychain 或 CI Secret。
-- 不创建公开下载入口、不开始外部分发；这些仍由后续 S7 任务和项目所有者授权决定。
+- 继续使用受控本机的 PWA、bundled Local Service、native helper 与 ad-hoc 签名产物；不创建公开下载入口、不开始外部分发。
+- `S7-03` 的 Developer ID 签名、公证、校验和和发布证据流水线只在项目所有者授权公开下载或外部分发后启动；凭据只进入受控 Keychain 或 CI Secret。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。
 
