@@ -178,6 +178,16 @@ function mapProcessError(error: ProviderProcessError): TtsAdapterError {
   return new TtsAdapterError("helper_unavailable");
 }
 
+function voicePreference(identifier: string): number {
+  if (identifier.startsWith("com.apple.voice.compact.")) {
+    return 0;
+  }
+  if (identifier.startsWith("com.apple.ttsbundle.")) {
+    return 1;
+  }
+  return 2;
+}
+
 export function createTtsAdapter(options: CreateTtsAdapterOptions): TtsProvider {
   const runner = options.runner ?? runProviderProcess;
   const executableResolver = options.resolveExecutable ?? resolveProviderExecutable;
@@ -219,7 +229,11 @@ export function createTtsAdapter(options: CreateTtsAdapterOptions): TtsProvider 
           .filter(
             (voice) => !voice.isPersonalVoice && voice.language === parsedCommand.data.language,
           )
-          .sort((left, right) => left.identifier.localeCompare(right.identifier));
+          .sort(
+            (left, right) =>
+              voicePreference(left.identifier) - voicePreference(right.identifier) ||
+              left.identifier.localeCompare(right.identifier),
+          );
         const selectedVoice =
           parsedCommand.data.voiceIdentifier === undefined
             ? eligibleVoices[0]

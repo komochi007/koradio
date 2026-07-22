@@ -169,6 +169,27 @@ describe("Codex adapter", () => {
     expect(await readFile(schemaPath ?? "", "utf8")).toContain('"additionalProperties": false');
   });
 
+  it("resolves the latest configured command for each plan without changing process arguments", async () => {
+    const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-dynamic-command-"));
+    let command = "/trusted/codex-one";
+    const resolvedCommands: string[] = [];
+    const adapter = createCodexAdapter({
+      command: () => command,
+      resolveExecutable: (configuredCommand) => {
+        resolvedCommands.push(configuredCommand);
+        return Promise.resolve(configuredCommand);
+      },
+      runner: () => Promise.resolve({ exitCode: 0, stderr: "", stdout: codexJsonl() }),
+      runtimeDirectory,
+    });
+
+    await adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId });
+    command = "/trusted/codex-two";
+    await adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId });
+
+    expect(resolvedCommands).toEqual(["/trusted/codex-one", "/trusted/codex-two"]);
+  });
+
   it("rejects invalid output, maps process failures and logs no sensitive body", async () => {
     const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-failure-"));
     const entries: SafeLogEntry[] = [];
@@ -226,7 +247,20 @@ describe("TTS adapter", () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "koradio-tts-adapter-"));
     const fileStore = createLocalFileStore({ dataRoot });
     const invocations: ProviderProcessInvocation[] = [];
-    const responses = [JSON.stringify(ttsVoicesFixture), JSON.stringify(ttsSynthesisFixture)];
+    const responses = [
+      JSON.stringify({
+        voices: [
+          {
+            identifier: "com.apple.eloquence.zh-CN.Eddy",
+            language: "zh-CN",
+            name: "Eddy",
+            isPersonalVoice: false,
+          },
+          ...ttsVoicesFixture.voices,
+        ],
+      }),
+      JSON.stringify(ttsSynthesisFixture),
+    ];
     const adapter = createTtsAdapter({
       fileStore,
       helperPath: "/trusted/tts-helper",

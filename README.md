@@ -2,9 +2,9 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · S6 quality hardening complete through S6-05 · S7-02 local macOS lifecycle verification complete · external distribution deferred · runtime defaults to Mock mode**
+> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · S6 quality hardening complete through S6-05 · S7-06 personal local real Provider verification complete · external distribution deferred · runtime defaults to Mock mode**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；后端领域、平台与 Provider adapters 已实现并通过边界测试，产品默认仍使用确定性 Mock Provider；arm64 个人预览 macOS 包装、native TTS helper 与两版本生命周期已验证，真实 Provider 产品组合仍未验收
+> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；后端领域、平台与 Provider adapters 已实现并通过边界测试，产品默认仍使用确定性 Mock Provider；arm64 个人预览 macOS 包装、native TTS helper、两版本生命周期及显式 `live` 的真实 Codex/NetEase/Apple TTS 产品闭环已在项目所有者本机验收
 
 ## 1. 项目入口
 
@@ -48,7 +48,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、完整根命令族与 GitHub Actions CI 已实装并由真实 run 验证
 - [x] Development 双进程、Production 同源静态托管、loopback 端口、精确 Origin、短期内存 Session、REST Bearer 与 WebSocket 首消息认证已实装；非法 Origin、过期/URL/持久化 token 和未认证连接均有负向验证
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 的 native launcher + 外部浏览器 PWA 已由 S7-01 在受控本机完成 arm64 app/DMG、strict codesign 和启动停止验收，当前仍仅限个人使用
-- [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；三个 Backend Adapter 已实现，native helper 已随 arm64 包验收，产品运行时仍默认 Mock
+- [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；三个 Backend Adapter、native helper 与显式 `live` composition 已完成本机闭环验收，产品运行时仍默认 Mock
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
 - [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Radio 三态、节目生成 command/Snapshot/有序事件与失败恢复、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
 - [x] Fastify Local Service health/session/events、Profiles、Library、Feedback、Taste、Programs、Playback、异步节目生成、DeviceSettings、ProfilePreferences 与数据目录迁移路由已实现；生成命令立即返回 `202 + jobId`，终态可通过 REST Snapshot 恢复
@@ -64,7 +64,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、超时、内部取消、迟到结果隔离、TTS/歌词/曲目降级和重启中断收敛均已验证；Program 与 Job 成功终态同事务提交
 - [x] Mock Provider 后端闭环已验收：合法场景通过 REST 异步受理后可原子提交至少一首可播放曲目、开场文字与判别式 timeline；Codex 错误/非法计划、三次搜歌耗尽、全曲不可用、TTS/歌词/部分曲目降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
-- [x] Codex、NetEase 与 TTS Provider adapters 已实现：参数数组启动、stdin-only 敏感正文、运行时 schema、超时/取消、受限子进程环境、媒体 URL/DNS/redirect/Range/MIME 校验、受控音频写入和脱敏错误均有专项测试；native TTS helper 已完成 arm64 包内语音枚举与启动冒烟，生成 composition 仍保持 Mock
+- [x] Codex、NetEase 与 TTS Provider adapters 已实现：参数数组启动、stdin-only 敏感正文、运行时 schema、超时/取消、受限子进程环境、媒体 URL/DNS/redirect/Range/MIME 校验、受控音频写入和脱敏错误均有专项测试；native TTS helper、显式 live composition、受控 TTS 媒体与真实 PWA 播放已完成 arm64 本机验收，默认仍保持 Mock
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
 - [x] S5 全量功能阶段门已通过：[S5-04 验收记录](docs/project-management/s5-04-full-function-acceptance.md) 将九项能力、15 个页面、异常恢复及 Profile/设备配置边界追踪到真实产品、contracts 与完整内部 E2E
 - [x] S6-01 跨层失败矩阵已通过：[S6-01 验收记录](docs/project-management/s6-01-failure-matrix-acceptance.md) 覆盖生成、播放、反馈和事件重连故障并保护旧节目
@@ -74,13 +74,14 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] S6-05 内部全质量门已通过：[S6-05 质量门记录](docs/project-management/s6-05-internal-quality-gate.md) 记录冻结环境下的完整质量流水线、依赖审计、三浏览器 E2E、视觉门、显式跳过复核与 CI 追溯
 - [x] S7-01 受控本机 macOS 包装已通过：[S7-01 验收记录](docs/project-management/s7-01-macos-packaging-acceptance.md) 记录 arm64 app/DMG、Node 24.18.0、native helper、launcher 生命周期与 strict codesign 验证
 - [x] S7-02 受控本机安装生命周期已通过：[S7-02 验收记录](docs/project-management/s7-02-install-lifecycle-acceptance.md) 记录 arm64 两版本安装、升级、失败回滚、卸载、数据保留与端口残留验证
+- [x] S7-06 个人本机真实 Provider 闭环已通过：[S7-06 验收记录](docs/project-management/s7-06-real-provider-acceptance.md) 记录显式 live composition、真实 Codex/NetEase/Apple TTS 生成与 PWA 播放、无结果/失败保护、受控 TTS 媒体和确定性 Mock 回归
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
 - [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证
 - [x] `pnpm check`、Linux 常规质量门、三浏览器 E2E、axe 与视觉回归已进入 GitHub Actions
 
 ### Agent safety note
 
-当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 App Shell 路由、内存 Session、事件重连、服务断线恢复、完全离线静态壳、Profile/Settings、Radio 三态/生成恢复、Browser Audio Engine、多标签接管、Detail 跟随、反馈闭环和 Library/Taste/Programs 三个 P1 页面；后端还可验证 Profiles、Library、Feedback/Taste、Programs/Playback、Mock Provider 生成闭环、Provider adapter 边界、同源托管、SQLite、数据目录迁移、受控文件/秘密、脱敏日志和 Session/Origin 安全矩阵。macOS 登录会话还可验证真实 Keychain 往返和 arm64 本机 app/DMG 的 Node、native helper、launcher 启停；这些证据不证明 Codex 与 NetEase 的真实节目生成组合、x64 包、安装升级回滚、Developer ID、公证或公开分发可以运行。
+当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 App Shell 路由、内存 Session、事件重连、服务断线恢复、完全离线静态壳、Profile/Settings、Radio 三态/生成恢复、Browser Audio Engine、多标签接管、Detail 跟随、反馈闭环和 Library/Taste/Programs 三个 P1 页面；后端还可验证 Profiles、Library、Feedback/Taste、Programs/Playback、Mock Provider 生成闭环、Provider adapter 边界、同源托管、SQLite、数据目录迁移、受控文件/秘密、脱敏日志和 Session/Origin 安全矩阵。macOS 登录会话还已验证真实 Codex/NetEase/Apple TTS 组合、受控 TTS 媒体与 PWA 播放，以及 arm64 本机 app/DMG 的 Node、native helper、launcher 启停；这些证据仅适用于项目所有者当前本机，不证明 x64、Developer ID、公证、独立干净 Mac 或公开分发可运行。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -91,7 +92,7 @@ AI Agent **不得**：
 - 把尚未验证的 x64、安装升级回滚、包装 CI、Developer ID、公证或产品行为测试覆盖描述成已经可运行的事实。
 - 把本地 Session 描述为云账号、Profile 登录或远程访问认证。
 - 把 ADR 0003 的已接受架构描述为已经实现，或把本地 ad-hoc 产物描述为已通过 Developer ID 签名公证、可公开分发。
-- 声称尚未实现的真实 Provider 产品运行组合或真实 Provider 媒体播放可以运行。
+- 把当前受控本机的真实 Provider 验收外推为其他机器、公开分发或长期服务可用性证明。
 - 从参考图推断尚未写入权威文档的业务规则。
 
 ## 3. 产品快照
@@ -213,9 +214,9 @@ Fastify Local Service
 | Database | Node 24 `node:sqlite` / SQLite 3.53.2 | 平台、Profiles、Library、Feedback/Taste、Programs/Playback 与生成 Job schema 已实现并验证 |
 | ORM / migrations | Drizzle ORM + Drizzle Kit 1.0.0-rc.4 | Runtime migration flow 与七个版本化 schema migrations 已验证 |
 | Secrets | macOS Keychain via `/usr/bin/security` interactive stdin | Platform adapter and real round-trip verified · business use planned |
-| AI orchestration | Local Codex process | Adapter、持久化 generation runner 与恢复 Snapshot 已实现；产品默认 Mock |
+| AI orchestration | Local Codex process | Adapter、持久化 generation runner、恢复 Snapshot 与显式 live composition 已验证；产品默认 Mock |
 | Music provider | Backend TypeScript NetEase `linuxapi` Adapter；no official CLI or .NET runtime | Adapter implemented and controlled smoke verified for Personal Local Preview |
-| Voice provider | Apple `AVSpeechSynthesizer` via bundled native helper；standard installed voices only | Adapter and helper source implemented · arm64 package smoke verified · product runtime remains Mock |
+| Voice provider | Apple `AVSpeechSynthesizer` via bundled native helper；standard installed voices only | Adapter、稳定系统语音选择、受控同源媒体与 arm64 live 产品播放已验证；产品默认 Mock |
 | Unit / integration test | Vitest 4.1.10 + V8 coverage | Configured and verified |
 | Component test | React Testing Library 16.3.2 + jsdom 29.1.1 | Configured and verified |
 | Browser / visual / a11y test | Playwright 1.61.1 + axe-core | Configured and CI verified |
@@ -489,7 +490,7 @@ pnpm verify:package:macos <path-to-Koradio.app>
 - 已有 macOS Keychain Secret Store、受控 File Store 和结构化脱敏 logger；DeviceSettings 只持久化非敏感配置，TTS Adapter 只向受控 File Store 写入已校验音频。
 - 已有 Profiles、Library、Feedback、Taste、Programs 与 Playback application/persistence/public API、持久节目生成 Job、有序事件、Provider orchestration、MusicProvider Port、确定性 Mock、真实 Programs/Library 反馈目标校验和可重建 projection；Mock Provider 后端闭环已通过固定 fixture 验收。
 - 已有完整 v1 wire contracts；health/session/events、Profiles、Library、Feedback、Taste、Programs 历史/详情、Playback snapshot/checkpoint、DeviceSettings、ProfilePreferences 和数据目录迁移已有 route/use case。
-- 已有 Codex、NetEase 与 TTS Adapter、native TTS helper 及确定性 Mock；application composition 仍只使用 `mock`，arm64 包内 helper 只完成语音枚举与启动冒烟。
+- 已有 Codex、NetEase 与 TTS Adapter、native TTS helper 及确定性 Mock；application composition 默认 `mock`，可由受控本机显式启用 `live`，arm64 包内 helper、受控 TTS 音频与真实 Provider 节目播放已验收。
 - App Shell 提供五个一级 route、TanStack Query health snapshot、内存 Session、WebSocket 事件重连、完全离线异常页和只读 Settings；在线模式已提供 Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题/DJ 偏好、四服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、节目 generation command、Snapshot/有序事件恢复、原子节目替换、喜欢/不喜欢/跳过/节目收藏反馈、Library 搜索/试听/候选池/分页/缓存与网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看、字段约束和只写 overrides 的人工编辑，以及 Programs 分页历史、详情、Provider source identity 恢复、可用串讲重播、文字降级、场景草稿复用和收藏/撤销。
 - Session 只保护本地 HTTP 边界，不代表云账号或 Profile 身份；浏览器不会从 LocalStorage、SessionStorage、IndexedDB 或 Cookie 恢复 token。
 
@@ -508,10 +509,10 @@ pnpm verify:package:macos <path-to-Koradio.app>
 - [x] 聚合 `check` 命令与 Linux GitHub Actions 常规质量门。
 - [x] SQLite migration 生成与启动时事务化执行命令。
 - [ ] 数据备份与恢复命令。
-- [x] 非敏感环境变量模板、DeviceSettings 持久化与 macOS Keychain Secret Store adapter；真实 Provider secret 接入待 S3。
+- [x] 非敏感环境变量模板、DeviceSettings 持久化与 macOS Keychain Secret Store adapter；当前真实 Provider 组合不需要 NetEase Cookie、业务密钥或新增 Keychain item。
 - [x] ADR 0002 的默认绑定地址、端口、精确 Origin allowlist 与最小 session bootstrap。
 - [x] Provider Mock development 模式与仅缓存静态 App Shell 的离线 PWA；API、Session、配置和 Secret 不进入 Service Worker cache。
-- [x] S1 health 与事件连接、S2 脱敏 Health 和迁移阶段事件、S4-01 离线只读入口、S4-02 可写 Settings 与 Mock 运行时诊断、S4-03 Radio 三态与生成恢复、S4-04 Audio Engine 与多标签接管、S4-05 Detail 跟随体验、S4-06 反馈闭环与 P0 阶段门；真实 Provider 产品诊断仍待后续运行组合任务。
+- [x] S1 health 与事件连接、S2 脱敏 Health 和迁移阶段事件、S4-01 离线只读入口、S4-02 可写 Settings 与 Mock/live 运行时诊断、S4-03 Radio 三态与生成恢复、S4-04 Audio Engine 与多标签接管、S4-05 Detail 跟随体验、S4-06 反馈闭环与 P0 阶段门；S7-06 已完成真实 Provider 产品组合与本机播放验收。
 
 ## 8. AI Agent Bootstrap
 
@@ -558,9 +559,10 @@ pnpm verify:package:macos <path-to-Koradio.app>
 
 ## 9. 下一实现起点
 
-S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门、S5 全量功能阶段门和 S6 集成、质量与安全阶段门均已关闭；S7-02 的 arm64 受控本机安装生命周期已完成。当前继续 Personal Local Preview 开发，不以 `S7-03` 为当前阻塞：
+S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门、S5 全量功能阶段门和 S6 集成、质量与安全阶段门均已关闭；S7-01、S7-02 与 S7-06 已完成 arm64 个人预览包装、安装生命周期和真实 Provider/PWA 播放闭环。当前 Personal Local Preview 路径已可用，不以 `S7-03` 为当前阻塞：
 
 - 继续使用受控本机的 PWA、bundled Local Service、native helper 与 ad-hoc 签名产物；不创建公开下载入口、不开始外部分发。
+- 常规自动测试和 CI 继续默认 Mock；只有项目所有者受控本机显式设置 `KORADIO_PROVIDER_MODE=live` 时启用真实 Codex、NetEase 与可选 Apple TTS。
 - `S7-03` 的 Developer ID 签名、公证、校验和和发布证据流水线只在项目所有者授权公开下载或外部分发后启动；凭据只进入受控 Keychain 或 CI Secret。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。

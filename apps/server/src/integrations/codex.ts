@@ -56,7 +56,7 @@ export class CodexAdapterError extends Error {
 }
 
 export interface CreateCodexAdapterOptions {
-  command: string;
+  command: string | (() => string);
   logger?: Pick<SafeLogger, "warn">;
   maximumOutputBytes?: number;
   resolveExecutable?: ExecutableResolver;
@@ -160,7 +160,9 @@ export function createCodexAdapter(options: CreateCodexAdapterOptions): CodexPro
 
       try {
         const [executable, outputSchemaPath] = await Promise.all([
-          executableResolver(options.command),
+          executableResolver(
+            typeof options.command === "function" ? options.command() : options.command,
+          ),
           ensureOutputSchema(runtimeDirectory),
         ]);
         const result = await runner({

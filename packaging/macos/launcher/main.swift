@@ -137,6 +137,8 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
     process.executableURL = node
     process.arguments = [entrypoint.path]
     process.currentDirectoryURL = resources.appendingPathComponent("app", isDirectory: true)
+    let providerMode = ProcessInfo.processInfo.environment["KORADIO_PROVIDER_MODE"] == "live" ? "live" : "mock"
+    let ttsHelper = resources.appendingPathComponent("koradio-tts-helper", isDirectory: false)
     var environment: [String: String] = [
       "HOME": NSHomeDirectory(),
       "LANG": ProcessInfo.processInfo.environment["LANG"] ?? "en_US.UTF-8",
@@ -147,8 +149,11 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
       "USER": NSUserName(),
       "KORADIO_HOST": "127.0.0.1",
       "KORADIO_PORT": String(firstPort),
-      "KORADIO_PROVIDER_MODE": "mock",
+      "KORADIO_PROVIDER_MODE": providerMode,
     ]
+    if FileManager.default.isExecutableFile(atPath: ttsHelper.path) {
+      environment["KORADIO_TTS_HELPER_PATH"] = ttsHelper.path
+    }
     if smokeMode, let dataDirectory = ProcessInfo.processInfo.environment["KORADIO_LAUNCHER_SMOKE_DATA_DIR"], !dataDirectory.isEmpty {
       environment["KORADIO_DATA_DIR"] = dataDirectory
     }

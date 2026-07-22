@@ -463,11 +463,12 @@ scripts/
 - SecretStore 使用 OS 凭据存储；API 仅返回脱敏状态，日志清除 token、key 和敏感正文。
 - v1 的网易云适配器不接收用户 Cookie、开放平台凭据或可配置上游地址；任何未来登录能力必须经新 ADR 与 SecretStore 安全设计。
 - 网易云返回的媒体 URL 必须经协议、域名、DNS/重定向、MIME、Range 和大小校验，Browser 只获得已验证的短期 `resolvedAudioRef`。
+- TTS 受控文件只通过同源 `/tts/{controlled-file}` 媒体入口提供给 Browser Audio Engine；请求必须由浏览器标记为 `same-origin`，响应使用 `no-store`、`Cross-Origin-Resource-Policy: same-origin` 与 `nosniff`，跨站、缺失来源或非法文件名均拒绝，不在 URL 传 session token。
 - Codex schema 校验失败不得记录原始正文；只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
 - FileStore 拒绝路径越界和未允许扩展名；媒体下载限制超时、大小、MIME 与重定向。
 - Codex 通过参数数组启动，禁止拼接 shell command；命令路径需验证。
 - Apple 系统 TTS 通过固定路径的 bundled native helper 调用；参数使用数组，DJ 文本经结构化 stdin 传递而不得进入 argv，stdout 只允许脱敏 JSON 结果。
-- v1 只枚举并使用当前设备已安装的标准系统语音；显式 voice identifier 每次合成前验证仍在可用列表，未显式指定时按语言和 identifier 排序确定性选择首个匹配语音，不请求 Personal Voice 授权。
+- v1 只枚举并使用当前设备已安装的标准系统语音；显式 voice identifier 每次合成前验证仍在可用列表，未显式指定时按语言优先 compact、再选 ttsbundle、最后选择其他标准语音，同级按 identifier 排序，不请求 Personal Voice 授权。
 - TTS helper 输出的 PCM/音频元数据必须校验，目标文件只能由 FileStore 分配；超时或取消时终止 helper 并忽略迟到输出。
 - DB 与缓存使用当前用户最小权限且备份无明文密钥；错误只暴露稳定 code 与安全 message。
 ## 18. Technical Decisions

@@ -14,8 +14,9 @@ export interface HealthService {
 
 export interface CreateHealthServiceOptions {
   deviceSettings: DeviceSettingsService;
-  mode: "mock";
+  mode: HealthResponse["mode"];
   now?: () => Date;
+  ttsEnabled: boolean;
 }
 
 export function createHealthService(options: CreateHealthServiceOptions): HealthService {
@@ -24,6 +25,7 @@ export function createHealthService(options: CreateHealthServiceOptions): Health
   function getServiceHealth(): ServiceHealthListResponse {
     const checkedAt = now().toISOString();
     const codexConfigured = options.deviceSettings.get().codexCommand !== null;
+    const mockMode = options.mode === "mock";
 
     return serviceHealthListResponseSchema.parse({
       items: [
@@ -43,15 +45,21 @@ export function createHealthService(options: CreateHealthServiceOptions): Health
         },
         {
           service: "netease",
-          status: "available",
+          status: mockMode ? "available" : "degraded",
           checkedAt,
-          redactedSummary: "Built-in NetEase provider is available in mock mode",
+          redactedSummary: mockMode
+            ? "Built-in NetEase provider is available in mock mode"
+            : "Built-in NetEase provider is enabled for live personal preview",
         },
         {
           service: "tts",
-          status: "available",
+          status: options.ttsEnabled ? "available" : "degraded",
           checkedAt,
-          redactedSummary: "Apple system TTS is available in mock mode",
+          redactedSummary: options.ttsEnabled
+            ? mockMode
+              ? "Apple system TTS is available in mock mode"
+              : "Apple system TTS helper is enabled for live personal preview"
+            : "Apple system TTS helper is unavailable; text DJ fallback is enabled",
         },
       ],
     });

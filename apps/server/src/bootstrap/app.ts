@@ -55,8 +55,6 @@ import {
 } from "@koradio/contracts";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 
-import { createMockCodexProvider, createMockTtsProvider } from "../integrations/index.js";
-
 import {
   DataRootMigrationConflictError,
   createDataRootMigrationService,
@@ -85,7 +83,6 @@ import {
   PlaylistImportNotFoundError,
   createLibraryRepository,
   createLibraryService,
-  createMockMusicProvider,
   type MusicProvider,
 } from "../modules/library/index.js";
 import {
@@ -140,8 +137,26 @@ import {
 import { createEventHub } from "../platform/events/index.js";
 import { FileStoreError, createLocalFileStore } from "../platform/files/index.js";
 import { createAllowedOrigins, type RuntimeConfig } from "./config.js";
+import { createRuntimeProviders } from "./providers.js";
 import { enforceApiSecurity, isAllowedOrigin } from "./security.js";
 import { createSessionState, type SessionState } from "./session.js";
+
+const liveProviderGenerationTimeoutMs = 6 * 60_000;
+const ttsFileNamePattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:aiff|caf|m4a|wav)$/u;
+
+function ttsMimeType(fileName: string): string {
+  if (fileName.endsWith(".aiff")) {
+    return "audio/aiff";
+  }
+  if (fileName.endsWith(".caf")) {
+    return "audio/x-caf";
+  }
+  if (fileName.endsWith(".m4a")) {
+    return "audio/mp4";
+  }
+  return "audio/wav";
+}
 
 export interface CreateAppOptions {
   config: RuntimeConfig;
@@ -216,9 +231,8 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const tasteDefaults = createTasteDefaultsService(database.client);
   const tasteRepository = createTasteRepository(database.client);
   const taste = createTasteService({ repository: tasteRepository });
-  const avatarUpload = createAvatarUploadService(
-    createLocalFileStore({ dataRoot: options.config.dataRoot }),
-  );
+  const fileStore = createLocalFileStore({ dataRoot: options.config.dataRoot });
+  const avatarUpload = createAvatarUploadService(fileStore);
   const profiles = createProfileService({
     avatarReferences: avatarUpload,
     client: database.client,
@@ -250,8 +264,13 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     writeCurrentProfileId: (profileId) =>
       writeCurrentProfileId(bootstrapPath, options.config.dataRoot, profileId),
   });
+  const runtimeProviders = createRuntimeProviders({
+    config: options.config,
+    deviceSettings,
+    fileStore,
+  });
   const library = createLibraryService({
-    provider: options.musicProvider ?? createMockMusicProvider(),
+    provider: options.musicProvider ?? runtimeProviders.music,
     repository: createLibraryRepository(database.client),
   });
   const playbackRepository = createPlaybackRepository(database.client);
@@ -281,10 +300,14 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const health = createHealthService({
     deviceSettings,
     mode: options.config.providerMode,
+    ttsEnabled:
+      options.config.providerMode === "mock" ||
+      options.config.ttsHelperPath !== undefined ||
+      options.ttsProvider !== undefined,
   });
   const eventHub = createEventHub();
   const programGeneration = createProgramGenerationService({
-    codex: options.codexProvider ?? createMockCodexProvider(),
+    codex: options.codexProvider ?? runtimeProviders.codex,
     events: eventHub,
     library,
     preferences: profilePreferences,
@@ -292,9 +315,11 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     repository: createProgramGenerationRepository(database.client),
     taste,
     ...(options.generationTimeoutMs === undefined
-      ? {}
+      ? options.config.providerMode === "live"
+        ? { timeoutMs: liveProviderGenerationTimeoutMs }
+        : {}
       : { timeoutMs: options.generationTimeoutMs }),
-    tts: options.ttsProvider ?? createMockTtsProvider(),
+    tts: options.ttsProvider ?? runtimeProviders.tts,
   });
   cancelProgramGeneration = (profileId) => programGeneration.cancelProfile(profileId);
   const dataRootMigration = createDataRootMigrationService({
@@ -347,6 +372,30 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   app.addHook("preValidation", (request, reply, done) => {
     if (enforceApiSecurity(request, reply, { allowedOrigins, session })) {
       done();
+    }
+  });
+
+  app.get("/tts/:fileName", async (request, reply) => {
+    const params = request.params as { fileName?: unknown };
+    if (
+      request.headers["sec-fetch-site"] !== "same-origin" ||
+      typeof params.fileName !== "string" ||
+      !ttsFileNamePattern.test(params.fileName)
+    ) {
+      return sendApiError(reply, 403, "MEDIA_ACCESS_DENIED", "Media access is not allowed", false);
+    }
+
+    try {
+      const content = await fileStore.read(`tts/${params.fileName}`);
+      reply.header("Cache-Control", "no-store");
+      reply.header("Cross-Origin-Resource-Policy", "same-origin");
+      reply.header("X-Content-Type-Options", "nosniff");
+      return await reply.type(ttsMimeType(params.fileName)).send(content);
+    } catch (error) {
+      if (error instanceof FileStoreError) {
+        return sendApiError(reply, 404, "MEDIA_NOT_FOUND", "Media was not found", false);
+      }
+      throw error;
     }
   });
 

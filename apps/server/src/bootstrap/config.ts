@@ -18,9 +18,10 @@ const environmentSchema = z.object({
   KORADIO_HOST: z.enum(["127.0.0.1", "::1"]).default("127.0.0.1"),
   KORADIO_PORT: z.coerce.number().int().min(1024).max(65535).default(49373),
   KORADIO_WEB_PORT: z.coerce.number().int().min(1024).max(65535).default(5173),
-  KORADIO_PROVIDER_MODE: z.literal("mock").default("mock"),
+  KORADIO_PROVIDER_MODE: z.enum(["mock", "live"]).default("mock"),
   KORADIO_STRICT_PORT: booleanStringSchema,
   KORADIO_DATA_DIR: z.string().trim().min(1).optional(),
+  KORADIO_TTS_HELPER_PATH: z.string().trim().min(1).optional(),
 });
 
 export interface RuntimeConfig {
@@ -28,8 +29,9 @@ export interface RuntimeConfig {
   host: "127.0.0.1" | "::1";
   port: number;
   webPort: number;
-  providerMode: "mock";
+  providerMode: "mock" | "live";
   strictPort: boolean;
+  ttsHelperPath?: string;
   dataRoot: string;
   initialDataRoot?: string;
   dataRootBootstrapPath?: string;
@@ -49,6 +51,9 @@ export function loadRuntimeConfig(environment: NodeJS.ProcessEnv = process.env):
     webPort: parsed.KORADIO_WEB_PORT,
     providerMode: parsed.KORADIO_PROVIDER_MODE,
     strictPort: parsed.KORADIO_STRICT_PORT,
+    ...(parsed.KORADIO_TTS_HELPER_PATH === undefined
+      ? {}
+      : { ttsHelperPath: parsed.KORADIO_TTS_HELPER_PATH }),
     dataRoot: initialDataRoot,
     initialDataRoot,
     dataRootBootstrapPath: resolveDataRootBootstrapPath(initialDataRoot),
