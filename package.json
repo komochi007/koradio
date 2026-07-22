@@ -30,6 +30,7 @@
     "audit:dependencies": "pnpm audit:security && pnpm audit:licenses",
     "package:macos": "node scripts/release/build-macos.mjs",
     "verify:package:macos": "node scripts/release/verify-macos-package.mjs",
+    "verify:lifecycle:macos": "node scripts/release/verify-macos-lifecycle.mjs",
     "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test:unit && pnpm test:contract && pnpm test:integration && pnpm test:component && pnpm test:coverage && pnpm build"
   },
   "devDependencies": {

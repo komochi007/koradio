@@ -58,12 +58,15 @@ function parseArguments(argumentsList) {
   const values = [...argumentsList];
   let architecture = platform() === "darwin" && arch() === "arm64" ? "arm64" : "x64";
   let outputDirectory = resolve(repositoryRoot, "artifacts/macos");
+  let version = "0.0.0";
   while (values.length > 0) {
     const argument = values.shift();
     if (argument === "--arch") {
       architecture = values.shift() ?? "";
     } else if (argument === "--output") {
       outputDirectory = resolve(repositoryRoot, values.shift() ?? "");
+    } else if (argument === "--version") {
+      version = values.shift() ?? "";
     } else {
       fail(`Unsupported argument: ${argument ?? ""}`);
     }
@@ -71,7 +74,10 @@ function parseArguments(argumentsList) {
   if (!(architecture in nodeArchives)) {
     fail("--arch must be arm64 or x64");
   }
-  return { architecture, outputDirectory };
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+    fail("--version must be a numeric semantic version such as 1.2.3");
+  }
+  return { architecture, outputDirectory, version };
 }
 
 async function checksum(path) {
@@ -111,7 +117,7 @@ async function downloadNodeArchive(architecture, cacheDirectory) {
   return archive;
 }
 
-async function writeInfoPlist(path) {
+async function writeInfoPlist(path, version) {
   await writeFile(
     path,
     `<?xml version="1.0" encoding="UTF-8"?>
@@ -123,8 +129,8 @@ async function writeInfoPlist(path) {
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>Koradio</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.0.0</string>
-<key>CFBundleVersion</key><string>1</string>
+<key>CFBundleShortVersionString</key><string>${version}</string>
+<key>CFBundleVersion</key><string>${version}</string>
 <key>LSMinimumSystemVersion</key><string>13.5</string>
 <key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>
@@ -151,10 +157,10 @@ async function build() {
   if (platform() !== "darwin") {
     fail("macOS packaging can only run on macOS");
   }
-  const { architecture, outputDirectory } = parseArguments(process.argv.slice(2));
+  const { architecture, outputDirectory, version } = parseArguments(process.argv.slice(2));
   const cacheDirectory = resolve(outputDirectory, "cache");
   await mkdir(cacheDirectory, { recursive: true });
-  const dmg = resolve(outputDirectory, `Koradio-0.0.0-${architecture}.dmg`);
+  const dmg = resolve(outputDirectory, `Koradio-${version}-${architecture}.dmg`);
   if (await exists(dmg)) {
     fail(`Refusing to overwrite existing artifact: ${dmg}`);
   }
@@ -173,7 +179,7 @@ async function build() {
   await mkdir(buildToolDirectory, { recursive: true });
   await mkdir(dirname(serverTarget), { recursive: true });
   await mkdir(dirname(webTarget), { recursive: true });
-  await writeInfoPlist(resolve(contents, "Info.plist"));
+  await writeInfoPlist(resolve(contents, "Info.plist"), version);
 
   await run("tar", [
     "-xzf",
@@ -268,7 +274,7 @@ async function build() {
     "UDZO",
     dmg,
   ]);
-  process.stdout.write(`${JSON.stringify({ app: application, architecture, dmg })}\n`);
+  process.stdout.write(`${JSON.stringify({ app: application, architecture, dmg, version })}\n`);
 }
 
 build().catch((error) => {

@@ -2,9 +2,9 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · S6 quality hardening complete through S6-05 · S7-01 local macOS packaging complete · runtime defaults to Mock mode**
+> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · S6 quality hardening complete through S6-05 · S7-02 local macOS lifecycle verification complete · runtime defaults to Mock mode**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；后端领域、平台与 Provider adapters 已实现并通过边界测试，产品默认仍使用确定性 Mock Provider；arm64 个人预览 macOS 包装和 native TTS helper 已验证，真实 Provider 产品组合仍未验收
+> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；后端领域、平台与 Provider adapters 已实现并通过边界测试，产品默认仍使用确定性 Mock Provider；arm64 个人预览 macOS 包装、native TTS helper 与两版本生命周期已验证，真实 Provider 产品组合仍未验收
 
 ## 1. 项目入口
 
@@ -73,6 +73,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] S6-04 性能、缓存、长时播放与无障碍回归已通过：[S6-04 验收记录](docs/project-management/s6-04-performance-accessibility-acceptance.md) 覆盖有界缓存、八小时等价播放、checkpoint 节流、静态 App Shell 白名单、三浏览器 axe/键盘/Focus、Reduce Motion、200% zoom 与代表 viewport
 - [x] S6-05 内部全质量门已通过：[S6-05 质量门记录](docs/project-management/s6-05-internal-quality-gate.md) 记录冻结环境下的完整质量流水线、依赖审计、三浏览器 E2E、视觉门、显式跳过复核与 CI 追溯
 - [x] S7-01 受控本机 macOS 包装已通过：[S7-01 验收记录](docs/project-management/s7-01-macos-packaging-acceptance.md) 记录 arm64 app/DMG、Node 24.18.0、native helper、launcher 生命周期与 strict codesign 验证
+- [x] S7-02 受控本机安装生命周期已通过：[S7-02 验收记录](docs/project-management/s7-02-install-lifecycle-acceptance.md) 记录 arm64 两版本安装、升级、失败回滚、卸载、数据保留与端口残留验证
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
 - [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证
 - [x] `pnpm check`、Linux 常规质量门、三浏览器 E2E、axe 与视觉回归已进入 GitHub Actions
@@ -229,9 +230,9 @@ Fastify Local Service
 - Token 通过 `POST /api/v1/session/bootstrap` 的 `no-store` JSON 响应进入浏览器内存；WebSocket 不使用 URL token。
 - REST 使用 Bearer token，WebSocket 在握手校验 Origin 后以首条 `session.authenticate` 消息认证；过期或进程重启后的 token 均失效。
 
-由 [ADR 0003](docs/adr/0003-macos-packaging.md) 决定，S7-01 已实现受控本机 arm64 验收：
+由 [ADR 0003](docs/adr/0003-macos-packaging.md) 决定，S7-01～S7-02 已实现受控本机 arm64 验收：
 
-- 推荐 macOS 13.5+、arm64/x64 分架构 DMG、原生轻量 launcher + bundled Node Local Service + bundled native TTS helper + 外部浏览器 PWA；arm64 已通过本机 app/DMG、strict codesign 和生命周期冒烟，x64 尚未验收。
+- 推荐 macOS 13.5+、arm64/x64 分架构 DMG、原生轻量 launcher + bundled Node Local Service + bundled native TTS helper + 外部浏览器 PWA；arm64 已通过本机 app/DMG、strict codesign、两版本安装/升级/回滚/卸载与数据保留验证，x64 尚未验收。
 - 当前只允许项目所有者从可信源码在受控本机构建并个人使用，不提供公开下载。
 - Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净环境仍未验证；这些是未来任何外部分发的硬门，不阻塞当前本地开发。
 
@@ -557,10 +558,10 @@ pnpm verify:package:macos <path-to-Koradio.app>
 
 ## 9. 下一实现起点
 
-S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门、S5 全量功能阶段门和 S6 集成、质量与安全阶段门均已关闭；S7-01 的 arm64 受控本机包装已完成。下一关键任务是 `S7-02`：
+S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门、S5 全量功能阶段门和 S6 集成、质量与安全阶段门均已关闭；S7-02 的 arm64 受控本机安装生命周期已完成。下一关键任务是 `S7-03`：
 
-- 验证手动安装、升级、失败回滚、卸载和数据保留，不得删除用户数据、备份或 Keychain 凭据。
-- 不创建公开下载入口、不开始外部分发、Developer ID 签名或公证；这些仍由后续 S7 任务和项目所有者授权决定。
+- 建立 Developer ID 签名、公证、校验和和发布证据流水线；凭据只进入受控 Keychain 或 CI Secret。
+- 不创建公开下载入口、不开始外部分发；这些仍由后续 S7 任务和项目所有者授权决定。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。
 
