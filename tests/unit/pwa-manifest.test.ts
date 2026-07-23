@@ -10,6 +10,10 @@ const manifest = JSON.parse(
   id: string;
   start_url: string;
 };
+const serviceWorker = readFileSync(
+  new URL("../../apps/web/public/service-worker.js", import.meta.url),
+  "utf8",
+);
 
 function iconSize(path: string): [number, number] {
   const image = readFileSync(new URL(`../../apps/web/public${path}`, import.meta.url));
@@ -36,5 +40,7 @@ describe("PWA manifest", () => {
     ]);
     expect(iconSize("/icons/koradio-192.png")).toEqual([192, 192]);
     expect(iconSize("/icons/koradio-512.png")).toEqual([512, 512]);
+    expect(serviceWorker).toContain('const CACHE_NAME = "koradio-app-shell-v2"');
+    expect(serviceWorker).not.toContain('"/manifest.webmanifest"');
   });
 });
