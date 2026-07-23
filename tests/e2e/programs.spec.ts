@@ -9,6 +9,9 @@ import type {
 } from "@koradio/contracts";
 
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
+const visualBaselineNow = new Date(
+  process.env.CI === undefined ? "2026-07-20T08:45:00.000Z" : "2026-07-21T08:45:00.000Z",
+);
 const firstProfileId = "00000000-0000-4000-8000-000000000010";
 const secondProfileId = "00000000-0000-4000-8000-000000000011";
 const profiles = [
@@ -296,6 +299,7 @@ test("paginates, replays, favorites, reuses and isolates Programs history", asyn
   test.skip(browserName === "webkit", "受控 Programs 路由与媒体重播由 Chromium 与 Firefox 验收");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 960, height: 1600 });
+  await page.clock.install({ time: visualBaselineNow });
   const workspace = await mockProgramsWorkspace(page);
   await page.goto(`${appOrigin}/programs`);
 
