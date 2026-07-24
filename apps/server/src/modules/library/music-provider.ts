@@ -22,6 +22,7 @@ export const providerTrackSchema = z.strictObject({
   title: z.string().trim().min(1).max(300),
   artist: z.string().trim().min(1).max(300),
   album: z.string().trim().min(1).max(300),
+  artworkUrl: z.url().nullable().default(null),
   durationMs: z.number().int().positive(),
   lyricStatus: lyricStatusSchema,
   playable: z.boolean(),
@@ -105,8 +106,10 @@ export function normalizeProviderTrack(track: ProviderTrack): MusicTrack {
     title: track.title,
     artist: track.artist,
     album: track.album,
+    artworkUrl: track.artworkUrl,
     durationMs: track.durationMs,
     lyricStatus: track.lyricStatus,
+    playable: track.playable,
   });
 }
 

@@ -129,12 +129,16 @@ function TrackList({
               className={`library-cover library-cover--${String(index % 5)}`}
               aria-hidden="true"
             >
+              {track.artworkUrl === null ? null : (
+                <img src={track.artworkUrl} alt="" referrerPolicy="no-referrer" />
+              )}
               <i />
             </span>
             <span className="library-track__meta">
               <strong>{track.title}</strong>
               <small>
                 {track.artist} · {track.album}
+                {track.playable ? "" : " · 暂不可播放"}
               </small>
             </span>
             <span className="library-track__duration">{durationLabel(track.durationMs)}</span>
@@ -143,8 +147,9 @@ function TrackList({
               type="button"
               aria-label={previewing ? `停止试听 ${track.title}` : `试听 ${track.title}`}
               aria-pressed={previewing}
+              disabled={!track.playable}
               onClick={() => {
-                onPreview(track);
+                if (track.playable) onPreview(track);
               }}
             >
               <span aria-hidden="true">{previewLoading ? "…" : previewing ? "■" : "▶"}</span>
@@ -210,7 +215,7 @@ function StatePanel({
 function importResultMessage(snapshot: PlaylistImportSnapshot): string {
   if (snapshot.status !== "succeeded") return "";
   if (snapshot.progress.unavailable > 0) {
-    return `已导入 ${String(snapshot.progress.imported)} 首可用歌曲，${String(snapshot.progress.unavailable)} 首暂不可播放。`;
+    return `已导入 ${String(snapshot.progress.imported)} 首歌曲，其中 ${String(snapshot.progress.unavailable)} 首暂不可播放。`;
   }
   return `已导入 ${String(snapshot.progress.imported)} 首歌曲。`;
 }
@@ -535,7 +540,7 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
           <header>
             <div>
               <h2 id="library-import-title">导入网易云歌单</h2>
-              <p>粘贴歌单链接或 ID，将可用歌曲加入本地候选池。</p>
+              <p>粘贴歌单链接或 ID，完整保留歌曲并标注暂不可播放的项目。</p>
             </div>
             <span
               className={`library-provider-status library-provider-status--${providerUnavailable ? "error" : importing ? "pending" : "connected"}`}

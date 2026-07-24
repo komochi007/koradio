@@ -61,11 +61,11 @@
 }
 
 :root[data-theme="light"] .primary-nav__item--active::before {
-  background: #191b1f;
+  background: #f2f4f7;
 }
 
 :root[data-theme="light"] .primary-nav__item--active img {
-  filter: invert(1);
+  filter: invert(0);
 }
 
 @media (prefers-color-scheme: light) {
@@ -105,11 +105,11 @@
   }
 
   :root[data-theme="system"] .primary-nav__item--active::before {
-    background: #191b1f;
+    background: #f2f4f7;
   }
 
   :root[data-theme="system"] .primary-nav__item--active img {
-    filter: invert(1);
+    filter: invert(0);
   }
 }
 
@@ -120,14 +120,50 @@
 html,
 body,
 #root {
+  width: 100%;
+  height: 100%;
   min-width: 320px;
-  min-height: 100%;
   margin: 0;
 }
 
 body {
-  min-height: 100vh;
+  overflow: hidden;
   background: var(--kr-bg);
+}
+
+.desktop-canvas-viewport {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  overflow: hidden;
+}
+
+.desktop-canvas {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.desktop-canvas__content {
+  width: 960px;
+  height: 1600px;
+  transform-origin: top left;
+}
+
+.desktop-canvas .app-surface {
+  width: 960px;
+  height: 1600px;
+  min-height: 1600px;
+}
+
+.desktop-canvas .library-main,
+.desktop-canvas .taste-main,
+.desktop-canvas .taste-edit-main,
+.desktop-canvas .programs-main,
+.desktop-canvas .program-detail-main,
+.desktop-canvas .settings-main,
+.desktop-canvas .settings-diagnostics-main {
+  max-height: 1456px;
 }
 
 button {
@@ -345,13 +381,17 @@ h1[tabindex="-1"]:focus-visible {
   position: absolute;
   width: 88px;
   height: 64px;
-  border-radius: 999px;
+  border-radius: 16px;
   background: transparent;
   content: "";
 }
 
 .primary-nav__item--active::before {
-  background: var(--kr-surface-elevated);
+  background: #f2f4f7;
+}
+
+.primary-nav__item--active img {
+  filter: invert(0);
 }
 
 .primary-nav__item[aria-disabled="true"] {
@@ -1463,13 +1503,18 @@ h1[tabindex="-1"]:focus-visible {
   }
 
   .primary-nav__item::before {
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 48px;
+    border-radius: 14px;
   }
 
   .primary-nav__item img {
     width: 32px;
     height: 32px;
+  }
+
+  body {
+    overflow: auto;
   }
 
   .offline-panel,

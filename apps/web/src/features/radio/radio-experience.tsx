@@ -231,7 +231,11 @@ function RadioMain({
     <section className="radio-main radio-main--playing" aria-label="当前节目">
       <article className="radio-player">
         <div className="radio-player__topline">
-          <span className="radio-cover" aria-hidden="true" />
+          <span className="radio-cover" aria-hidden="true">
+            {current?.artworkUrl === null || current?.artworkUrl === undefined ? null : (
+              <img src={current.artworkUrl} alt="" referrerPolicy="no-referrer" />
+            )}
+          </span>
           <div className="radio-player__meta">
             <p className="radio-eyebrow">NOW PLAYING</p>
             <h2>{current?.title ?? program.program.title}</h2>

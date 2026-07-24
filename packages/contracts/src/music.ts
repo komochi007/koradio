@@ -20,8 +20,10 @@ export const musicTrackSchema = z.strictObject({
   title: z.string().trim().min(1).max(300),
   artist: z.string().trim().min(1).max(300),
   album: z.string().trim().min(1).max(300),
+  artworkUrl: z.url().nullable().default(null),
   durationMs: z.number().int().positive(),
   lyricStatus: lyricStatusSchema,
+  playable: z.boolean().default(true),
 });
 export const libraryItemSchema = z.strictObject({
   track: musicTrackSchema,

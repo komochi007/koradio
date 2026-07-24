@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./app.js";
+import { DesktopCanvas } from "./app/desktop-canvas.js";
 import { registerAppShellServiceWorker } from "./app/service-worker.js";
 import "./app/app.css";
 
@@ -12,7 +13,9 @@ if (root === null) {
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <DesktopCanvas>
+      <App />
+    </DesktopCanvas>
   </StrictMode>,
 );
 

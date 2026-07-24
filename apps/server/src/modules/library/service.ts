@@ -134,9 +134,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
         throw new MusicProviderUnavailableError();
       }
       const imported = parseProviderPlaylistResult(providerResponse);
-      const availableTracks = imported.tracks
-        .filter((track) => track.playable)
-        .map(normalizeProviderTrack);
+      const tracks = imported.tracks.map(normalizeProviderTrack);
       const importedAt = now().toISOString();
       options.repository.completeImport(
         jobId,
@@ -146,10 +144,10 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
           sourcePlaylistId: imported.sourcePlaylistId,
           title: imported.title,
           importedAt,
-          availableTrackCount: availableTracks.length,
-          unavailableTrackCount: imported.tracks.length - availableTracks.length,
+          availableTrackCount: tracks.filter((track) => track.playable).length,
+          unavailableTrackCount: tracks.filter((track) => !track.playable).length,
         }),
-        availableTracks,
+        tracks,
       );
     } catch (error) {
       options.repository.failImport(
@@ -200,6 +198,9 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       const track = options.repository.findTrack(trackId);
       if (track === null) {
         throw new LibraryTrackNotFoundError();
+      }
+      if (!track.playable) {
+        throw new MusicProviderUnavailableError();
       }
       const cacheKey = `${track.source}:${track.sourceTrackId}`;
       const cached = lyricsCache.get(cacheKey);

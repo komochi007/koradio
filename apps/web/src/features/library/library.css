@@ -191,9 +191,17 @@
   content: "";
 }
 
-.library-cover i {
+.library-cover img {
   position: absolute;
   z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.library-cover i {
+  position: absolute;
+  z-index: 2;
   inset: 14px;
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 50%;
@@ -272,6 +280,11 @@
 .library-track__play[aria-pressed="true"] {
   border-color: var(--kr-accent);
   color: var(--kr-accent);
+}
+
+.library-track__play:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .library-track__add {

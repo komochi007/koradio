@@ -22,8 +22,10 @@ interface MusicTrackRow {
   title: string;
   artist: string;
   album: string;
+  artwork_url: string | null;
   duration_ms: number;
   lyric_status: "available" | "untimed" | "unavailable";
+  playable: number;
 }
 
 interface LibraryItemRow extends MusicTrackRow {
@@ -119,8 +121,10 @@ function mapTrack(row: MusicTrackRow): MusicTrack {
     title: row.title,
     artist: row.artist,
     album: row.album,
+    artworkUrl: row.artwork_url,
     durationMs: row.duration_ms,
     lyricStatus: row.lyric_status,
+    playable: row.playable === 1,
   });
 }
 
@@ -161,20 +165,22 @@ function decodeCursor(cursor: string | undefined): number {
 
 export function createLibraryRepository(client: DatabaseSync): LibraryRepository {
   const trackColumns = `
-    id, source, source_track_id, title, artist, album, duration_ms, lyric_status
+    id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, playable
   `;
   const findTrack = client.prepare(`SELECT ${trackColumns} FROM music_track WHERE id = ?`);
   const upsertTrack = client.prepare(`
     INSERT INTO music_track (
-      id, source, source_track_id, title, artist, album, duration_ms, lyric_status, created_at, updated_at
+      id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, playable, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(source, source_track_id) DO UPDATE SET
       title = excluded.title,
       artist = excluded.artist,
       album = excluded.album,
+      artwork_url = excluded.artwork_url,
       duration_ms = excluded.duration_ms,
       lyric_status = excluded.lyric_status,
+      playable = excluded.playable,
       updated_at = excluded.updated_at
   `);
   const findItemByIdempotency = client.prepare(`
@@ -324,8 +330,10 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
       track.title,
       track.artist,
       track.album,
+      track.artworkUrl,
       track.durationMs,
       track.lyricStatus,
+      track.playable ? 1 : 0,
       updatedAt,
       updatedAt,
     );

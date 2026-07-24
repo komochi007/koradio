@@ -232,7 +232,7 @@ describe("S3-02 Library backend", () => {
     expect(snapshot).toMatchObject({
       status: "succeeded",
       playlistRef: "mock-playlist-001",
-      progress: { total: 3, processed: 3, imported: 2, unavailable: 1 },
+      progress: { total: 3, processed: 3, imported: 3, unavailable: 1 },
     });
     expect(snapshot.playlistSource).toMatchObject({
       source: "netease",
@@ -246,12 +246,12 @@ describe("S3-02 Library backend", () => {
       url: `/api/v1/profiles/${profile.id}/library`,
       headers,
     });
-    expect(libraryListResponseSchema.parse(library.json<unknown>()).items).toHaveLength(2);
+    expect(libraryListResponseSchema.parse(library.json<unknown>()).items).toHaveLength(3);
 
     const database = new DatabaseSync(join(context.dataRoot, "koradio.sqlite"));
     try {
       expect(database.prepare("SELECT COUNT(*) AS count FROM music_track").get()).toEqual({
-        count: 2,
+        count: 3,
       });
       const schema = database
         .prepare(

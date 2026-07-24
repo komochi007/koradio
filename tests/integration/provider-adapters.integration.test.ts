@@ -36,6 +36,7 @@ import {
   netEaseLyricsFixture,
   netEasePlaylistFixture,
   netEaseSearchFixture,
+  netEaseTrackFixture,
   providerCorrelationId,
   ttsSynthesisFixture,
   ttsVoicesFixture,
@@ -401,6 +402,27 @@ describe("NetEase linuxapi adapter", () => {
         "30000000-0000-4000-8000-000000000001",
       ),
     ).toMatchObject({ status: "available" });
+  });
+
+  it("completes a playlist from its full track id list when the detail response is partial", async () => {
+    const missingTrack = { ...netEaseTrackFixture, id: 90000001, name: "Complete Import" };
+    const playlistProvider = createNetEaseAdapter({
+      fetchImplementation: createFetchQueue([
+        jsonResponse({
+          ...netEasePlaylistFixture,
+          playlist: {
+            ...netEasePlaylistFixture.playlist,
+            trackIds: [{ id: netEaseTrackFixture.id }, { id: missingTrack.id }],
+          },
+        }),
+        jsonResponse({ code: 200, songs: [missingTrack] }),
+      ]),
+    });
+
+    const playlist = parseProviderPlaylistResult(
+      await playlistProvider.importPlaylist("123456789"),
+    );
+    expect(playlist.tracks.map((track) => track.sourceTrackId)).toEqual(["25638273", "90000001"]);
   });
 
   it("validates media domain, public DNS, redirect, MIME, Range and size before returning URL", async () => {

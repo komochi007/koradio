@@ -313,7 +313,7 @@ erDiagram
 | `taste_overrides` | Taste | `profileId`；人工规则，重建投影不得覆盖 |
 | `device_settings` | DeviceSettings | 单设备；dataRoot 与 Codex 命令路径 |
 | `data_root_migration` | DeviceSettings | `jobId` + idempotency key；迁移阶段与回滚状态 |
-| `music_track` | Library | `id` + source identity；归一化曲目 |
+| `music_track` | Library | `id` + source identity、专辑封面 URL 与可播放状态 |
 | `program` | Programs | `id` + `profileId`；节目快照 |
 | `program_generation_job` | Programs | `jobId` + `profileId` + idempotency key；持久阶段、终态和事件 sequence，不保存场景草稿 |
 | `program_track` | Programs | `programId`、position、`trackId`；有序 Library 曲目引用 |

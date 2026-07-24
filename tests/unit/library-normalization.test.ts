@@ -60,11 +60,11 @@ function createRepository(overrides: Partial<LibraryRepository> = {}): LibraryRe
 }
 
 describe("Library normalization and cache policy", () => {
-  it("creates stable normalized identity and strips provider-only playability", () => {
+  it("creates stable normalized identity and preserves playback availability", () => {
     const normalized = normalizeProviderTrack(track);
     expect(normalized).toEqual(normalizeProviderTrack({ ...track }));
     expect(normalized.id).toMatch(/^[0-9a-f-]{36}$/);
-    expect(normalized).not.toHaveProperty("playable");
+    expect(normalized).toMatchObject({ artworkUrl: null, playable: true });
 
     const response = parseProviderSearchResult({
       items: [track, { ...track, sourceTrackId: "track-002", playable: false }],

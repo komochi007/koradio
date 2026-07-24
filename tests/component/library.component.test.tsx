@@ -304,7 +304,7 @@ describe("S5-01 Library experience", () => {
     fireEvent.change(input, { target: { value: "40112818" } });
     fireEvent.submit(input.closest("form") ?? document.createElement("form"));
     expect(await screen.findByText(/正在从网易云获取音乐/)).toBeTruthy();
-    expect(await screen.findByText("已导入 2 首可用歌曲，1 首暂不可播放。")).toBeTruthy();
+    expect(await screen.findByText("已导入 2 首歌曲，其中 1 首暂不可播放。")).toBeTruthy();
   });
 
   it("keeps service failure inline with a Settings recovery action", async () => {

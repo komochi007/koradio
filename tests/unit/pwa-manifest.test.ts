@@ -16,7 +16,9 @@ const serviceWorker = readFileSync(
 );
 
 function iconSize(path: string): [number, number] {
-  const image = readFileSync(new URL(`../../apps/web/public${path}`, import.meta.url));
+  const image = readFileSync(
+    new URL(`../../apps/web/public${path.split("?", 1)[0] ?? path}`, import.meta.url),
+  );
   expect(image.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   return [image.readUInt32BE(16), image.readUInt32BE(20)];
 }
@@ -26,13 +28,13 @@ describe("PWA manifest", () => {
     expect(manifest).toMatchObject({ display: "standalone", id: "/", start_url: "/radio" });
     expect(manifest.icons).toEqual([
       {
-        src: "/icons/koradio-192.png",
+        src: "/icons/koradio-192.png?v=2",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/koradio-512.png",
+        src: "/icons/koradio-512.png?v=2",
         sizes: "512x512",
         type: "image/png",
         purpose: "any maskable",

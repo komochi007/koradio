@@ -26,7 +26,10 @@ const trackSchema = z.object({
   id: sourceIdSchema,
   name: z.string().trim().min(1).max(300),
   ar: z.array(artistSchema).min(1).max(20),
-  al: z.object({ name: z.string().trim().max(300) }),
+  al: z.object({
+    name: z.string().trim().max(300),
+    picUrl: z.url().nullable().optional(),
+  }),
   dt: z.number().int().positive(),
   fee: z.number().int().optional(),
   privilege: z.object({ st: z.number().int() }).optional(),
@@ -44,7 +47,15 @@ const playlistResponseSchema = z.object({
     id: sourceIdSchema,
     name: z.string().trim().min(1).max(300),
     tracks: z.array(trackSchema).max(10_000),
+    trackIds: z
+      .array(z.object({ id: sourceIdSchema }))
+      .max(10_000)
+      .optional(),
   }),
+});
+const songDetailResponseSchema = z.object({
+  code: z.literal(200),
+  songs: z.array(trackSchema).max(1_000),
 });
 const lyricsResponseSchema = z.object({
   code: z.literal(200),
@@ -101,6 +112,7 @@ function providerTrack(track: z.infer<typeof trackSchema>): ProviderTrack {
     title: track.name,
     artist: artists.length === 0 ? "Unknown Artist" : artists.join(" / "),
     album: track.al.name.length === 0 ? "Unknown Album" : track.al.name,
+    artworkUrl: track.al.picUrl ?? null,
     durationMs: track.dt,
     lyricStatus: "unavailable",
     playable: track.noCopyrightRcmd == null && track.fee !== 4 && (track.privilege?.st ?? 0) >= 0,
@@ -438,11 +450,43 @@ export function createNetEaseAdapter(options: CreateNetEaseAdapterOptions = {}):
       if (!parsed.success || parsed.data.playlist.id !== sourcePlaylistId) {
         throw new MusicProviderResponseError();
       }
+      const requestedIds = parsed.data.playlist.trackIds?.map((track) => track.id) ?? [];
+      const resolvedTracks = new Map(parsed.data.playlist.tracks.map((track) => [track.id, track]));
+      const missingIds = requestedIds.filter((id) => !resolvedTracks.has(id));
+
+      for (let offset = 0; offset < missingIds.length; offset += 100) {
+        const ids = missingIds.slice(offset, offset + 100);
+        const details = songDetailResponseSchema.safeParse(
+          await request(
+            "/api/v3/song/detail",
+            {
+              c: JSON.stringify(ids.map((id) => ({ id }))),
+              ids: JSON.stringify(ids),
+            },
+            callOptions,
+          ),
+        );
+        if (!details.success) {
+          throw new MusicProviderResponseError();
+        }
+        for (const track of details.data.songs) {
+          resolvedTracks.set(track.id, track);
+        }
+      }
+
+      const tracks =
+        requestedIds.length === 0
+          ? parsed.data.playlist.tracks
+          : requestedIds.flatMap((id) => {
+              const track = resolvedTracks.get(id);
+              return track === undefined ? [] : [track];
+            });
+
       return {
         source: "netease",
         sourcePlaylistId,
         title: parsed.data.playlist.name,
-        tracks: parsed.data.playlist.tracks.map(providerTrack),
+        tracks: tracks.map(providerTrack),
       };
     },
     async getLyrics(sourceTrackId, callOptions) {
