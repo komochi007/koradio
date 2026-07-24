@@ -737,26 +737,3 @@
     animation: none;
   }
 }
-
-.desktop-canvas .programs-page,
-.desktop-canvas .program-detail-page {
-  height: 1600px;
-}
-
-.desktop-canvas .programs-main,
-.desktop-canvas .program-detail-main {
-  max-height: 1320px;
-  overflow: hidden;
-}
-
-.desktop-canvas .programs-list,
-.desktop-canvas .program-detail-queue {
-  max-height: 600px;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.desktop-canvas .programs-list::-webkit-scrollbar,
-.desktop-canvas .program-detail-queue::-webkit-scrollbar {
-  display: none;
-}

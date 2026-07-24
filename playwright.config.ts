@@ -36,15 +36,15 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 960, height: 1600 } },
+      use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "firefox",
-      use: { ...devices["Desktop Firefox"], viewport: { width: 960, height: 1600 } },
+      use: { ...devices["Desktop Firefox"] },
     },
     {
       name: "webkit",
-      use: { ...devices["Desktop Safari"], viewport: { width: 960, height: 1600 } },
+      use: { ...devices["Desktop Safari"] },
     },
   ],
 });

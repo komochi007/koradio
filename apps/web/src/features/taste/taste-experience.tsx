@@ -166,7 +166,7 @@ function TasteOverview({ taste }: { taste: TasteResponse }): ReactElement {
   ];
 
   return (
-    <div className="taste-content-scroll">
+    <>
       <section className="taste-overview" aria-labelledby="taste-overview-title">
         <SectionHeading id="taste-overview-title" title="品味概览" />
         <article className="taste-overview-card">
@@ -299,7 +299,7 @@ function TasteOverview({ taste }: { taste: TasteResponse }): ReactElement {
           </time>
         </div>
       </section>
-    </div>
+    </>
   );
 }
 
@@ -445,7 +445,7 @@ function TasteEditor({
             <p>上次更新 · {formatUpdatedAt(taste.overrides.updatedAt)}</p>
           </header>
 
-          <fieldset className="taste-edit-scroll" disabled={saving}>
+          <fieldset disabled={saving}>
             <section className="taste-edit-section" aria-labelledby="taste-edit-tags-title">
               <SectionHeading
                 count={`${String(draft.tags.length)} / 30`}

@@ -26,7 +26,6 @@ import { applyTheme } from "../features/profile-preferences/index.js";
 import { getCurrentProfile, getProfiles, ProfileExperience } from "../features/profiles/index.js";
 import { ConnectingPage, OfflinePage, OfflineSettingsPage, OnlineShellPage } from "./pages.js";
 import { createAppQueryClient, QueryClientProvider } from "./query-client.js";
-import { DesktopCanvasGate } from "./desktop-canvas.js";
 import { useAppRouter } from "./router.js";
 import { useServiceConnection } from "./use-service-connection.js";
 
@@ -280,9 +279,7 @@ export function App({ audioEngine, transport }: AppProps): ReactElement {
   return (
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <DesktopCanvasGate>
-          <AppComposition audioEngine={serviceAudioEngine} transport={serviceTransport} />
-        </DesktopCanvasGate>
+        <AppComposition audioEngine={serviceAudioEngine} transport={serviceTransport} />
       </QueryClientProvider>
     </AppErrorBoundary>
   );

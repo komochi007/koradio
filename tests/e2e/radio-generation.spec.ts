@@ -322,6 +322,7 @@ test("Radio playing state matches the frozen light theme", async ({ browserName,
 const responsiveViewports = [
   { name: "mobile", width: 390, height: 844 },
   { name: "tablet", width: 834, height: 1194 },
+  { name: "desktop", width: 1440, height: 1200 },
 ] as const;
 
 for (const viewport of responsiveViewports) {
@@ -340,33 +341,3 @@ for (const viewport of responsiveViewports) {
     });
   });
 }
-
-test("desktop windows below the fixed canvas height show the size notice", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1200 });
-  await page.goto(`${appOrigin}/radio`);
-
-  await expect(page.getByRole("status")).toContainText("960 × 1600");
-  await expect(page.locator(".desktop-canvas")).toHaveCount(0);
-  await expect(page.locator("html")).toHaveAttribute("data-desktop-canvas", "blocked");
-});
-
-test("a wider eligible desktop window preserves the 960 × 1600 fixed canvas", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1600 });
-  await mockRadio(page, { program: true });
-
-  const canvas = page.locator(".desktop-canvas");
-  await expect(canvas).toHaveCSS("width", "960px");
-  await expect(canvas).toHaveCSS("height", "1600px");
-  await expect(page.locator("html")).toHaveAttribute("data-desktop-canvas", "fixed");
-  await expect(page.getByRole("heading", { name: "If" })).toBeVisible();
-  await expect
-    .poll(() =>
-      page.evaluate(() => ({
-        height: document.documentElement.scrollHeight,
-        viewportHeight: document.documentElement.clientHeight,
-        viewportWidth: document.documentElement.clientWidth,
-        width: document.documentElement.scrollWidth,
-      })),
-    )
-    .toEqual({ height: 1600, viewportHeight: 1600, viewportWidth: 1440, width: 1440 });
-});

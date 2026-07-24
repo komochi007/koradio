@@ -486,21 +486,3 @@
     transition: none;
   }
 }
-
-.desktop-canvas .radio-detail-layer {
-  position: absolute;
-}
-
-.desktop-canvas .radio-detail-sheet {
-  --kr-detail-content-width: 848px;
-  --kr-detail-gutter: 56px;
-  --kr-detail-paper-top: 420px;
-}
-
-.desktop-canvas .detail-copy {
-  scrollbar-width: none;
-}
-
-.desktop-canvas .detail-copy::-webkit-scrollbar {
-  display: none;
-}
