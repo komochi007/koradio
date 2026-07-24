@@ -842,3 +842,34 @@
     animation: none;
   }
 }
+
+.desktop-canvas .taste-page {
+  height: 1600px;
+}
+
+.desktop-canvas .taste-main,
+.desktop-canvas .taste-edit-main {
+  max-height: 1320px;
+  overflow: hidden;
+}
+
+.desktop-canvas .taste-content-scroll,
+.desktop-canvas .taste-edit-scroll {
+  display: block;
+  max-height: 1060px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.desktop-canvas .taste-content-scroll::-webkit-scrollbar,
+.desktop-canvas .taste-edit-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.desktop-canvas .taste-edit-action {
+  position: absolute;
+}
+
+.desktop-canvas .taste-edit-scene-list textarea {
+  resize: none;
+}

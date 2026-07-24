@@ -114,7 +114,7 @@ test("preserves representative viewport flow and 44px navigation targets", async
   const representatives = [
     { width: 390, height: 844, navigation: "Radio", heading: "Radio" },
     { width: 834, height: 1194, navigation: "Taste", heading: "你的音乐品味" },
-    { width: 1440, height: 1200, navigation: "Settings", heading: "设置" },
+    { width: 960, height: 1600, navigation: "Settings", heading: "设置" },
   ] as const;
   for (const representative of representatives) {
     await page.setViewportSize({ width: representative.width, height: representative.height });

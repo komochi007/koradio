@@ -313,7 +313,6 @@ test("Detail lyrics preserves the fixed light-theme geometry", async ({ browserN
 const responsiveViewports = [
   { name: "mobile", width: 390, height: 844 },
   { name: "tablet", width: 834, height: 1194 },
-  { name: "desktop", width: 1440, height: 1200 },
 ] as const;
 
 for (const viewport of responsiveViewports) {

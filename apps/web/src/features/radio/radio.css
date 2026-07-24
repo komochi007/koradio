@@ -1095,3 +1095,57 @@
     animation: none !important;
   }
 }
+
+.desktop-canvas .radio-page {
+  height: 1600px;
+  min-height: 1600px;
+}
+
+.desktop-canvas .radio-scroll {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  transform: none;
+}
+
+.desktop-canvas .radio-time,
+.desktop-canvas .radio-main,
+.desktop-canvas .radio-queue,
+.desktop-canvas .radio-dj-status,
+.desktop-canvas .radio-dialogue {
+  position: absolute;
+  left: 72px;
+  width: 816px;
+}
+
+.desktop-canvas .radio-time {
+  top: 128px;
+}
+
+.desktop-canvas .radio-main {
+  top: 292px;
+}
+
+.desktop-canvas .radio-queue {
+  top: 656px;
+}
+
+.desktop-canvas .radio-dj-status {
+  top: 980px;
+}
+
+.desktop-canvas .radio-dialogue {
+  top: 1068px;
+}
+
+.desktop-canvas .radio-scene-input {
+  top: 1372px;
+  bottom: auto;
+  width: 816px;
+}
+
+.desktop-canvas .radio-page .primary-nav {
+  bottom: 32px;
+}

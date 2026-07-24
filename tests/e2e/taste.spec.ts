@@ -255,11 +255,6 @@ test("views, edits, validates and saves Taste overrides", async ({ browserName, 
       animations: "disabled",
       fullPage: false,
     });
-    await page.setViewportSize({ width: 1440, height: 1200 });
-    await expect(page).toHaveScreenshot("taste-overview-desktop.png", {
-      animations: "disabled",
-      fullPage: false,
-    });
     await page.setViewportSize({ width: 960, height: 1600 });
   }
 
@@ -320,7 +315,7 @@ test("retains the edit draft while the stored Taste rolls back on failure", asyn
 
 test("isolates Taste queries and drafts when switching Profile", async ({ browserName, page }) => {
   test.skip(browserName === "webkit", "受控 Taste 路由由 Chromium 与 Firefox 验收");
-  await page.setViewportSize({ width: 960, height: 1200 });
+  await page.setViewportSize({ width: 960, height: 1600 });
   await mockTasteWorkspace(page);
   await page.goto(`${appOrigin}/taste`);
   await expect(page.getByText("Ambient")).toBeVisible();

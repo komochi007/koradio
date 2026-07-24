@@ -626,3 +626,22 @@
     transition: none;
   }
 }
+
+.desktop-canvas .library-page {
+  height: 1600px;
+}
+
+.desktop-canvas .library-main {
+  max-height: 1320px;
+  overflow: hidden;
+}
+
+.desktop-canvas .library-results {
+  max-height: 560px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.desktop-canvas .library-results::-webkit-scrollbar {
+  display: none;
+}

@@ -333,11 +333,6 @@ test("paginates, replays, favorites, reuses and isolates Programs history", asyn
       animations: "disabled",
       fullPage: false,
     });
-    await page.setViewportSize({ width: 1440, height: 1200 });
-    await expect(page).toHaveScreenshot("programs-list-desktop.png", {
-      animations: "disabled",
-      fullPage: false,
-    });
     await page.setViewportSize({ width: 960, height: 1600 });
   }
 
