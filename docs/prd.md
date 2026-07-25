@@ -112,7 +112,9 @@ Radio 主播放页和 Radio Detail Sheet 尽量使用英文状态词，例如 `O
 | 内容列宽 | Radio `816px`；服务异常恢复区 `560px`；Profile/Onboarding `848px`；Library/Taste/Programs `840px`；Settings `832px`；Detail Sheet 覆盖完整 `960 × 1600px` 画布，浅色节目面内使用 `848px` 内容列 |
 | 原型坐标 | Radio 04/05/06 使用 VDA-17 固定骨架：Radio rail `x 72 / w 816`，输入框 `x 72 / y 1372 / w 816 / h 88`，Tab Bar `x 170 / y 1480 / w 620 / h 88` |
 | 安全边距 | 原型页面左右使用 `56px`、顶部使用 `40px` 安全边距；底部预留固定导航和安全区 |
-| 底部导航 | 一级页面使用固定底部胶囊式 Tab Bar，`620 × 88px`，5 个 `124 × 88px` tab slot；选中态使用白色圆角矩形底，提供 Tooltip、`aria-label` 和键盘 Focus |
+| 底部导航 | 一级页面使用固定底部胶囊式 Tab Bar，`620 × 88px`，5 个 `124 × 88px` tab slot；选中态使用白色圆角矩形底和纯黑图标，提供 Tooltip、`aria-label` 和键盘 Focus |
+| 桌面 standalone PWA | 以 `960 × 1600px` 画布按实际可视区域等比缩小，窄窗口和浏览器缩放下仍完整展示页面且外层不滚动；普通浏览器与手机保留响应式布局 |
+| Radio 输入操作 | 语音与发送按钮在同一布局族中必须使用相同的圆角正方形尺寸；Desktop `64 × 64px`，Mobile `48 × 48px` |
 | 按钮颜色 | 主按钮使用黑白高对比，不使用绿色填充；绿色只用于 `ON AIR`、`LIVE`、`PLAYING`、`CONNECTED`、Focus Ring、细线和少量波形 |
 | 字体 | 正文使用系统字体；等宽字体仅用于时间、数字、状态标签和队列序号；正文和 DJ 串讲不得使用点阵字体 |
 | 页面结构 | Radio 始终保持中央窄列，不做桌面多栏；管理页保持单列，不做后台式侧边栏 |

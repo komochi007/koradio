@@ -28,13 +28,13 @@ describe("PWA manifest", () => {
     expect(manifest).toMatchObject({ display: "standalone", id: "/", start_url: "/radio" });
     expect(manifest.icons).toEqual([
       {
-        src: "/icons/koradio-192.png?v=2",
+        src: "/icons/koradio-192.png?v=3",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/koradio-512.png?v=2",
+        src: "/icons/koradio-512.png?v=3",
         sizes: "512x512",
         type: "image/png",
         purpose: "any maskable",

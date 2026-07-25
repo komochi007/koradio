@@ -341,3 +341,63 @@ for (const viewport of responsiveViewports) {
     });
   });
 }
+
+test("Radio standalone desktop PWA keeps the complete canvas in a narrow window", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "visual baseline is captured once in Chromium");
+  await page.addInitScript(() => {
+    const browserMatchMedia = window.matchMedia.bind(window);
+    window.matchMedia = (query: string): MediaQueryList => {
+      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
+        return {
+          addEventListener: () => undefined,
+          addListener: () => undefined,
+          dispatchEvent: () => false,
+          matches: true,
+          media: query,
+          onchange: null,
+          removeEventListener: () => undefined,
+          removeListener: () => undefined,
+        };
+      }
+      return browserMatchMedia(query);
+    };
+  });
+  await page.setViewportSize({ width: 560, height: 600 });
+  await mockRadio(page, { program: true });
+
+  const canvas = page.locator(".desktop-canvas");
+  const inputActions = page.locator(".radio-scene-input__mic, .radio-scene-input__send");
+  await expect(canvas).toBeVisible();
+  await expect(inputActions).toHaveCount(2);
+  await expect(page).toHaveScreenshot("radio-playing-standalone-narrow.png", {
+    animations: "disabled",
+    fullPage: false,
+  });
+
+  const metrics = await page.evaluate(() => ({
+    canvas: document.querySelector<HTMLElement>(".desktop-canvas")?.getBoundingClientRect(),
+    documentHeight: document.documentElement.scrollHeight,
+    inputActions: Array.from(
+      document.querySelectorAll<HTMLElement>(".radio-scene-input__mic, .radio-scene-input__send"),
+    ).map((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return { height: rect.height, radius: style.borderRadius, width: rect.width };
+    }),
+    navIconFilter: getComputedStyle(
+      document.querySelector<HTMLElement>(".primary-nav__item--active img")!,
+    ).filter,
+    viewportHeight: window.innerHeight,
+    viewportWidth: window.innerWidth,
+  }));
+
+  expect(metrics.canvas?.height).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.canvas?.width).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.documentHeight).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.inputActions).toHaveLength(2);
+  expect(metrics.inputActions[0]).toEqual(metrics.inputActions[1]);
+  expect(metrics.navIconFilter).toBe("brightness(0) saturate(1)");
+});

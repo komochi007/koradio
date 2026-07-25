@@ -1,46 +1,81 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useLayoutEffect, useState, type ReactNode } from "react";
 
-const desktopBreakpoint = 768;
-const prototypeHeight = 1600;
-const prototypeWidth = 960;
+export const prototypeCanvasHeight = 1600;
+export const prototypeCanvasWidth = 960;
 
-interface CanvasState {
+export interface DesktopCanvasState {
   enabled: boolean;
   height: number;
   scale: number;
   width: number;
 }
 
-function readCanvasState(): CanvasState {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  const enabled = width >= desktopBreakpoint;
-  const scale = enabled ? Math.min(width / prototypeWidth, height / prototypeHeight, 1) : 1;
+export interface DesktopCanvasEnvironment {
+  hasFinePointer: boolean;
+  isStandalone: boolean;
+  viewportHeight: number;
+  viewportWidth: number;
+}
+
+export function resolveDesktopCanvasState({
+  hasFinePointer,
+  isStandalone,
+  viewportHeight,
+  viewportWidth,
+}: DesktopCanvasEnvironment): DesktopCanvasState {
+  const enabled = isStandalone && hasFinePointer;
+  const scale = enabled
+    ? Math.min(viewportWidth / prototypeCanvasWidth, viewportHeight / prototypeCanvasHeight, 1)
+    : 1;
   return {
     enabled,
-    height: Math.round(prototypeHeight * scale),
+    height: Math.round(prototypeCanvasHeight * scale),
     scale,
-    width: Math.round(prototypeWidth * scale),
+    width: Math.round(prototypeCanvasWidth * scale),
   };
 }
 
-export function DesktopCanvas({ children }: { children: ReactNode }): ReactNode {
-  const [state, setState] = useState<CanvasState>(() => readCanvasState());
+function readCanvasState(): DesktopCanvasState {
+  const viewport = window.visualViewport;
+  return resolveDesktopCanvasState({
+    hasFinePointer: window.matchMedia("(pointer: fine)").matches,
+    isStandalone: window.matchMedia("(display-mode: standalone)").matches,
+    viewportHeight: viewport?.height ?? window.innerHeight,
+    viewportWidth: viewport?.width ?? window.innerWidth,
+  });
+}
 
-  useEffect(() => {
+export function DesktopCanvas({ children }: { children: ReactNode }): ReactNode {
+  const [state, setState] = useState<DesktopCanvasState>(() => readCanvasState());
+
+  useLayoutEffect(() => {
     const update = (): void => {
       setState(readCanvasState());
     };
     window.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("resize", update);
     return () => {
       window.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("resize", update);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (state.enabled) {
+      root.dataset.desktopPwaCanvas = "true";
+      return () => {
+        delete root.dataset.desktopPwaCanvas;
+      };
+    }
+    delete root.dataset.desktopPwaCanvas;
+    return undefined;
+  }, [state.enabled]);
 
   if (!state.enabled) return children;
 
   return (
-    <div className="desktop-canvas-viewport">
+    <div className="desktop-canvas-viewport desktop-canvas-viewport--standalone">
       <div
         className="desktop-canvas"
         style={{
