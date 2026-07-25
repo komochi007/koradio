@@ -1335,7 +1335,10 @@ h1[tabindex="-1"]:focus-visible {
   position: relative;
   z-index: 2;
   bottom: auto;
+  width: min(832px, 100%);
   margin-top: 24px;
+  margin-right: auto;
+  margin-left: auto;
   padding: 16px;
   border: 1px solid var(--kr-border-subtle);
   border-radius: 20px;
@@ -1694,6 +1697,7 @@ h1[tabindex="-1"]:focus-visible {
     right: 20px;
     bottom: calc(96px + env(safe-area-inset-bottom));
     left: 20px;
+    width: auto;
     margin: 0;
   }
 }
@@ -1740,6 +1744,70 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .primary-nav__item::before 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .primary-nav__item img {
   width: 40px;
   height: 40px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-page,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-page,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-page,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-page,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-page {
+  height: 1600px;
+  min-height: 1600px;
+  overflow: hidden;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-main {
+  max-height: none;
+  padding-bottom: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main {
+  height: 1316px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-page--diagnostics .settings-main {
+  height: 1332px;
+}
+
+html[data-desktop-pwa-canvas="true"]
+  .desktop-canvas
+  .settings-page:not(.settings-page--diagnostics)
+  .settings-main {
+  height: 1180px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-main::-webkit-scrollbar {
+  display: none;
+}
+
+html[data-desktop-pwa-canvas="true"]
+  .desktop-canvas
+  .settings-page:not(.settings-page--diagnostics)
+  .settings-actions {
+  position: absolute;
+  right: 0;
+  bottom: 140px;
+  left: 0;
+  width: 832px;
+  margin: 0 auto;
 }
 
 :root .primary-nav__item--active img {

@@ -332,7 +332,7 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
             ))}
           </ul>
         </section>
-        <form className="settings-form" onSubmit={handleSave}>
+        <form className="settings-form" id="settings-form" onSubmit={handleSave}>
           <section className="settings-section" aria-labelledby="config-heading">
             <h2 id="config-heading">服务配置</h2>
             <label className="settings-field">
@@ -465,25 +465,26 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
               {saveMessage}
             </p>
           )}
-          <div className="settings-actions">
-            <button
-              className="button button--secondary"
-              type="button"
-              disabled={services.isFetching}
-              onClick={() => void openDiagnostics()}
-            >
-              {services.isFetching ? "正在检测服务连接…" : "测试连接"}
-            </button>
-            <button
-              className="button button--primary"
-              type="submit"
-              disabled={save.isPending || settings.isLoading}
-            >
-              {save.isPending ? "正在保存…" : "保存配置"}
-            </button>
-          </div>
         </form>
       </main>
+      <div className="settings-actions">
+        <button
+          className="button button--secondary"
+          type="button"
+          disabled={services.isFetching}
+          onClick={() => void openDiagnostics()}
+        >
+          {services.isFetching ? "正在检测服务连接…" : "测试连接"}
+        </button>
+        <button
+          className="button button--primary"
+          form="settings-form"
+          type="submit"
+          disabled={save.isPending || settings.isLoading}
+        >
+          {save.isPending ? "正在保存…" : "保存配置"}
+        </button>
+      </div>
       <PrimaryNavigation active="settings" onNavigate={props.navigate} />
     </div>
   );

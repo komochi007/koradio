@@ -188,6 +188,27 @@ async function mockLibraryWorkspace(
   });
 }
 
+async function enableStandaloneDesktopPwa(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const browserMatchMedia = window.matchMedia.bind(window);
+    window.matchMedia = (query: string): MediaQueryList => {
+      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
+        return {
+          addEventListener: () => undefined,
+          addListener: () => undefined,
+          dispatchEvent: () => false,
+          matches: true,
+          media: query,
+          onchange: null,
+          removeEventListener: () => undefined,
+          removeListener: () => undefined,
+        };
+      }
+      return browserMatchMedia(query);
+    };
+  });
+}
+
 test("searches, previews, adds, paginates and imports Library music", async ({
   browserName,
   page,
@@ -260,4 +281,48 @@ test("preserves search input when the provider fails", async ({ browserName, pag
   await expect(page.getByText("网易云 API 暂不可用")).toBeVisible();
   await expect(page.getByRole("button", { name: "重新搜索" })).toBeVisible();
   await expect(retainedSearch).toHaveValue("Beach House");
+});
+
+test("keeps Library scrolling inside the standalone desktop canvas without a scrollbar", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "standalone canvas is captured once in Chromium");
+  await enableStandaloneDesktopPwa(page);
+  await page.setViewportSize({ width: 560, height: 600 });
+  await mockLibraryWorkspace(page);
+  await page.goto(`${appOrigin}/library`);
+
+  const region = page.locator(".library-main");
+  await expect(region).toBeVisible();
+  await page.getByRole("searchbox", { name: "搜索歌曲、歌手或专辑" }).fill("Beach House");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("搜索结果 · 5")).toBeVisible();
+
+  const metrics = await page.evaluate(() => {
+    const region = document.querySelector<HTMLElement>(".library-main");
+    const canvas = document.querySelector<HTMLElement>(".desktop-canvas");
+    if (region === null || canvas === null)
+      throw new Error("Standalone Library canvas is unavailable");
+    const style = getComputedStyle(region);
+    region.scrollTop = region.scrollHeight;
+    return {
+      canvas: canvas.getBoundingClientRect(),
+      clientHeight: region.clientHeight,
+      documentHeight: document.documentElement.scrollHeight,
+      scrollHeight: region.scrollHeight,
+      scrollTop: region.scrollTop,
+      scrollbarWidth: style.scrollbarWidth,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    };
+  });
+
+  expect(metrics.canvas.height).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.canvas.width).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.documentHeight).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+  expect(metrics.scrollTop).toBeGreaterThan(0);
+  expect(metrics.scrollbarWidth).toBe("none");
+  await expect(page.locator(".primary-nav")).toBeVisible();
 });

@@ -387,9 +387,11 @@ test("Radio standalone desktop PWA keeps the complete canvas in a narrow window"
       const rect = element.getBoundingClientRect();
       return { height: rect.height, radius: style.borderRadius, width: rect.width };
     }),
-    navIconFilter: getComputedStyle(
-      document.querySelector<HTMLElement>(".primary-nav__item--active img")!,
-    ).filter,
+    navIconFilter: (() => {
+      const activeIcon = document.querySelector<HTMLElement>(".primary-nav__item--active img");
+      if (activeIcon === null) throw new Error("Active navigation icon is unavailable");
+      return getComputedStyle(activeIcon).filter;
+    })(),
     viewportHeight: window.innerHeight,
     viewportWidth: window.innerWidth,
   }));

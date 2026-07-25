@@ -220,6 +220,27 @@ async function mockTasteWorkspace(
   return { commands };
 }
 
+async function enableStandaloneDesktopPwa(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const browserMatchMedia = window.matchMedia.bind(window);
+    window.matchMedia = (query: string): MediaQueryList => {
+      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
+        return {
+          addEventListener: () => undefined,
+          addListener: () => undefined,
+          dispatchEvent: () => false,
+          matches: true,
+          media: query,
+          onchange: null,
+          removeEventListener: () => undefined,
+          removeListener: () => undefined,
+        };
+      }
+      return browserMatchMedia(query);
+    };
+  });
+}
+
 test("views, edits, validates and saves Taste overrides", async ({ browserName, page }) => {
   test.skip(browserName === "webkit", "受控 Taste 路由由 Chromium 与 Firefox 验收");
   await page.setViewportSize({ width: 960, height: 1600 });
@@ -352,4 +373,44 @@ test("keeps empty and load-error Taste states recoverable on mobile", async ({
   await page.reload();
   await expect(page.getByText("无法读取当前档案的音乐品味")).toBeVisible();
   await expect(page.getByRole("button", { name: "重新选择档案" })).toBeVisible();
+});
+
+test("keeps Taste scrolling inside the standalone desktop canvas without a scrollbar", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "standalone canvas is captured once in Chromium");
+  await enableStandaloneDesktopPwa(page);
+  await page.setViewportSize({ width: 560, height: 600 });
+  await mockTasteWorkspace(page);
+  await page.goto(`${appOrigin}/taste`);
+
+  const region = page.locator(".taste-main");
+  await expect(region).toBeVisible();
+  const metrics = await page.evaluate(() => {
+    const region = document.querySelector<HTMLElement>(".taste-main");
+    const canvas = document.querySelector<HTMLElement>(".desktop-canvas");
+    if (region === null || canvas === null)
+      throw new Error("Standalone Taste canvas is unavailable");
+    const style = getComputedStyle(region);
+    region.scrollTop = region.scrollHeight;
+    return {
+      canvas: canvas.getBoundingClientRect(),
+      clientHeight: region.clientHeight,
+      documentHeight: document.documentElement.scrollHeight,
+      scrollHeight: region.scrollHeight,
+      scrollTop: region.scrollTop,
+      scrollbarWidth: style.scrollbarWidth,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    };
+  });
+
+  expect(metrics.canvas.height).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.canvas.width).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.documentHeight).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+  expect(metrics.scrollTop).toBeGreaterThan(0);
+  expect(metrics.scrollbarWidth).toBe("none");
+  await expect(page.locator(".primary-nav")).toBeVisible();
 });

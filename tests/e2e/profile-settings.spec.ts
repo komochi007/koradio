@@ -64,6 +64,27 @@ async function mockProfileWorkspace(
   );
 }
 
+async function enableStandaloneDesktopPwa(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const browserMatchMedia = window.matchMedia.bind(window);
+    window.matchMedia = (query: string): MediaQueryList => {
+      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
+        return {
+          addEventListener: () => undefined,
+          addListener: () => undefined,
+          dispatchEvent: () => false,
+          matches: true,
+          media: query,
+          onchange: null,
+          removeEventListener: () => undefined,
+          removeListener: () => undefined,
+        };
+      }
+      return browserMatchMedia(query);
+    };
+  });
+}
+
 async function ensureProfile(page: Page): Promise<void> {
   await page.goto(`${appOrigin}/radio`);
   const destination = await Promise.race([
@@ -256,3 +277,53 @@ for (const viewport of responsiveViewports) {
     });
   });
 }
+
+test("keeps Settings content scrollable without blank space in a standalone desktop canvas", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "standalone canvas is captured once in Chromium");
+  await enableStandaloneDesktopPwa(page);
+  await page.setViewportSize({ width: 560, height: 600 });
+  await mockProfileWorkspace(page, { current: true });
+  await page.goto(`${appOrigin}/settings`);
+
+  const region = page.locator(".settings-main");
+  const actions = page.locator(".settings-actions");
+  await expect(region).toBeVisible();
+  await expect(actions).toBeVisible();
+  await expect(page.getByRole("button", { name: "保存配置" })).toHaveAttribute(
+    "form",
+    "settings-form",
+  );
+  const before = await actions.boundingBox();
+  const metrics = await page.evaluate(() => {
+    const region = document.querySelector<HTMLElement>(".settings-main");
+    const canvas = document.querySelector<HTMLElement>(".desktop-canvas");
+    if (region === null || canvas === null)
+      throw new Error("Standalone Settings canvas is unavailable");
+    const style = getComputedStyle(region);
+    region.scrollTop = region.scrollHeight;
+    return {
+      canvas: canvas.getBoundingClientRect(),
+      clientHeight: region.clientHeight,
+      documentHeight: document.documentElement.scrollHeight,
+      scrollHeight: region.scrollHeight,
+      scrollTop: region.scrollTop,
+      scrollbarWidth: style.scrollbarWidth,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    };
+  });
+  const after = await actions.boundingBox();
+
+  expect(metrics.canvas.height).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.canvas.width).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.documentHeight).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+  expect(metrics.scrollTop).toBeGreaterThan(0);
+  expect(metrics.scrollbarWidth).toBe("none");
+  expect(after).toEqual(before);
+  await expect(page.getByText("数据路径")).toBeVisible();
+  await expect(page.locator(".primary-nav")).toBeVisible();
+});
