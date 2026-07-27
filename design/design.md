@@ -678,7 +678,7 @@ Radio 三态状态差异白名单：
 |------|-----------|-------------|-----------|
 | 时间状态词 | `LIVE`，绿色点 | `ON AIR`，绿色点 | `TUNING`，中性色点 |
 | 状态主内容区 | 空状态标题和引导文案 | `816 × 340px` 播放器 | 生成标题、说明、`640 × 72px` 中性色波形 |
-| 队列区 | `QUEUE · 0 TRACKS` 和空提示 | `QUEUE · 4 TRACKS` 和四行歌曲 | `QUEUE · PREPARING` 和四行骨架 |
+| 队列区 | `QUEUE · 0 TRACKS` 和空提示 | `QUEUE · n TRACKS` 和最多四行可视歌曲；更多歌曲在无可见滚动条的内部滚动区 | `QUEUE · PREPARING` 和四行骨架 |
 | DJ 状态栏 | `LIVE` | `PLAYING` | `THINKING` |
 | DJ 对话区 | DJ 待命自然段 | DJ 串讲自然段 + 用户弱气泡 | 用户弱气泡 + `Tuning your station...` |
 | 底部输入框 | `Say something to the DJ...` | `Say something else to the DJ...` | `Generating...`，禁用发送 |

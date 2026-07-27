@@ -500,9 +500,16 @@
 
 .radio-queue ol {
   height: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin: 0;
   padding: 0;
+  scrollbar-width: none;
   list-style: none;
+}
+
+.radio-queue ol::-webkit-scrollbar {
+  display: none;
 }
 
 .radio-queue__empty {

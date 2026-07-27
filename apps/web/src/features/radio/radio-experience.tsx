@@ -430,7 +430,7 @@ function RadioQueue({
   program: ProgramDetail | null;
   state: RadioViewState;
 }): ReactElement {
-  const tracks = program === null ? [] : orderedTracks(program).slice(0, 4);
+  const tracks = program === null ? [] : orderedTracks(program);
   const label =
     state === "generating" ? "QUEUE · PREPARING" : `QUEUE · ${String(tracks.length)} TRACKS`;
   return (
@@ -474,7 +474,7 @@ function RadioQueue({
           <p>Your next session will appear here.</p>
         </div>
       ) : expanded ? (
-        <ol>
+        <ol aria-label="节目曲目" tabIndex={tracks.length > 4 ? 0 : undefined}>
           {tracks.map((track, index) => {
             const isCurrent = track.id === currentTrackId;
             return (

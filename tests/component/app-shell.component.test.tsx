@@ -94,6 +94,43 @@ const generatedProgram: ProgramDetail = {
   ],
 };
 
+const queueTrackIds = [
+  "00000000-0000-4000-8000-000000000071",
+  "00000000-0000-4000-8000-000000000075",
+  "00000000-0000-4000-8000-000000000076",
+  "00000000-0000-4000-8000-000000000077",
+  "00000000-0000-4000-8000-000000000078",
+];
+
+const fiveTrackProgram: ProgramDetail = {
+  ...generatedProgram,
+  program: {
+    ...generatedProgram.program,
+    trackIds: queueTrackIds,
+  },
+  tracks: queueTrackIds.map((id, index) => ({
+    id,
+    source: "netease",
+    sourceTrackId: `fixture-queue-${String(index + 1)}`,
+    title: `Queue Track ${String(index + 1)}`,
+    artist: "Bread",
+    album: "Manna",
+    artworkUrl: null,
+    durationMs: 155_000,
+    lyricStatus: "available",
+    playable: true,
+    originMode: "mock",
+  })),
+  timeline: queueTrackIds.map((trackId, index) => ({
+    id: `00000000-0000-4000-8000-${String(79 + index).padStart(12, "0")}`,
+    kind: "track",
+    position: index,
+    trackId,
+    resolvedAudioRef: `https://media.example.test/queue-${String(index + 1)}.mp3`,
+    durationMs: 155_000,
+  })),
+};
+
 function profileContext(profile: Profile = primaryProfile): ProfileContext {
   return {
     profile,
@@ -619,6 +656,23 @@ describe("App Shell", () => {
     );
     expect(generationCall?.[1]?.method).toBe("POST");
     expect(new Headers(generationCall?.[1]?.headers).has("Idempotency-Key")).toBe(true);
+  });
+
+  it("renders every program track in a keyboard-scrollable queue", async () => {
+    window.history.replaceState(null, "", "/radio");
+    render(
+      <App
+        audioEngine={createTestAudioEngine()}
+        transport={createOnlineTransport({ latestProgram: fiveTrackProgram })}
+      />,
+    );
+
+    const queue = await screen.findByRole("region", { name: "播放队列" });
+    expect(await within(queue).findByText("QUEUE · 5 TRACKS")).toBeTruthy();
+    const trackList = within(queue).getByRole("list", { name: "节目曲目" });
+    expect(trackList.getAttribute("tabindex")).toBe("0");
+    expect(within(trackList).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(trackList).getByText("Queue Track 5")).toBeTruthy();
   });
 
   it("restores the draft and keeps the old program when generation fails", async () => {
