@@ -425,6 +425,50 @@ describe("NetEase linuxapi adapter", () => {
     expect(playlist.tracks.map((track) => track.sourceTrackId)).toEqual(["25638273", "90000001"]);
   });
 
+  it("loads a 403-track playlist in batches of at most 100 and reports bounded progress", async () => {
+    const tracks = Array.from({ length: 403 }, (_, index) => ({
+      ...netEaseTrackFixture,
+      id: 91000000 + index,
+      name: `Large Playlist ${String(index + 1)}`,
+    }));
+    const responses = [
+      jsonResponse({
+        code: 200,
+        playlist: {
+          id: 311677454,
+          name: "403 Track Regression",
+          tracks: tracks.slice(0, 3),
+          trackIds: tracks.map((track) => ({ id: track.id })),
+        },
+      }),
+      ...Array.from({ length: 4 }, (_, index) =>
+        jsonResponse({
+          code: 200,
+          songs: tracks.slice(3 + index * 100, 3 + (index + 1) * 100),
+        }),
+      ),
+    ];
+    const invocations: Array<{ input: string; init?: RequestInit }> = [];
+    const progress: Array<{ processed: number; total: number }> = [];
+    const playlistProvider = createNetEaseAdapter({
+      fetchImplementation: createFetchQueue(responses, invocations),
+    });
+
+    const playlist = parseProviderPlaylistResult(
+      await playlistProvider.importPlaylist("311677454", {
+        onPlaylistProgress(value) {
+          progress.push(value);
+        },
+      }),
+    );
+
+    expect(invocations).toHaveLength(5);
+    expect(playlist.tracks).toHaveLength(403);
+    expect(playlist.totalTrackCount).toBe(403);
+    expect(progress[0]).toEqual({ processed: 3, total: 403 });
+    expect(progress.at(-1)).toEqual({ processed: 403, total: 403 });
+  });
+
   it("validates media domain, public DNS, redirect, MIME, Range and size before returning URL", async () => {
     const fetchImplementation = createFetchQueue([
       jsonResponse(netEaseAudioFixture),

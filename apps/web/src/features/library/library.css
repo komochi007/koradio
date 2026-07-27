@@ -287,6 +287,13 @@
   opacity: 0.4;
 }
 
+.library-track__preview-error {
+  grid-column: 2 / -1;
+  color: var(--kr-error);
+  font-size: 13px;
+  line-height: 18px;
+}
+
 .library-track__add {
   width: 128px;
   min-height: 48px;

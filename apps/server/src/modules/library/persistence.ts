@@ -109,6 +109,7 @@ export interface LibraryRepository {
     originMode?: OriginMode,
   ): LibraryListResponse;
   markImportRunning(jobId: string, updatedAt: string): void;
+  updateImportProgress(jobId: string, total: number, processed: number, updatedAt: string): void;
   recoverInterruptedImports(updatedAt: string): void;
   upsertTrack(track: MusicTrack, updatedAt: string): void;
 }
@@ -246,6 +247,11 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
     UPDATE playlist_import_job
     SET status = 'running', updated_at = ?
     WHERE id = ? AND status = 'queued'
+  `);
+  const updateImportProgress = client.prepare(`
+    UPDATE playlist_import_job
+    SET total_count = ?, processed_count = ?, updated_at = ?
+    WHERE id = ? AND status = 'running'
   `);
   const failImport = client.prepare(`
     UPDATE playlist_import_job
@@ -513,6 +519,9 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
     },
     upsertTrack(track, updatedAt) {
       writeTrack(track, updatedAt);
+    },
+    updateImportProgress(jobId, total, processed, updatedAt) {
+      updateImportProgress.run(total, Math.min(processed, total), updatedAt, jobId);
     },
   };
 }

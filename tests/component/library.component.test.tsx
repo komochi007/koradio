@@ -153,10 +153,18 @@ function transport(options: { initialItems?: LibraryItem[]; searchFails?: boolea
     if (path.includes("/library?") && method === "GET") {
       const cursor = new URL(`http://koradio.test${path}`).searchParams.get("cursor");
       if (cursor === "next")
-        return Promise.resolve(jsonResponse({ items: [libraryItem(secondTrack)] }));
+        return Promise.resolve(
+          jsonResponse({
+            items: [libraryItem(secondTrack)],
+            totalCount: 2,
+            demoCount: 2,
+          }),
+        );
       return Promise.resolve(
         jsonResponse({
           items: options.initialItems ?? [],
+          totalCount: options.initialItems === undefined ? 0 : 2,
+          demoCount: options.initialItems === undefined ? 0 : 2,
           ...(options.initialItems === undefined || options.initialItems.length === 0
             ? {}
             : { nextCursor: "next" }),
@@ -299,6 +307,7 @@ describe("S5-01 Library experience", () => {
     expect(await screen.findByText("Space Song")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "加载更多" }));
     expect(await screen.findByText("Midnight City")).toBeTruthy();
+    expect(screen.getAllByText("已显示 2 / 总计 2").length).toBeGreaterThan(0);
 
     const input = screen.getByRole("textbox", { name: "网易云歌单链接或 ID" });
     fireEvent.change(input, { target: { value: "invalid" } });

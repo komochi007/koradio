@@ -126,7 +126,16 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
     try {
       let providerResponse: unknown;
       try {
-        providerResponse = await options.provider.importPlaylist(playlistRef);
+        providerResponse = await options.provider.importPlaylist(playlistRef, {
+          onPlaylistProgress(progress) {
+            options.repository.updateImportProgress(
+              jobId,
+              progress.total,
+              progress.processed,
+              now().toISOString(),
+            );
+          },
+        });
       } catch (error) {
         if (
           error instanceof MusicProviderResponseError ||
@@ -138,6 +147,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       }
       const imported = parseProviderPlaylistResult(providerResponse);
       const tracks = imported.tracks.map((track) => normalizeProviderTrack(track, originMode));
+      const totalTrackCount = imported.totalTrackCount ?? tracks.length;
       const importedAt = now().toISOString();
       options.repository.completeImport(
         jobId,
@@ -148,7 +158,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
           title: imported.title,
           importedAt,
           availableTrackCount: tracks.filter((track) => track.playable).length,
-          unavailableTrackCount: tracks.filter((track) => !track.playable).length,
+          unavailableTrackCount: totalTrackCount - tracks.filter((track) => track.playable).length,
           originMode,
         }),
         tracks,

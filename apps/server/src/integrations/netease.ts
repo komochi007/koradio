@@ -114,7 +114,7 @@ function providerTrack(track: z.infer<typeof trackSchema>): ProviderTrack {
     album: track.al.name.length === 0 ? "Unknown Album" : track.al.name,
     artworkUrl: track.al.picUrl ?? null,
     durationMs: track.dt,
-    lyricStatus: "unavailable",
+    lyricStatus: "unknown",
     playable: track.noCopyrightRcmd == null && track.fee !== 4 && (track.privilege?.st ?? 0) >= 0,
   };
 }
@@ -453,6 +453,12 @@ export function createNetEaseAdapter(options: CreateNetEaseAdapterOptions = {}):
       const requestedIds = parsed.data.playlist.trackIds?.map((track) => track.id) ?? [];
       const resolvedTracks = new Map(parsed.data.playlist.tracks.map((track) => [track.id, track]));
       const missingIds = requestedIds.filter((id) => !resolvedTracks.has(id));
+      const totalTrackCount =
+        requestedIds.length === 0 ? parsed.data.playlist.tracks.length : requestedIds.length;
+      callOptions?.onPlaylistProgress?.({
+        processed: Math.min(resolvedTracks.size, totalTrackCount),
+        total: totalTrackCount,
+      });
 
       for (let offset = 0; offset < missingIds.length; offset += 100) {
         const ids = missingIds.slice(offset, offset + 100);
@@ -472,6 +478,13 @@ export function createNetEaseAdapter(options: CreateNetEaseAdapterOptions = {}):
         for (const track of details.data.songs) {
           resolvedTracks.set(track.id, track);
         }
+        callOptions?.onPlaylistProgress?.({
+          processed: Math.min(
+            offset + ids.length + (totalTrackCount - missingIds.length),
+            totalTrackCount,
+          ),
+          total: totalTrackCount,
+        });
       }
 
       const tracks =
@@ -487,6 +500,7 @@ export function createNetEaseAdapter(options: CreateNetEaseAdapterOptions = {}):
         sourcePlaylistId,
         title: parsed.data.playlist.name,
         tracks: tracks.map(providerTrack),
+        totalTrackCount,
       };
     },
     async getLyrics(sourceTrackId, callOptions) {

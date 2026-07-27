@@ -98,6 +98,8 @@ async function mockLibraryWorkspace(
                   playlistSourceId: null,
                 },
               ],
+              totalCount: 2,
+              demoCount: 2,
             }
           : {
               items: [
@@ -107,6 +109,8 @@ async function mockLibraryWorkspace(
                   playlistSourceId: null,
                 },
               ],
+              totalCount: 2,
+              demoCount: 2,
               nextCursor: "next",
             },
     });
@@ -252,7 +256,7 @@ test("searches, previews, adds, paginates and imports Library music", async ({
   await expect(page.getByText("请输入有效的网易云歌单链接或 ID")).toBeVisible();
   await playlist.fill("40112818");
   await page.getByRole("button", { name: "导入歌单" }).click();
-  await expect(page.getByText("已导入 2 首可用歌曲，1 首暂不可播放。")).toBeVisible();
+  await expect(page.getByText("已导入 2 首歌曲，其中 1 首暂不可播放。")).toBeVisible();
 });
 
 test("keeps no-results recoverable without horizontal mobile overflow", async ({

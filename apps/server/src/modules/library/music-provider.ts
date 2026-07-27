@@ -37,6 +37,7 @@ export const providerPlaylistResultSchema = z.strictObject({
   sourcePlaylistId: z.string().min(1).max(128),
   title: z.string().trim().min(1).max(300),
   tracks: z.array(providerTrackSchema).max(10_000),
+  totalTrackCount: z.number().int().nonnegative().optional(),
 });
 export const providerLyricsResultSchema = z.discriminatedUnion("status", [
   z.strictObject({
@@ -65,6 +66,7 @@ export interface MusicProvider {
 }
 
 export interface MusicProviderCallOptions {
+  onPlaylistProgress?: (progress: { processed: number; total: number }) => void;
   signal?: AbortSignal;
 }
 

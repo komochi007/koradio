@@ -55,6 +55,7 @@ function createRepository(overrides: Partial<LibraryRepository> = {}): LibraryRe
     },
     markImportRunning() {},
     recoverInterruptedImports() {},
+    updateImportProgress() {},
     upsertTrack() {},
     ...overrides,
   };

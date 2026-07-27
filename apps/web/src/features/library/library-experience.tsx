@@ -127,6 +127,10 @@ function TrackList({
         const added = addedTrackIds.has(track.id);
         const previewing = previewingTrackId === track.id;
         const previewLoading = previewing && preview?.state === "loading";
+        const previewFailed =
+          preview?.kind === "track" &&
+          preview.previewId === track.id &&
+          preview.mediaError !== undefined;
         return (
           <li className="library-track" key={track.id}>
             <span
@@ -149,7 +153,13 @@ function TrackList({
             <button
               className="library-track__play"
               type="button"
-              aria-label={previewing ? `停止试听 ${track.title}` : `试听 ${track.title}`}
+              aria-label={
+                previewing
+                  ? `停止试听 ${track.title}`
+                  : previewFailed
+                    ? `重试试听 ${track.title}`
+                    : `试听 ${track.title}`
+              }
               aria-pressed={previewing}
               disabled={!track.playable}
               onClick={() => {
@@ -158,6 +168,13 @@ function TrackList({
             >
               <span aria-hidden="true">{previewLoading ? "…" : previewing ? "■" : "▶"}</span>
             </button>
+            {previewFailed ? (
+              <span className="library-track__preview-error" role="alert">
+                {preview.mediaError === "autoplay_blocked"
+                  ? "浏览器阻止了播放，请重试。"
+                  : "试听失败，请重试。"}
+              </span>
+            ) : null}
             {added ? (
               <span className="library-track__added">
                 <i aria-hidden="true">✓</i>已加入
@@ -405,7 +422,9 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
   const importProgress = importSnapshot.data?.progress;
   const serviceError = providerUnavailable || search.isError;
   const showingSearch = submittedSearch !== undefined;
-  const loadedCountLabel = `${String(localItems.length)}${library.hasNextPage ? "+" : ""} TRACKS`;
+  const totalCount = library.data?.pages[0]?.totalCount ?? localItems.length;
+  const demoCount = library.data?.pages[0]?.demoCount ?? 0;
+  const loadedCountLabel = `已显示 ${String(localItems.length)} / 总计 ${String(totalCount)}`;
   const localTracks = localItems.map((item: LibraryItem) => item.track);
 
   return (
@@ -551,7 +570,13 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
               className={`library-provider-status library-provider-status--${providerUnavailable ? "error" : importing ? "pending" : "connected"}`}
             >
               <i aria-hidden="true" />
-              {providerUnavailable ? "OFFLINE" : importing ? "IMPORTING" : "CONNECTED"}
+              {providerUnavailable
+                ? "OFFLINE"
+                : importing
+                  ? "IMPORTING"
+                  : props.health.mode === "live"
+                    ? "LIVE"
+                    : "DEMO MODE"}
             </span>
           </header>
           <form className="library-import__controls" onSubmit={submitImport}>
@@ -591,7 +616,7 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
                 />
               </span>
               <p>
-                正在从网易云获取音乐... · 已写入 {importProgress.imported} / {importProgress.total}
+                正在从网易云获取音乐... · 已处理 {importProgress.processed} / {importProgress.total}
               </p>
             </div>
           ) : null}
@@ -610,17 +635,12 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
           <p>
             {localItems.length === 0
               ? "加入歌曲或完成歌单导入后，候选音乐会显示在这里。"
-              : `已加载 ${String(localItems.length)} 首歌曲，下一次节目策展可使用这些来源。`}
+              : `已显示 ${String(localItems.length)} / 总计 ${String(totalCount)} 首歌曲，下一次节目策展可使用这些来源。${props.health.mode === "live" && demoCount > 0 ? ` 已隔离 ${String(demoCount)} 首 Demo 歌曲。` : ""}`}
           </p>
         </section>
 
         <div className="library-announcer" role="status" aria-live="polite">
           {actionMessage}
-          {audio.preview?.mediaError === "autoplay_blocked"
-            ? "浏览器阻止了自动试听，请再次点击试听。"
-            : audio.preview?.mediaError === "media_failed"
-              ? "该歌曲暂时无法试听，原节目已恢复为暂停状态。"
-              : null}
         </div>
       </main>
       <PrimaryNavigation active="library" onNavigate={props.navigate} />
