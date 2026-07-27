@@ -34,6 +34,7 @@ import {
   createProgramRepository,
   createProgramService,
   type CodexProvider,
+  type TtsProvider,
 } from "../../apps/server/src/modules/programs/index.js";
 import {
   createProfileRepository,
@@ -61,7 +62,11 @@ function deferred<Value>() {
   return { promise, resolve: resolvePromise };
 }
 
-async function createHarness(codex: CodexProvider = createMockCodexProvider(), timeoutMs = 5_000) {
+async function createHarness(
+  codex: CodexProvider = createMockCodexProvider(),
+  timeoutMs = 5_000,
+  tts: TtsProvider = createMockTtsProvider(),
+) {
   const dataRoot = await mkdtemp(join(tmpdir(), "koradio-generation-"));
   const database = await bootstrapDatabase({ dataRoot });
   const preferences = createProfilePreferencesService({ client: database.client });
@@ -100,7 +105,7 @@ async function createHarness(codex: CodexProvider = createMockCodexProvider(), t
     repository,
     taste,
     timeoutMs,
-    tts: createMockTtsProvider(),
+    tts,
   });
 
   return {
@@ -231,6 +236,60 @@ describe("S3-06 Program generation orchestration", () => {
         .filter((segment) => segment.type === "segue")
         .map((segment) => segment.ttsAudioRef),
     ).toEqual(["tts/00000000-0000-4000-8000-000000000001.wav", null]);
+    await closeHarness(harness);
+  });
+
+  it("uses the complete DJ text for TTS and every persisted display surface", async () => {
+    const completeText = "第一句需要完整播报。第二句也不能在界面中被截断。";
+    const ttsCommands: unknown[] = [];
+    const tts: TtsProvider = {
+      synthesize(command, options) {
+        ttsCommands.push(command);
+        return createMockTtsProvider().synthesize(command, options);
+      },
+    };
+    const codex: CodexProvider = {
+      plan() {
+        return Promise.resolve({
+          programTitle: "Full DJ Script",
+          scenarioSummary: "验证全文一致",
+          djLanguage: "zh-CN",
+          djPersona: "british-soft-radio",
+          djScripts: [
+            {
+              type: "intro",
+              language: "zh-CN",
+              text: completeText,
+              displayText: "第一句需要完整播报。",
+              estimatedTiming: true,
+            },
+          ],
+          musicQueries: [{ keyword: "Space", reason: "确定性 Mock 曲目" }],
+          playlistIntent: { energy: "low", mood: "focused", avoid: [] },
+        });
+      },
+    };
+    const harness = await createHarness(codex, 5_000, tts);
+    const started = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "验证 DJ 全文" },
+      "generation-full-script-001",
+    );
+    await harness.generation.waitForIdle();
+    const snapshot = harness.generation.get(harness.profile.id, started.jobId);
+    const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
+
+    expect(ttsCommands).toEqual([
+      {
+        text: completeText,
+        language: "zh-CN",
+        voiceStyle: "british-soft-radio",
+      },
+    ]);
+    expect(detail.djScripts[0]).toMatchObject({
+      text: completeText,
+      displayText: completeText,
+    });
     await closeHarness(harness);
   });
 

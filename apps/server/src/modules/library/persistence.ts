@@ -26,6 +26,7 @@ interface MusicTrackRow {
   artwork_url: string | null;
   duration_ms: number;
   lyric_status: "available" | "untimed" | "unavailable";
+  lyrics_queried: number;
   playable: number;
   origin_mode: OriginMode;
 }
@@ -110,6 +111,7 @@ export interface LibraryRepository {
   ): LibraryListResponse;
   markImportRunning(jobId: string, updatedAt: string): void;
   updateImportProgress(jobId: string, total: number, processed: number, updatedAt: string): void;
+  updateLyricStatus(trackId: string, status: MusicTrack["lyricStatus"], updatedAt: string): void;
   recoverInterruptedImports(updatedAt: string): void;
   upsertTrack(track: MusicTrack, updatedAt: string): void;
 }
@@ -132,7 +134,8 @@ function mapTrack(row: MusicTrackRow): MusicTrack {
     album: row.album,
     artworkUrl: row.artwork_url,
     durationMs: row.duration_ms,
-    lyricStatus: row.lyric_status,
+    lyricStatus:
+      row.lyric_status === "unavailable" && row.lyrics_queried === 0 ? "unknown" : row.lyric_status,
     playable: row.playable === 1,
     originMode: row.origin_mode,
   });
@@ -176,21 +179,25 @@ function decodeCursor(cursor: string | undefined): number {
 
 export function createLibraryRepository(client: DatabaseSync): LibraryRepository {
   const trackColumns = `
-    id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, playable, origin_mode
+    id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, lyrics_queried, playable, origin_mode
   `;
   const findTrack = client.prepare(`SELECT ${trackColumns} FROM music_track WHERE id = ?`);
   const upsertTrack = client.prepare(`
     INSERT INTO music_track (
-      id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, playable, origin_mode, created_at, updated_at
+      id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, lyrics_queried, playable, origin_mode, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(source, source_track_id) DO UPDATE SET
       title = excluded.title,
       artist = excluded.artist,
       album = excluded.album,
       artwork_url = excluded.artwork_url,
       duration_ms = excluded.duration_ms,
-      lyric_status = excluded.lyric_status,
+      lyric_status = CASE
+        WHEN excluded.lyrics_queried = 0 AND music_track.lyrics_queried = 1 THEN music_track.lyric_status
+        ELSE excluded.lyric_status
+      END,
+      lyrics_queried = MAX(music_track.lyrics_queried, excluded.lyrics_queried),
       playable = excluded.playable,
       origin_mode = excluded.origin_mode,
       updated_at = excluded.updated_at
@@ -252,6 +259,11 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
     UPDATE playlist_import_job
     SET total_count = ?, processed_count = ?, updated_at = ?
     WHERE id = ? AND status = 'running'
+  `);
+  const updateLyricStatus = client.prepare(`
+    UPDATE music_track
+    SET lyric_status = ?, lyrics_queried = ?, updated_at = ?
+    WHERE id = ?
   `);
   const failImport = client.prepare(`
     UPDATE playlist_import_job
@@ -350,7 +362,8 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
       track.album,
       track.artworkUrl,
       track.durationMs,
-      track.lyricStatus,
+      track.lyricStatus === "unknown" ? "unavailable" : track.lyricStatus,
+      track.lyricStatus === "unknown" ? 0 : 1,
       track.playable ? 1 : 0,
       track.originMode,
       updatedAt,
@@ -522,6 +535,14 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
     },
     updateImportProgress(jobId, total, processed, updatedAt) {
       updateImportProgress.run(total, Math.min(processed, total), updatedAt, jobId);
+    },
+    updateLyricStatus(trackId, status, updatedAt) {
+      updateLyricStatus.run(
+        status === "unknown" ? "unavailable" : status,
+        status === "unknown" ? 0 : 1,
+        updatedAt,
+        trackId,
+      );
     },
   };
 }

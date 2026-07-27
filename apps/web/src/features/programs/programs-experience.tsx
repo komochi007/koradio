@@ -419,7 +419,7 @@ function ProgramDetailView({
         </section>
         <section className="program-detail-opening" aria-labelledby="program-detail-opening-title">
           <h2 id="program-detail-opening-title">DJ OPENING</h2>
-          <p>{opening.displayText}</p>
+          <p>{opening.text}</p>
           <div
             className={`program-detail-replay${replaying ? " program-detail-replay--active" : ""}`}
           >

@@ -458,6 +458,10 @@
   background: var(--kr-surface);
 }
 
+.radio-queue--collapsed {
+  height: 60px;
+}
+
 .radio-queue header {
   display: flex;
   height: 60px;
@@ -476,8 +480,22 @@
   font: inherit;
 }
 
-.radio-queue header span {
+.radio-queue header span,
+.radio-queue header button {
+  border: 0;
   color: var(--kr-text-tertiary);
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.radio-queue header button {
+  cursor: pointer;
+}
+
+.radio-queue header button:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .radio-queue ol {
@@ -870,8 +888,44 @@
   transform: translateX(-50%);
 }
 
+.radio-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.radio-toast button {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
 .radio-toast--error {
   color: var(--kr-error);
+}
+
+.radio-blocking-error {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border: 1px solid color-mix(in srgb, var(--kr-error) 45%, var(--kr-border));
+  border-radius: 14px;
+  color: var(--kr-error);
+  background: var(--kr-surface);
+}
+
+.radio-blocking-error button {
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 700;
 }
 
 @keyframes radio-wave {

@@ -238,6 +238,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
         throw new MusicProviderUnavailableError();
       }
       const lyrics = parseProviderLyricsResult(providerResponse, track.id);
+      options.repository.updateLyricStatus(track.id, lyrics.status, now().toISOString());
       lyricsCache.set(cacheKey, lyrics);
       return trackLyricsSchema.parse(lyrics);
     },

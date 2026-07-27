@@ -328,6 +328,18 @@ describe("S3-02 Library backend", () => {
     }
     expect(lyricCalls).toBe(1);
     expect(audioCalls).toBe(1);
+    const lyricDatabase = new DatabaseSync(join(context.dataRoot, "koradio.sqlite"));
+    try {
+      expect(
+        lyricDatabase
+          .prepare(
+            "SELECT lyric_status AS lyricStatus, lyrics_queried AS lyricsQueried FROM music_track WHERE id = ?",
+          )
+          .get(trackId),
+      ).toEqual({ lyricStatus: "available", lyricsQueried: 1 });
+    } finally {
+      lyricDatabase.close();
+    }
 
     const maliciousSearch = await context.app.inject({
       method: "POST",

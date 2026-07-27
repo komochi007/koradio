@@ -244,4 +244,50 @@ describe("Detail Sheet", () => {
     expect(screen.getByText("暂无歌词，正在播放 DJ 推荐曲目")).toBeTruthy();
     expect(screen.getByRole("button", { name: "暂停" }).getAttribute("disabled")).toBeNull();
   });
+
+  it("loads unknown lyrics and retries a failed provider request", async () => {
+    const unknownProgram: ProgramDetail = {
+      ...program,
+      tracks: program.tracks.map((track) => ({ ...track, lyricStatus: "unknown" })),
+    };
+    let calls = 0;
+    const serviceTransport = transport({});
+    const request = vi.fn(() => {
+      calls += 1;
+      if (calls === 1) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ code: "MUSIC_PROVIDER_UNAVAILABLE" }), { status: 503 }),
+        );
+      }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            trackId,
+            status: "untimed",
+            content: "第一行完整歌词\n第二行完整歌词",
+          }),
+          { status: 200 },
+        ),
+      );
+    });
+    serviceTransport.request = request;
+    render(
+      <QueryClientProvider client={createAppQueryClient()}>
+        <DetailSheet
+          audio={snapshot(1)}
+          audioEngine={audioEngine()}
+          onClosed={vi.fn()}
+          profileId={profileId}
+          program={unknownProgram}
+          transport={serviceTransport}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("歌词加载失败，播放不受影响")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "重试歌词" }));
+    expect(await screen.findByText("第一行完整歌词")).toBeTruthy();
+    expect(screen.getByText("第二行完整歌词")).toBeTruthy();
+    expect(request).toHaveBeenCalledTimes(2);
+  });
 });

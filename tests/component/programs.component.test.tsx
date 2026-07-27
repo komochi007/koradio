@@ -334,7 +334,7 @@ describe("S5-03 Programs experience", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "打开节目 After Hours, Soft Focus" }));
     expect(await screen.findByText("PROGRAM ARCHIVE")).toBeTruthy();
-    expect(screen.getByText("今晚不必急着找到答案。先从一首温柔的歌开始。")).toBeTruthy();
+    expect(screen.getByText("今晚不必急着找到答案。")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "播放 DJ 开场" }));
     await waitFor(() => {
       expect(rendered.audioEngine.previewAudio).toHaveBeenCalledWith({
@@ -365,7 +365,7 @@ describe("S5-03 Programs experience", () => {
     await screen.findByText("PROGRAM ARCHIVE");
     fireEvent.click(screen.getByRole("button", { name: "重播串讲" }));
     expect(await screen.findByText("串讲音频缺失，已显示文字版")).toBeTruthy();
-    expect(screen.getByText("今晚不必急着找到答案。先从一首温柔的歌开始。")).toBeTruthy();
+    expect(screen.getByText("今晚不必急着找到答案。")).toBeTruthy();
   });
 
   it("keeps the user in details when Radio cannot accept a reused scene", async () => {

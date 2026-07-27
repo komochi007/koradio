@@ -332,6 +332,16 @@
   text-align: center;
 }
 
+.detail-copy__fallback button {
+  margin-top: 16px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .detail-bottom-control {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 56px;

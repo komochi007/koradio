@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type {
   HealthResponse,
   Profile,
@@ -603,6 +603,17 @@ describe("App Shell", () => {
     expect(await screen.findByText("TUNING YOUR STATION...")).toBeTruthy();
     expect(await screen.findByRole("heading", { name: "If" })).toBeTruthy();
     expect(screen.getByText("ON AIR")).toBeTruthy();
+    const queue = screen.getByRole("region", { name: "播放队列" });
+    const queueToggle = within(queue).getByRole("button", { name: "HIDE" });
+    expect(queueToggle.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(queueToggle);
+    expect(within(queue).getByRole("button", { name: "LIST" }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
+    fireEvent.click(within(queue).getByRole("button", { name: "LIST" }));
+    expect(within(queue).getByRole("button", { name: "HIDE" }).getAttribute("aria-expanded")).toBe(
+      "true",
+    );
     const generationCall = transport.request.mock.calls.find(([path]) =>
       path.endsWith("/program-generations"),
     );

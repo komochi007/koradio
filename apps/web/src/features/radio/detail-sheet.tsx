@@ -206,7 +206,7 @@ export function DetailSheet({
   const timedLines = useMemo(() => {
     if (speaking) {
       return deriveTimedText(
-        estimateDjTiming(script.displayText, Math.max(1, audio.durationMs)),
+        estimateDjTiming(script.text, Math.max(1, audio.durationMs)),
         audio.positionMs,
       );
     }
@@ -380,9 +380,12 @@ export function DetailSheet({
             ) : track?.lyricStatus === "unavailable" || lyrics.data?.status === "unavailable" ? (
               <p className="detail-copy__fallback">暂无歌词，正在播放 DJ 推荐曲目</p>
             ) : lyrics.isError ? (
-              <p className="detail-copy__fallback" role="status">
-                歌词加载失败，播放不受影响
-              </p>
+              <div className="detail-copy__fallback" role="status">
+                <p>歌词加载失败，播放不受影响</p>
+                <button type="button" onClick={() => void lyrics.refetch()}>
+                  重试歌词
+                </button>
+              </div>
             ) : lyrics.isPending ? (
               <p className="detail-copy__fallback" role="status">
                 LOADING LYRICS...

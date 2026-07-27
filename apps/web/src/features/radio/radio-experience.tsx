@@ -85,6 +85,45 @@ function Icon({ name }: { name: IconName }): ReactElement {
   );
 }
 
+function TransientToast({
+  children,
+  error = false,
+  onDismiss,
+}: {
+  children: string;
+  error?: boolean;
+  onDismiss?: () => void;
+}): ReactElement | null {
+  const [visible, setVisible] = useState(true);
+  const dismissRef = useRef(onDismiss);
+  dismissRef.current = onDismiss;
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setVisible(false);
+      dismissRef.current?.();
+    }, 5_000);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
+  if (!visible) return null;
+  return (
+    <p className={`radio-toast${error ? " radio-toast--error" : ""}`} role="status">
+      <span>{children}</span>
+      <button
+        type="button"
+        aria-label="关闭提示"
+        onClick={() => {
+          setVisible(false);
+          dismissRef.current?.();
+        }}
+      >
+        ×
+      </button>
+    </p>
+  );
+}
+
 function useRadioClock(): { date: string; time: string } {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -380,10 +419,14 @@ function RadioMain({
 
 function RadioQueue({
   currentTrackId,
+  expanded,
+  onExpandedChange,
   program,
   state,
 }: {
   currentTrackId: string | undefined;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   program: ProgramDetail | null;
   state: RadioViewState;
 }): ReactElement {
@@ -391,10 +434,26 @@ function RadioQueue({
   const label =
     state === "generating" ? "QUEUE · PREPARING" : `QUEUE · ${String(tracks.length)} TRACKS`;
   return (
-    <section className={`radio-queue radio-queue--${state}`} aria-label="播放队列">
+    <section
+      className={`radio-queue radio-queue--${state}${expanded ? "" : " radio-queue--collapsed"}`}
+      aria-label="播放队列"
+    >
       <header>
         <h2>{label}</h2>
-        <span>{state === "generating" ? "BUILDING" : state === "playing" ? "HIDE" : "LIST"}</span>
+        {state === "generating" ? (
+          <span>BUILDING</span>
+        ) : (
+          <button
+            type="button"
+            aria-expanded={expanded}
+            disabled={tracks.length === 0}
+            onClick={() => {
+              onExpandedChange(!expanded);
+            }}
+          >
+            {expanded ? "HIDE" : "LIST"}
+          </button>
+        )}
       </header>
       {state === "generating" ? (
         <ol aria-label="正在生成队列" aria-busy="true">
@@ -414,7 +473,7 @@ function RadioQueue({
           <Icon name="queue" />
           <p>Your next session will appear here.</p>
         </div>
-      ) : (
+      ) : expanded ? (
         <ol>
           {tracks.map((track, index) => {
             const isCurrent = track.id === currentTrackId;
@@ -447,7 +506,7 @@ function RadioQueue({
             );
           })}
         </ol>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -470,7 +529,7 @@ function RadioDialogue({
   state: RadioViewState;
 }): ReactElement {
   const error = failure === undefined ? undefined : failureCopy(failure.code);
-  const intro = program?.djScripts.find((script) => script.type === "intro")?.displayText;
+  const intro = program?.djScripts.find((script) => script.type === "intro")?.text;
   const visibleScenario =
     scenarioText ?? (state === "playing" ? program?.program.scenarioText : undefined);
   return (
@@ -555,6 +614,7 @@ export function RadioExperience({
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailUnavailable, setDetailUnavailable] = useState(false);
   const [detailError, setDetailError] = useState(false);
+  const [queueExpanded, setQueueExpanded] = useState(true);
   const detailOpenerRef = useRef<HTMLButtonElement>(null);
   const sceneInputRef = useRef<HTMLInputElement>(null);
   const [reuseNotice, setReuseNotice] = useState(initialScenarioDraft !== undefined);
@@ -585,6 +645,9 @@ export function RadioExperience({
       void audioEngine.activateProfile(current.profile.id);
     }
   }, [audioEngine, current.profile.id, radio.autoplayProgramId, radio.program]);
+  useEffect(() => {
+    setQueueExpanded(true);
+  }, [radio.program?.program.id]);
   const themeMutation = useMutation({
     mutationFn: (themeMode: "dark" | "light") =>
       updateProfilePreferences(transport, current.profile.id, { themeMode }),
@@ -653,9 +716,24 @@ export function RadioExperience({
           currentTrackId={
             audio.currentItem?.kind === "track" ? audio.currentItem.trackId : undefined
           }
+          expanded={queueExpanded}
+          onExpandedChange={setQueueExpanded}
           program={radio.program}
           state={radio.viewState}
         />
+        {audio.mediaError === "queue_exhausted" ? (
+          <div className="radio-blocking-error" role="alert">
+            <span>当前队列无法继续播放。</span>
+            <button
+              type="button"
+              onClick={() => {
+                radio.submitScenario(radio.program?.program.scenarioText);
+              }}
+            >
+              重新生成
+            </button>
+          </div>
+        ) : null}
         <button
           className={`radio-dj-status radio-dj-status--${radio.viewState}`}
           type="button"
@@ -752,44 +830,53 @@ export function RadioExperience({
           </span>
         )}
       </form>
-      {reconnecting && (
-        <p className="radio-toast" role="status">
-          EVENTS RECONNECTING · SNAPSHOT ACTIVE
-        </p>
-      )}
+      {reconnecting && <TransientToast>EVENTS RECONNECTING · SNAPSHOT ACTIVE</TransientToast>}
       {themeError && (
-        <p className="radio-toast radio-toast--error" role="status">
+        <TransientToast
+          error
+          onDismiss={() => {
+            setThemeError(false);
+          }}
+        >
           主题保存失败，已恢复到之前的主题
-        </p>
+        </TransientToast>
       )}
       {reuseNotice && (
-        <p className="radio-toast" role="status">
+        <TransientToast
+          onDismiss={() => {
+            setReuseNotice(false);
+          }}
+        >
           已带着这个场景回到 Radio
-        </p>
+        </TransientToast>
       )}
-      {audio.mediaError !== undefined && (
-        <p className="radio-toast radio-toast--error" role="status">
+      {audio.mediaError !== undefined && audio.mediaError !== "queue_exhausted" && (
+        <TransientToast error>
           {audio.mediaError === "autoplay_blocked"
             ? "浏览器阻止了自动播放，请按播放继续"
-            : audio.mediaError === "queue_exhausted"
-              ? "当前队列无法继续播放，请重新生成节目"
-              : "当前音频无法播放，正在尝试下一段"}
-        </p>
+            : "当前音频无法播放，正在尝试下一段"}
+        </TransientToast>
       )}
-      {audio.checkpointError && (
-        <p className="radio-toast radio-toast--error" role="status">
-          播放继续，但历史记录暂未保存
-        </p>
-      )}
+      {audio.checkpointError && <TransientToast error>播放继续，但历史记录暂未保存</TransientToast>}
       {detailUnavailable && (
-        <p className="radio-toast radio-toast--error" role="status">
+        <TransientToast
+          error
+          onDismiss={() => {
+            setDetailUnavailable(false);
+          }}
+        >
           先生成一段电台，再查看节目详情
-        </p>
+        </TransientToast>
       )}
       {detailError && (
-        <p className="radio-toast radio-toast--error" role="status">
+        <TransientToast
+          error
+          onDismiss={() => {
+            setDetailError(false);
+          }}
+        >
           节目详情暂时不可用，播放继续
-        </p>
+        </TransientToast>
       )}
       <FeedbackNotice notice={feedback.notice} onDismiss={feedback.dismissNotice} />
       <PrimaryNavigation active="radio" onNavigate={navigate} />
