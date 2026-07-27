@@ -689,7 +689,10 @@ export function RadioExperience({
   }
 
   return (
-    <div className="app-surface radio-page" style={style}>
+    <div
+      className={`app-surface radio-page${queueExpanded ? "" : " radio-page--queue-collapsed"}`}
+      style={style}
+    >
       <header className="topbar radio-page__topbar">
         <Brand />
         <div className="radio-page__tools">

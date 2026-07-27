@@ -642,15 +642,19 @@ describe("App Shell", () => {
     expect(screen.getByText("ON AIR")).toBeTruthy();
     const queue = screen.getByRole("region", { name: "播放队列" });
     const queueToggle = within(queue).getByRole("button", { name: "HIDE" });
+    const radioPage = queue.closest(".radio-page");
+    expect(radioPage?.classList.contains("radio-page--queue-collapsed")).toBe(false);
     expect(queueToggle.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(queueToggle);
     expect(within(queue).getByRole("button", { name: "LIST" }).getAttribute("aria-expanded")).toBe(
       "false",
     );
+    expect(radioPage?.classList.contains("radio-page--queue-collapsed")).toBe(true);
     fireEvent.click(within(queue).getByRole("button", { name: "LIST" }));
     expect(within(queue).getByRole("button", { name: "HIDE" }).getAttribute("aria-expanded")).toBe(
       "true",
     );
+    expect(radioPage?.classList.contains("radio-page--queue-collapsed")).toBe(false);
     const generationCall = transport.request.mock.calls.find(([path]) =>
       path.endsWith("/program-generations"),
     );

@@ -319,6 +319,79 @@ test("Radio playing state matches the frozen light theme", async ({ browserName,
   });
 });
 
+test("Radio queue collapse reflows the DJ area without leaving a gap", async ({
+  browserName,
+  page,
+}) => {
+  await page.setViewportSize({ width: 960, height: 1600 });
+  await mockRadio(page, { program: true });
+
+  const queue = page.getByRole("region", { name: "播放队列" });
+  const status = page.getByRole("button", { name: "打开当前节目详情" });
+  const dialogue = page.getByRole("region", { name: "DJ 对话" });
+  const input = page.getByRole("textbox", { name: "告诉 DJ 当前场景" }).locator("..");
+  const transitionDuration = await queue.evaluate(
+    (element) => getComputedStyle(element).transitionDuration,
+  );
+  expect(transitionDuration).toContain("0.32s");
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await queue.getByRole("button", { name: "HIDE" }).click();
+  await expect(queue.getByRole("button", { name: "LIST" })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+
+  const [queueBox, statusBox, dialogueBox, inputBox] = await Promise.all([
+    queue.boundingBox(),
+    status.boundingBox(),
+    dialogue.boundingBox(),
+    input.boundingBox(),
+  ]);
+  expect(queueBox).not.toBeNull();
+  expect(statusBox).not.toBeNull();
+  expect(dialogueBox).not.toBeNull();
+  expect(inputBox).not.toBeNull();
+  expect(queueBox?.y).toBeCloseTo(656, 0);
+  expect(queueBox?.height).toBeCloseTo(60, 0);
+  expect(statusBox?.y).toBeCloseTo(740, 0);
+  expect(dialogueBox?.y).toBeCloseTo(828, 0);
+  expect(dialogueBox?.height).toBeCloseTo(520, 0);
+  expect(inputBox?.y).toBeCloseTo(1372, 0);
+  expect((statusBox?.y ?? 0) - ((queueBox?.y ?? 0) + (queueBox?.height ?? 0))).toBeCloseTo(24, 0);
+  expect((dialogueBox?.y ?? 0) - ((statusBox?.y ?? 0) + (statusBox?.height ?? 0))).toBeCloseTo(
+    24,
+    0,
+  );
+  expect((inputBox?.y ?? 0) - ((dialogueBox?.y ?? 0) + (dialogueBox?.height ?? 0))).toBeCloseTo(
+    24,
+    0,
+  );
+
+  const typography = await page.evaluate(() => {
+    const user = document.querySelector<HTMLElement>(".radio-user-bubble");
+    const dj = document.querySelector<HTMLElement>(".radio-dj-copy > div > p");
+    if (user === null || dj === null) throw new Error("Dialogue typography is unavailable");
+    const userStyle = getComputedStyle(user);
+    const djStyle = getComputedStyle(dj);
+    return {
+      dj: { fontSize: djStyle.fontSize, lineHeight: djStyle.lineHeight },
+      user: { fontSize: userStyle.fontSize, lineHeight: userStyle.lineHeight },
+    };
+  });
+  expect(typography.user).toEqual(typography.dj);
+  expect(await queue.evaluate((element) => getComputedStyle(element).transitionDuration)).toBe(
+    "0s",
+  );
+
+  if (browserName === "chromium") {
+    await expect(page).toHaveScreenshot("radio-playing-queue-collapsed.png", {
+      animations: "disabled",
+      fullPage: false,
+    });
+  }
+});
+
 const responsiveViewports = [
   { name: "mobile", width: 390, height: 844 },
   { name: "tablet", width: 834, height: 1194 },
