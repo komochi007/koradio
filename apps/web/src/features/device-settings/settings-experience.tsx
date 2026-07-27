@@ -44,15 +44,19 @@ function statusTone(status: ServiceHealth["status"]): string {
 
 function SettingsTopbar({
   current,
+  health,
   onOpenProfiles,
   reconnecting,
-}: Pick<SettingsExperienceProps, "current" | "onOpenProfiles" | "reconnecting">): ReactElement {
+}: Pick<
+  SettingsExperienceProps,
+  "current" | "health" | "onOpenProfiles" | "reconnecting"
+>): ReactElement {
   return (
     <header className="topbar settings-topbar">
       <Brand />
       <div className="topbar-tools">
         <Status tone={reconnecting ? "pending" : "connected"}>
-          {reconnecting ? "EVENTS RECONNECTING" : "LOCAL SERVICE CONNECTED"}
+          {reconnecting ? "EVENTS RECONNECTING" : health.mode === "live" ? "LIVE" : "DEMO MODE"}
         </Status>
         <button
           className="profile-tool"
@@ -69,6 +73,7 @@ function SettingsTopbar({
 
 function Diagnostics({
   current,
+  health,
   items,
   navigate,
   onBack,
@@ -76,6 +81,7 @@ function Diagnostics({
   reconnecting,
 }: {
   current: ProfileContext;
+  health: HealthResponse;
   items: ServiceHealth[];
   navigate: (path: string) => void;
   onBack: () => void;
@@ -97,6 +103,7 @@ function Diagnostics({
     <div className="app-surface settings-page settings-page--diagnostics">
       <SettingsTopbar
         current={current}
+        health={health}
         onOpenProfiles={onOpenProfiles}
         reconnecting={reconnecting}
       />
@@ -276,6 +283,7 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
     return (
       <Diagnostics
         current={props.current}
+        health={props.health}
         items={services.data.items}
         navigate={props.navigate}
         onBack={() => {
@@ -291,6 +299,7 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
     <div className="app-surface settings-page">
       <SettingsTopbar
         current={props.current}
+        health={props.health}
         onOpenProfiles={props.onOpenProfiles}
         reconnecting={props.reconnecting}
       />

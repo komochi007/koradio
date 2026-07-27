@@ -12,6 +12,7 @@ import {
   type AudioResolution,
   type MusicSearchResponse,
   type MusicTrack,
+  type OriginMode,
   type TrackLyrics,
 } from "@koradio/contracts";
 import { z } from "zod";
@@ -98,7 +99,10 @@ function stableTrackId(source: string, sourceTrackId: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-export function normalizeProviderTrack(track: ProviderTrack): MusicTrack {
+export function normalizeProviderTrack(
+  track: ProviderTrack,
+  originMode: OriginMode = "mock",
+): MusicTrack {
   return musicTrackSchema.parse({
     id: stableTrackId(track.source, track.sourceTrackId),
     source: track.source,
@@ -110,17 +114,23 @@ export function normalizeProviderTrack(track: ProviderTrack): MusicTrack {
     durationMs: track.durationMs,
     lyricStatus: track.lyricStatus,
     playable: track.playable,
+    originMode,
   });
 }
 
-export function parseProviderSearchResult(value: unknown): MusicSearchResponse {
+export function parseProviderSearchResult(
+  value: unknown,
+  originMode: OriginMode = "mock",
+): MusicSearchResponse {
   const parsed = providerSearchResultSchema.safeParse(value);
   if (!parsed.success) {
     throw new MusicProviderResponseError();
   }
 
   const response = musicSearchResponseSchema.safeParse({
-    items: parsed.data.items.filter((track) => track.playable).map(normalizeProviderTrack),
+    items: parsed.data.items
+      .filter((track) => track.playable)
+      .map((track) => normalizeProviderTrack(track, originMode)),
     ...(parsed.data.nextCursor === undefined ? {} : { nextCursor: parsed.data.nextCursor }),
   });
   if (!response.success) {
@@ -177,6 +187,24 @@ export function parseProviderAudioResult(
   trackId: string,
   now: Date,
 ): AudioResolution {
+  if (typeof value === "object" && value !== null && "resolvedAudioRef" in value) {
+    const candidate = value as { expiresAt?: unknown; resolvedAudioRef?: unknown };
+    if (
+      typeof candidate.resolvedAudioRef === "string" &&
+      !candidate.resolvedAudioRef.includes("://")
+    ) {
+      const controlled = audioResolutionSchema.safeParse({
+        trackId,
+        resolvedAudioRef: candidate.resolvedAudioRef,
+        expiresAt: candidate.expiresAt,
+      });
+      if (controlled.success && Date.parse(controlled.data.expiresAt) > now.getTime()) {
+        return controlled.data;
+      }
+      throw new MusicProviderResponseError();
+    }
+  }
+
   const parsed = providerAudioResultSchema.safeParse(value);
   if (!parsed.success) {
     throw new MusicProviderResponseError();

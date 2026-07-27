@@ -21,6 +21,7 @@ const program: ProgramDetail = {
     title: "After Hours, Soft Focus",
     status: "ready",
     trackIds: [trackId],
+    originMode: "mock",
     createdAt: "2026-07-19T08:00:00.000Z",
   },
   djScripts: [
@@ -43,8 +44,11 @@ const program: ProgramDetail = {
       title: "Space Song",
       artist: "Beach House",
       album: "Depression Cherry",
+      artworkUrl: null,
       durationMs: 20_000,
       lyricStatus: "available",
+      playable: true,
+      originMode: "mock",
     },
   ],
   timeline: [

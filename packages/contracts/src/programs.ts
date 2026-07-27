@@ -10,7 +10,7 @@ import {
   timelineItemIdSchema,
   trackIdSchema,
 } from "./common.js";
-import { musicTrackSchema } from "./music.js";
+import { musicTrackSchema, originModeSchema } from "./music.js";
 import { djLanguageSchema } from "./preferences.js";
 
 export const programStatusSchema = z.enum(["ready", "completed"]);
@@ -52,6 +52,7 @@ export const programSchema = z.strictObject({
   title: z.string().trim().min(1).max(200),
   status: programStatusSchema,
   trackIds: z.array(trackIdSchema).min(1),
+  originMode: originModeSchema.default("mock"),
   createdAt: occurredAtSchema,
 });
 export const programDetailSchema = z.strictObject({

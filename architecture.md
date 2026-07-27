@@ -226,7 +226,7 @@ stateDiagram-v2
 | Profile resources | `/api/v1/profiles/:profileId/*` | 显式 ownership |
 | Profile avatar upload | `/api/v1/profile-avatars` | 单文件 multipart 上传，只返回 `avatars/` 受控引用 |
 | Current profile | `/api/v1/profiles/current` | 读取或切换本机当前 Profile context；选择不是登录 |
-| Programs | `GET .../programs`、`GET .../programs/:programId`、`POST/GET .../program-generations` | 分页历史、按需详情、异步生成受理与恢复 snapshot |
+| Programs | `GET .../programs`、`GET .../programs/current`、`GET/DELETE .../programs/:programId`、`POST/GET .../program-generations` | 分页历史、显式当前节目、永久删除、异步生成受理与恢复 snapshot |
 | Playback | `GET .../playback`、`PUT .../playback/checkpoints` | 最新低频 snapshot 与带 `leaseEpoch` 的 checkpoint |
 | Library | `.../library`, `.../music-searches` | 候选池与外部搜索 |
 | Taste / Feedback | `.../taste`, `.../feedback-events` | projection 与事实事件 |
@@ -297,6 +297,7 @@ erDiagram
     PROFILE ||--|| TASTE_PROJECTION : owns
     PROFILE ||--|| TASTE_OVERRIDES : owns
     PROFILE ||--o{ PROGRAM : creates
+    PROFILE ||--o| CURRENT_PROGRAM : selects
     PROFILE ||--o{ FEEDBACK_EVENT : records
     PROFILE ||--o| PLAYBACK_CHECKPOINT : resumes
     PROGRAM ||--o{ DJ_SCRIPT_SEGMENT : contains
@@ -313,8 +314,10 @@ erDiagram
 | `taste_overrides` | Taste | `profileId`；人工规则，重建投影不得覆盖 |
 | `device_settings` | DeviceSettings | 单设备；dataRoot 与 Codex 命令路径 |
 | `data_root_migration` | DeviceSettings | `jobId` + idempotency key；迁移阶段与回滚状态 |
-| `music_track` | Library | `id` + source identity、专辑封面 URL 与可播放状态 |
-| `program` | Programs | `id` + `profileId`；节目快照 |
+| `music_track` | Library | `id` + source identity、专辑封面 URL、歌词状态与 `originMode` |
+| `playlist_source` | Library | `id` + `profileId` + source identity；导入统计与 `originMode` |
+| `program` | Programs | `id` + `profileId`；带 `originMode` 的节目快照 |
+| `current_program` | Programs | `profileId`；可空的当前节目指针，空值不得从历史推断 |
 | `program_generation_job` | Programs | `jobId` + `profileId` + idempotency key；持久阶段、终态和事件 sequence，不保存场景草稿 |
 | `program_track` | Programs | `programId`、position、`trackId`；有序 Library 曲目引用 |
 | `dj_script_segment` | Programs | `id` + `programId`；文本、时序、TTS ref |
@@ -326,6 +329,8 @@ erDiagram
 - Programs 通过 Playback 的公开事务写入 Port，在单个事务中提交 Program、ordered track refs、segments 与 timeline items，避免半成品节目；文字 DJ segment 不生成 timeline item。
 - checkpoint 写入校验 Program/timeline ownership、item position、时长和 `leaseEpoch`；低于已保存 epoch 的写入被拒绝，`completed` 只允许在最后一个 item 的精确结束边界，并与 Program 完成状态同事务提交。
 - Programs 历史详情只通过 Library 的公开 API 重建曲目元数据，不直接读取 Library owner 表。
+- Program 生成成功时在同一事务更新 `current_program`。永久删除由 Programs application use case 协调：先暂存独占 TTS，再提交关系清理与指针清空，失败恢复文件，提交后物理清理。
+- `program.deleted` 通过统一 event envelope 发布；其他标签页必须停止相同 Program、释放播放所有权并刷新派生视图。
 - 播放 URL 是短期资源；历史以 source identity 恢复，FileStore 只返回 data root 内的安全相对引用。
 - 头像上传 adapter 只返回 data root 内受控 `avatarRef`，拒绝任意 URL、绝对路径或裸文件名。
 - Profile 删除如未来被授权，只能通过 application use case 处理记录与文件，UI 不执行级联删除。

@@ -323,7 +323,7 @@ describe("S3-02 Library backend", () => {
       });
       expect(audio.headers["cache-control"]).toBe("no-store");
       expect(audioResolutionSchema.parse(audio.json<unknown>()).resolvedAudioRef).toMatch(
-        /^https:\/\//,
+        /^(?:https:\/\/|media\/)/,
       );
     }
     expect(lyricCalls).toBe(1);

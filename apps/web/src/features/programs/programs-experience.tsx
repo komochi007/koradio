@@ -225,7 +225,10 @@ function ProgramCard({
           onOpen(event.currentTarget);
         }}
       >
-        <time dateTime={program.createdAt}>{formatProgramDate(program.createdAt)}</time>
+        <time dateTime={program.createdAt}>
+          {formatProgramDate(program.createdAt)}
+          {program.originMode === "mock" ? " · DEMO" : ""}
+        </time>
         <strong>{program.title}</strong>
         <span>{program.scenarioText}</span>
         <small>
@@ -384,6 +387,7 @@ function ProgramDetailView({
         <header className="program-detail-heading">
           <p>PROGRAM ARCHIVE</p>
           <h1 tabIndex={-1}>{detail.program.title}</h1>
+          {detail.program.originMode === "mock" ? <p>DEMO PROGRAM</p> : null}
           <div>
             <span>{formatLongDate(detail.program.createdAt)}</span>
             <span>{`${String(detail.program.trackIds.length)} TRACKS · ${formatProgramDuration(programDurationMs(detail))}`}</span>

@@ -39,9 +39,22 @@ async function createLiveConfig(): Promise<RuntimeConfig> {
 }
 
 describe("S7-06 live provider composition", () => {
-  it("keeps mock as the default and accepts an explicit live configuration", () => {
+  it("defaults production to live, keeps development and test on mock, and honors overrides", () => {
     expect(
       loadRuntimeConfig({ KORADIO_DATA_DIR: "/tmp/koradio-config-default" }).providerMode,
+    ).toBe("mock");
+    expect(
+      loadRuntimeConfig({
+        NODE_ENV: "production",
+        KORADIO_DATA_DIR: "/tmp/koradio-config-production",
+      }).providerMode,
+    ).toBe("live");
+    expect(
+      loadRuntimeConfig({
+        NODE_ENV: "production",
+        KORADIO_DATA_DIR: "/tmp/koradio-config-production-mock",
+        KORADIO_PROVIDER_MODE: "mock",
+      }).providerMode,
     ).toBe("mock");
     expect(
       loadRuntimeConfig({

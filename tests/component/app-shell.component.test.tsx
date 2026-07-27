@@ -52,6 +52,7 @@ const generatedProgram: ProgramDetail = {
     title: "After Hours, Soft Focus",
     status: "ready",
     trackIds: ["00000000-0000-4000-8000-000000000071"],
+    originMode: "mock",
     createdAt: "2026-07-17T08:00:00.000Z",
   },
   djScripts: [
@@ -74,8 +75,11 @@ const generatedProgram: ProgramDetail = {
       title: "If",
       artist: "Bread",
       album: "Manna",
+      artworkUrl: null,
       durationMs: 155_000,
       lyricStatus: "available",
+      playable: true,
+      originMode: "mock",
     },
   ],
   timeline: [

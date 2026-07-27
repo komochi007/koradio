@@ -10,6 +10,7 @@ import {
   type LibraryItem,
   type LibraryListResponse,
   type MusicTrack,
+  type OriginMode,
   type PlaylistImportSnapshot,
   type PlaylistSource,
 } from "@koradio/contracts";
@@ -26,6 +27,7 @@ interface MusicTrackRow {
   duration_ms: number;
   lyric_status: "available" | "untimed" | "unavailable";
   playable: number;
+  origin_mode: OriginMode;
 }
 
 interface LibraryItemRow extends MusicTrackRow {
@@ -41,6 +43,7 @@ interface PlaylistSourceRow {
   available_track_count: number;
   unavailable_track_count: number;
   imported_at: string;
+  origin_mode: OriginMode;
 }
 
 interface PlaylistImportJobRow {
@@ -99,7 +102,12 @@ export interface LibraryRepository {
   failImport(jobId: string, errorCode: string, updatedAt: string): void;
   findTrack(trackId: string): MusicTrack | null;
   getImport(profileId: string, jobId: string): PlaylistImportSnapshot | null;
-  list(profileId: string, cursor?: string, limit?: number): LibraryListResponse;
+  list(
+    profileId: string,
+    cursor?: string,
+    limit?: number,
+    originMode?: OriginMode,
+  ): LibraryListResponse;
   markImportRunning(jobId: string, updatedAt: string): void;
   recoverInterruptedImports(updatedAt: string): void;
   upsertTrack(track: MusicTrack, updatedAt: string): void;
@@ -125,6 +133,7 @@ function mapTrack(row: MusicTrackRow): MusicTrack {
     durationMs: row.duration_ms,
     lyricStatus: row.lyric_status,
     playable: row.playable === 1,
+    originMode: row.origin_mode,
   });
 }
 
@@ -145,6 +154,7 @@ function mapPlaylistSource(row: PlaylistSourceRow): PlaylistSource {
     importedAt: row.imported_at,
     availableTrackCount: row.available_track_count,
     unavailableTrackCount: row.unavailable_track_count,
+    originMode: row.origin_mode,
   });
 }
 
@@ -165,14 +175,14 @@ function decodeCursor(cursor: string | undefined): number {
 
 export function createLibraryRepository(client: DatabaseSync): LibraryRepository {
   const trackColumns = `
-    id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, playable
+    id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, playable, origin_mode
   `;
   const findTrack = client.prepare(`SELECT ${trackColumns} FROM music_track WHERE id = ?`);
   const upsertTrack = client.prepare(`
     INSERT INTO music_track (
-      id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, playable, created_at, updated_at
+      id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, playable, origin_mode, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(source, source_track_id) DO UPDATE SET
       title = excluded.title,
       artist = excluded.artist,
@@ -181,6 +191,7 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
       duration_ms = excluded.duration_ms,
       lyric_status = excluded.lyric_status,
       playable = excluded.playable,
+      origin_mode = excluded.origin_mode,
       updated_at = excluded.updated_at
   `);
   const findItemByIdempotency = client.prepare(`
@@ -206,7 +217,7 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
     SELECT ${trackColumns}, library_item.added_at, library_item.playlist_source_id
     FROM library_item
     JOIN music_track ON music_track.id = library_item.track_id
-    WHERE library_item.profile_id = ?
+    WHERE library_item.profile_id = ? AND music_track.origin_mode = ?
     ORDER BY library_item.added_at DESC, library_item.track_id ASC
     LIMIT ? OFFSET ?
   `);
@@ -254,9 +265,9 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
   const insertPlaylistSource = client.prepare(`
     INSERT INTO playlist_source (
       id, profile_id, source, source_playlist_id, title,
-      available_track_count, unavailable_track_count, imported_at
+      available_track_count, unavailable_track_count, origin_mode, imported_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const updatePlaylistSource = client.prepare(`
     UPDATE playlist_source
@@ -264,6 +275,7 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
       title = ?,
       available_track_count = ?,
       unavailable_track_count = ?,
+      origin_mode = ?,
       imported_at = ?
     WHERE id = ?
   `);
@@ -334,6 +346,7 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
       track.durationMs,
       track.lyricStatus,
       track.playable ? 1 : 0,
+      track.originMode,
       updatedAt,
       updatedAt,
     );
@@ -379,6 +392,7 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
             source.title,
             source.availableTrackCount,
             source.unavailableTrackCount,
+            source.originMode,
             source.importedAt,
           );
         } else {
@@ -386,6 +400,7 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
             candidateSource.title,
             candidateSource.availableTrackCount,
             candidateSource.unavailableTrackCount,
+            candidateSource.originMode,
             candidateSource.importedAt,
             source.id,
           );
@@ -449,13 +464,44 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
     getImport(profileId, jobId) {
       return readImport(findImportById, profileId, jobId);
     },
-    list(profileId, cursor, requestedLimit) {
+    list(profileId, cursor, requestedLimit, originMode = "mock") {
       const offset = decodeCursor(cursor);
       const limit = requestedLimit ?? 50;
-      const rows = listItems.all(profileId, limit + 1, offset) as unknown as LibraryItemRow[];
+      const rows = listItems.all(
+        profileId,
+        originMode,
+        limit + 1,
+        offset,
+      ) as unknown as LibraryItemRow[];
+      const totalCount = (
+        client
+          .prepare(
+            `
+            SELECT COUNT(*) AS count
+            FROM library_item
+            JOIN music_track ON music_track.id = library_item.track_id
+            WHERE library_item.profile_id = ? AND music_track.origin_mode = ?
+          `,
+          )
+          .get(profileId, originMode) as { count: number }
+      ).count;
+      const demoCount = (
+        client
+          .prepare(
+            `
+            SELECT COUNT(*) AS count
+            FROM library_item
+            JOIN music_track ON music_track.id = library_item.track_id
+            WHERE library_item.profile_id = ? AND music_track.origin_mode = 'mock'
+          `,
+          )
+          .get(profileId) as { count: number }
+      ).count;
       const hasNextPage = rows.length > limit;
       return parseStored(libraryListResponseSchema, {
         items: rows.slice(0, limit).map(mapLibraryItem),
+        totalCount,
+        demoCount,
         ...(hasNextPage ? { nextCursor: encodeCursor(offset + limit) } : {}),
       });
     },

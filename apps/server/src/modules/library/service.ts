@@ -12,6 +12,7 @@ import {
   type LibraryListResponse,
   type MusicSearchResponse,
   type MusicTrack,
+  type OriginMode,
   type PlaylistImportSnapshot,
   type TrackLyrics,
 } from "@koradio/contracts";
@@ -48,6 +49,7 @@ export interface CreateLibraryServiceOptions {
   provider: MusicProvider;
   randomId?: () => string;
   repository: LibraryRepository;
+  originMode?: OriginMode;
 }
 
 export interface LibraryService {
@@ -71,6 +73,7 @@ export interface LibraryService {
 export function createLibraryService(options: CreateLibraryServiceOptions): LibraryService {
   const now = options.now ?? (() => new Date());
   const randomId = options.randomId ?? randomUUID;
+  const originMode = options.originMode ?? "mock";
   const searchCache = new BoundedTtlCache<string, MusicSearchResponse>({
     capacity: 100,
     defaultTtlMs: 5 * 60_000,
@@ -109,7 +112,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       }
       throw new MusicProviderUnavailableError();
     }
-    const response = parseProviderSearchResult(providerResponse);
+    const response = parseProviderSearchResult(providerResponse, originMode);
     const updatedAt = now().toISOString();
     for (const track of response.items) {
       options.repository.upsertTrack(track, updatedAt);
@@ -134,7 +137,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
         throw new MusicProviderUnavailableError();
       }
       const imported = parseProviderPlaylistResult(providerResponse);
-      const tracks = imported.tracks.map(normalizeProviderTrack);
+      const tracks = imported.tracks.map((track) => normalizeProviderTrack(track, originMode));
       const importedAt = now().toISOString();
       options.repository.completeImport(
         jobId,
@@ -146,6 +149,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
           importedAt,
           availableTrackCount: tracks.filter((track) => track.playable).length,
           unavailableTrackCount: tracks.filter((track) => !track.playable).length,
+          originMode,
         }),
         tracks,
       );
@@ -254,7 +258,7 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       return playlistImportSnapshotSchema.parse(result.snapshot);
     },
     list(profileId, cursor, limit) {
-      return options.repository.list(profileId, cursor, limit);
+      return options.repository.list(profileId, cursor, limit, originMode);
     },
     async resolveAudio(trackId, signal) {
       const track = options.repository.findTrack(trackId);

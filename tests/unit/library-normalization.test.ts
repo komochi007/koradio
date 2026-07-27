@@ -26,6 +26,7 @@ const track: ProviderTrack = {
   title: "Night Signal",
   artist: "Koradio",
   album: "Fixtures",
+  artworkUrl: null,
   durationMs: 180_000,
   lyricStatus: "available",
   playable: true,
@@ -50,7 +51,7 @@ function createRepository(overrides: Partial<LibraryRepository> = {}): LibraryRe
       return null;
     },
     list(): LibraryListResponse {
-      return { items: [] };
+      return { items: [], totalCount: 0, demoCount: 0 };
     },
     markImportRunning() {},
     recoverInterruptedImports() {},

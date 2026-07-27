@@ -27,6 +27,7 @@ export class ProgramCursorError extends Error {
 interface ProgramRow {
   created_at: string;
   id: string;
+  origin_mode: "live" | "mock";
   profile_id: string;
   scenario_text: string;
   status: "ready" | "completed";
@@ -86,6 +87,7 @@ function mapProgram(row: ProgramRow, trackIds: string[]): Program {
     title: row.title,
     status: row.status,
     trackIds,
+    originMode: row.origin_mode,
     createdAt: row.created_at,
   });
   if (!parsed.success) {
@@ -118,8 +120,8 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
     SELECT * FROM dj_script_segment WHERE program_id = ? ORDER BY position ASC
   `);
   const insertProgram = client.prepare(`
-    INSERT INTO program (id, profile_id, scenario_text, title, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO program (id, profile_id, scenario_text, title, status, origin_mode, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   const insertTrack = client.prepare(`
     INSERT INTO program_track (program_id, position, track_id) VALUES (?, ?, ?)
@@ -173,6 +175,7 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
         record.program.scenarioText,
         record.program.title,
         record.program.status,
+        record.program.originMode,
         record.program.createdAt,
       );
       for (const [position, trackId] of record.program.trackIds.entries()) {

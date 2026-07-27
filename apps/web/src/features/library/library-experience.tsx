@@ -76,15 +76,19 @@ function errorMessage(error: unknown, fallback: string): string {
 
 function LibraryTopbar({
   current,
+  health,
   onOpenProfiles,
   reconnecting,
-}: Pick<LibraryExperienceProps, "current" | "onOpenProfiles" | "reconnecting">): ReactElement {
+}: Pick<
+  LibraryExperienceProps,
+  "current" | "health" | "onOpenProfiles" | "reconnecting"
+>): ReactElement {
   return (
     <header className="topbar library-topbar">
       <Brand />
       <div className="topbar-tools">
         <Status tone={reconnecting ? "pending" : "connected"}>
-          {reconnecting ? "EVENTS RECONNECTING" : "LOCAL SERVICE CONNECTED"}
+          {reconnecting ? "EVENTS RECONNECTING" : health.mode === "live" ? "LIVE" : "DEMO MODE"}
         </Status>
         <button
           className="profile-tool"
@@ -408,6 +412,7 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
     <div className="app-surface library-page">
       <LibraryTopbar
         current={props.current}
+        health={props.health}
         onOpenProfiles={props.onOpenProfiles}
         reconnecting={props.reconnecting}
       />

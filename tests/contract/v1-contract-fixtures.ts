@@ -53,8 +53,11 @@ export const track = {
   title: "Space Song",
   artist: "Beach House",
   album: "Depression Cherry",
+  artworkUrl: null,
   durationMs: 320000,
   lyricStatus: "available",
+  playable: true,
+  originMode: "mock",
 } as const;
 
 export const trackTwo = {
@@ -104,6 +107,7 @@ export const program = {
   title: "Monday Night Exhale",
   status: "ready",
   trackIds: [ids.track],
+  originMode: "mock",
   createdAt: now,
 } as const;
 

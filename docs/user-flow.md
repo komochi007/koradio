@@ -306,6 +306,34 @@
 
 ## 6. 关键异常分支清单
 
+## 6.1 运行模式与数据来源
+
+```text
+[Production / macOS launcher]
+  -> 默认 LIVE
+  -> Radio / Library / Settings 显示 LIVE
+  -> Library 总数和策展候选排除 DEMO 数据
+
+[Development / Test / CI / 显式 Demo]
+  -> 使用 Mock Provider
+  -> 页面显示 DEMO MODE
+  -> 节目与音乐写入 originMode=mock
+```
+
+历史 Demo 节目保留并标识，不自动删除；Live 当前节目为空时不得从历史 Demo 节目自动恢复。
+
+## 6.2 删除历史节目
+
+```text
+[节目卡片或详情更多菜单]
+  -> 点击“删除节目”
+  -> 展示节目标题与不可恢复说明
+  -> 用户确认
+     ├─ 删除失败：保留卡片并显示可重试错误
+     └─ 删除成功：发布 program.deleted 并刷新相关页面
+          └─ 若为当前节目：停止播放、释放租约、清空当前节目、返回 Radio 无节目态
+```
+
 ```text
 [本地服务未连接]
   -> 显示独立“本地服务未连接”异常页

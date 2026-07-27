@@ -14,6 +14,7 @@
     "dev": "pnpm --parallel --filter @koradio/server --filter @koradio/web dev",
     "build": "pnpm build:packages && pnpm --filter @koradio/server build && pnpm --filter @koradio/web build",
     "start": "pnpm --filter @koradio/server start",
+    "start:mock": "KORADIO_PROVIDER_MODE=mock pnpm start",
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write --ignore-unknown .",

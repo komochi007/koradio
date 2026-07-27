@@ -188,6 +188,7 @@ export function OnlineShellPage({
         current={current}
         eventBus={eventBus}
         headingRef={headingRef}
+        health={health}
         initialScenarioDraft={initialRadioScenario}
         key={current.profile.id}
         navigate={navigate}

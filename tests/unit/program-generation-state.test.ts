@@ -19,6 +19,7 @@ function program(id: string, title: string): ProgramDetail {
       title,
       status: "ready",
       trackIds: [trackId],
+      originMode: "mock",
       createdAt: "2026-07-19T12:00:00.000Z",
     },
     djScripts: [
@@ -41,8 +42,11 @@ function program(id: string, title: string): ProgramDetail {
         title: "If",
         artist: "Bread",
         album: "Manna",
+        artworkUrl: null,
         durationMs: 155_000,
         lyricStatus: "available",
+        playable: true,
+        originMode: "mock",
       },
     ],
     timeline: [

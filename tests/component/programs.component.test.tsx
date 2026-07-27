@@ -55,8 +55,11 @@ function track(id = firstTrackId, title = "Space Song"): MusicTrack {
     title,
     artist: "Beach House",
     album: "Depression Cherry",
+    artworkUrl: null,
     durationMs: 320_000,
     lyricStatus: "available",
+    playable: true,
+    originMode: "mock",
   };
 }
 
@@ -69,6 +72,7 @@ function program(id: string, title: string, createdAt: string): Program {
     title,
     status: "ready",
     trackIds: [firstTrackId],
+    originMode: "mock",
     createdAt,
   };
 }

@@ -19,6 +19,7 @@ export const s6OldProgram: ProgramDetail = {
     title: "Known Good Session",
     status: "ready",
     trackIds: ["60000000-0000-4000-8000-000000000011", "60000000-0000-4000-8000-000000000012"],
+    originMode: "mock",
     createdAt: "2026-07-20T12:00:00.000Z",
   },
   djScripts: [
@@ -41,8 +42,11 @@ export const s6OldProgram: ProgramDetail = {
       title: "First Safe Track",
       artist: "Koradio",
       album: "S6",
+      artworkUrl: null,
       durationMs: 30_000,
       lyricStatus: "available",
+      playable: true,
+      originMode: "mock",
     },
     {
       id: "60000000-0000-4000-8000-000000000012",
@@ -51,8 +55,11 @@ export const s6OldProgram: ProgramDetail = {
       title: "Second Safe Track",
       artist: "Koradio",
       album: "S6",
+      artworkUrl: null,
       durationMs: 30_000,
       lyricStatus: "available",
+      playable: true,
+      originMode: "mock",
     },
   ],
   timeline: [
@@ -83,6 +90,7 @@ export const s6DegradedProgram: ProgramDetail = {
     title: "Text Still On Air",
     status: "ready",
     trackIds: ["60000000-0000-4000-8000-000000000021"],
+    originMode: "mock",
     createdAt: "2026-07-20T12:10:00.000Z",
   },
   djScripts: [
@@ -105,8 +113,11 @@ export const s6DegradedProgram: ProgramDetail = {
       title: "Words Are Optional",
       artist: "Koradio",
       album: "S6",
+      artworkUrl: null,
       durationMs: 30_000,
       lyricStatus: "unavailable",
+      playable: true,
+      originMode: "mock",
     },
   ],
   timeline: [

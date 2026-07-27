@@ -1,5 +1,10 @@
 import type { MusicProvider, ProviderTrack } from "./music-provider.js";
 
+const mockAudioRefs = new Map([
+  ["mock-space-song", "media/00000000-0000-4000-8000-000000000001.wav"],
+  ["mock-midnight-city", "media/00000000-0000-4000-8000-000000000002.wav"],
+]);
+
 const tracks: ProviderTrack[] = [
   {
     source: "netease",
@@ -72,8 +77,12 @@ export function createMockMusicProvider(): MusicProvider {
       return Promise.resolve({ status: "unavailable", content: null });
     },
     resolveAudio(sourceTrackId) {
+      const resolvedAudioRef = mockAudioRefs.get(sourceTrackId);
+      if (resolvedAudioRef === undefined) {
+        return Promise.reject(new Error("Mock track is unavailable"));
+      }
       return Promise.resolve({
-        resolvedAudioRef: `https://media.example.invalid/audio/${encodeURIComponent(sourceTrackId)}.m4a`,
+        resolvedAudioRef,
         expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
       });
     },

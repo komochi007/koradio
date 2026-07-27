@@ -28,6 +28,7 @@ const program: ProgramDetail = {
     title: "After Hours",
     status: "ready",
     trackIds: ["00000000-0000-4000-8000-000000000071", "00000000-0000-4000-8000-000000000072"],
+    originMode: "mock",
     createdAt: "2026-07-19T08:00:00.000Z",
   },
   djScripts: [
@@ -50,8 +51,11 @@ const program: ProgramDetail = {
       title: "First",
       artist: "Artist",
       album: "Album",
+      artworkUrl: null,
       durationMs: 10_000,
       lyricStatus: "available",
+      playable: true,
+      originMode: "mock",
     },
     {
       id: "00000000-0000-4000-8000-000000000072",
@@ -60,8 +64,11 @@ const program: ProgramDetail = {
       title: "Second",
       artist: "Artist",
       album: "Album",
+      artworkUrl: null,
       durationMs: 20_000,
       lyricStatus: "unavailable",
+      playable: true,
+      originMode: "mock",
     },
   ],
   timeline: [

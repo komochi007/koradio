@@ -11,6 +11,7 @@ import {
   type DjScriptSegment,
   type GenerateProgramCommand,
   type MusicTrack,
+  type OriginMode,
   type ProgramDetail,
   type ProgramGenerationSnapshot,
   type ProgramGenerationStage,
@@ -74,6 +75,7 @@ export interface CreateProgramGenerationServiceOptions {
   library: GenerationLibrary;
   maximumTracks?: number;
   now?: () => Date;
+  originMode?: OriginMode;
   preferences: GenerationPreferences;
   programs: GenerationPrograms;
   randomId?: () => string;
@@ -131,6 +133,7 @@ export function createProgramGenerationService(
   options: CreateProgramGenerationServiceOptions,
 ): ProgramGenerationService {
   const now = options.now ?? (() => new Date());
+  const originMode = options.originMode ?? "mock";
   const randomId = options.randomId ?? randomUUID;
   const maximumTracks = Math.max(1, Math.min(options.maximumTracks ?? 5, 5));
   const timeoutMs = options.timeoutMs ?? 120_000;
@@ -386,6 +389,7 @@ export function createProgramGenerationService(
         title: plan.programTitle,
         status: "ready",
         trackIds: resolvedTracks.map(({ track }) => track.id),
+        originMode,
         createdAt: now().toISOString(),
       },
       djScripts: djScripts.map((segment) => ({

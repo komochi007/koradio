@@ -61,8 +61,11 @@ function track(index: number): MusicTrack {
     title: titles[index] ?? `History Track ${String(index + 1)}`,
     artist: index === 0 ? "Bread" : "Beach House",
     album: "Koradio Archive",
+    artworkUrl: null,
     durationMs: 155_000 + index * 31_000,
     lyricStatus: "available",
+    playable: true,
+    originMode: "mock",
   };
 }
 
@@ -79,6 +82,7 @@ function program(profileId: string, index: number, title: string): Program {
     title,
     status: "ready",
     trackIds: [track(index % 5).id],
+    originMode: "mock",
     createdAt: `2026-07-${String(20 - index).padStart(2, "0")}T${String(22 - index).padStart(2, "0")}:46:00.000Z`,
   };
 }

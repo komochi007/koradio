@@ -4,6 +4,7 @@ import {
   cursorSchema,
   jobIdSchema,
   occurredAtSchema,
+  playableAudioRefSchema,
   playlistSourceIdSchema,
   profileIdSchema,
   trackIdSchema,
@@ -12,7 +13,8 @@ import { errorCodeSchema } from "./errors.js";
 import { asyncJobStatusSchema } from "./jobs.js";
 
 export const musicSourceSchema = z.literal("netease");
-export const lyricStatusSchema = z.enum(["available", "untimed", "unavailable"]);
+export const originModeSchema = z.enum(["live", "mock"]);
+export const lyricStatusSchema = z.enum(["unknown", "available", "untimed", "unavailable"]);
 export const musicTrackSchema = z.strictObject({
   id: trackIdSchema,
   source: musicSourceSchema,
@@ -24,6 +26,7 @@ export const musicTrackSchema = z.strictObject({
   durationMs: z.number().int().positive(),
   lyricStatus: lyricStatusSchema,
   playable: z.boolean().default(true),
+  originMode: originModeSchema.default("mock"),
 });
 export const libraryItemSchema = z.strictObject({
   track: musicTrackSchema,
@@ -38,6 +41,7 @@ export const playlistSourceSchema = z.strictObject({
   importedAt: occurredAtSchema,
   availableTrackCount: z.number().int().nonnegative(),
   unavailableTrackCount: z.number().int().nonnegative(),
+  originMode: originModeSchema.default("mock"),
 });
 export const musicSearchCommandSchema = z.strictObject({
   keyword: z.string().trim().min(1).max(100),
@@ -54,6 +58,8 @@ export const addLibraryItemCommandSchema = z.strictObject({
 });
 export const libraryListResponseSchema = z.strictObject({
   items: z.array(libraryItemSchema),
+  totalCount: z.number().int().nonnegative().default(0),
+  demoCount: z.number().int().nonnegative().default(0),
   nextCursor: cursorSchema.optional(),
 });
 export const trackLyricsSchema = z.discriminatedUnion("status", [
@@ -70,7 +76,7 @@ export const trackLyricsSchema = z.discriminatedUnion("status", [
 ]);
 export const audioResolutionSchema = z.strictObject({
   trackId: trackIdSchema,
-  resolvedAudioRef: z.url().refine((value) => value.startsWith("https://")),
+  resolvedAudioRef: playableAudioRefSchema,
   expiresAt: occurredAtSchema,
 });
 export const playlistImportProgressSchema = z.strictObject({
@@ -92,6 +98,7 @@ export const playlistImportSnapshotSchema = z.strictObject({
 });
 
 export type MusicTrack = z.infer<typeof musicTrackSchema>;
+export type OriginMode = z.infer<typeof originModeSchema>;
 export type LibraryItem = z.infer<typeof libraryItemSchema>;
 export type PlaylistSource = z.infer<typeof playlistSourceSchema>;
 export type MusicSearchCommand = z.infer<typeof musicSearchCommandSchema>;

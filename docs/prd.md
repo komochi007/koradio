@@ -68,6 +68,14 @@
 |----------|-----------|
 | 竞品参考 | `design/references/source/AI音乐电台结构图.jpg`、`design/references/source/AI音乐电台施工图.jpg` |
 | 原型参考 | `design/references/` 中的 15 张高保真 PNG 为视觉参考；`design/assets/prototype/` 已成为可执行 HTML 设计主源，当前 01–15 均已建立完整 Dark 页面 |
+
+### 4.1 运行模式与数据来源
+
+- Production Server、正式 PWA 和 macOS launcher 默认使用 `live`；Development、Test、CI 和显式 Demo 使用 `mock`。显式环境变量配置始终优先。
+- Radio、Library 和 Settings 必须显示 `LIVE` 或 `DEMO MODE`，不得用 `CONNECTED` 暗示当前连接了真实音乐服务。
+- Program、MusicTrack 和 PlaylistSource 保存 `originMode = live | mock`。既有演示数据只按稳定 Mock source ID 迁移标记，不按标题、歌手或场景文本模糊判断。
+- Live 模式的候选池数量和策展输入排除 Demo 数据；历史 Demo 节目保留并显示 `DEMO` 标识，用户可自行永久删除。
+- Mock Provider 必须返回同源、可播放的确定性媒体 fixture，不得返回无效占位域名。
 | 设计规范 | `design/design.md`，用于约束视觉系统、组件细节、原型画布和页面状态 |
 | 视觉开发基线 | `design/assets/prototype/` 为 VDA-17 HTML 主源，`design/assets/baselines/` 的 60 张图片为正式像素基线，`design/assets/reports/handoff-map.md` 为开发交接索引 |
 | 历史视觉任务 | `design/tasks/visual-assets.md`、根目录 `design-qa.md` 仅保留过程与历史结论，不属于开发必读入口 |
@@ -688,6 +696,10 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 - 用户在 Library 搜索框输入歌曲或歌手 → 系统调用网易云 API 搜索 → 用户看到歌曲列表、歌手、专辑和试听按钮。
 - 用户点击“加入候选池” → 系统保存歌曲元数据和来源 → 用户看到歌曲出现在本地音乐库。
 - 用户输入网易云歌单链接并点击导入 → 系统解析完整曲目 ID 清单并分批拉取歌曲 → 用户看到总数、导入进度和结果。
+- 完整曲目 ID 清单按每批最多 100 首补齐详情；Provider 全部读取成功后才在单个数据库事务中写入，失败时不得留下半成功导入。
+- 导入中持续展示 `processed / total`；完成后展示 `imported / unavailable`。重复导入同一来源更新元数据并补充新增歌曲，不重复创建已有歌曲。
+- Library 列表展示“已显示 n / 总计 m”，总计来自完整候选池而非当前分页；Live 模式另行隔离 Demo 数量。
+- 单曲试听必须提供加载、播放、停止、失败和重试状态；错误显示在对应歌曲行，不以全局无响应代替。
 - 数据变化：新增或更新 `MusicTrack`、`PlaylistSource`、`LibraryItem`；歌曲保存专辑封面与可播放状态，并将导入来源作为下一次 `TasteProjection` 重建输入。
 
 **用户流程**
@@ -893,8 +905,10 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | TasteProjection | profileId、tags、affinities、avoidSignals、sourceVersion、updatedAt | 由反馈与历史自动重建的品味投影 |
 | TasteOverrides | profileId、tags、avoidRules、sceneRules、updatedAt | 人工编辑的规则，优先级高于自动投影 |
 | EffectiveTaste | profileId、projectionVersion、overrideVersion、resolvedTaste | 提供给 Codex 的合并只读视图，不单独成为写入入口 |
-| MusicTrack | id、source、sourceTrackId、title、artist、album、duration、lyricStatus | 保存稳定歌曲元数据；短期播放 URL 属于运行时解析结果 |
-| program | id、profileId、scenarioText、title、status、trackIds、createdAt | 保存一次电台节目 |
+| MusicTrack | id、source、sourceTrackId、title、artist、album、duration、lyricStatus、originMode | 保存稳定歌曲元数据；`lyricStatus` 支持 `unknown/available/untimed/unavailable`，短期播放 URL 属于运行时解析结果 |
+| PlaylistSource | id、profileId、source、sourcePlaylistId、title、originMode | 保存歌单来源、导入统计和 Live/Demo 来源 |
+| program | id、profileId、scenarioText、title、status、trackIds、originMode、createdAt | 保存一次电台节目 |
+| CurrentProgram | profileId、programId?、updatedAt | 保存每个 Profile 的当前节目指针；空指针不得回退到历史第一条 |
 | DjScriptSegment | id、programId、type、language、text、displayText、estimatedTiming、ttsAudioRef? | 保存开场、转场、结束语；文字降级仍保留在这里 |
 | PlaybackTimelineItem | `dj`：id、segmentId、audioRef、duration；或 `track`：id、trackId、resolvedAudioRef、duration | 有音频的判别联合；文字 DJ 不创建伪 item |
 | PlaybackCheckpoint | profileId、programId、timelineItemId、positionMs、volume、status、leaseEpoch、savedAt | 每个 Profile 只保留最新低频恢复快照；实时进度不持久化，旧 lease 不得覆盖新状态 |
@@ -916,7 +930,9 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | `GET/PATCH /api/v1/profiles/:profileId/taste` | 读取 projection/overrides/effective，或只更新人工 TasteOverrides |
 | `POST /api/v1/profiles/:profileId/feedback-events` | 使用 `Idempotency-Key` 追加固定枚举 FeedbackEvent；成功后更新 projection 并发布 `feedback.persisted` |
 | `GET /api/v1/profiles/:profileId/programs` | 分页读取指定 Profile 的 Program 历史摘要；详情字段按需加载 |
+| `GET /api/v1/profiles/:profileId/programs/current` | 读取当前节目指针对应的完整节目；空指针返回空结果，不从历史推断 |
 | `GET /api/v1/profiles/:profileId/programs/:programId` | 读取指定 Profile 拥有的 Program、DJ segments、歌曲元数据和判别式 timeline 详情 |
+| `DELETE /api/v1/profiles/:profileId/programs/:programId` | 永久删除节目；当前节目同时停止播放并清空指针，返回音频删除、保留和待清理数量 |
 | `GET /api/v1/profiles/:profileId/playback` | 读取指定 Profile 最新的低频 Playback checkpoint 与对应 timeline item；无 checkpoint 返回未找到 |
 | `PUT /api/v1/profiles/:profileId/playback/checkpoints` | 保存显式携带 `leaseEpoch` 的低频 checkpoint；校验 Program/timeline ownership、位置边界和完成边界 |
 | `POST /api/v1/device-settings/data-root-migrations` | 以 idempotency key 创建数据目录迁移，立即返回 `202 { jobId }`；重复命令返回同一任务 |
@@ -962,7 +978,15 @@ Codex 输出必须遵守以下规则：
 - 根据 `ProfilePreferences.djVoiceStyle = british-soft-radio` 控制文案：柔和、有磁性、专业克制、带轻微冷幽默。
 - 每次节目至少输出 `intro`；仅在风格明显切换、用户追问、关键歌曲或结束时输出 `segue` 或 `outro`。
 - 不输出每首歌固定口播，不编造无法确认的音乐背景；事实不确定时只描述歌曲氛围、听感和用户场景。
-- `displayText` 是前端展示文本，`text` 是 TTS 输入文本；二者默认一致，但英文串讲可在 `displayText` 保留更短句式。
+- `displayText` 为旧数据和接口兼容字段；新节目提交时必须与 `text` 逐字一致。TTS、Radio、Detail 和节目历史统一使用完整 `text`。
 - TTS 无分句时间戳时，`estimatedTiming` 必须为 `true`，前端按文本长度进行近似高亮。
 
 解析失败时，本地服务不得保存或回显原始正文。日志只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据；前端统一收到“Codex 没有完成节目规划，点击重试”，不可解析内容不得进入节目、历史或日志正文。
+
+### 3.1 历史节目删除
+
+- 节目卡片和详情菜单提供“删除节目”，二次确认中展示节目标题和“不可恢复”说明；删除失败时卡片保持可见。
+- 删除当前节目时停止播放、释放多标签播放租约、清空 CurrentProgram，并持久回到 Radio 无节目状态。
+- 删除事务清理 Program、ProgramTrack、DJ 段、时间线、checkpoint 和对应成功生成任务。收藏节目先追加 `program_favorite_removed`，反馈历史保持 append-only，并同步重建 TasteProjection。
+- 仅删除未被其他节目引用的 TTS 文件。文件先移入受控暂存区，数据库失败时恢复；提交后物理删除。最终清理失败进入受控待清理记录并在启动时重试，接口返回警告。
+- 成功删除发布 `program.deleted`，其他标签页停止同一节目并刷新 Radio、Programs、Favorites 和本周统计。

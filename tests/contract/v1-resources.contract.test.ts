@@ -204,6 +204,7 @@ describe("v1 resource and command contracts", () => {
       importedAt: now,
       availableTrackCount: 1,
       unavailableTrackCount: 2,
+      originMode: "mock",
     } as const;
     expect(playlistSourceSchema.parse(playlistSource)).toEqual(playlistSource);
     expect(

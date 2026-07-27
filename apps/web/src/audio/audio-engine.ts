@@ -91,8 +91,12 @@ function createPreloader(): AudioPreloader {
   };
 }
 
+function playableSource(reference: string): string {
+  return reference.includes("://") || reference.startsWith("/") ? reference : `/${reference}`;
+}
+
 function sourceFor(item: PlaybackTimelineItem): string {
-  return item.kind === "track" ? item.resolvedAudioRef : `/${item.audioRef}`;
+  return playableSource(item.kind === "track" ? item.resolvedAudioRef : item.audioRef);
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -288,7 +292,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     loadVersion += 1;
     const version = loadVersion;
     audio.pause();
-    audio.src = preview.resolvedAudioRef;
+    audio.src = playableSource(preview.resolvedAudioRef);
     expectedSource = audio.src;
     audio.preload = "auto";
     audio.load();

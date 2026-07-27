@@ -18,6 +18,7 @@ function program(id: string, createdAt: string, trackIds: string[]): Program {
     title: "After Hours",
     status: "ready",
     trackIds,
+    originMode: "mock",
     createdAt,
   };
 }

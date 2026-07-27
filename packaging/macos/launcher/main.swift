@@ -137,7 +137,7 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
     process.executableURL = node
     process.arguments = [entrypoint.path]
     process.currentDirectoryURL = resources.appendingPathComponent("app", isDirectory: true)
-    let providerMode = ProcessInfo.processInfo.environment["KORADIO_PROVIDER_MODE"] == "live" ? "live" : "mock"
+    let providerMode = ProcessInfo.processInfo.environment["KORADIO_PROVIDER_MODE"] == "mock" ? "mock" : "live"
     let ttsHelper = resources.appendingPathComponent("koradio-tts-helper", isDirectory: false)
     var environment: [String: String] = [
       "HOME": NSHomeDirectory(),

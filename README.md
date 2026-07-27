@@ -2,9 +2,9 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · S6 quality hardening complete through S6-05 · S7-06 personal local real Provider verification complete · external distribution deferred · runtime defaults to Mock mode**
+> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · S6 quality hardening complete through S6-05 · S7-06 personal local real Provider verification complete · external distribution deferred · production defaults to Live mode**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；后端领域、平台与 Provider adapters 已实现并通过边界测试，产品默认仍使用确定性 Mock Provider；arm64 个人预览 macOS 包装、native TTS helper、两版本生命周期及显式 `live` 的真实 Codex/NetEase/Apple TTS 产品闭环已在项目所有者本机验收
+> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；Production Server 与 macOS launcher 默认使用真实 Provider，Development、Test、CI 与 `start:mock` 使用确定性 Mock Provider
 
 ## 1. 项目入口
 
@@ -48,7 +48,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、完整根命令族与 GitHub Actions CI 已实装并由真实 run 验证
 - [x] Development 双进程、Production 同源静态托管、loopback 端口、精确 Origin、短期内存 Session、REST Bearer 与 WebSocket 首消息认证已实装；非法 Origin、过期/URL/持久化 token 和未认证连接均有负向验证
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 的 native launcher + 外部浏览器 PWA 已由 S7-01 在受控本机完成 arm64 app/DMG、strict codesign 和启动停止验收，当前仍仅限个人使用
-- [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；三个 Backend Adapter、native helper 与显式 `live` composition 已完成本机闭环验收，产品运行时仍默认 Mock
+- [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；三个 Backend Adapter、native helper 与 Live composition 已完成本机闭环验收，Production Server 与 macOS launcher 默认 Live
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
 - [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Radio 三态、节目生成 command/Snapshot/有序事件与失败恢复、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
 - [x] Fastify Local Service health/session/events、Profiles、Library、Feedback、Taste、Programs、Playback、异步节目生成、DeviceSettings、ProfilePreferences 与数据目录迁移路由已实现；生成命令立即返回 `202 + jobId`，终态可通过 REST Snapshot 恢复
@@ -466,6 +466,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 pnpm build
 pnpm start
+pnpm start:mock
 pnpm --filter @koradio/server db:generate
 pnpm typecheck
 pnpm lint
@@ -483,6 +484,13 @@ pnpm check
 pnpm package:macos -- --arch arm64
 pnpm verify:package:macos <path-to-Koradio.app>
 ```
+
+运行模式：
+
+- `pnpm dev`、测试和 CI 使用 `mock`。
+- `pnpm build && pnpm start` 以 `NODE_ENV=production` 启动并默认使用 `live`。
+- `pnpm start:mock` 显式启动同源生产构建的 Demo 模式。
+- `KORADIO_PROVIDER_MODE=live|mock` 始终覆盖上述默认值；macOS launcher 未显式覆盖时使用 `live`。
 
 当前骨架边界：
 
@@ -562,7 +570,7 @@ pnpm verify:package:macos <path-to-Koradio.app>
 S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门、S5 全量功能阶段门和 S6 集成、质量与安全阶段门均已关闭；S7-01、S7-02 与 S7-06 已完成 arm64 个人预览包装、安装生命周期和真实 Provider/PWA 播放闭环。当前 Personal Local Preview 路径已可用，不以 `S7-03` 为当前阻塞：
 
 - 继续使用受控本机的 PWA、bundled Local Service、native helper 与 ad-hoc 签名产物；不创建公开下载入口、不开始外部分发。
-- 常规自动测试和 CI 继续默认 Mock；只有项目所有者受控本机显式设置 `KORADIO_PROVIDER_MODE=live` 时启用真实 Codex、NetEase 与可选 Apple TTS。
+- 常规开发、自动测试和 CI 继续默认 Mock；Production Server 与 macOS launcher 默认 Live，也可用 `KORADIO_PROVIDER_MODE` 显式覆盖。
 - `S7-03` 的 Developer ID 签名、公证、校验和和发布证据流水线只在项目所有者授权公开下载或外部分发后启动；凭据只进入受控 Keychain 或 CI Secret。
 
 任务状态、依赖与验收以 [任务登记表](docs/project-management/tasks.md) 为准。

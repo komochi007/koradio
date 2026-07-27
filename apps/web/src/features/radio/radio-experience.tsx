@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import {
   type MusicTrack,
+  type HealthResponse,
   type ProfileContext,
   type ProgramDetail,
   type ProgramGenerationStage,
@@ -35,6 +36,7 @@ interface RadioExperienceProps {
   current: ProfileContext;
   eventBus: AppEventBus;
   headingRef: RefObject<HTMLHeadingElement | null>;
+  health: HealthResponse;
   initialScenarioDraft: string | undefined;
   navigate: (path: string) => void;
   onCurrentChanged: (current: ProfileContext) => void;
@@ -532,6 +534,7 @@ export function RadioExperience({
   current,
   eventBus,
   headingRef,
+  health,
   initialScenarioDraft,
   navigate,
   onCurrentChanged,
@@ -613,6 +616,7 @@ export function RadioExperience({
       <header className="topbar radio-page__topbar">
         <Brand />
         <div className="radio-page__tools">
+          <span className="radio-page__mode">{health.mode === "live" ? "LIVE" : "DEMO MODE"}</span>
           <button
             className="profile-tool"
             type="button"

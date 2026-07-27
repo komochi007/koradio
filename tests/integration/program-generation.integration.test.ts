@@ -162,7 +162,7 @@ describe("S3-06 Program generation orchestration", () => {
     if (trackItem?.kind !== "track") {
       throw new Error("Generated timeline has no track");
     }
-    expect(trackItem.resolvedAudioRef).toMatch(/^https:\/\//u);
+    expect(trackItem.resolvedAudioRef).toMatch(/^(?:https:\/\/|media\/)/u);
     const columns = harness.database.client
       .prepare("PRAGMA table_info(program_generation_job)")
       .all() as unknown as Array<{ name: string }>;

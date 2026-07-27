@@ -22,8 +22,11 @@ const track: MusicTrack = {
   title: "Space Song",
   artist: "Beach House",
   album: "Depression Cherry",
+  artworkUrl: null,
   durationMs: 320_000,
   lyricStatus: "available",
+  playable: true,
+  originMode: "mock",
 };
 const secondTrack: MusicTrack = {
   ...track,
