@@ -58,7 +58,7 @@ AI 执行任务时按固定顺序操作：
 | S5 P1 全量功能 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S6 集成、质量与安全加固 | 5 | 0 | 0 | 0 | 0 | 5 |
 | S7 macOS 本机运行与后置发布工程 | 3 | 3 | 1 | 0 | 0 | 7 |
-| UX 个人本机使用体验优化 | 6 | 3 | 0 | 0 | 0 | 9 |
+| UX 个人本机使用体验优化 | 7 | 2 | 0 | 0 | 0 | 9 |
 | S8 全量外部测试与 Release Candidate | 0 | 4 | 0 | 0 | 0 | 4 |
 | S9 v1.0 发布与稳定期 | 0 | 4 | 0 | 0 | 0 | 4 |
 
@@ -176,7 +176,7 @@ AI 执行任务时按固定顺序操作：
 | `UX-04` 新增历史节目永久删除 | 已完成 | Critical | 允许用户永久删除历史节目并正确处理当前播放与音频。 | UX-03 | 已确认删除语义。 | 不提供撤销，不删除共享 TTS。 | 普通、收藏、当前、跨 Profile、文件失败回滚和多标签同步通过。 | 已实现 `current_program`、永久删除 use case、受控文件暂存/启动重试、`program.deleted`、播放租约释放、二次确认 UI 与失败保留。 | `pnpm check` 各分门通过；262 个串行 coverage 测试通过；Programs Chromium/Firefox 8 项 E2E 与 Chromium 视觉基线通过，WebKit 按既有受控路由规则跳过。 | Codex / 当前工作区 | 无。 |
 | `UX-05` 完整质量门与真实 Provider 本机验收 | 已完成 | Critical | 证明优化在 Mock 回归和临时 Live 环境均可用。 | UX-01～UX-04 | 全部实现与指定歌单。 | 只使用临时数据目录，不改动现有正式数据。 | `pnpm check`、三浏览器、axe、视觉及真实导入/生成/播放/歌词通过。 | 已创建 [UX-05 质量门与 Live 验收记录](ux-05-quality-live-acceptance.md)，并补齐跨搜索词与本地候选池的可播放回退。 | `pnpm check`、完整三浏览器 E2E、Chromium 视觉门、指定 403 首歌单 Live 导入，以及真实 Codex/NetEase/Apple TTS 的生成、媒体读取和 PWA Detail 验收。 | Codex / 当前工作区 | 无。 |
 | `UX-06` 修复 Radio 队列折叠补位与对话排版 | 已完成 | High | 队列折叠后回收空白，并让用户输入与 DJ 正文保持一致的阅读层级。 | UX-05 | 已确认的 Queue 折叠坐标、24px 间距、320ms 动效和对话字号。 | 只调整 Radio 布局与排版；不改变队列、播放、输入或持久状态。 | 全部布局平滑补位；standalone PWA 折叠坐标和间距准确；用户与 DJ 文字字号/行高一致；Reduce Motion 可用。 | 已更新 Radio 产品/流程/设计规范、共享布局变量、折叠状态类、排版与回归测试。 | 组件测试 12 项通过；折叠专项 Chromium/Firefox/WebKit 3 项通过；Chromium 折叠态及受影响 Radio 视觉基线已人工复核。 | Codex / 当前工作区 | 无。 |
-| `UX-07` 提升 Detail 歌词可读性 | 待开始 | High | 隐藏可见滚动条并建立沉浸式普通/当前歌词字号层级。 | UX-06 | 已确认的歌词字号、行高和滚动行为。 | 只调整歌词态；DJ 串讲态保持不变。 | 长歌词完整可滚动且不显示滚动条；当前行居中并显著更大；各视口无裁切。 | 计划更新 Detail 产品/设计规范、样式与组件/E2E/视觉测试。 | Detail 专项组件测试、三浏览器 E2E、Chromium 视觉基线、axe、`pnpm check`。 | Codex / 当前工作区 | 放大后当前行或首尾歌词不可达。 |
+| `UX-07` 提升 Detail 歌词可读性 | 已完成 | High | 隐藏可见滚动条并建立沉浸式普通/当前歌词字号层级。 | UX-06 | 已确认的歌词字号、行高和滚动行为。 | 只调整歌词态；DJ 串讲态保持不变。 | 长歌词完整可滚动且不显示滚动条；当前行居中并显著更大；各视口无裁切。 | 已更新 Detail 产品/设计规范与歌词态样式，并补充中英长歌词、首尾滚动和当前行居中回归。 | 组件测试 6 项通过；Detail Chromium/Firefox/WebKit 功能与 axe 21 项通过；五个歌词视觉基线已人工复核，DJ 串讲基线未变化。 | Codex / 当前工作区 | 无。 |
 | `UX-08` 重建当前 Profile Taste | 待开始 | High | 将已确认的音乐库画像写入人工 Taste，立即改善后续规划上下文。 | UX-05 | 当前 Profile、已确认的 22 个标签、6 条避雷与 8 条场景规则。 | 只通过认证 Taste API 更新 overrides；不直接写 SQLite，不修改 projection、反馈、音乐库或历史节目；不把原始用户数据提交到仓库。 | override version 递增；新规则完整保序进入 EffectiveTaste；projection version 不变。 | 本机受控 Taste API 更新及脱敏验收记录。 | PATCH 前后 GET、contract schema 校验和 SQLite 只读计数核对。 | 待分配 | Local Service 不可安全启动或 Taste API 校验失败。 |
 | `UX-09` 实现音乐库感知规划与有序选曲 | 待开始 | Critical | 让 Codex 看到有界音乐库，并按有序 library/discovery intent 生成约 70/30 的节目。 | UX-08 | 已确认的库内优先策略、Taste、Programs/Library/Provider 边界。 | 修改内部规划 contract 与候选解析；不改变公共 REST/WS、数据库 schema、Provider 安全边界或旧节目失败保护。 | 五首默认目标为四首库内、一首探索；显式场景约束优先；每个 discovery query 最多入选一首；非法/跨 Profile/重复/不可播放候选安全降级。 | 计划更新 PRD、流程、架构、README/Context、内部 planning schema、Library/Programs composition 与测试 fixtures。 | Unit/contract/integration、Mock backend loop、Provider adapter、`pnpm check`、三浏览器核心 E2E。 | 待分配 | 内部规划 schema 无法保持确定性 Mock 或候选归属无法在模块边界内校验。 |
 

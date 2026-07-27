@@ -26,6 +26,44 @@ const profile = {
   updatedAt: "2026-07-19T08:00:00.000Z",
 };
 
+const lyricLines = [
+  "夜色落在窗边，灯还醒着",
+  "The room is quiet but the melody stays",
+  "我们把未写完的话留给和弦",
+  "A little rhythm keeps the hours moving",
+  "风经过键盘，也经过旧照片",
+  "Every note returns with warmer colors",
+  "不急着抵达，也不害怕停留",
+  "The city hums beneath a softer voice",
+  "把今天折好，放进下一小节",
+  "We let the chorus carry what remains",
+  "远处的车灯像缓慢的星群",
+  "A steady groove is drawing us along",
+  "这一刻正好，不需要答案",
+  "The middle of the song opens its hands",
+  "吉他留下木头与指尖的温度",
+  "The piano answers gently from the hall",
+  "我们听见呼吸落在鼓点之间",
+  "No hurry now, the night is still awake",
+  "让旋律替沉默找到一个名字",
+  "A human voice makes every shadow clear",
+  "故事转弯，却仍然保持明亮",
+  "The final verse remembers where we came",
+  "天快亮了，余韵还没有散",
+  "One last chord stays warm after the song",
+] as const;
+
+const timedLyrics = lyricLines
+  .map((line, index) => {
+    const seconds = index * 10;
+    const minute = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const second = (seconds % 60).toString().padStart(2, "0");
+    return `[${minute}:${second}.00]${line}`;
+  })
+  .join("\n");
+
 function detailProgram(mode: "speaking" | "lyrics") {
   const track = {
     id: trackId,
@@ -151,8 +189,7 @@ async function openDetail(
           : {
               trackId,
               status: "available",
-              content:
-                "[00:00.00]It was late at night\n[00:15.00]A small light stayed awake\n[00:24.00]We let the hours move",
+              content: timedLyrics,
             },
     }),
   );
@@ -217,7 +254,7 @@ async function openDetail(
   await expect(page.getByRole("dialog", { name: "After Hours, Soft Focus" })).toBeVisible();
   await expect(page.getByRole("button", { name: "关闭节目详情，播放继续" })).toBeFocused();
   if (options.mode === "lyrics" && options.lyricStatus !== "unavailable") {
-    await expect(page.getByText("It was late at night")).toBeVisible();
+    await expect(page.getByText(lyricLines[0])).toBeVisible();
   }
 }
 
@@ -244,6 +281,48 @@ test("Detail shows estimated DJ timing while the DJ segment is speaking", async 
   await expect(page.getByRole("article", { name: "DJ 串讲词" })).toContainText(
     "先让声音替房间留一点呼吸。",
   );
+});
+
+test("Detail keeps long lyrics scrollable, hides scrollbars and centers the current line", async ({
+  browserName,
+  page,
+}) => {
+  await openDetail(page, { mode: "lyrics" });
+  const copy = page.getByRole("article", { name: "跟随歌词" });
+  const first = page.getByText(lyricLines[0]);
+  const next = page.getByText(lyricLines[1]);
+  const last = page.getByText(lyricLines.at(-1) ?? "");
+
+  const metrics = await copy.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const webkitScrollbar = getComputedStyle(element, "::-webkit-scrollbar");
+    return {
+      clientHeight: element.clientHeight,
+      overflowY: style.overflowY,
+      scrollHeight: element.scrollHeight,
+      scrollbarWidth: style.scrollbarWidth,
+      webkitDisplay: webkitScrollbar.display,
+    };
+  });
+  expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+  expect(metrics.overflowY).toBe("auto");
+  expect(metrics.scrollbarWidth).toBe("none");
+  if (browserName !== "firefox") expect(metrics.webkitDisplay).toBe("none");
+
+  const [currentSize, normalSize] = await Promise.all([
+    first.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
+    next.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
+  ]);
+  expect(currentSize).toBeGreaterThan(normalSize);
+
+  await copy.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await expect(first).toBeInViewport();
+  await copy.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect(last).toBeInViewport();
 });
 
 test("Detail degrades clearly when lyrics are unavailable", async ({ browserName, page }) => {

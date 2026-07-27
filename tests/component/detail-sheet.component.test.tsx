@@ -174,6 +174,52 @@ describe("Detail Sheet", () => {
     expect(pause).toHaveBeenCalledOnce();
   });
 
+  it("centers the current lyric whenever playback advances to another line", async () => {
+    const scrollIntoView = vi.fn();
+    const originalDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollIntoView",
+    );
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    const queryClient = createAppQueryClient();
+    const initialAudio = { ...snapshot(1), positionMs: 2_500 };
+    const view = (audio: AudioEngineSnapshot) => (
+      <QueryClientProvider client={queryClient}>
+        <DetailSheet
+          audio={audio}
+          audioEngine={audioEngine()}
+          onClosed={vi.fn()}
+          profileId={profileId}
+          program={program}
+          transport={transport({
+            trackId,
+            status: "available",
+            content: "[00:01.00]A small light stayed awake\n[00:04.00]We let the hours move",
+          })}
+        />
+      </QueryClientProvider>
+    );
+    const { rerender } = render(view(initialAudio));
+    expect(
+      (await screen.findByText("A small light stayed awake")).getAttribute("aria-current"),
+    ).toBe("true");
+
+    rerender(view({ ...initialAudio, positionMs: 4_500 }));
+    await waitFor(() => {
+      expect(screen.getByText("We let the hours move").getAttribute("aria-current")).toBe("true");
+      expect(scrollIntoView).toHaveBeenLastCalledWith({ block: "center" });
+    });
+
+    if (originalDescriptor === undefined) {
+      delete HTMLElement.prototype.scrollIntoView;
+    } else {
+      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", originalDescriptor);
+    }
+  });
+
   it("estimates DJ sentence timing without requesting lyrics", () => {
     const request = vi.fn(() => Promise.reject(new Error("lyrics must not load")));
     const serviceTransport = transport({});
