@@ -645,6 +645,20 @@ export function RadioExperience({
       void audioEngine.activateProfile(current.profile.id);
     }
   }, [audioEngine, current.profile.id, radio.autoplayProgramId, radio.program]);
+  useEffect(
+    () =>
+      eventBus.subscribe((event) => {
+        if (
+          event.eventType === "program.deleted" &&
+          event.profileId === current.profile.id &&
+          event.payload.clearedCurrentSession
+        ) {
+          setDetailOpen(false);
+          void audioEngine.clearProgram?.();
+        }
+      }),
+    [audioEngine, current.profile.id, eventBus],
+  );
   useEffect(() => {
     setQueueExpanded(true);
   }, [radio.program?.program.id]);

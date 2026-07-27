@@ -25,7 +25,7 @@
     "test:component": "vitest run tests/component",
     "test:e2e": "playwright test tests/e2e",
     "test:visual": "playwright test tests/visual --project=chromium",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --no-file-parallelism",
     "audit:security": "pnpm audit --audit-level high",
     "audit:licenses": "node scripts/security/audit-licenses.mjs",
     "audit:dependencies": "pnpm audit:security && pnpm audit:licenses",

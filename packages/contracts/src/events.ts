@@ -11,7 +11,11 @@ import {
 import { errorCodeSchema } from "./errors.js";
 import { feedbackEventSchema } from "./feedback.js";
 import { healthResponseSchema } from "./health.js";
-import { playbackCheckpointSchema, programDetailSchema } from "./programs.js";
+import {
+  deleteProgramResponseSchema,
+  playbackCheckpointSchema,
+  programDetailSchema,
+} from "./programs.js";
 import { dataRootMigrationStageSchema, dataRootMigrationStatusSchema } from "./settings.js";
 
 const eventEnvelopeShape = {
@@ -60,6 +64,11 @@ export const programCommittedEventSchema = z.strictObject({
   eventType: z.literal("program.committed"),
   payload: programDetailSchema,
 });
+export const programDeletedEventSchema = z.strictObject({
+  ...eventEnvelopeShape,
+  eventType: z.literal("program.deleted"),
+  payload: deleteProgramResponseSchema,
+});
 export const playbackSnapshotEventSchema = z.strictObject({
   ...eventEnvelopeShape,
   eventType: z.literal("playback.snapshot"),
@@ -91,6 +100,7 @@ export const v1EventSchema = z.discriminatedUnion("eventType", [
   generationDegradedEventSchema,
   generationCompletedEventSchema,
   programCommittedEventSchema,
+  programDeletedEventSchema,
   playbackSnapshotEventSchema,
   feedbackPersistedEventSchema,
   serviceHealthChangedEventSchema,
@@ -102,6 +112,7 @@ export type GenerationTracksResolvedEvent = z.infer<typeof generationTracksResol
 export type GenerationDegradedEvent = z.infer<typeof generationDegradedEventSchema>;
 export type GenerationCompletedEvent = z.infer<typeof generationCompletedEventSchema>;
 export type ProgramCommittedEvent = z.infer<typeof programCommittedEventSchema>;
+export type ProgramDeletedEvent = z.infer<typeof programDeletedEventSchema>;
 export type PlaybackSnapshotEvent = z.infer<typeof playbackSnapshotEventSchema>;
 export type FeedbackPersistedEvent = z.infer<typeof feedbackPersistedEventSchema>;
 export type ServiceHealthChangedEvent = z.infer<typeof serviceHealthChangedEventSchema>;

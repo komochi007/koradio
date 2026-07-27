@@ -38,6 +38,7 @@ export interface FeedbackService {
     command: CreateFeedbackCommand,
     idempotencyKey: string,
   ): PersistFeedbackResult;
+  removeProgramFavoriteForDeletion(profileId: string, programId: string): FeedbackEvent | null;
   rebuildProjection(profileId: string): TasteProjection;
 }
 
@@ -125,6 +126,35 @@ export function createFeedbackService(options: CreateFeedbackServiceOptions): Fe
         options.client.exec("ROLLBACK");
         throw error;
       }
+    },
+    removeProgramFavoriteForDeletion(profileId, programId) {
+      const events = options.repository.list(profileId);
+      const active = events.reduce(
+        (favorited, event) =>
+          event.targetId !== programId
+            ? favorited
+            : event.type === "program_favorited"
+              ? true
+              : event.type === "program_favorite_removed"
+                ? false
+                : favorited,
+        false,
+      );
+      if (!active) return null;
+      const idempotencyKey = `program-deletion:${programId}`;
+      const repeated = options.repository.findByIdempotencyKey(profileId, idempotencyKey);
+      if (repeated !== null) return repeated;
+      const event = feedbackEventSchema.parse({
+        id: randomId(),
+        profileId,
+        targetId: programId,
+        type: "program_favorite_removed",
+        idempotencyKey,
+        createdAt: now().toISOString(),
+      });
+      options.repository.insert(event);
+      rebuild(profileId);
+      return event;
     },
     rebuildProjection(profileId) {
       options.client.exec("BEGIN IMMEDIATE");

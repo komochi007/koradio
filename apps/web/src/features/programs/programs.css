@@ -280,6 +280,123 @@
   fill: currentColor;
 }
 
+.program-card__actions {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  position: absolute;
+  right: 22px;
+  top: 18px;
+  z-index: 2;
+}
+
+.program-card__actions > button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.program-card__actions .program-card__favorite {
+  position: static;
+}
+
+.program-delete-menu {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgb(0 0 0 / 32%);
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: 46px;
+  width: 132px;
+  z-index: 8;
+}
+
+.program-delete-menu button {
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: #ef6c73;
+  min-height: 40px;
+  padding: 8px 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.program-delete-menu--detail {
+  right: 24px;
+  top: 72px;
+}
+
+.program-delete-backdrop {
+  align-items: center;
+  background: rgb(0 0 0 / 68%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 80;
+}
+
+.program-delete-dialog {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  box-shadow: 0 24px 72px rgb(0 0 0 / 42%);
+  max-width: 440px;
+  padding: 28px;
+  width: 100%;
+}
+
+.program-delete-dialog > p:first-child {
+  color: #ef6c73;
+  font: 700 0.72rem/1 var(--font-mono);
+  letter-spacing: 0.12em;
+}
+
+.program-delete-dialog h2 {
+  font-size: 1.35rem;
+  margin: 16px 0 10px;
+}
+
+.program-delete-dialog > p {
+  color: var(--text-muted);
+}
+
+.program-delete-dialog > p[role="alert"] {
+  color: #ef6c73;
+  margin-top: 12px;
+}
+
+.program-delete-dialog > div {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.program-delete-confirm {
+  background: #b83f49;
+  border-color: #b83f49;
+  color: #fff;
+}
+
+.programs-deletion-warning {
+  background: rgb(214 164 70 / 12%);
+  border: 1px solid rgb(214 164 70 / 32%);
+  border-radius: 12px;
+  color: #d6a446;
+  margin: 0 0 18px;
+  padding: 12px 16px;
+}
+
 .program-card__covers {
   position: absolute;
   right: 20px;

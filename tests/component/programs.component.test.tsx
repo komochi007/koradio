@@ -163,14 +163,16 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-function createTransport(options: { failList?: boolean } = {}): {
+function createTransport(options: { failDelete?: boolean; failList?: boolean } = {}): {
   commands: CreateFeedbackCommand[];
+  deletes: string[];
   request: ReturnType<typeof vi.fn<(path: string, init?: RequestInit) => Promise<Response>>>;
   transport: ServiceTransport;
 } {
   const first = program(firstProgramId, "After Hours, Soft Focus", "2026-07-20T08:00:00.000Z");
   const second = program(secondProgramId, "Slow Start, Clear Head", "2026-07-19T08:00:00.000Z");
   const commands: CreateFeedbackCommand[] = [];
+  const deletes: string[] = [];
   const request = vi.fn<(path: string, init?: RequestInit) => Promise<Response>>((path, init) => {
     const method = init?.method ?? "GET";
     if (path.endsWith("/taste") && method === "GET") return Promise.resolve(jsonResponse(taste()));
@@ -213,14 +215,30 @@ function createTransport(options: { failList?: boolean } = {}): {
         ),
       );
     }
-    if (path.endsWith(`/programs/${firstProgramId}`))
+    if (path.endsWith(`/programs/${firstProgramId}`) && method === "DELETE") {
+      if (options.failDelete === true) {
+        return Promise.resolve(jsonResponse({ code: "PROGRAM_DELETE_FAILED" }, 500));
+      }
+      deletes.push(firstProgramId);
+      return Promise.resolve(
+        jsonResponse({
+          programId: firstProgramId,
+          clearedCurrentSession: false,
+          deletedAudioCount: 1,
+          retainedAudioCount: 0,
+          pendingCleanupCount: 0,
+        }),
+      );
+    }
+    if (path.endsWith(`/programs/${firstProgramId}`) && method === "GET")
       return Promise.resolve(jsonResponse(detail(first, true)));
-    if (path.endsWith(`/programs/${secondProgramId}`))
+    if (path.endsWith(`/programs/${secondProgramId}`) && method === "GET")
       return Promise.resolve(jsonResponse(detail(second, false)));
     return Promise.resolve(jsonResponse({}));
   });
   return {
     commands,
+    deletes,
     request,
     transport: {
       request,
@@ -294,11 +312,16 @@ function createAudioEngine(): AudioEngineFacade & {
 }
 
 function renderPrograms(
-  options: { failList?: boolean; onReuseScenario?: (value: string) => boolean } = {},
+  options: {
+    failDelete?: boolean;
+    failList?: boolean;
+    onReuseScenario?: (value: string) => boolean;
+  } = {},
 ) {
-  const backend = createTransport(
-    options.failList === undefined ? {} : { failList: options.failList },
-  );
+  const backend = createTransport({
+    ...(options.failDelete === undefined ? {} : { failDelete: options.failDelete }),
+    ...(options.failList === undefined ? {} : { failList: options.failList }),
+  });
   const audioEngine = createAudioEngine();
   const onReuseScenario = options.onReuseScenario ?? vi.fn(() => true);
   render(
@@ -375,6 +398,31 @@ describe("S5-03 Programs experience", () => {
     await screen.findByText("PROGRAM ARCHIVE");
     fireEvent.click(screen.getByRole("button", { name: "复用场景" }));
     expect(await screen.findByText("Radio 未连接，暂时不能复用场景")).toBeTruthy();
+  });
+
+  it("requires confirmation and keeps the card visible when deletion fails", async () => {
+    const rendered = renderPrograms({ failDelete: true });
+    await screen.findByText("After Hours, Soft Focus");
+    fireEvent.click(screen.getByRole("button", { name: "更多节目操作 After Hours, Soft Focus" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "删除节目" }));
+    expect(screen.getByRole("dialog").textContent).toContain("After Hours, Soft Focus");
+    expect(screen.getByText(/无法恢复/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "永久删除" }));
+    expect(await screen.findByText("删除失败，节目仍保留。请重试。")).toBeTruthy();
+    expect(screen.getByText("After Hours, Soft Focus")).toBeTruthy();
+    expect(rendered.backend.deletes).toEqual([]);
+  });
+
+  it("permanently deletes a confirmed history card", async () => {
+    const rendered = renderPrograms();
+    await screen.findByText("After Hours, Soft Focus");
+    fireEvent.click(screen.getByRole("button", { name: "更多节目操作 After Hours, Soft Focus" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "删除节目" }));
+    fireEvent.click(screen.getByRole("button", { name: "永久删除" }));
+    await waitFor(() => {
+      expect(rendered.backend.deletes).toEqual([firstProgramId]);
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("shows recoverable history errors", async () => {

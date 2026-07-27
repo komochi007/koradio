@@ -10,7 +10,11 @@ import {
 
 import type { PlaybackTimelineService } from "../playback/index.js";
 import { assertProgramCommit } from "./domain/program.js";
-import { ProgramDataError, type ProgramRepository } from "./persistence.js";
+import {
+  ProgramDataError,
+  type PendingCleanupRecord,
+  type ProgramRepository,
+} from "./persistence.js";
 
 export class ProgramNotFoundError extends Error {
   constructor() {
@@ -40,6 +44,13 @@ export interface CreateProgramServiceOptions {
 export interface ProgramService {
   commit(detail: ProgramDetail, finalize?: () => void): ProgramDetail;
   completeProgram(profileId: string, programId: string): boolean;
+  current(profileId: string): ProgramDetail | null;
+  delete(
+    profileId: string,
+    programId: string,
+    cleanup: PendingCleanupRecord[],
+    beforeDelete?: () => void,
+  ): { clearedCurrent: boolean };
   findProgram(profileId: string, programId: string): Program | null;
   get(profileId: string, programId: string): ProgramDetail;
   hasProgram(profileId: string, programId: string): boolean;
@@ -86,6 +97,7 @@ export function createProgramService(options: CreateProgramServiceOptions): Prog
           djScripts: canonical.djScripts,
         });
         options.timeline.insert(canonical.program.id, canonical.timeline);
+        options.repository.setCurrent(canonical.program.profileId, canonical.program.id);
         finalize?.();
         options.client.exec("COMMIT");
         return canonical;
@@ -96,6 +108,29 @@ export function createProgramService(options: CreateProgramServiceOptions): Prog
     },
     completeProgram(profileId, programId) {
       return options.repository.markCompleted(profileId, programId) !== null;
+    },
+    current(profileId) {
+      const record = options.repository.current(profileId);
+      return record === null ? null : readDetail(profileId, record.program.id);
+    },
+    delete(profileId, programId, cleanup, beforeDelete) {
+      if (!options.repository.has(profileId, programId)) {
+        throw new ProgramNotFoundError();
+      }
+      options.client.exec("BEGIN IMMEDIATE");
+      try {
+        beforeDelete?.();
+        const result = options.repository.delete(profileId, programId, cleanup);
+        if (!result.deleted) {
+          throw new ProgramNotFoundError();
+        }
+        options.client.exec("COMMIT");
+        return { clearedCurrent: result.clearedCurrent };
+      } catch (error) {
+        options.client.exec("ROLLBACK");
+        if (error instanceof ProgramNotFoundError) throw error;
+        throw new ProgramWriteError();
+      }
     },
     findProgram(profileId, programId) {
       return options.repository.find(profileId, programId)?.program ?? null;

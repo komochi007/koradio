@@ -7,6 +7,7 @@ import {
   generationTracksResolvedEventSchema,
   playbackSnapshotEventSchema,
   programCommittedEventSchema,
+  programDeletedEventSchema,
   serviceHealthChangedEventSchema,
   v1EventSchema,
 } from "../../packages/contracts/src/index.js";
@@ -60,6 +61,20 @@ const events = [
       ...envelope,
       eventType: "program.committed",
       payload: programDetail,
+    },
+  },
+  {
+    schema: programDeletedEventSchema,
+    value: {
+      ...envelope,
+      eventType: "program.deleted",
+      payload: {
+        programId: ids.program,
+        clearedCurrentSession: true,
+        deletedAudioCount: 1,
+        retainedAudioCount: 0,
+        pendingCleanupCount: 0,
+      },
     },
   },
   {
@@ -140,8 +155,8 @@ describe("v1 event contracts", () => {
     ).toBe(false);
     expect(
       dataRootMigrationStageChangedEventSchema.safeParse({
-        ...events[8].value,
-        payload: { ...events[8].value.payload, path: "/Users/name/data" },
+        ...events[9].value,
+        payload: { ...events[9].value.payload, path: "/Users/name/data" },
       }).success,
     ).toBe(false);
     expect(

@@ -212,10 +212,10 @@ function createOnlineTransport(
     if (path === "/api/v1/profiles/current" && method === "GET") {
       return Promise.resolve(jsonResponse({ current }));
     }
-    if (path.endsWith("/programs?limit=1") && method === "GET") {
+    if (path.endsWith("/programs/current") && method === "GET") {
       return Promise.resolve(
         jsonResponse({
-          items: options.latestProgram === undefined ? [] : [options.latestProgram.program],
+          program: options.latestProgram ?? null,
         }),
       );
     }

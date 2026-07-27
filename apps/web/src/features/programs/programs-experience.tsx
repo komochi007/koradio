@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQueries } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import type { DjScriptSegment, ProfileContext, Program, ProgramDetail } from "@koradio/contracts";
 import {
   useEffect,
@@ -15,7 +15,7 @@ import type { AppEventBus } from "../../shared/events.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
 import { FeedbackNotice, useFeedback } from "../feedback/index.js";
-import { getProgram, getPrograms } from "./api.js";
+import { deleteProgram, getProgram, getPrograms } from "./api.js";
 import {
   formatClockDuration,
   formatProgramDuration,
@@ -204,6 +204,7 @@ function ProgramCard({
   detail,
   favorited,
   onFavorite,
+  onDelete,
   onOpen,
   pending,
   program,
@@ -211,10 +212,12 @@ function ProgramCard({
   detail: ProgramDetail | undefined;
   favorited: boolean;
   onFavorite: () => void;
+  onDelete: () => void;
   onOpen: (button: HTMLButtonElement) => void;
   pending: boolean;
   program: Program;
 }): ReactElement {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <article className="program-card">
       <button
@@ -235,17 +238,44 @@ function ProgramCard({
           {`${String(program.trackIds.length)} TRACKS · ${detail === undefined ? "READING DURATION" : formatProgramDuration(programDurationMs(detail))}`}
         </small>
       </button>
-      <button
-        className={`program-card__favorite${favorited ? " program-card__favorite--active" : ""}`}
-        type="button"
-        aria-label={`${favorited ? "取消收藏" : "收藏"}节目 ${program.title}`}
-        aria-pressed={favorited}
-        aria-busy={pending || undefined}
-        disabled={pending}
-        onClick={onFavorite}
-      >
-        <Icon name="bookmark" />
-      </button>
+      <div className="program-card__actions">
+        <button
+          className={`program-card__favorite${favorited ? " program-card__favorite--active" : ""}`}
+          type="button"
+          aria-label={`${favorited ? "取消收藏" : "收藏"}节目 ${program.title}`}
+          aria-pressed={favorited}
+          aria-busy={pending || undefined}
+          disabled={pending}
+          onClick={onFavorite}
+        >
+          <Icon name="bookmark" />
+        </button>
+        <button
+          type="button"
+          aria-label={`更多节目操作 ${program.title}`}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => {
+            setMenuOpen((open) => !open);
+          }}
+        >
+          <Icon name="more" />
+        </button>
+        {menuOpen ? (
+          <div className="program-delete-menu" role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                onDelete();
+              }}
+            >
+              删除节目
+            </button>
+          </div>
+        ) : null}
+      </div>
       <span className="program-card__covers" aria-hidden="true">
         {program.trackIds.slice(0, 3).map((trackId) => (
           <i key={trackId} style={coverTone(trackId)} />
@@ -298,6 +328,7 @@ function ProgramDetailView({
   feedback,
   navigate,
   onBack,
+  onDelete,
   onReuseScenario,
 }: {
   audioEngine: AudioEngineFacade;
@@ -305,6 +336,7 @@ function ProgramDetailView({
   feedback: ReturnType<typeof useFeedback>;
   navigate: (path: string) => void;
   onBack: () => void;
+  onDelete: () => void;
   onReuseScenario: (scenarioText: string) => boolean;
 }): ReactElement {
   const audio = useAudioSnapshot(audioEngine);
@@ -319,6 +351,7 @@ function ProgramDetailView({
   const replaying = replay?.state === "loading" || replay?.state === "playing";
   const [ttsMissing, setTtsMissing] = useState(false);
   const [reuseError, setReuseError] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const likedTracks = detail.program.trackIds.filter((trackId) => feedback.isLiked(trackId)).length;
   const favorited = feedback.isFavorited(detail.program.id);
 
@@ -378,9 +411,25 @@ function ProgramDetailView({
           >
             <Icon name="heart" />
           </button>
-          <span className="icon-button" aria-hidden="true">
+          <button
+            className="icon-button"
+            type="button"
+            aria-label={`更多节目操作 ${detail.program.title}`}
+            aria-haspopup="menu"
+            aria-expanded={moreOpen}
+            onClick={() => {
+              setMoreOpen((open) => !open);
+            }}
+          >
             <Icon name="more" />
-          </span>
+          </button>
+          {moreOpen ? (
+            <div className="program-delete-menu program-delete-menu--detail" role="menu">
+              <button type="button" role="menuitem" onClick={onDelete}>
+                删除节目
+              </button>
+            </div>
+          ) : null}
         </div>
       </header>
       <main className="program-detail-main">
@@ -487,11 +536,62 @@ function ProgramDetailView({
   );
 }
 
+function DeleteProgramDialog({
+  error,
+  onCancel,
+  onConfirm,
+  pending,
+  program,
+}: {
+  error: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+  pending: boolean;
+  program: Program;
+}): ReactElement {
+  return (
+    <div className="program-delete-backdrop" role="presentation">
+      <section
+        aria-labelledby="program-delete-title"
+        aria-modal="true"
+        className="program-delete-dialog"
+        role="dialog"
+      >
+        <p>DELETE PROGRAM</p>
+        <h2 id="program-delete-title">删除“{program.title}”？</h2>
+        <p>节目、播放进度与独占 DJ 音频将永久删除，且无法恢复。</p>
+        {error ? <p role="alert">删除失败，节目仍保留。请重试。</p> : null}
+        <div>
+          <button
+            className="button button--secondary"
+            type="button"
+            disabled={pending}
+            onClick={onCancel}
+          >
+            取消
+          </button>
+          <button
+            className="button program-delete-confirm"
+            type="button"
+            disabled={pending}
+            onClick={onConfirm}
+          >
+            {pending ? "正在删除..." : "永久删除"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement {
   const profileId = props.current.profile.id;
+  const queryClient = useQueryClient();
   const feedback = useFeedback({ eventBus: props.eventBus, profileId, transport: props.transport });
   const [filter, setFilter] = useState<"all" | "favorites">("all");
   const [selectedProgramId, setSelectedProgramId] = useState<string>();
+  const [deleteTarget, setDeleteTarget] = useState<Program>();
+  const [deletionWarning, setDeletionWarning] = useState(false);
   const lastOpener = useRef<HTMLButtonElement | null>(null);
   const history = useInfiniteQuery({
     queryKey: ["programs", "history", profileId],
@@ -524,6 +624,43 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
     selectedProgramId === undefined
       ? undefined
       : detailQueries[programs.findIndex((program) => program.id === selectedProgramId)];
+  const deletion = useMutation({
+    mutationFn: (programId: string) => deleteProgram(props.transport, profileId, programId),
+    onSuccess(result) {
+      setDeletionWarning(result.pendingCleanupCount > 0);
+      if (result.clearedCurrentSession) {
+        void props.audioEngine.clearProgram?.();
+        queryClient.setQueryData(["programs", "latest", profileId], null);
+      }
+      setSelectedProgramId(undefined);
+      setDeleteTarget(undefined);
+      void queryClient.invalidateQueries({ queryKey: ["programs"] });
+      void queryClient.invalidateQueries({ queryKey: ["taste", profileId] });
+    },
+  });
+
+  useEffect(
+    () =>
+      props.eventBus.subscribe((event) => {
+        if (event.eventType !== "program.deleted" || event.profileId !== profileId) return;
+        if (event.payload.clearedCurrentSession) {
+          void props.audioEngine.clearProgram?.();
+          queryClient.setQueryData(["programs", "latest", profileId], null);
+        }
+        if (selectedProgramId === event.payload.programId) setSelectedProgramId(undefined);
+        if (deleteTarget?.id === event.payload.programId) setDeleteTarget(undefined);
+        void queryClient.invalidateQueries({ queryKey: ["programs"] });
+        void queryClient.invalidateQueries({ queryKey: ["taste", profileId] });
+      }),
+    [
+      deleteTarget?.id,
+      profileId,
+      props.audioEngine,
+      props.eventBus,
+      queryClient,
+      selectedProgramId,
+    ],
+  );
 
   useEffect(() => {
     if (selectedDetail !== undefined) {
@@ -536,17 +673,35 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
   if (selectedProgramId !== undefined) {
     if (selectedDetail !== undefined) {
       return (
-        <ProgramDetailView
-          audioEngine={props.audioEngine}
-          detail={selectedDetail}
-          feedback={feedback}
-          navigate={props.navigate}
-          onBack={() => {
-            setSelectedProgramId(undefined);
-            window.requestAnimationFrame(() => lastOpener.current?.focus());
-          }}
-          onReuseScenario={props.onReuseScenario}
-        />
+        <>
+          <ProgramDetailView
+            audioEngine={props.audioEngine}
+            detail={selectedDetail}
+            feedback={feedback}
+            navigate={props.navigate}
+            onBack={() => {
+              setSelectedProgramId(undefined);
+              window.requestAnimationFrame(() => lastOpener.current?.focus());
+            }}
+            onDelete={() => {
+              setDeleteTarget(selectedDetail.program);
+            }}
+            onReuseScenario={props.onReuseScenario}
+          />
+          {deleteTarget !== undefined ? (
+            <DeleteProgramDialog
+              error={deletion.isError}
+              onCancel={() => {
+                if (!deletion.isPending) setDeleteTarget(undefined);
+              }}
+              onConfirm={() => {
+                deletion.mutate(deleteTarget.id);
+              }}
+              pending={deletion.isPending}
+              program={deleteTarget}
+            />
+          ) : null}
+        </>
       );
     }
     return (
@@ -611,6 +766,11 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
             <Icon name="search" />
           </span>
         </header>
+        {deletionWarning ? (
+          <p className="programs-deletion-warning" role="status">
+            节目已删除；部分本地音频将在服务下次启动时继续清理。
+          </p>
+        ) : null}
         <div className="programs-segmented" role="group" aria-label="节目筛选">
           <button
             type="button"
@@ -683,6 +843,9 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
                     onFavorite={() => {
                       feedback.toggleFavorite(program.id);
                     }}
+                    onDelete={() => {
+                      setDeleteTarget(program);
+                    }}
                     onOpen={(button) => {
                       lastOpener.current = button;
                       setSelectedProgramId(program.id);
@@ -721,6 +884,19 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
         ) : null}
       </main>
       <FeedbackNotice notice={feedback.notice} onDismiss={feedback.dismissNotice} />
+      {deleteTarget !== undefined ? (
+        <DeleteProgramDialog
+          error={deletion.isError}
+          onCancel={() => {
+            if (!deletion.isPending) setDeleteTarget(undefined);
+          }}
+          onConfirm={() => {
+            deletion.mutate(deleteTarget.id);
+          }}
+          pending={deletion.isPending}
+          program={deleteTarget}
+        />
+      ) : null}
       <PrimaryNavigation active="programs" onNavigate={props.navigate} />
     </div>
   );

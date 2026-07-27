@@ -55,11 +55,27 @@ export interface ProgramRecord {
 }
 
 export interface ProgramRepository {
+  current(profileId: string): ProgramRecord | null;
+  delete(
+    profileId: string,
+    programId: string,
+    cleanup: PendingCleanupRecord[],
+  ): { clearedCurrent: boolean; deleted: boolean };
   find(profileId: string, programId: string): ProgramRecord | null;
   has(profileId: string, programId: string): boolean;
   insert(record: ProgramRecord): void;
   list(profileId: string, cursor?: string, limit?: number): ProgramListResponse;
   markCompleted(profileId: string, programId: string): Program | null;
+  setCurrent(profileId: string, programId: string): void;
+  ttsReferences(programId: string): string[];
+  ttsReferenceUseCount(reference: string): number;
+}
+
+export interface PendingCleanupRecord {
+  createdAt: string;
+  id: string;
+  reference: string;
+  stagedName: string;
 }
 
 function mapSegment(row: DjScriptSegmentRow): DjScriptSegment {
@@ -113,6 +129,12 @@ function decodeCursor(cursor: string | undefined): number {
 
 export function createProgramRepository(client: DatabaseSync): ProgramRepository {
   const findProgram = client.prepare("SELECT * FROM program WHERE profile_id = ? AND id = ?");
+  const findCurrentProgram = client.prepare(`
+    SELECT program.*
+    FROM current_program
+    JOIN program ON program.id = current_program.program_id
+    WHERE current_program.profile_id = ?
+  `);
   const findProgramTracks = client.prepare(`
     SELECT track_id FROM program_track WHERE program_id = ? ORDER BY position ASC
   `);
@@ -142,6 +164,34 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
   const updateCompleted = client.prepare(`
     UPDATE program SET status = 'completed' WHERE profile_id = ? AND id = ?
   `);
+  const upsertCurrent = client.prepare(`
+    INSERT INTO current_program (profile_id, program_id)
+    VALUES (?, ?)
+    ON CONFLICT(profile_id) DO UPDATE SET program_id = excluded.program_id
+  `);
+  const listTtsReferences = client.prepare(`
+    SELECT DISTINCT tts_audio_ref
+    FROM dj_script_segment
+    WHERE program_id = ? AND tts_audio_ref IS NOT NULL
+  `);
+  const countTtsReference = client.prepare(`
+    SELECT COUNT(*) AS count FROM dj_script_segment WHERE tts_audio_ref = ?
+  `);
+  const deleteCheckpoint = client.prepare("DELETE FROM playback_checkpoint WHERE program_id = ?");
+  const deleteCurrent = client.prepare(
+    "DELETE FROM current_program WHERE profile_id = ? AND program_id = ?",
+  );
+  const deleteTimeline = client.prepare("DELETE FROM playback_timeline_item WHERE program_id = ?");
+  const deleteTracks = client.prepare("DELETE FROM program_track WHERE program_id = ?");
+  const deleteSegments = client.prepare("DELETE FROM dj_script_segment WHERE program_id = ?");
+  const deleteGeneration = client.prepare(`
+    DELETE FROM program_generation_job WHERE profile_id = ? AND program_id = ? AND status = 'succeeded'
+  `);
+  const deleteProgram = client.prepare("DELETE FROM program WHERE profile_id = ? AND id = ?");
+  const insertCleanup = client.prepare(`
+    INSERT INTO pending_file_cleanup (id, reference, staged_name, created_at)
+    VALUES (?, ?, ?, ?)
+  `);
 
   function readProgram(row: ProgramRow): Program {
     const trackIds = (findProgramTracks.all(row.id) as unknown as ProgramTrackRow[]).map(
@@ -161,6 +211,23 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
   }
 
   return {
+    current(profileId) {
+      const row = findCurrentProgram.get(profileId) as unknown as ProgramRow | undefined;
+      return row === undefined ? null : readRecord(row);
+    },
+    delete(profileId, programId, cleanup) {
+      deleteCheckpoint.run(programId);
+      const cleared = deleteCurrent.run(profileId, programId).changes > 0;
+      deleteTimeline.run(programId);
+      deleteTracks.run(programId);
+      deleteSegments.run(programId);
+      deleteGeneration.run(profileId, programId);
+      const result = deleteProgram.run(profileId, programId);
+      for (const record of cleanup) {
+        insertCleanup.run(record.id, record.reference, record.stagedName, record.createdAt);
+      }
+      return { clearedCurrent: cleared, deleted: result.changes > 0 };
+    },
     find(profileId, programId) {
       const row = findProgram.get(profileId, programId) as unknown as ProgramRow | undefined;
       return row === undefined ? null : readRecord(row);
@@ -209,6 +276,18 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
       updateCompleted.run(profileId, programId);
       const row = findProgram.get(profileId, programId) as unknown as ProgramRow | undefined;
       return row === undefined ? null : readProgram(row);
+    },
+    setCurrent(profileId, programId) {
+      upsertCurrent.run(profileId, programId);
+    },
+    ttsReferences(programId) {
+      return (listTtsReferences.all(programId) as unknown as Array<{ tts_audio_ref: string }>).map(
+        (row) => row.tts_audio_ref,
+      );
+    },
+    ttsReferenceUseCount(reference) {
+      const row = countTtsReference.get(reference) as unknown as { count: number };
+      return row.count;
     },
   };
 }

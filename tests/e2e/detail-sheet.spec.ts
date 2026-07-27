@@ -137,10 +137,10 @@ async function openDetail(
       },
     }),
   );
-  await context.route(/\/api\/v1\/profiles\/[^/]+\/programs\?limit=1$/, (route) =>
-    route.fulfill({ json: { items: [program.program] } }),
+  await context.route(/\/api\/v1\/profiles\/[^/]+\/programs\/current$/, (route) =>
+    route.fulfill({ json: { program } }),
   );
-  await context.route(/\/api\/v1\/profiles\/[^/]+\/programs\/[^/?]+$/, (route) =>
+  await context.route(/\/api\/v1\/profiles\/[^/]+\/programs\/(?!current$)[^/?]+$/, (route) =>
     route.fulfill({ json: program }),
   );
   await context.route(/\/api\/v1\/profiles\/[^/]+\/tracks\/[^/]+\/lyrics$/, (route) =>

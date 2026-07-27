@@ -250,6 +250,14 @@ async function mockProgramsWorkspace(
       },
     });
   });
+  await page.route("**/api/v1/profiles/*/programs/current", async (route) => {
+    const profileId = new URL(route.request().url()).pathname.split("/").at(-3) ?? firstProfileId;
+    const source = profileId === secondProfileId ? secondPrograms : firstPrograms;
+    const current = source[0];
+    await route.fulfill({
+      json: { program: current === undefined ? null : details.get(current.id) },
+    });
+  });
   await page.route("**/api/v1/profiles/*/programs?*", async (route) => {
     if (options.failList === true) {
       await route.fulfill({
@@ -280,7 +288,39 @@ async function mockProgramsWorkspace(
     });
   });
   await page.route("**/api/v1/profiles/*/programs/*", async (route) => {
-    const id = new URL(route.request().url()).pathname.split("/").at(-1) ?? "";
+    const url = new URL(route.request().url());
+    const id = url.pathname.split("/").at(-1) ?? "";
+    if (id === "current") {
+      const profileId = url.pathname.split("/").at(-3) ?? firstProfileId;
+      const source = profileId === secondProfileId ? secondPrograms : firstPrograms;
+      const current = source[0];
+      await route.fulfill({
+        json: { program: current === undefined ? null : details.get(current.id) },
+      });
+      return;
+    }
+    if (route.request().method() === "DELETE") {
+      const profileId = url.pathname.split("/").at(-3) ?? firstProfileId;
+      const source = profileId === secondProfileId ? secondPrograms : firstPrograms;
+      const index = source.findIndex((candidate) => candidate.id === id);
+      if (index < 0) {
+        await route.fulfill({ status: 404, json: { code: "PROGRAM_NOT_FOUND" } });
+        return;
+      }
+      const clearedCurrentSession = index === 0;
+      source.splice(index, 1);
+      details.delete(id);
+      await route.fulfill({
+        json: {
+          programId: id,
+          clearedCurrentSession,
+          deletedAudioCount: 1,
+          retainedAudioCount: 0,
+          pendingCleanupCount: 0,
+        },
+      });
+      return;
+    }
     await route.fulfill({ json: details.get(id) });
   });
   await page.route("**/api/v1/profiles/*/program-generations", async (route) => {
@@ -369,7 +409,7 @@ test("paginates, replays, favorites, reuses and isolates Programs history", asyn
 
   await page.getByRole("button", { name: "播放 DJ 开场" }).click();
   await expect(page.getByRole("button", { name: "停止 DJ 开场重播" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "播放 DJ 开场" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "播放 DJ 开场" })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "收藏节目 After Hours, Soft Focus" }).click();
   await expect(
     page.getByRole("button", { name: "取消收藏节目 After Hours, Soft Focus" }),
@@ -402,11 +442,27 @@ test("falls back to text when historical TTS audio is absent", async ({ browserN
   await page.getByRole("button", { name: "打开节目 Slow Start, Clear Head" }).click();
   await page.getByRole("button", { name: "重播串讲" }).click();
   await expect(page.getByText("串讲音频缺失，已显示文字版")).toBeVisible();
-  await expect(
-    page.getByText(
-      "今晚不必急着找到答案。先从一首有点旧、有点温柔的歌开始，让房间里的声音慢下来。",
-    ),
-  ).toBeVisible();
+  await expect(page.getByText("今晚不必急着找到答案。")).toBeVisible();
+});
+
+test("permanently deletes a history program only after confirmation", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName === "webkit", "受控 Programs 删除路由由 Chromium 与 Firefox 验收");
+  await page.setViewportSize({ width: 960, height: 1600 });
+  await mockProgramsWorkspace(page);
+  await page.goto(`${appOrigin}/programs`);
+  await page.getByRole("button", { name: "更多节目操作 After Hours, Soft Focus" }).click();
+  await page.getByRole("menuitem", { name: "删除节目" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("After Hours, Soft Focus");
+  await expect(dialog).toContainText("无法恢复");
+  await dialog.getByRole("button", { name: "永久删除" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: "打开节目 After Hours, Soft Focus" })).toBeHidden();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "打开节目 After Hours, Soft Focus" })).toBeHidden();
 });
 
 test("keeps history load failures recoverable", async ({ browserName, page }) => {

@@ -610,6 +610,16 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         leaseEpoch: epoch,
       });
     },
+    async clearProgram() {
+      await stopPreview();
+      await yieldPlayback();
+      lease.release();
+      stopMedia();
+      program = undefined;
+      profileId = undefined;
+      snapshot = initialSnapshot;
+      publish();
+    },
     async destroy() {
       if (destroyed) return;
       destroyed = true;

@@ -182,12 +182,12 @@ async function mockRadio(
       },
     }),
   );
-  await page.route(/\/api\/v1\/profiles\/[^/]+\/programs\?limit=1$/, (route) =>
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/programs\/current$/, (route) =>
     route.fulfill({
-      json: { items: options.program === true ? [program.program] : [] },
+      json: { program: options.program === true ? program : null },
     }),
   );
-  await page.route(/\/api\/v1\/profiles\/[^/]+\/programs\/[^/?]+$/, (route) =>
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/programs\/(?!current$)[^/?]+$/, (route) =>
     route.fulfill({ json: program }),
   );
   await page.route(/\/api\/v1\/profiles\/[^/]+\/playback$/, (route) =>

@@ -54,6 +54,17 @@ export function useRadioProgram({
     () =>
       eventBus.subscribe((event) => {
         const active = activeRef.current;
+        if (event.eventType === "program.deleted" && event.profileId === profileId) {
+          queryClient.removeQueries({
+            queryKey: ["programs", "detail", profileId, event.payload.programId],
+          });
+          void queryClient.invalidateQueries({ queryKey: ["programs", "history", profileId] });
+          if (event.payload.clearedCurrentSession) {
+            queryClient.setQueryData(["programs", "latest", profileId], null);
+            dispatch({ type: "program.loaded", program: null });
+          }
+          return;
+        }
         if (
           active !== undefined &&
           event.eventType === "program.committed" &&

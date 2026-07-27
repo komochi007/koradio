@@ -115,8 +115,11 @@ export interface DownloadFileCommand {
 
 export interface LocalFileStore {
   download(command: DownloadFileCommand): Promise<StoredFile>;
+  finalizeDelete(stagedName: string): Promise<void>;
   put(command: PutFileCommand): Promise<StoredFile>;
   read(reference: string): Promise<Buffer>;
+  restoreDelete(reference: string, stagedName: string): Promise<void>;
+  stageDelete(reference: string): Promise<string>;
 }
 
 export interface CreateLocalFileStoreOptions {
@@ -257,6 +260,7 @@ async function ensurePrivateDirectory(path: string): Promise<void> {
 export function createLocalFileStore(options: CreateLocalFileStoreOptions): LocalFileStore {
   const dataRoot = resolve(options.dataRoot);
   const filesRoot = join(dataRoot, "files");
+  const deletionRoot = join(filesRoot, ".pending-delete");
   const fetchImplementation = options.fetchImplementation ?? fetch;
 
   async function put(command: PutFileCommand): Promise<StoredFile> {
@@ -370,6 +374,17 @@ export function createLocalFileStore(options: CreateLocalFileStoreOptions): Loca
         clearTimeout(timeout);
       }
     },
+    async finalizeDelete(stagedName) {
+      if (!/^[0-9a-f-]{36}$/.test(stagedName)) {
+        throw new FileStoreError("invalid_reference");
+      }
+      try {
+        await unlink(join(deletionRoot, stagedName));
+      } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "ENOENT") return;
+        throw new FileStoreError("storage_unavailable");
+      }
+    },
     put,
     async read(reference) {
       const { extension, namespace } = parseReference(reference);
@@ -397,6 +412,32 @@ export function createLocalFileStore(options: CreateLocalFileStoreOptions): Loca
         if (error instanceof FileStoreError) {
           throw error;
         }
+        if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+          throw new FileStoreError("file_not_found");
+        }
+        throw new FileStoreError("storage_unavailable");
+      }
+    },
+    async restoreDelete(reference, stagedName) {
+      const path = resolveControlledPath(filesRoot, reference);
+      if (!/^[0-9a-f-]{36}$/.test(stagedName)) {
+        throw new FileStoreError("invalid_reference");
+      }
+      try {
+        await ensurePrivateDirectory(join(path, ".."));
+        await rename(join(deletionRoot, stagedName), path);
+      } catch {
+        throw new FileStoreError("storage_unavailable");
+      }
+    },
+    async stageDelete(reference) {
+      const path = resolveControlledPath(filesRoot, reference);
+      const stagedName = randomUUID();
+      try {
+        await ensurePrivateDirectory(deletionRoot);
+        await rename(path, join(deletionRoot, stagedName));
+        return stagedName;
+      } catch (error) {
         if (error instanceof Error && "code" in error && error.code === "ENOENT") {
           throw new FileStoreError("file_not_found");
         }

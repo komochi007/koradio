@@ -65,6 +65,16 @@ export const programListResponseSchema = z.strictObject({
   items: z.array(programSchema),
   nextCursor: cursorSchema.optional(),
 });
+export const currentProgramResponseSchema = z.strictObject({
+  program: programDetailSchema.nullable(),
+});
+export const deleteProgramResponseSchema = z.strictObject({
+  programId: programIdSchema,
+  clearedCurrentSession: z.boolean(),
+  deletedAudioCount: z.number().int().nonnegative(),
+  retainedAudioCount: z.number().int().nonnegative(),
+  pendingCleanupCount: z.number().int().nonnegative(),
+});
 export const generateProgramCommandSchema = z.strictObject({
   scenarioText: z.string().trim().min(1).max(500),
 });
@@ -91,6 +101,8 @@ export type PlaybackTimelineItem = z.infer<typeof playbackTimelineItemSchema>;
 export type Program = z.infer<typeof programSchema>;
 export type ProgramDetail = z.infer<typeof programDetailSchema>;
 export type ProgramListResponse = z.infer<typeof programListResponseSchema>;
+export type CurrentProgramResponse = z.infer<typeof currentProgramResponseSchema>;
+export type DeleteProgramResponse = z.infer<typeof deleteProgramResponseSchema>;
 export type GenerateProgramCommand = z.infer<typeof generateProgramCommandSchema>;
 export type PlaybackCheckpoint = z.infer<typeof playbackCheckpointSchema>;
 export type SavePlaybackCheckpointCommand = z.infer<typeof savePlaybackCheckpointCommandSchema>;

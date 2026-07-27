@@ -12,7 +12,9 @@ import {
   createLibraryItemRequestSchema,
   createDataRootMigrationRequestSchema,
   createProfileRequestSchema,
+  currentProgramResponseSchema,
   currentProfileResponseSchema,
+  deleteProgramResponseSchema,
   errorEnvelopeSchema,
   feedbackEventSchema,
   feedbackPersistedEventSchema,
@@ -30,6 +32,7 @@ import {
   playbackSnapshotRequestSchema,
   programDetailRequestSchema,
   programDetailSchema,
+  programDeletedEventSchema,
   programGenerationSnapshotRequestSchema,
   programGenerationSnapshotSchema,
   programListRequestSchema,
@@ -100,9 +103,11 @@ import {
   ProgramGenerationConflictError,
   ProgramGenerationDataError,
   ProgramGenerationNotFoundError,
+  ProgramDeletionError,
   ProgramNotFoundError,
   createProgramGenerationRepository,
   createProgramGenerationService,
+  createProgramDeletionService,
   createProgramRepository,
   createProgramService,
   type CodexProvider,
@@ -305,9 +310,10 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   });
   const playbackRepository = createPlaybackRepository(database.client);
   const playbackTimeline = createPlaybackTimelineService(playbackRepository);
+  const programRepository = createProgramRepository(database.client);
   const programs = createProgramService({
     client: database.client,
-    repository: createProgramRepository(database.client),
+    repository: programRepository,
     timeline: playbackTimeline,
     tracks: library,
   });
@@ -336,6 +342,13 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       options.ttsProvider !== undefined,
   });
   const eventHub = createEventHub();
+  const programDeletion = createProgramDeletionService({
+    client: database.client,
+    fileStore,
+    programs,
+    repository: programRepository,
+  });
+  await programDeletion.retryPendingCleanup();
   const programGeneration = createProgramGenerationService({
     codex: options.codexProvider ?? runtimeProviders.codex,
     events: eventHub,
@@ -912,6 +925,33 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     }
   });
 
+  app.get("/api/v1/profiles/:profileId/programs/current", (request, reply) => {
+    const parsed = profileIdParamsSchema.safeParse(request.params);
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PROGRAM_CURRENT_VALIDATION_FAILED",
+        "Current program request is invalid",
+        false,
+      );
+    }
+    try {
+      profiles.get(parsed.data.profileId);
+      return currentProgramResponseSchema.parse({
+        program: programs.current(parsed.data.profileId),
+      });
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProgramDataError) {
+        return sendApiError(reply, 500, "PROGRAM_UNREADABLE", "Program could not be read", true);
+      }
+      throw error;
+    }
+  });
+
   app.get("/api/v1/profiles/:profileId/programs/:programId", (request, reply) => {
     const parsed = programDetailRequestSchema.safeParse({ params: request.params });
     if (!parsed.success) {
@@ -938,6 +978,62 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       }
       if (error instanceof ProgramDataError) {
         return sendApiError(reply, 500, "PROGRAM_UNREADABLE", "Program could not be read", true);
+      }
+      throw error;
+    }
+  });
+
+  app.delete("/api/v1/profiles/:profileId/programs/:programId", async (request, reply) => {
+    const parsed = programDetailRequestSchema.safeParse({ params: request.params });
+    if (!parsed.success) {
+      return sendApiError(
+        reply,
+        400,
+        "PROGRAM_DELETE_VALIDATION_FAILED",
+        "Program delete request is invalid",
+        false,
+      );
+    }
+    try {
+      profiles.get(parsed.data.params.profileId);
+      const result = await programDeletion.delete(
+        parsed.data.params.profileId,
+        parsed.data.params.programId,
+        () => {
+          feedback.removeProgramFavoriteForDeletion(
+            parsed.data.params.profileId,
+            parsed.data.params.programId,
+          );
+        },
+      );
+      eventHub.publish(
+        programDeletedEventSchema.parse({
+          eventId: randomUUID(),
+          eventType: "program.deleted",
+          version: 1,
+          profileId: parsed.data.params.profileId,
+          correlationId: parsed.data.params.programId,
+          sequence: 0,
+          occurredAt: new Date().toISOString(),
+          payload: result,
+        }),
+      );
+      return deleteProgramResponseSchema.parse(result);
+    } catch (error) {
+      if (error instanceof ProfileNotFoundError) {
+        return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+      }
+      if (error instanceof ProgramDeletionError) {
+        if (!programs.hasProgram(parsed.data.params.profileId, parsed.data.params.programId)) {
+          return sendApiError(reply, 404, "PROGRAM_NOT_FOUND", "Program was not found", false);
+        }
+        return sendApiError(
+          reply,
+          500,
+          "PROGRAM_DELETE_FAILED",
+          "Program could not be deleted",
+          true,
+        );
       }
       throw error;
     }

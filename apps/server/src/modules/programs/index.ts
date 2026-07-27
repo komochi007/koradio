@@ -1,4 +1,5 @@
 export * from "./domain/program.js";
+export * from "./deletion-service.js";
 export * from "./generation-persistence.js";
 export * from "./generation-service.js";
 export * from "./persistence.js";

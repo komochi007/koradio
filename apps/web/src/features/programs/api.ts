@@ -1,8 +1,11 @@
 import {
+  currentProgramResponseSchema,
+  deleteProgramResponseSchema,
   jobAcceptedResponseSchema,
   programDetailSchema,
   programGenerationSnapshotSchema,
   programListResponseSchema,
+  type DeleteProgramResponse,
   type JobAcceptedResponse,
   type ProgramDetail,
   type ProgramGenerationSnapshot,
@@ -16,13 +19,25 @@ export async function getLatestProgram(
   transport: ServiceTransport,
   profileId: string,
 ): Promise<ProgramDetail | null> {
-  const programs = await requestJson(
+  const current = await requestJson(
     transport,
-    `/api/v1/profiles/${encodeURIComponent(profileId)}/programs?limit=1`,
-    programListResponseSchema,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/programs/current`,
+    currentProgramResponseSchema,
   );
-  const latest = programs.items[0];
-  return latest === undefined ? null : getProgram(transport, profileId, latest.id);
+  return current.program;
+}
+
+export function deleteProgram(
+  transport: ServiceTransport,
+  profileId: string,
+  programId: string,
+): Promise<DeleteProgramResponse> {
+  return requestJson(
+    transport,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/programs/${encodeURIComponent(programId)}`,
+    deleteProgramResponseSchema,
+    { method: "DELETE" },
+  );
 }
 
 export function getPrograms(

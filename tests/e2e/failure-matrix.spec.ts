@@ -90,10 +90,10 @@ async function mockProgram(
       },
     }),
   );
-  await page.route(/\/api\/v1\/profiles\/[^/]+\/programs\?limit=1$/, (route) =>
-    route.fulfill({ json: { items: [options.program.program] } }),
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/programs\/current$/, (route) =>
+    route.fulfill({ json: { program: options.program } }),
   );
-  await page.route(/\/api\/v1\/profiles\/[^/]+\/programs\/[^/?]+$/, (route) =>
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/programs\/(?!current$)[^/?]+$/, (route) =>
     route.fulfill({ json: options.program }),
   );
   await page.route(/\/api\/v1\/profiles\/[^/]+\/playback$/, (route) =>

@@ -795,6 +795,15 @@ describe("Audio Engine", () => {
     await engine.loadProgram(replacement, { autoplay: false });
     await engine.activateProfile("00000000-0000-4000-8000-000000000011");
     expect(engine.getSnapshot().profileId).toBe("00000000-0000-4000-8000-000000000011");
+    await engine.clearProgram?.();
+    expect(engine.getSnapshot()).toMatchObject({
+      state: "idle",
+      profileId: undefined,
+      programId: undefined,
+      itemCount: 0,
+    });
+    expect(lease.released).toBe(true);
+    expect(audio.removeAttribute).toHaveBeenCalledWith("src");
   });
 
   it("propagates unexpected checkpoint API errors", async () => {

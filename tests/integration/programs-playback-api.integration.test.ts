@@ -1,4 +1,6 @@
 import {
+  currentProgramResponseSchema,
+  deleteProgramResponseSchema,
   errorEnvelopeSchema,
   feedbackEventSchema,
   musicSearchResponseSchema,
@@ -31,6 +33,7 @@ import {
   createProgramService,
 } from "../../apps/server/src/modules/programs/index.js";
 import { bootstrapDatabase } from "../../apps/server/src/platform/db/database.js";
+import { createLocalFileStore } from "../../apps/server/src/platform/files/index.js";
 import { ids } from "../contract/v1-contract-fixtures.js";
 
 const origin = "http://127.0.0.1:49373";
@@ -101,6 +104,13 @@ describe("S3-04 Programs and Playback REST", () => {
     await setupApp.close();
 
     const database = await bootstrapDatabase({ dataRoot: config.dataRoot });
+    const fileStore = createLocalFileStore({ dataRoot: config.dataRoot });
+    const ttsAudio = await fileStore.put({
+      content: new Uint8Array([82, 73, 70, 70]),
+      extension: "wav",
+      mimeType: "audio/wav",
+      namespace: "tts",
+    });
     const library = createLibraryService({
       provider: createMockMusicProvider(),
       repository: createLibraryRepository(database.client),
@@ -113,6 +123,10 @@ describe("S3-04 Programs and Playback REST", () => {
       tracks: library,
     });
     const createdAt = "2026-07-17T04:00:00.000Z";
+    const sharedProgramId = "0190f4b5-3c44-7b1a-9c69-2d8c4b1bdf20";
+    const sharedSegmentId = "0190f4b5-3c44-7b1a-9c69-2d8c4b1bdf21";
+    const sharedTimelineDjId = "0190f4b5-3c44-7b1a-9c69-2d8c4b1bdf22";
+    const sharedTimelineTrackId = "0190f4b5-3c44-7b1a-9c69-2d8c4b1bdf23";
     const detail = programDetailSchema.parse({
       program: {
         id: ids.program,
@@ -132,21 +146,57 @@ describe("S3-04 Programs and Playback REST", () => {
           text: "今晚适合慢一点。",
           displayText: "今晚适合慢一点。",
           estimatedTiming: true,
-          ttsAudioRef: null,
+          ttsAudioRef: ttsAudio.reference,
         },
       ],
       tracks: [track],
       timeline: [
         {
+          id: ids.timelineDj,
+          kind: "dj",
+          position: 0,
+          segmentId: ids.segment,
+          audioRef: ttsAudio.reference,
+          durationMs: 1_000,
+        },
+        {
           id: ids.timelineTrack,
           kind: "track",
-          position: 0,
+          position: 1,
           trackId: track.id,
           resolvedAudioRef: "media/program/space-song.m4a",
           durationMs: track.durationMs,
         },
       ],
     });
+    const sharedDetail = programDetailSchema.parse({
+      program: {
+        ...detail.program,
+        id: sharedProgramId,
+        title: "Earlier Shared Audio",
+        createdAt: "2026-07-17T03:00:00.000Z",
+      },
+      djScripts: [
+        {
+          ...detail.djScripts[0],
+          id: sharedSegmentId,
+          programId: sharedProgramId,
+        },
+      ],
+      tracks: detail.tracks,
+      timeline: [
+        {
+          ...detail.timeline[0],
+          id: sharedTimelineDjId,
+          segmentId: sharedSegmentId,
+        },
+        {
+          ...detail.timeline[1],
+          id: sharedTimelineTrackId,
+        },
+      ],
+    });
+    programs.commit(sharedDetail);
     programs.commit(detail);
     await library.close();
     database.close();
@@ -163,7 +213,7 @@ describe("S3-04 Programs and Playback REST", () => {
     });
     expect(listResponse.statusCode).toBe(200);
     expect(programListResponseSchema.parse(listResponse.json<unknown>())).toEqual({
-      items: [detail.program],
+      items: [detail.program, sharedDetail.program],
     });
     const invalidCursor = await app.inject({
       method: "GET",
@@ -278,5 +328,81 @@ describe("S3-04 Programs and Playback REST", () => {
     expect(tasteResponseSchema.parse(tasteResponse.json<unknown>()).projection.affinities).toEqual([
       `program:${ids.program}`,
     ]);
+
+    const sharedDeleted = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/profiles/${profile.id}/programs/${sharedProgramId}`,
+      headers,
+    });
+    expect(deleteProgramResponseSchema.parse(sharedDeleted.json<unknown>())).toEqual({
+      programId: sharedProgramId,
+      clearedCurrentSession: false,
+      deletedAudioCount: 0,
+      retainedAudioCount: 1,
+      pendingCleanupCount: 0,
+    });
+    expect(Array.from(await fileStore.read(ttsAudio.reference))).toEqual([82, 73, 70, 70]);
+
+    const currentResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/profiles/${profile.id}/programs/current`,
+      headers,
+    });
+    expect(
+      currentProgramResponseSchema.parse(currentResponse.json<unknown>()).program?.program.id,
+    ).toBe(ids.program);
+
+    const deletedResponse = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/profiles/${profile.id}/programs/${ids.program}`,
+      headers,
+    });
+    expect(deleteProgramResponseSchema.parse(deletedResponse.json<unknown>())).toEqual({
+      programId: ids.program,
+      clearedCurrentSession: true,
+      deletedAudioCount: 1,
+      retainedAudioCount: 0,
+      pendingCleanupCount: 0,
+    });
+    await expect(fileStore.read(ttsAudio.reference)).rejects.toMatchObject({
+      code: "file_not_found",
+    });
+    expect(
+      currentProgramResponseSchema.parse(
+        (
+          await app.inject({
+            method: "GET",
+            url: `/api/v1/profiles/${profile.id}/programs/current`,
+            headers,
+          })
+        ).json<unknown>(),
+      ).program,
+    ).toBeNull();
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: `/api/v1/profiles/${profile.id}/programs/${ids.program}`,
+          headers,
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: `/api/v1/profiles/${profile.id}/playback`,
+          headers,
+        })
+      ).statusCode,
+    ).toBe(404);
+    const tasteAfterDeletion = await app.inject({
+      method: "GET",
+      url: `/api/v1/profiles/${profile.id}/taste`,
+      headers,
+    });
+    expect(
+      tasteResponseSchema.parse(tasteAfterDeletion.json<unknown>()).projection.affinities,
+    ).toEqual([]);
   });
 });

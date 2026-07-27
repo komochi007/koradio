@@ -43,6 +43,7 @@ export interface LoadProgramOptions {
 
 export interface AudioEngineFacade {
   activateProfile(profileId: string): Promise<void>;
+  clearProgram?(): Promise<void>;
   destroy(): Promise<void>;
   getSnapshot(): AudioEngineSnapshot;
   loadProgram(program: ProgramDetail, options: LoadProgramOptions): Promise<void>;

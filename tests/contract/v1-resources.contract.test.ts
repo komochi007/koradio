@@ -5,9 +5,11 @@ import {
   createDataRootMigrationCommandSchema,
   createFeedbackCommandSchema,
   createProfileCommandSchema,
+  currentProgramResponseSchema,
   currentProfileResponseSchema,
   dataRootMigrationSnapshotSchema,
   deviceSettingsSchema,
+  deleteProgramResponseSchema,
   djScriptSegmentSchema,
   effectiveTasteSchema,
   feedbackEventSchema,
@@ -288,6 +290,19 @@ describe("v1 resource and command contracts", () => {
     expect(playableAudioRefSchema.parse("tts/program/intro.aiff")).toBe("tts/program/intro.aiff");
     expect(programDetailSchema.parse(programDetail)).toEqual(programDetail);
     expect(programListResponseSchema.parse({ items: [program] }).items).toHaveLength(1);
+    expect(currentProgramResponseSchema.parse({ program: programDetail }).program).toEqual(
+      programDetail,
+    );
+    expect(currentProgramResponseSchema.parse({ program: null }).program).toBeNull();
+    expect(
+      deleteProgramResponseSchema.parse({
+        programId: ids.program,
+        clearedCurrentSession: true,
+        deletedAudioCount: 1,
+        retainedAudioCount: 0,
+        pendingCleanupCount: 0,
+      }),
+    ).toMatchObject({ programId: ids.program, clearedCurrentSession: true });
     expect(generateProgramCommandSchema.parse({ scenarioText: "夜晚写作" })).toEqual({
       scenarioText: "夜晚写作",
     });
