@@ -257,9 +257,10 @@ test("a failed track advances while an exhausted queue reaches a stable failed s
     await expect(takeover).toBeVisible();
     await takeover.click();
   }
-  await expect(page.getByText("当前队列无法继续播放，请重新生成节目")).toBeVisible({
+  await expect(page.getByText("当前队列无法继续播放。")).toBeVisible({
     timeout: 10_000,
   });
+  await expect(page.getByRole("button", { name: "重新生成" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Second Safe Track" })).toBeVisible();
   await expect(page.getByText("这段已提交的节目不会被失败任务覆盖。")).toBeVisible();
   await expect

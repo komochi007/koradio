@@ -54,6 +54,7 @@ export interface CreateLibraryServiceOptions {
 
 export interface LibraryService {
   addItem(profileId: string, trackId: string, idempotencyKey: string): LibraryItem;
+  candidateTracks(profileId: string, limit?: number): MusicTrack[];
   close(): Promise<void>;
   getImport(profileId: string, jobId: string): PlaylistImportSnapshot;
   getLyrics(trackId: string, signal?: AbortSignal): Promise<TrackLyrics>;
@@ -198,6 +199,12 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       }
       return libraryItemSchema.parse(item);
     },
+    candidateTracks(profileId, limit = 100) {
+      return options.repository
+        .list(profileId, undefined, limit, originMode)
+        .items.map((item) => item.track)
+        .filter((track) => track.playable);
+    },
     async close() {
       await Promise.allSettled(pendingImports);
     },
@@ -313,14 +320,14 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
       const candidates = [
         ...new Set(keywords.map((keyword) => keyword.trim()).filter(Boolean)),
       ].slice(0, 3);
-      let response = musicSearchResponseSchema.parse({ items: [] });
+      const items = new Map<string, MusicTrack>();
       for (const keyword of candidates) {
-        response = await searchOne(keyword, signal);
-        if (response.items.length > 0) {
-          return response;
+        const response = await searchOne(keyword, signal);
+        for (const track of response.items) {
+          items.set(track.id, track);
         }
       }
-      return response;
+      return musicSearchResponseSchema.parse({ items: [...items.values()] });
     },
   };
 }

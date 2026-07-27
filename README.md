@@ -64,7 +64,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、超时、内部取消、迟到结果隔离、TTS/歌词/曲目降级和重启中断收敛均已验证；Program 与 Job 成功终态同事务提交
 - [x] Mock Provider 后端闭环已验收：合法场景通过 REST 异步受理后可原子提交至少一首可播放曲目、开场文字与判别式 timeline；Codex 错误/非法计划、三次搜歌耗尽、全曲不可用、TTS/歌词/部分曲目降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
-- [x] Codex、NetEase 与 TTS Provider adapters 已实现：参数数组启动、stdin-only 敏感正文、运行时 schema、超时/取消、受限子进程环境、媒体 URL/DNS/redirect/Range/MIME 校验、受控音频写入和脱敏错误均有专项测试；native TTS helper、显式 live composition、受控 TTS 媒体与真实 PWA 播放已完成 arm64 本机验收，默认仍保持 Mock
+- [x] Codex、NetEase 与 TTS Provider adapters 已实现：参数数组启动、stdin-only 敏感正文、运行时 schema、超时/取消、受限子进程环境、媒体 URL/DNS/redirect/Range/MIME 校验、受控音频写入和脱敏错误均有专项测试；native TTS helper、显式 live composition、受控 TTS 媒体与真实 PWA 播放已完成 arm64 本机验收；Production Server 与 macOS launcher 默认 Live，Development、Test 和 CI 默认 Mock
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
 - [x] S5 全量功能阶段门已通过：[S5-04 验收记录](docs/project-management/s5-04-full-function-acceptance.md) 将九项能力、15 个页面、异常恢复及 Profile/设备配置边界追踪到真实产品、contracts 与完整内部 E2E
 - [x] S6-01 跨层失败矩阵已通过：[S6-01 验收记录](docs/project-management/s6-01-failure-matrix-acceptance.md) 覆盖生成、播放、反馈和事件重连故障并保护旧节目
@@ -214,9 +214,9 @@ Fastify Local Service
 | Database | Node 24 `node:sqlite` / SQLite 3.53.2 | 平台、Profiles、Library、Feedback/Taste、Programs/Playback 与生成 Job schema 已实现并验证 |
 | ORM / migrations | Drizzle ORM + Drizzle Kit 1.0.0-rc.4 | Runtime migration flow 与七个版本化 schema migrations 已验证 |
 | Secrets | macOS Keychain via `/usr/bin/security` interactive stdin | Platform adapter and real round-trip verified · business use planned |
-| AI orchestration | Local Codex process | Adapter、持久化 generation runner、恢复 Snapshot 与显式 live composition 已验证；产品默认 Mock |
+| AI orchestration | Local Codex process | Adapter、持久化 generation runner、恢复 Snapshot 与显式 live composition 已验证；Production 默认 Live，Development/Test/CI 默认 Mock |
 | Music provider | Backend TypeScript NetEase `linuxapi` Adapter；no official CLI or .NET runtime | Adapter implemented and controlled smoke verified for Personal Local Preview |
-| Voice provider | Apple `AVSpeechSynthesizer` via bundled native helper；standard installed voices only | Adapter、稳定系统语音选择、受控同源媒体与 arm64 live 产品播放已验证；产品默认 Mock |
+| Voice provider | Apple `AVSpeechSynthesizer` via bundled native helper；standard installed voices only | Adapter、稳定系统语音选择、受控同源媒体与 arm64 live 产品播放已验证；Production 默认 Live，Development/Test/CI 默认 Mock |
 | Unit / integration test | Vitest 4.1.10 + V8 coverage | Configured and verified |
 | Component test | React Testing Library 16.3.2 + jsdom 29.1.1 | Configured and verified |
 | Browser / visual / a11y test | Playwright 1.61.1 + axe-core | Configured and CI verified |
@@ -237,7 +237,7 @@ Fastify Local Service
 - 当前只允许项目所有者从可信源码在受控本机构建并个人使用，不提供公开下载。
 - Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净环境仍未验证；这些是未来任何外部分发的硬门，不阻塞当前本地开发。
 
-由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 决定；Backend Adapter 与 native helper 已实装，产品运行时仍默认 Mock：
+由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 决定；Backend Adapter 与 native helper 已实装，Production 默认 Live，Development、Test 和 CI 默认 Mock：
 
 - v1 使用 Codex CLI、Backend TypeScript NetEase `linuxapi` Adapter 与 bundled Apple `AVSpeechSynthesizer` helper。
 - NetEase Adapter 不调用官方 `ncm-cli`，不直接依赖 `wwh1004/NeteaseCloudMusicApi` C# 二进制，也不增加 .NET runtime。
@@ -498,7 +498,7 @@ pnpm verify:package:macos <path-to-Koradio.app>
 - 已有 macOS Keychain Secret Store、受控 File Store 和结构化脱敏 logger；DeviceSettings 只持久化非敏感配置，TTS Adapter 只向受控 File Store 写入已校验音频。
 - 已有 Profiles、Library、Feedback、Taste、Programs 与 Playback application/persistence/public API、持久节目生成 Job、有序事件、Provider orchestration、MusicProvider Port、确定性 Mock、真实 Programs/Library 反馈目标校验和可重建 projection；Mock Provider 后端闭环已通过固定 fixture 验收。
 - 已有完整 v1 wire contracts；health/session/events、Profiles、Library、Feedback、Taste、Programs 历史/详情、Playback snapshot/checkpoint、DeviceSettings、ProfilePreferences 和数据目录迁移已有 route/use case。
-- 已有 Codex、NetEase 与 TTS Adapter、native TTS helper 及确定性 Mock；application composition 默认 `mock`，可由受控本机显式启用 `live`，arm64 包内 helper、受控 TTS 音频与真实 Provider 节目播放已验收。
+- 已有 Codex、NetEase 与 TTS Adapter、native TTS helper 及确定性 Mock；Production composition 默认 `live`，Development、Test 和 CI 默认 `mock`，也可由 `KORADIO_PROVIDER_MODE` 显式覆盖；arm64 包内 helper、受控 TTS 音频与真实 Provider 节目播放已验收。
 - App Shell 提供五个一级 route、TanStack Query health snapshot、内存 Session、WebSocket 事件重连、完全离线异常页和只读 Settings；在线模式已提供 Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题/DJ 偏好、四服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、节目 generation command、Snapshot/有序事件恢复、原子节目替换、喜欢/不喜欢/跳过/节目收藏反馈、Library 搜索/试听/候选池/分页/缓存与网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看、字段约束和只写 overrides 的人工编辑，以及 Programs 分页历史、详情、Provider source identity 恢复、可用串讲重播、文字降级、场景草稿复用和收藏/撤销。
 - Session 只保护本地 HTTP 边界，不代表云账号或 Profile 身份；浏览器不会从 LocalStorage、SessionStorage、IndexedDB 或 Cookie 恢复 token。
 

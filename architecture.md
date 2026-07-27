@@ -165,7 +165,7 @@ sequenceDiagram
 | Failure | Boundary behavior | Result |
 |---|---|---|
 | Codex error / invalid JSON | End job, retain scenario, expose retry | Blocked |
-| Music search exhausted | Do not create empty program | Blocked |
+| Music search exhausted | Merge up to three planned queries, skip unplayable results, then try same-origin-mode Profile library candidates; do not create an empty program if all candidates fail | Blocked |
 | Data path / transaction error | Roll back creation | Blocked |
 | TTS failure | Persist text segment without audio | Continue |
 | Lyrics failure | Set unavailable lyric status | Continue |

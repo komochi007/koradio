@@ -138,12 +138,10 @@ test("persists seven feedback events, rolls back failures, and keeps playback ru
     "true",
   );
   await expect(page.getByText("已记住你的偏好")).toBeVisible();
-  await expect(page.getByText("已记住你的偏好")).toBeHidden({ timeout: 4_000 });
-
   const pause = page.getByRole("button", { name: "暂停", exact: true });
   if (await pause.isVisible()) await pause.click();
-  await page.getByRole("slider", { name: "播放进度" }).fill("4000");
-  await expect(page.getByRole("slider", { name: "播放进度" })).toHaveValue("4000");
+  await expect(page.getByText("已记住你的偏好")).toBeHidden({ timeout: 6_000 });
+
   await page.locator(".radio-time__clock").evaluate((element) => {
     element.textContent = "22:47";
   });

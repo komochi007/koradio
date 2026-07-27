@@ -170,14 +170,16 @@ describe("Library normalization and cache policy", () => {
     expect(() => new BoundedTtlCache({ capacity: 0, defaultTtlMs: 10 })).toThrow(TypeError);
   });
 
-  it("tries at most two alternate keywords and caches empty and successful searches", async () => {
+  it("merges at most three keyword results and caches empty and successful searches", async () => {
     let calls = 0;
     const persisted: MusicTrack[] = [];
     const provider: MusicProvider = {
       source: "netease",
       search() {
         calls += 1;
-        return Promise.resolve({ items: calls === 3 ? [track] : [] });
+        return Promise.resolve({
+          items: calls === 1 ? [track] : calls === 3 ? [{ ...track, sourceTrackId: "456" }] : [],
+        });
       },
       importPlaylist() {
         return Promise.resolve({});
@@ -200,10 +202,56 @@ describe("Library normalization and cache policy", () => {
 
     const first = await service.searchWithFallback(["first", "second", "third", "fourth"]);
     const repeated = await service.searchWithFallback(["first", "second", "third", "fourth"]);
-    expect(first.items).toHaveLength(1);
+    expect(first.items).toHaveLength(2);
     expect(repeated).toEqual(first);
     expect(calls).toBe(3);
-    expect(persisted).toHaveLength(1);
+    expect(persisted).toHaveLength(2);
+    await service.close();
+  });
+
+  it("returns only playable candidates from the active runtime origin", async () => {
+    const liveTrack = normalizeProviderTrack(track, "live");
+    const service = createLibraryService({
+      originMode: "live",
+      provider: {
+        source: "netease",
+        search() {
+          return Promise.resolve({ items: [] });
+        },
+        importPlaylist() {
+          return Promise.resolve({});
+        },
+        getLyrics() {
+          return Promise.resolve({});
+        },
+        resolveAudio() {
+          return Promise.resolve({});
+        },
+      },
+      repository: createRepository({
+        list(_profileId, _cursor, _limit, originMode) {
+          expect(originMode).toBe("live");
+          return {
+            items: [
+              { track: liveTrack, addedAt: "2026-07-27T00:00:00.000Z", playlistSourceId: null },
+              {
+                track: {
+                  ...liveTrack,
+                  id: "00000000-0000-4000-8000-000000000002",
+                  playable: false,
+                },
+                addedAt: "2026-07-27T00:00:00.000Z",
+                playlistSourceId: null,
+              },
+            ],
+            totalCount: 2,
+            demoCount: 0,
+          };
+        },
+      }),
+    });
+
+    expect(service.candidateTracks("00000000-0000-4000-8000-000000000001")).toEqual([liveTrack]);
     await service.close();
   });
 });

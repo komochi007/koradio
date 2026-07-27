@@ -289,9 +289,9 @@ test("generates and commits a program through the deterministic Mock backend", a
   await page.getByRole("button", { name: "发送给 DJ" }).click();
   const request = await generationRequest;
   expect(request.headers()).toHaveProperty("idempotency-key");
-  await expect(page.getByRole("heading", { name: "Space Song" })).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(
+    page.getByRole("region", { name: "播放队列" }).getByText("Space Song", { exact: true }),
+  ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("ON AIR")).toBeVisible();
 });
 

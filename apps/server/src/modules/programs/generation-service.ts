@@ -64,7 +64,10 @@ interface ActiveRun {
   timedOut: boolean;
 }
 
-type GenerationLibrary = Pick<LibraryService, "getLyrics" | "resolveAudio" | "searchWithFallback">;
+type GenerationLibrary = Pick<
+  LibraryService,
+  "candidateTracks" | "getLyrics" | "resolveAudio" | "searchWithFallback"
+>;
 type GenerationPrograms = Pick<ProgramService, "commit" | "list">;
 type GenerationPreferences = Pick<ProfilePreferencesService, "get">;
 type GenerationTaste = Pick<TasteService, "get">;
@@ -209,13 +212,20 @@ export function createProgramGenerationService(
     );
     assertActive(snapshot.jobId, signal);
 
+    const candidates = new Map(search.items.map((track) => [track.id, track]));
+    for (const track of options.library.candidateTracks(snapshot.profileId)) {
+      candidates.set(track.id, track);
+    }
     const resolved: Array<{ audio: AudioResolution; track: MusicTrack }> = [];
     let trackDegraded = false;
-    for (const track of search.items.slice(0, maximumTracks)) {
+    for (const track of candidates.values()) {
       try {
         const audio = await withAbort(() => options.library.resolveAudio(track.id, signal), signal);
         assertActive(snapshot.jobId, signal);
         resolved.push({ audio, track });
+        if (resolved.length === maximumTracks) {
+          break;
+        }
       } catch (error) {
         if (signal.aborted || error instanceof GenerationAbortedError) {
           throw new GenerationAbortedError();
