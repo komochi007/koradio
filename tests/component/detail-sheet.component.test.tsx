@@ -214,7 +214,7 @@ describe("Detail Sheet", () => {
     });
 
     if (originalDescriptor === undefined) {
-      delete HTMLElement.prototype.scrollIntoView;
+      Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
     } else {
       Object.defineProperty(HTMLElement.prototype, "scrollIntoView", originalDescriptor);
     }
