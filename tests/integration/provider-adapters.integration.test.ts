@@ -165,9 +165,49 @@ describe("Codex adapter", () => {
     expect(invocation?.args.join(" ")).not.toContain(codexPlanningContextFixture.scenarioText);
     expect(invocation?.input).toContain(codexPlanningContextFixture.scenarioText);
     expect(invocation?.environment).not.toHaveProperty("KORADIO_TEST_SECRET");
+    const providerInput = JSON.parse(invocation?.input ?? "{}") as {
+      instruction?: string;
+      context?: unknown;
+    };
+    expect(providerInput.instruction).toContain("trackIntents");
+    expect(providerInput.instruction).toContain("preferredLibraryTrackCount");
+    expect(providerInput.context).toEqual(codexPlanningContextFixture);
     const schemaPath = invocation?.args.at(invocation.args.indexOf("--output-schema") + 1);
     expect(schemaPath).toBeDefined();
-    expect(await readFile(schemaPath ?? "", "utf8")).toContain('"additionalProperties": false');
+    const outputSchema = await readFile(schemaPath ?? "", "utf8");
+    expect(outputSchema).toContain('"additionalProperties": false');
+    expect(outputSchema).toContain('"trackIntents"');
+    expect(outputSchema).toContain('"anyOf"');
+    expect(outputSchema).not.toContain('"oneOf"');
+    expect(outputSchema).not.toContain('"musicQueries"');
+  });
+
+  it("rejects a library intent whose id is absent from the bounded context", async () => {
+    const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-library-id-"));
+    const adapter = createCodexAdapter({
+      command: "codex",
+      resolveExecutable: () => Promise.resolve("/trusted/codex"),
+      runner: () =>
+        Promise.resolve({
+          exitCode: 0,
+          stderr: "",
+          stdout: codexJsonl({
+            ...codexProgramPlanFixture,
+            trackIntents: [
+              {
+                kind: "library",
+                trackId: "90000000-0000-4000-8000-000000000099",
+                reason: "该 ID 不在当前 Profile 的有界音乐库上下文中",
+              },
+            ],
+          }),
+        }),
+      runtimeDirectory,
+    });
+
+    await expect(
+      adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
+    ).rejects.toMatchObject({ code: "response_invalid" });
   });
 
   it("resolves the latest configured command for each plan without changing process arguments", async () => {

@@ -19,6 +19,23 @@ export function createMockCodexProvider(): CodexProvider {
         parsedContext.preferences.djLanguage === "zh-CN"
           ? "今晚慢一点，但别让思绪停下来。"
           : "Let us slow the room down without losing the thread.";
+      const libraryIntents = parsedContext.library.tracks
+        .slice(0, parsedContext.library.preferredLibraryTrackCount)
+        .map((track) => ({
+          kind: "library" as const,
+          trackId: track.trackId,
+          reason: "A deterministic library fixture",
+        }));
+      const discoveryIntents =
+        libraryIntents.length < parsedContext.library.maximumTracks
+          ? [
+              {
+                kind: "discovery" as const,
+                keyword: "Space Song Beach House",
+                reason: "A deterministic low-stimulation fixture",
+              },
+            ]
+          : [];
       return Promise.resolve(
         codexProgramPlanSchema.parse({
           programTitle: "Koradio Mock Session",
@@ -34,12 +51,7 @@ export function createMockCodexProvider(): CodexProvider {
               estimatedTiming: true,
             },
           ],
-          musicQueries: [
-            {
-              keyword: "Space Song Beach House",
-              reason: "A deterministic low-stimulation fixture",
-            },
-          ],
+          trackIntents: [...libraryIntents, ...discoveryIntents],
           playlistIntent: {
             energy: "low-mid",
             mood: "calm",

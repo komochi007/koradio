@@ -14,8 +14,9 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ```text
 场景输入
-  → Codex 生成结构化节目计划与 DJ 串讲
-  → 网易云音乐服务解析歌曲、播放链接与歌词
+  → Programs 将当前 Profile 最多 500 首可播放库内曲目摘要与 EffectiveTaste 交给 Codex
+  → Codex 生成有序 library/discovery 选曲意图与 DJ 串讲
+  → Library 按意图顺序解析库内曲目或网易云探索结果、播放链接与歌词
   → Apple AVSpeechSynthesizer 通过本机原生 helper 生成可选 DJ 语音
   → 本地服务原子提交节目与播放时间线
   → 浏览器 Audio Engine 播放并收集反馈
@@ -61,8 +62,8 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] Library 后端已实现：Provider 输出严格归一化为稳定 source identity，支持搜索、幂等加入候选池、分页列表、异步歌单导入及快照、歌词和短期播放解析；搜索/歌词/播放缓存均有容量与 TTL，播放直链不持久化
 - [x] Feedback 与 Taste 记忆后端已实现：七类固定反馈按 Profile append-only 幂等写入，同事务按稳定 replay order 更新可重建 TasteProjection；人工 TasteOverrides 独立版本化并优先合并为只读 EffectiveTaste
 - [x] Programs 与 Playback 领域后端已实现：Program、ordered track refs、DJ segments 与判别式 timeline 单事务提交，文字 DJ 不伪造音频项；分页历史和详情按 Profile 隔离，checkpoint 校验 owner、位置、完成边界与 `leaseEpoch`
-- [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、超时、内部取消、迟到结果隔离、TTS/歌词/曲目降级和重启中断收敛均已验证；Program 与 Job 成功终态同事务提交
-- [x] Mock Provider 后端闭环已验收：合法场景通过 REST 异步受理后可原子提交至少一首可播放曲目、开场文字与判别式 timeline；Codex 错误/非法计划、三次搜歌耗尽、全曲不可用、TTS/歌词/部分曲目降级和提交事务回滚均有固定 fixture 与数据库快照断言
+- [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、最多 500 首库内摘要、默认五首 4/1 的库内/探索建议、有序 `trackIntents`、稳定去重、超时、内部取消、迟到结果隔离、TTS/歌词/曲目降级和重启中断收敛均已验证；Program 与 Job 成功终态同事务提交
+- [x] Mock Provider 后端闭环已验收：合法场景通过 REST 异步受理后可原子提交至少一首可播放曲目、开场文字与判别式 timeline；4/1 库内/探索、空库探索、显式约束、非法或重复 intent、搜索/音频失败、单关键词至多一首、Codex 错误/非法计划、TTS/歌词/部分曲目降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
 - [x] Codex、NetEase 与 TTS Provider adapters 已实现：参数数组启动、stdin-only 敏感正文、运行时 schema、超时/取消、受限子进程环境、媒体 URL/DNS/redirect/Range/MIME 校验、受控音频写入和脱敏错误均有专项测试；native TTS helper、显式 live composition、受控 TTS 媒体与真实 PWA 播放已完成 arm64 本机验收；Production Server 与 macOS launcher 默认 Live，Development、Test 和 CI 默认 Mock
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖

@@ -394,8 +394,8 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
     const searchInvocations: string[] = [];
     const emptyPlan = {
       ...s3GenerationPlanFixture,
-      musicQueries: s3GenerationPlanFixture.musicQueries.map((query, index) => ({
-        ...query,
+      trackIntents: s3GenerationPlanFixture.trackIntents.map((intent, index) => ({
+        ...intent,
         keyword: `S6 empty ${String(index + 1)}`,
       })),
     };
@@ -448,6 +448,63 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
     await closeHarness(harness);
   });
 
+  it("keeps the previous Program when every discovery search fails", async () => {
+    const playableMusic = createFixtureMusicProvider();
+    let searchFailure = false;
+    const harness = await createHarness({
+      codex: {
+        plan() {
+          return Promise.resolve(
+            searchFailure
+              ? {
+                  ...s3GenerationPlanFixture,
+                  trackIntents: [
+                    {
+                      kind: "discovery",
+                      keyword: "search failure without cache",
+                      reason: "验证 Provider 搜索失败",
+                    },
+                  ],
+                }
+              : s3GenerationPlanFixture,
+          );
+        },
+      },
+      music: {
+        ...playableMusic,
+        search(keyword, options) {
+          return searchFailure
+            ? Promise.reject(new Error("fixture search unavailable"))
+            : playableMusic.search(keyword, options);
+        },
+      },
+    });
+    const succeeded = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: s3GenerationScenario },
+      "ux-09-search-existing-program",
+    );
+    await harness.generation.waitForIdle();
+    const committed = harness.generation.get(harness.profile.id, succeeded.jobId);
+    expect(committed.status).toBe("succeeded");
+
+    searchFailure = true;
+    const failed = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "搜索失败时保留旧节目" },
+      "ux-09-search-failure",
+    );
+    await harness.generation.waitForIdle();
+    expect(harness.generation.get(harness.profile.id, failed.jobId)).toMatchObject({
+      status: "failed",
+      errorCode: "PROGRAM_GENERATION_NO_PLAYABLE_TRACKS",
+    });
+    expect(harness.programs.list(harness.profile.id).items).toEqual([
+      expect.objectContaining({ id: committed.programId, scenarioText: s3GenerationScenario }),
+    ]);
+    await closeHarness(harness);
+  });
+
   it("blocks when every resolved track is unavailable", async () => {
     const harness = await createHarness({
       music: createFixtureMusicProvider({
@@ -479,6 +536,13 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
 
   it("degrades failed tracks, missing lyrics and unavailable TTS to a text-only playable Program", async () => {
     const harness = await createHarness({
+      codex: createFixtureCodexProvider({
+        ...s3GenerationPlanFixture,
+        trackIntents: [
+          { kind: "discovery", keyword: "S3 playable", reason: "选择第一首可播放曲目" },
+          { kind: "discovery", keyword: "S3 playable", reason: "验证第二首音频失败降级" },
+        ],
+      }),
       music: createFixtureMusicProvider({
         audioUnavailable: [s3SecondaryTrackFixture.sourceTrackId],
         lyricsUnavailable: [s3PrimaryTrackFixture.sourceTrackId],

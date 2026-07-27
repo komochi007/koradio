@@ -14,10 +14,10 @@ export const s3GenerationPlanFixture = {
       estimatedTiming: true,
     },
   ],
-  musicQueries: [
-    { keyword: "S3 first empty", reason: "验证第一次搜索无结果" },
-    { keyword: "S3 second empty", reason: "验证第二次搜索无结果" },
-    { keyword: "S3 playable", reason: "验证第三次搜索得到固定曲目" },
+  trackIntents: [
+    { kind: "discovery", keyword: "S3 first empty", reason: "验证第一次搜索无结果" },
+    { kind: "discovery", keyword: "S3 second empty", reason: "验证第二次搜索无结果" },
+    { kind: "discovery", keyword: "S3 playable", reason: "验证第三次搜索得到固定曲目" },
   ],
   playlistIntent: {
     energy: "low-mid",

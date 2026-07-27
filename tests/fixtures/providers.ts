@@ -20,6 +20,19 @@ export const codexPlanningContextFixture = {
       createdAt: "2026-07-16T20:00:00.000Z",
     },
   ],
+  library: {
+    tracks: [
+      {
+        trackId: "20000000-0000-4000-8000-000000000011",
+        title: "Space Song",
+        artist: "Beach House",
+        album: "Depression Cherry",
+        durationMs: 320_000,
+      },
+    ],
+    maximumTracks: 5,
+    preferredLibraryTrackCount: 1,
+  },
   currentTime: "2026-07-17T20:00:00.000Z",
   preferences: {
     djLanguage: "zh-CN",
@@ -41,8 +54,14 @@ export const codexProgramPlanFixture = {
       estimatedTiming: true,
     },
   ],
-  musicQueries: [
+  trackIntents: [
     {
+      kind: "library",
+      trackId: "20000000-0000-4000-8000-000000000011",
+      reason: "音乐库中的温柔低刺激锚点",
+    },
+    {
+      kind: "discovery",
       keyword: "Space Song Beach House",
       reason: "温柔、低刺激，适合夜间写作开场",
     },

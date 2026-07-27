@@ -3,6 +3,7 @@ import {
   djVoiceStyleSchema,
   effectiveTasteSchema,
   occurredAtSchema,
+  trackIdSchema,
 } from "@koradio/contracts";
 import { z } from "zod";
 
@@ -22,16 +23,42 @@ export const programHistoryContextSchema = z.strictObject({
   createdAt: occurredAtSchema,
 });
 
-export const codexPlanningContextSchema = z.strictObject({
-  scenarioText: z.string().trim().min(1).max(500),
-  effectiveTaste: effectiveTasteSchema,
-  history: z.array(programHistoryContextSchema).max(20),
-  currentTime: occurredAtSchema,
-  preferences: z.strictObject({
-    djLanguage: djLanguageSchema,
-    djVoiceStyle: djVoiceStyleSchema,
-  }),
+export const libraryTrackContextSchema = z.strictObject({
+  trackId: trackIdSchema,
+  title: z.string().trim().min(1).max(300),
+  artist: z.string().trim().min(1).max(300),
+  album: z.string().trim().min(1).max(300),
+  durationMs: z.number().int().positive(),
 });
+
+export const codexPlanningContextSchema = z
+  .strictObject({
+    scenarioText: z.string().trim().min(1).max(500),
+    effectiveTaste: effectiveTasteSchema,
+    history: z.array(programHistoryContextSchema).max(20),
+    library: z.strictObject({
+      tracks: z.array(libraryTrackContextSchema).max(500),
+      maximumTracks: z.number().int().min(1).max(5),
+      preferredLibraryTrackCount: z.number().int().min(0).max(5),
+    }),
+    currentTime: occurredAtSchema,
+    preferences: z.strictObject({
+      djLanguage: djLanguageSchema,
+      djVoiceStyle: djVoiceStyleSchema,
+    }),
+  })
+  .superRefine((context, refinement) => {
+    if (
+      context.library.preferredLibraryTrackCount > context.library.maximumTracks ||
+      context.library.preferredLibraryTrackCount > context.library.tracks.length
+    ) {
+      refinement.addIssue({
+        code: "custom",
+        message: "Preferred library track count exceeds the bounded library context",
+        path: ["library", "preferredLibraryTrackCount"],
+      });
+    }
+  });
 
 export const codexDjScriptSchema = z.strictObject({
   type: z.enum(["intro", "segue", "outro"]),
@@ -41,10 +68,18 @@ export const codexDjScriptSchema = z.strictObject({
   estimatedTiming: z.boolean(),
 });
 
-export const codexMusicQuerySchema = z.strictObject({
-  keyword: z.string().trim().min(1).max(100),
-  reason: z.string().trim().min(1).max(500),
-});
+export const codexTrackIntentSchema = z.union([
+  z.strictObject({
+    kind: z.literal("library"),
+    trackId: trackIdSchema,
+    reason: z.string().trim().min(1).max(500),
+  }),
+  z.strictObject({
+    kind: z.literal("discovery"),
+    keyword: z.string().trim().min(1).max(100),
+    reason: z.string().trim().min(1).max(500),
+  }),
+]);
 
 export const codexProgramPlanOutputSchema = z.strictObject({
   programTitle: z.string().trim().min(1).max(200),
@@ -52,7 +87,7 @@ export const codexProgramPlanOutputSchema = z.strictObject({
   djLanguage: djLanguageSchema,
   djPersona: djVoiceStyleSchema,
   djScripts: z.array(codexDjScriptSchema).min(1).max(20),
-  musicQueries: z.array(codexMusicQuerySchema).min(1).max(50),
+  trackIntents: z.array(codexTrackIntentSchema).min(1).max(5),
   playlistIntent: z.strictObject({
     energy: z.string().trim().min(1).max(100),
     mood: z.string().trim().min(1).max(100),

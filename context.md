@@ -44,8 +44,8 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - Library 通过 MusicProvider Port 接收不可信输出并严格归一化为稳定 source identity；搜索、歌词和短期播放解析使用有界 TTL 缓存，播放直链不进入 SQLite，异步歌单导入按完整曲目 ID 清单补齐元数据并在短事务内写入全部可解析歌曲、封面 URL 与可播放状态。
 - Feedback 以 `(profileId, idempotencyKey)` 去重，在同一短事务内追加事实并按内部 replay order 重建 TasteProjection；skip 不自动推断为不喜欢。TasteOverrides 独立版本化，EffectiveTaste 在读取时保序合并且不单独持久化。
 - Programs 通过 Library 公开 API 解析曲目元数据、通过 Playback 公开事务写入 Port 原子提交 Program、ordered track refs、DJ segments 与 timeline；production Feedback composition 使用真实 Programs owner 校验节目目标。
-- Programs application 以持久 Job 元数据和内存 executor 编排 Codex、Music 与可选 TTS；重复幂等键返回原 Job，每个 Profile 只允许一个活动 Job，取消/超时/重启都收敛为可恢复终态，迟到结果不得提交 Program 或发布事件。
-- S3-07 使用固定 Provider fixtures 验收了从 REST 场景受理到 Program/segments/timeline 原子提交的成功流，以及 Codex 错误/非法计划、三次搜歌耗尽、全曲不可用、TTS/歌词/部分曲目降级和提交事务回滚；常规质量门不调用真实 Provider。
+- Programs application 以持久 Job 元数据和内存 executor 编排 Codex、Music 与可选 TTS；规划上下文通过 Library application Port 获取当前 Profile 最多 500 首同运行模式、可播放的库内曲目摘要，并提供 `maximumTracks` 与约 70% 的建议库内数量。Codex 返回有序 `library` / `discovery` track intents；Library intent 只解析上下文内 ID，Discovery intent 每个关键词至多选择一首非库内结果，稳定去重且不随机跨 Profile 补位。
+- 固定 Provider fixtures 已验收从 REST 场景受理到 Program/segments/timeline 原子提交的成功流，以及默认五首 4/1、空音乐库探索、显式约束、非法/跨 Profile/重复 intent、搜索与库内音频失败、单关键词至多一首、Codex 错误/非法计划、TTS/歌词/部分曲目降级、旧节目保护和提交事务回滚；常规质量门不调用真实 Provider。
 - S7-06 在 macOS 15.7.3 arm64 受控本机验证真实 Codex/NetEase/Apple TTS 可生成并播放节目；真实无结果、Codex 配置失败、TTS 缺失文字降级、旧节目保护、受控同源 TTS 媒体和脱敏错误均有证据，常规测试与 CI 继续只使用 Mock/fixture。
 - S6-01 使用固定故障 fixtures、数据库快照和 Chromium/Firefox 产品 E2E 证明生成阻断保留旧 Program/Audio、局部依赖失败确定降级、反馈失败回滚且不中断播放、媒体失败稳定收敛；生成状态同时丢弃低于当前 sequence 的迟到 REST Snapshot，避免覆盖较新 WebSocket 阶段或终态。
 - S6-02 使用固定 v6 production migration fixture 和临时数据根证明当前 schema 只执行待处理升级且保持 Profile、Taste、Library、Feedback、Program、Playback 与受控文件可读；数据根迁移在八个阶段失败、真实 SHA-256 不匹配或重启失败时均回到旧 bootstrap，旧目录、备份和部分目标不自动删除。
@@ -131,7 +131,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 
 ### 节目生成
 
-`Radio submit → Programs job → Codex plan validation → Music resolve → optional TTS → transactional Program/segments/timeline commit → WebSocket event → old checkpoint/stop → Audio Engine atomic switch`
+`Radio submit → Programs job → bounded Profile library context → Codex ordered track intents → Library-owned intent resolution → optional TTS → transactional Program/segments/timeline commit → WebSocket event → old checkpoint/stop → Audio Engine atomic switch`
 
 ### 播放
 

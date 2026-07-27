@@ -318,9 +318,9 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 **用户操作路径、界面元素、交互逻辑、数据变化**
 
 - 用户在输入框输入“今晚写东西，想要安静但不死板的 BGM” → 系统校验输入并锁定发送按钮 → 用户看到 DJ 状态栏变为 `THINKING`。
-- 用户点击发送按钮 → 系统读取 `EffectiveTaste`、节目历史、当前时间、`ProfilePreferences` 和共享 `DeviceSettings`，请求本地 Codex 输出节目计划 → 用户看到 DJ 对话区出现 `Tuning your station...`。
+- 用户点击发送按钮 → 系统读取 `EffectiveTaste`、节目历史、当前时间、`ProfilePreferences`、共享 `DeviceSettings`，并通过 Library application API 获取当前 Profile 最多 500 首可播放 Live 音乐库摘要、`maximumTracks` 和建议库内数量，请求本地 Codex 输出节目计划 → 用户看到 DJ 对话区出现 `Tuning your station...`。
 - Codex 生成串讲 → 系统按英式电台主持人规则控制语气、长度和说话频率 → 用户看到一段克制、有场景感的开场，而不是每首歌前都被打断。
-- Codex 返回计划 → 系统调用网易云 API 搜索歌曲、获取播放链接和歌词 → 用户看到队列逐步生成。
+- Codex 返回有序 `trackIntents` → 系统按顺序解析库内 ID，或为每个探索关键词最多选择一首非库内歌曲，再获取播放链接和歌词 → 用户看到队列逐步生成。默认五首节目建议四首库内、一首探索；明确语言、地区、艺术家、“只听库内”或“只探索新歌”的请求优先。
 - TTS 可用且生成成功 → 系统将带音频的 `dj` 项插入 `PlaybackTimeline` → 用户听到 DJ 开场并看到串讲文本；TTS 缺失或失败时，文字串讲只保留在 Program segment 中，不创建伪音频项。
 - 当前已有节目时，旧节目在新节目生成期间继续播放；生成失败时保持旧节目不变；新节目完整提交后保存旧 checkpoint、停止旧时间线并原子切换。
 - 数据变化：新增 `Program`、`DjScriptSegment`、`MusicTrack` 与已提交的 `PlaybackTimeline`；场景输入在提交前只属于前端 draft，不写入持久模型。
@@ -335,9 +335,9 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
   └─ 输入有效 → 构建上下文
        ↓
      [请求本地 Codex 生成节目计划]
-       ├─ 成功 → 搜索网易云歌曲
-       │          ├─ 有歌曲 → 获取播放链接/歌词 → 可选生成 TTS → 原子提交新节目 → 开始播放
-       │          └─ 无歌曲 → 换关键词重试 2 次 → 仍失败则提示换个描述
+       ├─ 成功 → 按有序 library/discovery intent 解析
+       │          ├─ 至少一首可播放 → 获取播放链接/歌词 → 可选生成 TTS → 原子提交新节目 → 开始播放
+       │          └─ 全部 intent 失效 → 保留旧节目并提示换个描述
        ├─ Codex 失败 → 保留用户输入并提示重试
        └─ 超时 60 秒 → 中断规划并提示重试
 ```
@@ -379,7 +379,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 |----------|----------|----------|----------|
 | Codex 失败 | Codex 返回错误或非结构化结果 | 保留用户输入和上下文，允许重试 | “Codex 没有完成节目规划，点击重试” |
 | Codex 超时 | 60 秒未返回 | 中断请求，释放输入框 | “规划时间太久了，请重试或缩短描述” |
-| 网易云无结果或首批候选不可播 | 搜索候选为空，或已返回候选均无法解析播放地址 | 聚合首个关键词和最多 2 个备用关键词的结果；逐项跳过不可播候选，仍不足时回退到当前 Profile 同运行模式的本地候选池 | “没有找到合适歌曲，换个说法试试” |
+| Track intent 无结果或不可播 | 库内 ID 不属于当前 Profile、不可播放，或探索搜索失败/无合格结果 | 按 intent 顺序跳过并发布受控降级；Discovery 每个关键词最多选一首，稳定去重，不随机跨 Profile 补位；全部失效时保留旧节目 | “没有找到合适歌曲，换个说法试试” |
 | TTS 失败 | TTS 45 秒超时或返回错误 | 保留文字 DJ，跳过语音串讲 | “语音合成失败，本次先用文字 DJ” |
 | 播放链接失效 | 歌曲 URL 不可播放 | 跳过该曲并尝试下一首 | “这首暂时不能播放，已切到下一首” |
 | 缺少核心配置 | 缺少 Codex 配置 | 阻止生成并跳转 Settings | “请先完成 Codex 配置” |
@@ -888,8 +888,8 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 能力 | 说明 | 最小输入 | 最小输出 | 失败降级 |
 |------|------|----------|----------|----------|
 | 档案管理 | 创建、读取、选择、更新本地档案 | profile 字段 | 当前 profile | 本地目录不可写时阻止保存 |
-| 场景规划 | 调用本地 Codex 生成节目计划 | 场景文本、taste、history、时间 | 结构化 program plan | Codex 失败时保留输入并提示重试 |
-| 音乐搜索 | 调用网易云 API 搜索歌曲和播放链接 | 关键词、候选风格 | 歌曲元数据、播放 URL | 无结果时换关键词重试 2 次 |
+| 场景规划 | 调用本地 Codex 生成节目计划 | 场景文本、taste、history、时间、偏好、最多 500 首库内摘要与曲目上限 | 含有序 `trackIntents` 的结构化 program plan | Codex 失败时保留输入并提示重试 |
+| 意图解析与音乐搜索 | 通过 Library application API 解析库内 ID，或调用网易云 API 搜索探索歌曲和播放链接 | 有序 library/discovery intent | 稳定去重的歌曲元数据、播放 URL | 单 intent 失败时跳过；全部失败时保留旧节目 |
 | TTS 生成 | 调用 bundled macOS native helper，以 `AVSpeechSynthesizer` 和已安装标准语音生成 DJ 音频 | DJ 文案、语言、声音风格 | 受控音频引用、时长、可选 marker；无 marker 时估算时间 | 失败时保留文字 DJ |
 | 时间线构建 | 将节目转换为可播放判别联合并确定顺序 | program plan | `PlaybackTimelineItem[]` | 单曲失败时 Browser Audio Engine 跳到下一项 |
 | 播放 checkpoint | 在状态边界保存可恢复的低频播放快照 | program、timeline item、position、`leaseEpoch` | `PlaybackCheckpoint` | 保存失败不影响当前 Browser Audio Engine 播放；旧 epoch 写入被拒绝 |
@@ -958,10 +958,16 @@ Codex 作为本地编排大脑时，应输出可解析 JSON。MVP 最小结构�
       "estimatedTiming": true
     }
   ],
-  "musicQueries": [
+  "trackIntents": [
     {
+      "kind": "library",
+      "trackId": "00000000-0000-4000-8000-000000000001",
+      "reason": "音乐库中的温暖人声与轻柔律动锚点"
+    },
+    {
+      "kind": "discovery",
       "keyword": "If Bread",
-      "reason": "温柔、低刺激，适合夜间写作开场"
+      "reason": "与库内原声 Soft Rock 锚点相邻的探索歌曲"
     }
   ],
   "playlistIntent": {
@@ -980,6 +986,9 @@ Codex 输出必须遵守以下规则：
 - 不输出每首歌固定口播，不编造无法确认的音乐背景；事实不确定时只描述歌曲氛围、听感和用户场景。
 - `displayText` 为旧数据和接口兼容字段；新节目提交时必须与 `text` 逐字一致。TTS、Radio、Detail 和节目历史统一使用完整 `text`。
 - TTS 无分句时间戳时，`estimatedTiming` 必须为 `true`，前端按文本长度进行近似高亮。
+- `trackIntents` 必须是播放顺序；`library` intent 只能引用 planning context 中存在的当前 Profile 曲目 ID，`discovery` intent 每个关键词只代表一个探索位置。
+- 默认按建议库内数量规划约 70% 库内、30% 探索，五首节目为四首库内、一首探索；明确语言、地区、艺术家、“只听库内”或“只探索新歌”的请求优先于默认比例。
+- 库内 intent 非法、重复、不可播放或探索搜索失败时只做受控跳过，不得随机附加当前 Profile 之外的歌曲填满队列。
 
 解析失败时，本地服务不得保存或回显原始正文。日志只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据；前端统一收到“Codex 没有完成节目规划，点击重试”，不可解析内容不得进入节目、历史或日志正文。
 

@@ -104,7 +104,7 @@ flowchart LR
 |---|---|---|---|---|
 | Profiles | 档案 CRUD、profile context、受控 avatarRef | ProfilePreferences | Profile DTO | 登录身份、播放状态、任意头像路径/URL |
 | Radio | 场景入口、当前节目组合 | Programs、Playback | Generate command | Provider、持久化 |
-| Programs | 生成任务、节目、DJ 段、历史 | EffectiveTaste、Library、ports | Program、PlaybackTimeline、events | HTMLAudio 状态 |
+| Programs | 生成任务、节目、DJ 段、历史 | EffectiveTaste、Library application ports、Provider ports | Program、PlaybackTimeline、events | HTMLAudio 状态、Library owner 表 |
 | Playback | 时间线规则、低频 checkpoint | Program timeline | Playback snapshot | 实时进度、UI Sheet |
 | Library | 搜索、导入、候选池 | MusicProvider | NormalizedTrack | 推荐与播放控制 |
 | Taste | 自动 projection、人工 overrides、EffectiveTaste | Feedback | Taste context | Provider response、覆盖人工规则 |
@@ -138,10 +138,12 @@ sequenceDiagram
     A->>P: Validate context and start job
     P-->>W: 202 + jobId
     Note over W,X: Existing program keeps playing while generation runs
-    P->>C: Plan with EffectiveTaste, history, time, ProfilePreferences
-    C-->>P: Validated structured plan
+    P->>M: Read up to 500 playable Profile library summaries
+    M-->>P: Bounded library context
+    P->>C: Plan with taste, history, time, preferences and library context
+    C-->>P: Validated ordered library/discovery intents
     P-->>E: generation.planned
-    P->>M: Resolve tracks, URLs and lyrics
+    P->>M: Resolve intents in order, at most one track per discovery keyword
     M-->>P: Normalized playable tracks
     P-->>E: generation.tracks-resolved
     alt Apple system TTS available
@@ -165,7 +167,7 @@ sequenceDiagram
 | Failure | Boundary behavior | Result |
 |---|---|---|
 | Codex error / invalid JSON | End job, retain scenario, expose retry | Blocked |
-| Music search exhausted | Merge up to three planned queries, skip unplayable results, then try same-origin-mode Profile library candidates; do not create an empty program if all candidates fail | Blocked |
+| Track intent unavailable | Skip invalid/foreign library IDs, duplicates, unplayable audio and failed discovery intents in order; never randomly fill from another Profile, and do not create an empty program if all intents fail | Blocked |
 | Data path / transaction error | Roll back creation | Blocked |
 | TTS failure | Persist text segment without audio | Continue |
 | Lyrics failure | Set unavailable lyric status | Continue |
@@ -174,7 +176,7 @@ sequenceDiagram
 
 阻断失败不得改变正在播放的旧节目。文字降级 DJ 只保留在 Program segment；只有取得真实音频引用的 `dj` segment 才进入 PlaybackTimeline。
 
-生成 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，场景草稿在 Program 原子提交前只存在于内存。服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`；同一幂等键返回该终态，新幂等键才启动重试。DJ 音频按确定性位置进入时间线：全部 `intro` 位于首曲前、至多一个 `segue` 位于每首后续曲目前、全部 `outro` 位于末曲后，多余脚本只保留文字。
+生成 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，场景草稿、完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Programs 不直接读取 Library 表：它通过 Library application Port 获取最多 500 首当前 Profile 可播放曲目摘要，并按 Codex 的有序 intent 调用 Library 解析；默认五首建议四首库内、一首探索，明确语言、地区、艺术家、只听库内或只探索新歌的场景约束优先。服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`；同一幂等键返回该终态，新幂等键才启动重试。DJ 音频按确定性位置进入时间线：全部 `intro` 位于首曲前、至多一个 `segue` 位于每首后续曲目前、全部 `outro` 位于末曲后，多余脚本只保留文字。
 
 反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Codex context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。

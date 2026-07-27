@@ -66,7 +66,7 @@ interface ActiveRun {
 
 type GenerationLibrary = Pick<
   LibraryService,
-  "candidateTracks" | "getLyrics" | "resolveAudio" | "searchWithFallback"
+  "candidateTracks" | "getLyrics" | "resolveAudio" | "search"
 >;
 type GenerationPrograms = Pick<ProgramService, "commit" | "list">;
 type GenerationPreferences = Pick<ProfilePreferencesService, "get">;
@@ -199,32 +199,65 @@ export function createProgramGenerationService(
   async function resolveTracks(
     snapshot: ProgramGenerationSnapshot,
     plan: CodexProgramPlan,
+    libraryTracks: MusicTrack[],
     signal: AbortSignal,
   ): Promise<Array<{ audio: AudioResolution; track: MusicTrack }>> {
     setStage(snapshot.jobId, "resolving_tracks", signal);
-    const search = await withAbort(
-      () =>
-        options.library.searchWithFallback(
-          plan.musicQueries.map((query) => query.keyword),
-          signal,
-        ),
-      signal,
-    );
-    assertActive(snapshot.jobId, signal);
-
-    const candidates = new Map(search.items.map((track) => [track.id, track]));
-    for (const track of options.library.candidateTracks(snapshot.profileId)) {
-      candidates.set(track.id, track);
-    }
+    const libraryCandidates = new Map(libraryTracks.map((track) => [track.id, track]));
     const resolved: Array<{ audio: AudioResolution; track: MusicTrack }> = [];
+    const selectedTrackIds = new Set<string>();
     let trackDegraded = false;
-    for (const track of candidates.values()) {
+
+    const tryResolve = async (track: MusicTrack): Promise<boolean> => {
+      if (selectedTrackIds.has(track.id)) {
+        return false;
+      }
+      if (!track.playable) {
+        trackDegraded = true;
+        return false;
+      }
       try {
         const audio = await withAbort(() => options.library.resolveAudio(track.id, signal), signal);
         assertActive(snapshot.jobId, signal);
         resolved.push({ audio, track });
-        if (resolved.length === maximumTracks) {
-          break;
+        selectedTrackIds.add(track.id);
+        return true;
+      } catch (error) {
+        if (signal.aborted || error instanceof GenerationAbortedError) {
+          throw new GenerationAbortedError();
+        }
+        trackDegraded = true;
+        return false;
+      }
+    };
+
+    for (const intent of plan.trackIntents) {
+      if (resolved.length === maximumTracks) {
+        break;
+      }
+      if (intent.kind === "library") {
+        const track = libraryCandidates.get(intent.trackId);
+        if (track === undefined) {
+          trackDegraded = true;
+          continue;
+        }
+        await tryResolve(track);
+        continue;
+      }
+
+      try {
+        const search = await withAbort(
+          () => options.library.search(intent.keyword, signal),
+          signal,
+        );
+        assertActive(snapshot.jobId, signal);
+        for (const track of search.items) {
+          if (libraryCandidates.has(track.id)) {
+            continue;
+          }
+          if (await tryResolve(track)) {
+            break;
+          }
         }
       } catch (error) {
         if (signal.aborted || error instanceof GenerationAbortedError) {
@@ -425,6 +458,11 @@ export function createProgramGenerationService(
     options.repository.markRunning(snapshot.jobId, now().toISOString());
     const preferences = options.preferences.get(snapshot.profileId);
     const effectiveTaste = options.taste.get(snapshot.profileId).effective;
+    const libraryTracks = options.library.candidateTracks(snapshot.profileId, 500);
+    const preferredLibraryTrackCount = Math.min(
+      libraryTracks.length,
+      Math.round(maximumTracks * 0.7),
+    );
     const history = options.programs
       .list(snapshot.profileId, undefined, 20)
       .items.map((program) => ({
@@ -436,6 +474,17 @@ export function createProgramGenerationService(
       scenarioText: command.scenarioText,
       effectiveTaste,
       history,
+      library: {
+        tracks: libraryTracks.map((track) => ({
+          trackId: track.id,
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          durationMs: track.durationMs,
+        })),
+        maximumTracks,
+        preferredLibraryTrackCount,
+      },
       currentTime: now().toISOString(),
       preferences: {
         djLanguage: preferences.djLanguage,
@@ -465,7 +514,7 @@ export function createProgramGenerationService(
       }),
     );
 
-    const resolvedTracks = await resolveTracks(snapshot, plan, signal);
+    const resolvedTracks = await resolveTracks(snapshot, plan, libraryTracks, signal);
     await enrichLyrics(snapshot, resolvedTracks, signal);
     const detail = await buildProgram(snapshot, command, plan, resolvedTracks, signal);
     setStage(snapshot.jobId, "committing", signal);
