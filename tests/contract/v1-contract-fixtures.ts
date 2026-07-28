@@ -42,7 +42,7 @@ export const preferences = {
   profileId: ids.profile,
   themeMode: "dark",
   djLanguage: "zh-CN",
-  djVoiceStyle: "british-soft-radio",
+  djVoiceStyle: "natural-radio",
   updatedAt: now,
 } as const;
 

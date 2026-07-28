@@ -36,7 +36,7 @@ export const codexPlanningContextFixture = {
   currentTime: "2026-07-17T20:00:00.000Z",
   preferences: {
     djLanguage: "zh-CN",
-    djVoiceStyle: "british-soft-radio",
+    djVoiceStyle: "natural-radio",
   },
 } as const;
 
@@ -44,7 +44,7 @@ export const codexProgramPlanFixture = {
   programTitle: "Monday Night Exhale",
   scenarioSummary: "夜晚写作，需要安静但不死板的 BGM",
   djLanguage: "zh-CN",
-  djPersona: "british-soft-radio",
+  djPersona: "natural-radio",
   djScripts: [
     {
       type: "intro",

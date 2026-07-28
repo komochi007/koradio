@@ -1,5 +1,7 @@
 # ADR 0003：macOS 包装形态与发布边界
 
+> 2026-07-28 更新：TTS 运行时与支持矩阵已由 [ADR 0005](0005-qwen3-local-tts.md) 更新为 macOS 15+ arm64、bundled Python/MLX helper 与首次下载 Qwen 模型。本文中的 x64、macOS 13.5 和 Apple TTS 描述仅保留为原包装 PoC 的历史证据。
+
 > 状态：已接受
 > 日期：2026-07-15
 > 决策人：项目所有者
@@ -67,10 +69,10 @@ S0-05 需要比较 Electron 桌面壳一体包与 PWA + Local Service 安装器�
 
 ### 5.1 产物形态
 
-- 构建目标为两个独立产物：`arm64` app/DMG 与 `x64` app/DMG，不构建包含两份 Node runtime 的 universal 产物；当前个人使用只需构建实际机器架构。
-- 每个 DMG 包含一个薄原生 launcher `.app`、对应架构的 Node 24.18.0 精简 runtime、`pnpm --prod deploy` 生成的 Server 文件树、built PWA assets，以及同架构 Apple TTS native helper；helper 不扩张 launcher 的生命周期职责。
+- 当前构建目标为 macOS 15+ `arm64` app/DMG，不构建 x64 或 universal 产物。
+- 每个 DMG 包含一个薄原生 launcher `.app`、arm64 Node 24.18.0 精简 runtime、`pnpm --prod deploy` 生成的 Server 文件树、built PWA assets，以及可重定位 Python/MLX TTS runtime；约 1.84 GiB Qwen 模型不进入 DMG。
 - 精简 runtime 只保留运行所需 `bin/node` 与 Node `LICENSE`；不携带 npm、npx、Corepack、pnpm、headers 或开发文档。
-- 最低支持系统推荐为 **macOS 13.5**，由 Node 24.18.0 arm64/x64 官方二进制的 `LC_BUILD_VERSION.minos` 决定。
+- 最低支持系统为 **macOS 15**，并要求 Apple Silicon；该约束由 Qwen3-TTS 的 MLX 运行时与当前验证矩阵决定。
 
 ### 5.2 启动与停止
 
@@ -155,8 +157,8 @@ ad-hoc 签名不证明开发者身份，也不能替代 Developer ID 或 Apple �
 ### 负向后果与权衡
 
 - 启动会打开默认浏览器，不是单窗口桌面壳；用户直接打开 PWA 时仍可能看到 Local Service 离线状态。
-- 需要维护一个很小但真实的 native launcher 与 arm64/x64 构建矩阵。
-- Apple 系统 TTS 还需要维护同架构 native helper，并把它纳入逐层签名、公证、Gatekeeper 与干净环境语音冒烟。
+- 需要维护一个很小但真实的 native launcher，以及 macOS 15+ arm64 构建矩阵。
+- Qwen3-TTS 需要维护可重定位 Python/MLX runtime、锁定依赖与模型完整性清单，并把 runtime 纳入逐层签名、公证、Gatekeeper 与干净环境语音冒烟。
 - 手动下载时用户可能选错架构；发布页和诊断必须可操作。
 - 当前没有真实签名、公证与独立干净用户证据，任何公开下载或外部分发都不可进行。
 

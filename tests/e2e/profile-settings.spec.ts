@@ -20,7 +20,7 @@ function context(themeMode: "dark" | "light" | "system" = "dark") {
       profileId: profile.id,
       themeMode,
       djLanguage: "zh-CN",
-      djVoiceStyle: "british-soft-radio",
+      djVoiceStyle: "natural-radio",
       updatedAt: "2026-07-17T08:00:00.000Z",
     },
   };
@@ -45,6 +45,18 @@ async function mockProfileWorkspace(
       },
     }),
   );
+  await page.route(/\/api\/v1\/device-settings\/tts-model$/, async (route) =>
+    route.fulfill({
+      json: {
+        model: "Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit",
+        revision: "049ef77fe8816b536193c0c25f9a214d17921282",
+        state: "not-installed",
+        downloadedBytes: 0,
+        totalBytes: 1973573869,
+        progressPercent: 0,
+      },
+    }),
+  );
   await page.route(/\/api\/v1\/health\/services$/, async (route) =>
     route.fulfill({
       json: {
@@ -52,7 +64,7 @@ async function mockProfileWorkspace(
           ["local-service", "available", "Local Service is ready"],
           ["codex", "available", "Codex command is configured"],
           ["netease", "available", "Built-in NetEase provider is available"],
-          ["tts", "degraded", "Apple system TTS is temporarily unavailable"],
+          ["tts", "degraded", "Qwen3-TTS local model is temporarily unavailable"],
         ].map(([service, status, redactedSummary]) => ({
           service,
           status,
@@ -215,7 +227,7 @@ test.describe("service diagnostics", () => {
     await expect(page.getByRole("heading", { name: "服务检测", exact: true })).toBeFocused();
     await expect(page.getByText("3 OF 4 SERVICES AVAILABLE")).toBeVisible();
     await expect(page.getByText("核心播放服务可用，语音串讲将暂时降级为文字。")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Apple Text to Speech" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Qwen3-TTS" })).toBeVisible();
     await expect(page.getByText("你仍然可以生成和播放节目，歌曲播放不受影响。")).toBeVisible();
     await expect(page.getByRole("button", { name: "返回 Radio" })).toBeEnabled();
     await expect(page.getByLabel(/API Key|Cookie|密钥/)).toHaveCount(0);

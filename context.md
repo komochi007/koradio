@@ -66,7 +66,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - Browser Audio Engine 拥有唯一 `HTMLAudio` 实例。
 - REST 承载查询与命令，WebSocket 推送任务和领域事件。
 - SQLite 保存结构化事实，File Store 保存媒体与缓存。
-- Codex、网易云通过 Backend Adapter 接入；NetEase v1 Adapter 在 Backend 内用 TypeScript 实现最小 `linuxapi` 协议，不调用官方 CLI、不引入 .NET；可选 TTS 由 Backend TTS Port 调用 bundled macOS native helper，再使用 Apple `AVSpeechSynthesizer`。
+- Codex、网易云通过 Backend Adapter 接入；NetEase v1 Adapter 在 Backend 内用 TypeScript 实现最小 `linuxapi` 协议，不调用官方 CLI、不引入 .NET；可选 TTS 由 Backend TTS Port 调用 bundled Python/MLX helper 与固定 revision 的 Qwen3-TTS 8-bit 本地模型。
 - 服务默认只在 loopback 提供本地访问；目标 Development 为 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373`，目标 Production 为同源 Local Service 首选 `49373` 并仅允许 `49373-49383` 有界 fallback。
 
 ## 4. 产品范围
@@ -172,14 +172,14 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - SQLite + Drizzle migrations；REST + WebSocket；Zod wire contracts。
 - Browser owns live playback；Provider ports 隔离外部服务。
 - OS Credential Store；显式 `profileId`；显式 append-only feedback。
-- v1 可选语音固定为 bundled native helper + Apple `AVSpeechSynthesizer`，只使用已安装标准系统语音，不使用云 TTS 或 Personal Voice。
+- v1 可选语音固定为 Qwen3-TTS 8-bit，中文 `Serena`、英文 `Ryan`；模型由用户首次下载，文本和推理不离开本机，不使用云 TTS 或 Personal Voice。
 - DeviceSettings / ProfilePreferences 分离；判别式 PlaybackTimeline。
 - Single active playback session + `BroadcastChannel/localStorage` TTL lease。
 - Development 双进程、Production 同源单服务；token 只通过 `POST /api/v1/session/bootstrap` 的 `no-store` JSON 响应进入浏览器内存，WebSocket 使用首条 `session.authenticate` 消息认证。
 - 工具链采用 Node 24 LTS、Corepack/pnpm 11、TypeScript 6 project references；Web 由 Vite 8 构建，Server/shared 由 `tsc -b` 构建。
 - 质量工具采用 ESLint 10 + typescript-eslint、Prettier 3、Vitest 4 + Testing Library/jsdom、Playwright + axe-core；常规 CI 为 GitHub Actions。
 - 全仓使用单一 `pnpm-lock.yaml`、精确直接依赖、frozen CI install、24 小时 release age 和显式 dependency build allowlist。
-- macOS 包装采用原生轻量 launcher + bundled Node Local Service + bundled native TTS helper + 外部浏览器 PWA；arm64/x64 独立产物，最低目标 macOS 13.5。
+- macOS 包装采用原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + 外部浏览器 PWA；当前目标为 macOS 15+ arm64，Qwen 模型不进入 DMG。
 - 当前只支持项目所有者从可信源码在受控本机生成个人预览产物；公开下载与外部分发在当前开发阶段后置，不阻塞 Personal Local Preview，届时 Developer ID、Apple 公证、Gatekeeper 与独立干净环境验收仍是硬门。
 - Provider 可行性已裁决：NetEase 使用 Backend TypeScript 最小 `linuxapi` Adapter；搜索、歌词、歌单、播放 URL、Range/MIME/CORS 与非法 ID 已脱敏验证，只允许 Personal Local Preview，公开分发前必须重新验证协议、条款和内容边界。
 

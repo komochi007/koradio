@@ -138,7 +138,7 @@ function profileContext(profile: Profile = primaryProfile): ProfileContext {
       profileId: profile.id,
       themeMode: "dark",
       djLanguage: "zh-CN",
-      djVoiceStyle: "british-soft-radio",
+      djVoiceStyle: "natural-radio",
       updatedAt: "2026-07-17T08:00:00.000Z",
     },
   };
@@ -349,13 +349,25 @@ function createOnlineTransport(
             ["local-service", "available", "Local Service is ready"],
             ["codex", "available", "Codex command is configured"],
             ["netease", "available", "Built-in provider is available"],
-            ["tts", options.ttsStatus ?? "available", "Apple system TTS snapshot"],
+            ["tts", options.ttsStatus ?? "available", "Qwen3-TTS local model snapshot"],
           ].map(([service, status, redactedSummary]) => ({
             service,
             status,
             redactedSummary,
             checkedAt: "2026-07-17T08:00:00.000Z",
           })),
+        }),
+      );
+    }
+    if (path === "/api/v1/device-settings/tts-model") {
+      return Promise.resolve(
+        jsonResponse({
+          model: "Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit",
+          revision: "049ef77fe8816b536193c0c25f9a214d17921282",
+          state: "not-installed",
+          downloadedBytes: 0,
+          totalBytes: 1_973_573_869,
+          progressPercent: 0,
         }),
       );
     }

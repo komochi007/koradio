@@ -4,7 +4,8 @@
 
 ## 前提
 
-- macOS 13.5+，旧版与新版均从可信源码构建，且架构相同。
+- macOS 15+ Apple Silicon，旧版与新版均从可信源码构建。
+- 首次需要语音串讲时，在 Settings 明确触发约 1.84 GiB Qwen3-TTS 模型下载；下载失败不影响文字 DJ 与歌曲播放。
 - 先对两份 app 执行 `codesign --verify --deep --strict`，再用 `pnpm verify:package:macos <Koradio.app>` 验证包内容与启动停止。
 - 当前只支持数值语义版本（例如 `0.0.1`）。构建命令使用 `node scripts/release/build-macos.mjs --arch arm64 --version 0.0.1 --output artifacts/macos/s7-02`。
 - 真实用户数据默认位于 `~/Library/Application Support/Koradio`；不得在升级、回滚或卸载过程中删除该目录、其备份或 Keychain 凭据。

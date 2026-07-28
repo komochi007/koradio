@@ -200,7 +200,7 @@ describe("S2-05 settings, health and data root foundation", () => {
       profileId: profileOne,
       themeMode: "dark",
       djLanguage: "zh-CN",
-      djVoiceStyle: "british-soft-radio",
+      djVoiceStyle: "natural-radio",
     });
 
     const firstUpdated = await context.app.inject({

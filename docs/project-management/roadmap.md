@@ -21,7 +21,7 @@
 
 ## 1. 当前进度评估
 
-Koradio 已完成开发前产品和视觉定义、可安装/启动/测试/构建的 S1 Mock skeleton、S2 平台/数据/安全底座、S3 后端闭环、S4 P0 前端体验，以及 S5 Library、Taste、Programs 和全量功能验收。S6-01～S6-05 已分别关闭跨层失败、数据生命周期、安全/依赖审计、性能/无障碍回归与内部全质量门；S7-01、S7-02 与 S7-06 已完成 arm64 受控本机包装、bundled native TTS helper、两版本生命周期及真实 Codex/NetEase/Apple TTS 的 PWA 播放闭环。当前下一任务为 S7-07 个人本机稳定性试用与缺陷收口；S7-03 签名、公证与发布流水线在项目所有者授权外部分发前保持后置。
+Koradio 已完成开发前产品和视觉定义、S1～S6 全质量门，以及 S7 的 arm64 个人预览、两版本生命周期和真实 Provider/PWA 闭环。UX-10 已用 Qwen3-TTS 8-bit、中文 Serena 与英文 Ryan 替换历史 Apple TTS，并把当前支持矩阵收窄为 macOS 15+ arm64；S7-03 签名、公证与发布流水线在项目所有者授权外部分发前保持后置。
 
 | 进度维度 | 当前状态 | 证据 | 下一门槛 |
 |---|---|---|---|
@@ -39,7 +39,7 @@ Koradio 已完成开发前产品和视觉定义、可安装/启动/测试/构建
 
 当前先完成项目所有者受控本机的 Personal Local Preview，不创建公开下载入口。项目所有者后续再次授权公开下载时，macOS v1.0 包含 PRD 定义的六项 P0 和三项 P1 能力，并以签名、公证安装包直接发布。Windows、Mac App Store、云同步、远程访问、支付、公开社区、自动更新和多音乐源不进入 v1.0。
 
-包装形态已由 ADR 0003 固定为 macOS 13.5+ 的分架构 app/DMG、原生轻量 launcher + bundled Local Service + 外部浏览器 PWA。S0 接受本地架构裁决；Developer ID、Apple 公证、Gatekeeper 和独立干净环境保留为未来 S7 公开分发硬门。
+包装形态由 ADR 0003 与 ADR 0005 固定为 macOS 15+ arm64 app/DMG、原生轻量 launcher + bundled Local Service + bundled Python/MLX runtime + 外部浏览器 PWA；Qwen 模型由用户首次下载。Developer ID、Apple 公证、Gatekeeper 和独立干净环境保留为未来 S7 公开分发硬门。
 
 ## 3. 阶段路线
 

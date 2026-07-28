@@ -199,7 +199,7 @@ describe("S3-06 Program generation orchestration", () => {
           programTitle: "Deterministic Placement",
           scenarioSummary: "两首歌和多段 DJ",
           djLanguage: language,
-          djPersona: "british-soft-radio",
+          djPersona: "natural-radio",
           djScripts: [
             {
               type: "intro",
@@ -363,7 +363,7 @@ describe("S3-06 Program generation orchestration", () => {
           programTitle: "One Intent One Track",
           scenarioSummary: "单个搜索词不能填满队列",
           djLanguage: "zh-CN",
-          djPersona: "british-soft-radio",
+          djPersona: "natural-radio",
           djScripts: [
             {
               type: "intro",
@@ -452,7 +452,7 @@ describe("S3-06 Program generation orchestration", () => {
           programTitle: "Controlled Intent Degradation",
           scenarioSummary: "非法库内 ID 与重复搜索稳定降级",
           djLanguage: "zh-CN",
-          djPersona: "british-soft-radio",
+          djPersona: "natural-radio",
           djScripts: [
             {
               type: "intro",
@@ -578,7 +578,7 @@ describe("S3-06 Program generation orchestration", () => {
           programTitle: "Full DJ Script",
           scenarioSummary: "验证全文一致",
           djLanguage: "zh-CN",
-          djPersona: "british-soft-radio",
+          djPersona: "natural-radio",
           djScripts: [
             {
               type: "intro",
@@ -607,7 +607,7 @@ describe("S3-06 Program generation orchestration", () => {
       {
         text: completeText,
         language: "zh-CN",
-        voiceStyle: "british-soft-radio",
+        voiceStyle: "natural-radio",
       },
     ]);
     expect(detail.djScripts[0]).toMatchObject({

@@ -175,7 +175,7 @@ async function mockRadio(
             profileId: profile.id,
             themeMode: options.theme ?? "dark",
             djLanguage: "zh-CN",
-            djVoiceStyle: "british-soft-radio",
+            djVoiceStyle: "natural-radio",
             updatedAt: "2026-07-17T08:00:00.000Z",
           },
         },

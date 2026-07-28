@@ -53,7 +53,7 @@ export function createProfilePreferencesService(
       dj_voice_style,
       updated_at
     )
-    VALUES (?, 'dark', 'zh-CN', 'british-soft-radio', ?)
+    VALUES (?, 'dark', 'zh-CN', 'natural-radio', ?)
     ON CONFLICT(profile_id) DO NOTHING
   `);
   const selectByProfileId = options.client.prepare(`

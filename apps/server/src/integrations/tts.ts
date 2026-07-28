@@ -1,6 +1,4 @@
 import { Buffer } from "node:buffer";
-import { resolve } from "node:path";
-
 import { z } from "zod";
 
 import {
@@ -13,29 +11,15 @@ import {
 import type { LocalFileStore } from "../platform/files/index.js";
 import type { SafeLogger } from "../platform/logging/index.js";
 import {
-  ProviderProcessError,
-  createProviderEnvironment,
-  resolveProviderExecutable,
-  runProviderProcess,
-  type ExecutableResolver,
-  type ProviderProcessRunner,
-} from "./process.js";
+  createTtsHelperClient,
+  TtsHelperClientError,
+  type TtsHelperClient,
+} from "./tts-helper-client.js";
+import type { TtsModelService } from "./tts-model.js";
 
 const maximumTtsAudioBytes = 25 * 1_048_576;
 const maximumTtsOutputBytes = 35 * 1_048_576;
 const base64Pattern = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
-const voiceListSchema = z.strictObject({
-  voices: z
-    .array(
-      z.strictObject({
-        identifier: z.string().trim().min(1).max(200),
-        language: z.string().trim().min(1).max(35),
-        name: z.string().trim().min(1).max(200),
-        isPersonalVoice: z.boolean(),
-      }),
-    )
-    .max(1000),
-});
 const helperSynthesisSchema = z
   .strictObject({
     audioBase64: z.string().min(1).max(maximumTtsOutputBytes),
@@ -112,22 +96,15 @@ export class TtsAdapterError extends Error {
 }
 
 export interface CreateTtsAdapterOptions {
+  client?: TtsHelperClient;
   fileStore: Pick<LocalFileStore, "put">;
   helperPath: string;
   logger?: Pick<SafeLogger, "warn">;
   maximumOutputBytes?: number;
-  resolveExecutable?: ExecutableResolver;
-  runner?: ProviderProcessRunner;
+  modelService: TtsModelService;
+  pythonPath: string;
   runtimeDirectory: string;
   timeoutMs?: number;
-}
-
-function parseJsonObject(stdout: string): unknown {
-  try {
-    return JSON.parse(stdout);
-  } catch {
-    throw new TtsAdapterError("output_invalid");
-  }
 }
 
 function decodeAudio(value: string): Buffer {
@@ -165,35 +142,31 @@ function hasValidAudioSignature(content: Buffer, extension: string): boolean {
   return content.subarray(4, 8).toString("ascii") === "ftyp";
 }
 
-function mapProcessError(error: ProviderProcessError): TtsAdapterError {
+function mapHelperError(error: TtsHelperClientError): TtsAdapterError {
   if (error.code === "cancelled") {
     return new TtsAdapterError("cancelled");
   }
   if (error.code === "timeout") {
     return new TtsAdapterError("timeout");
   }
-  if (error.code === "executable_not_found") {
-    return new TtsAdapterError("configuration_invalid");
-  }
-  return new TtsAdapterError("helper_unavailable");
+  return new TtsAdapterError(
+    error.code === "output_invalid" ? "output_invalid" : "helper_unavailable",
+  );
 }
 
-function voicePreference(identifier: string): number {
-  if (identifier.startsWith("com.apple.voice.compact.")) {
-    return 0;
-  }
-  if (identifier.startsWith("com.apple.ttsbundle.")) {
-    return 1;
-  }
-  return 2;
-}
+export type ClosableTtsProvider = TtsProvider & { close(): Promise<void> };
 
-export function createTtsAdapter(options: CreateTtsAdapterOptions): TtsProvider {
-  const runner = options.runner ?? runProviderProcess;
-  const executableResolver = options.resolveExecutable ?? resolveProviderExecutable;
-  const timeoutMs = options.timeoutMs ?? 45_000;
-  const maximumOutputBytes = options.maximumOutputBytes ?? maximumTtsOutputBytes;
-  const runtimeDirectory = resolve(options.runtimeDirectory);
+export function createTtsAdapter(options: CreateTtsAdapterOptions): ClosableTtsProvider {
+  const client =
+    options.client ??
+    createTtsHelperClient({
+      helperPath: options.helperPath,
+      maximumOutputBytes: options.maximumOutputBytes ?? maximumTtsOutputBytes,
+      modelDirectory: options.modelService.modelDirectory,
+      pythonPath: options.pythonPath,
+      runtimeDirectory: options.runtimeDirectory,
+      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+    });
 
   return {
     async synthesize(command, callOptions) {
@@ -204,62 +177,20 @@ export function createTtsAdapter(options: CreateTtsAdapterOptions): TtsProvider 
       }
 
       try {
-        const executable = await executableResolver(options.helperPath);
-        const commonInvocation = {
-          cwd: runtimeDirectory,
-          environment: createProviderEnvironment(),
-          executable,
-          maximumOutputBytes,
-          ...(callOptions.signal === undefined ? {} : { signal: callOptions.signal }),
-          timeoutMs,
-        };
-        const voicesResult = await runner({
-          ...commonInvocation,
-          args: ["voices", "--json"],
-          input: "",
-        });
-        if (voicesResult.exitCode !== 0) {
+        if (options.modelService.getStatus().state !== "ready") {
           throw new TtsAdapterError("helper_unavailable");
         }
-        const voices = voiceListSchema.safeParse(parseJsonObject(voicesResult.stdout));
-        if (!voices.success) {
-          throw new TtsAdapterError("output_invalid");
-        }
-        const eligibleVoices = voices.data.voices
-          .filter(
-            (voice) => !voice.isPersonalVoice && voice.language === parsedCommand.data.language,
-          )
-          .sort(
-            (left, right) =>
-              voicePreference(left.identifier) - voicePreference(right.identifier) ||
-              left.identifier.localeCompare(right.identifier),
-          );
-        const selectedVoice =
-          parsedCommand.data.voiceIdentifier === undefined
-            ? eligibleVoices[0]
-            : eligibleVoices.find(
-                (voice) => voice.identifier === parsedCommand.data.voiceIdentifier,
-              );
-        if (
-          selectedVoice === undefined ||
-          selectedVoice.isPersonalVoice ||
-          selectedVoice.language !== parsedCommand.data.language
-        ) {
-          throw new TtsAdapterError("voice_unavailable");
-        }
-
-        const synthesisResult = await runner({
-          ...commonInvocation,
-          args: ["synthesize", "--json"],
-          input: JSON.stringify({
-            ...parsedCommand.data,
-            voiceIdentifier: selectedVoice.identifier,
-          }),
-        });
-        if (synthesisResult.exitCode !== 0) {
-          throw new TtsAdapterError("helper_unavailable");
-        }
-        const synthesis = helperSynthesisSchema.safeParse(parseJsonObject(synthesisResult.stdout));
+        const synthesisResult = await client.synthesize(
+          {
+            language: parsedCommand.data.language,
+            text: parsedCommand.data.text,
+            voiceStyle: parsedCommand.data.voiceStyle,
+          },
+          {
+            ...(callOptions.signal === undefined ? {} : { signal: callOptions.signal }),
+          },
+        );
+        const synthesis = helperSynthesisSchema.safeParse(synthesisResult);
         if (!synthesis.success) {
           throw new TtsAdapterError("output_invalid");
         }
@@ -288,8 +219,8 @@ export function createTtsAdapter(options: CreateTtsAdapterOptions): TtsProvider 
         return result;
       } catch (error) {
         const mapped =
-          error instanceof ProviderProcessError
-            ? mapProcessError(error)
+          error instanceof TtsHelperClientError
+            ? mapHelperError(error)
             : error instanceof TtsAdapterError
               ? error
               : new TtsAdapterError("helper_unavailable");
@@ -299,6 +230,9 @@ export function createTtsAdapter(options: CreateTtsAdapterOptions): TtsProvider 
         });
         throw mapped;
       }
+    },
+    close() {
+      return client.close();
     },
   };
 }

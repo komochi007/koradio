@@ -10,14 +10,14 @@
 ## 1. System Overview
 
 Koradio 是运行在单台设备上的私人 AI 音乐电台，由浏览器 PWA 与本地 Node.js 服务组成。
-系统读取当前档案的品味与历史，通过 Codex 规划节目，经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled macOS native helper 调用 `AVSpeechSynthesizer` 生成 DJ 语音。
+系统读取当前档案的品味与历史，通过 Codex 规划节目，经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled Python/MLX helper 调用 Qwen3-TTS 8-bit 本地模型生成 DJ 语音。
 ### System boundaries
 
 - **Client**：界面、HTMLAudio、实时播放进度和短生命周期交互状态。
 - **Local Service**：业务规则、任务编排、持久化、外部服务访问和事件发布。
 - **Device**：SQLite、音频缓存、头像与日志只保存在本机。
 - **External**：Codex 与网易云均为不可信、可失败依赖，只允许 Backend Adapter 访问。
-- **Native TTS**：Apple 系统 TTS 是本机 OS 能力，但 native helper、已安装语音与音频输出仍视为可失败 I/O；Local Service 只能通过 TTS Port 调用。
+- **Local TTS**：Qwen3-TTS 8-bit 模型与 bundled Python/MLX helper 是可选本机能力；模型下载、helper 和音频输出均视为可失败 I/O，Local Service 只能通过 TTS Port 调用。
 - **Profile**：档案用于数据分区和上下文选择，不是身份认证或安全边界。
 | Concern | Authoritative owner | Persistence |
 |---|---|---|
@@ -49,8 +49,8 @@ flowchart LR
     Modules --> TTS["TTSProvider Adapter"]
     Codex --> CodexExt["Local Codex Process"]
     Music --> MusicExt["NetEase linuxapi Service"]
-    TTS --> TTSHelper["Bundled macOS TTS Helper"]
-    TTSHelper --> AppleTTS["AVSpeechSynthesizer<br/>Installed Standard Voices"]
+    TTS --> TTSHelper["Persistent Python/MLX Helper"]
+    TTSHelper --> QwenTTS["Qwen3-TTS 8-bit<br/>Serena · Ryan"]
     Secrets["OS Credential Store"] --> Codex
 ```
 
@@ -59,8 +59,8 @@ flowchart LR
 
 ### Packaging and delivery
 
-- macOS 包装采用原生轻量 launcher + bundled Node Local Service + bundled native TTS helper + 外部浏览器 PWA；launcher 只负责进程生命周期、health ready 和打开同源 origin，不成为播放或业务事实源。
-- 每个 CPU 架构使用独立 app/DMG，捆绑对应架构的 Node 24.18.0 精简 runtime、production Server 文件树和 built PWA assets；最低目标系统为 macOS 13.5。
+- macOS 包装采用原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + 外部浏览器 PWA；launcher 只负责进程生命周期、health ready 和打开同源 origin，不成为播放或业务事实源。
+- 当前只生成 macOS 15+ arm64 app/DMG，捆绑 Node 24.18.0、可重定位 Python 3.12/MLX runtime、production Server 与 built PWA assets；Qwen 模型由用户首次下载到受控数据目录。
 - 当前交付渠道仅限项目所有者在受控本机从可信源码构建并个人使用。ad-hoc 签名只用于本地 bundle 结构和生命周期验证，不得作为公开下载或外部分发凭据。
 - 公开下载属于后续发布阶段；任何外部分发产物都必须先取得 Developer ID 签名、公证 ticket、Gatekeeper 与独立干净环境验收，不得通过关闭系统安全检查替代。
 - 应用二进制、用户数据与 Credential Store 分离；替换或移除 app 不自动删除数据、备份或凭据。
@@ -109,7 +109,7 @@ flowchart LR
 | Library | 搜索、导入、候选池 | MusicProvider | NormalizedTrack | 推荐与播放控制 |
 | Taste | 自动 projection、人工 overrides、EffectiveTaste | Feedback | Taste context | Provider response、覆盖人工规则 |
 | Feedback | 显式喜欢/撤销、不喜欢/撤销、节目收藏/撤销、跳过事实 | Playback、Programs | Append-only FeedbackEvent | 重写历史事实 |
-| DeviceSettings | dataRoot、Codex 命令路径、迁移命令 | health ports | Safe device settings、migration job | Profile 偏好、NetEase/Apple TTS 地址或密钥、明文密钥输出 |
+| DeviceSettings | dataRoot、Codex 命令路径、迁移命令、Qwen 模型安装命令 | health ports | Safe device settings、migration/model job | Profile 偏好、NetEase/TTS 地址或密钥、明文密钥输出 |
 | ProfilePreferences | 主题、DJ 语言、声音风格 | Profiles | Profile preferences | 服务配置、密钥 |
 
 - 每个持久实体只有一个写入 owner；其他模块通过 use case/event 协作，Programs 只通过 Ports 调用 Provider。
@@ -146,7 +146,7 @@ sequenceDiagram
     P->>M: Resolve intents in order, at most one track per discovery keyword
     M-->>P: Normalized playable tracks
     P-->>E: generation.tracks-resolved
-    alt Apple system TTS available
+    alt Qwen local TTS ready
         P->>T: Synthesize DJ segments
         alt Synthesis succeeds
             T-->>P: Audio reference, duration, timestamps
@@ -428,7 +428,7 @@ packages/
 └── design-tokens/                  # shared visual tokens
 native/
 └── macos/
-    └── tts-helper/                 # AVSpeechSynthesizer bridge
+    └── qwen-tts-helper/            # persistent Python/MLX JSONL bridge
 packaging/
 └── macos/                           # launcher and Node entitlements
 scripts/
@@ -474,7 +474,9 @@ scripts/
 - Codex schema 校验失败不得记录原始正文；只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
 - FileStore 拒绝路径越界和未允许扩展名；媒体下载限制超时、大小、MIME 与重定向。
 - Codex 通过参数数组启动，禁止拼接 shell command；命令路径需验证。
-- Apple 系统 TTS 通过固定路径的 bundled native helper 调用；参数使用数组，DJ 文本经结构化 stdin 传递而不得进入 argv，stdout 只允许脱敏 JSON 结果。
+- Qwen3-TTS 通过固定路径的 bundled Python/MLX helper 调用；参数使用数组，DJ 文本经结构化 stdin 传递而不得进入 argv，stdout 只允许脱敏 JSON 结果。
+- 固定 revision 模型由用户明确触发下载，逐文件校验大小与 SHA-256 后原子安装；下载与数据目录迁移互斥，退出时中止并清理应用拥有的 partial。
+- Python helper 继承受限环境且不拥有业务秘密；当前 ad-hoc 个人预览仅对 Python 子进程使用加载已重签 native extensions 所需的 library-validation entitlement，launcher 与 Node 不继承。外部分发前必须以 Developer ID 同 Team 重签全部 Mach-O 并重新评估该权限。
 - v1 只枚举并使用当前设备已安装的标准系统语音；显式 voice identifier 每次合成前验证仍在可用列表，未显式指定时按语言优先 compact、再选 ttsbundle、最后选择其他标准语音，同级按 identifier 排序，不请求 Personal Voice 授权。
 - TTS helper 输出的 PCM/音频元数据必须校验，目标文件只能由 FileStore 分配；超时或取消时终止 helper 并忽略迟到输出。
 - DB 与缓存使用当前用户最小权限且备份无明文密钥；错误只暴露稳定 code 与安全 message。
@@ -497,7 +499,7 @@ scripts/
 | TD-13 | DeviceSettings / ProfilePreferences split | 配置 owner 与 Profile 隔离一致 | 路由、表与迁移任务分属明确 owner |
 | TD-14 | Discriminated playback timeline | 不把文字降级伪装成音频 | 只有带 audio ref 的 DJ 段进入时间线 |
 | TD-15 | Development dual process, production same origin | 保留 Vite HMR，同时让生产安全边界保持单一 loopback origin | 需要精确 Origin allowlist、端口冲突处理和 WebSocket 首消息认证 |
-| TD-16 | Apple system TTS via bundled native helper | 保持语音本地化并移除云 TTS 凭据与网络依赖 | 需要双架构 Swift helper、已安装标准语音检查、进程 deadline 和文字降级 |
+| TD-16 | Qwen3-TTS 8-bit via bundled Python/MLX helper | 获得更自然的本地语音并保持零 API 调用费 | 仅支持 macOS 15+ arm64，需要约 450 MiB runtime、1.84 GiB 首次模型下载、进程 deadline 和文字降级 |
 | TD-17 | Built-in TypeScript NetEase `linuxapi` adapter | Personal Local Preview 不依赖官方 CLI、C# 二进制或 .NET 运行时 | 协议变化与公开发布合规必须在 S3/S7 持续验证 |
 ## 19. Known Tradeoffs
 

@@ -52,7 +52,7 @@ const current: ProfileContext = {
     profileId,
     themeMode: "dark",
     djLanguage: "zh-CN",
-    djVoiceStyle: "british-soft-radio",
+    djVoiceStyle: "natural-radio",
     updatedAt: "2026-07-19T08:00:00.000Z",
   },
 };

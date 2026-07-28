@@ -83,7 +83,7 @@ async function mockProgram(
             profileId: s6Profile.id,
             themeMode: "dark",
             djLanguage: "zh-CN",
-            djVoiceStyle: "british-soft-radio",
+            djVoiceStyle: "natural-radio",
             updatedAt: "2026-07-20T12:00:00.000Z",
           },
         },

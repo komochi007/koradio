@@ -55,6 +55,7 @@ import {
   updateProfileRequestSchema,
   updateProfilePreferencesRequestSchema,
   updateTasteOverridesRequestSchema,
+  ttsModelStatusSchema,
 } from "@koradio/contracts";
 import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 
@@ -141,6 +142,7 @@ import {
 } from "../platform/db/data-root.js";
 import { createEventHub } from "../platform/events/index.js";
 import { FileStoreError, createLocalFileStore } from "../platform/files/index.js";
+import { createTtsModelService, type TtsModelService } from "../integrations/tts-model.js";
 import { createAllowedOrigins, type RuntimeConfig } from "./config.js";
 import { createRuntimeProviders } from "./providers.js";
 import { enforceApiSecurity, isAllowedOrigin } from "./security.js";
@@ -203,6 +205,7 @@ export interface CreateAppOptions {
   programFeedbackTargets?: Pick<FeedbackTargetResolver, "programExists">;
   requestRestart?: (request: DataRootRestartRequest) => Promise<void>;
   session?: SessionState;
+  ttsModelService?: TtsModelService;
   ttsProvider?: TtsProvider;
   webSocketAuthenticationTimeoutMs?: number;
 }
@@ -266,6 +269,11 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const tasteRepository = createTasteRepository(database.client);
   const taste = createTasteService({ repository: tasteRepository });
   const fileStore = createLocalFileStore({ dataRoot: options.config.dataRoot });
+  const ttsModelService =
+    options.ttsModelService ??
+    (await createTtsModelService({
+      dataRoot: options.config.dataRoot,
+    }));
   const avatarUpload = createAvatarUploadService(fileStore);
   const profiles = createProfileService({
     avatarReferences: avatarUpload,
@@ -302,6 +310,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     config: options.config,
     deviceSettings,
     fileStore,
+    modelService: ttsModelService,
   });
   const library = createLibraryService({
     originMode: options.config.providerMode,
@@ -336,10 +345,12 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const health = createHealthService({
     deviceSettings,
     mode: options.config.providerMode,
-    ttsEnabled:
+    ttsEnabled: () =>
       options.config.providerMode === "mock" ||
-      options.config.ttsHelperPath !== undefined ||
-      options.ttsProvider !== undefined,
+      options.ttsProvider !== undefined ||
+      (options.config.ttsHelperPath !== undefined &&
+        options.config.ttsPythonPath !== undefined &&
+        ttsModelService.getStatus().state === "ready"),
   });
   const eventHub = createEventHub();
   const programDeletion = createProgramDeletionService({
@@ -398,6 +409,8 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   app.addHook("onClose", async () => {
     await programGeneration.close();
     await library.close();
+    await runtimeProviders.close();
+    await ttsModelService.close();
     database.close();
   });
 
@@ -476,6 +489,26 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   );
 
   app.get("/api/v1/device-settings", () => deviceSettings.get());
+
+  app.get("/api/v1/device-settings/tts-model", () =>
+    ttsModelStatusSchema.parse(ttsModelService.getStatus()),
+  );
+
+  app.post("/api/v1/device-settings/tts-model/install", (_request, reply) => {
+    const status = ttsModelService.startInstall();
+    if (status.state === "unsupported") {
+      return sendApiError(
+        reply,
+        409,
+        "TTS_MODEL_UNSUPPORTED",
+        "Qwen3-TTS requires Apple Silicon and macOS 15 or later",
+        false,
+      );
+    }
+    return reply
+      .status(status.state === "ready" ? 200 : 202)
+      .send(ttsModelStatusSchema.parse(status));
+  });
 
   app.patch("/api/v1/device-settings", (request, reply) => {
     const parsed = updateDeviceSettingsRequestSchema.safeParse({
@@ -1602,6 +1635,15 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   );
 
   app.post("/api/v1/device-settings/data-root-migrations", (request, reply) => {
+    if (ttsModelService.getStatus().state === "downloading") {
+      return sendApiError(
+        reply,
+        409,
+        "TTS_MODEL_DOWNLOAD_IN_PROGRESS",
+        "Wait for the Qwen3-TTS model download to finish before migrating the data root",
+        true,
+      );
+    }
     const parsed = createDataRootMigrationRequestSchema.safeParse({
       headers: {
         "idempotency-key": request.headers["idempotency-key"],

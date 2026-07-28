@@ -16,7 +16,7 @@ export interface CreateHealthServiceOptions {
   deviceSettings: DeviceSettingsService;
   mode: HealthResponse["mode"];
   now?: () => Date;
-  ttsEnabled: boolean;
+  ttsEnabled: () => boolean;
 }
 
 export function createHealthService(options: CreateHealthServiceOptions): HealthService {
@@ -53,13 +53,13 @@ export function createHealthService(options: CreateHealthServiceOptions): Health
         },
         {
           service: "tts",
-          status: options.ttsEnabled ? "available" : "degraded",
+          status: options.ttsEnabled() ? "available" : "degraded",
           checkedAt,
-          redactedSummary: options.ttsEnabled
+          redactedSummary: options.ttsEnabled()
             ? mockMode
-              ? "Apple system TTS is available in mock mode"
-              : "Apple system TTS helper is enabled for live personal preview"
-            : "Apple system TTS helper is unavailable; text DJ fallback is enabled",
+              ? "Qwen3-TTS is available in mock mode"
+              : "Qwen3-TTS local model is ready for live personal preview"
+            : "Qwen3-TTS local model is unavailable; text DJ fallback is enabled",
         },
       ],
     });

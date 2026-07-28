@@ -17,7 +17,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
   → Programs 将当前 Profile 最多 500 首可播放库内曲目摘要与 EffectiveTaste 交给 Codex
   → Codex 生成有序 library/discovery 选曲意图与 DJ 串讲
   → Library 按意图顺序解析库内曲目或网易云探索结果、播放链接与歌词
-  → Apple AVSpeechSynthesizer 通过本机原生 helper 生成可选 DJ 语音
+  → Qwen3-TTS 8-bit 通过本机 Python/MLX helper 生成可选 DJ 语音
   → 本地服务原子提交节目与播放时间线
   → 浏览器 Audio Engine 播放并收集反馈
   → 反馈写入本地品味档案，影响后续节目
@@ -57,7 +57,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] SQLite/Drizzle 底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；Profile、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已落地
 - [x] Secret Store、File Store 与脱敏日志平台边界已实现：macOS Keychain 往返、headless 稳定错误、受控引用、扩展名/MIME/大小/重定向限制和敏感信息清除已验证；TTS Adapter 只向受控 File Store 写入校验后的音频，现有 Provider Adapters 不需要业务秘密
 - [x] 本地 HTTP 安全边界已完成：每次 bootstrap 签发短期进程内 token，REST 与 WebSocket 共享校验，Web 只在内存持有 token，并支持 401 后重新 bootstrap 的重连基础
-- [x] DeviceSettings 与 ProfilePreferences owner 已实现：设备配置和 Profile 偏好分表、分路由持久化，内置网易云与 Apple TTS 状态只读且 Health 不返回命令路径、凭据或 Provider 私有字段
+- [x] DeviceSettings 与 ProfilePreferences owner 已实现：设备配置和 Profile 偏好分表、分路由持久化，内置网易云与 Qwen3-TTS 状态只读且 Health 不返回命令路径、凭据或 Provider 私有字段
 - [x] Profiles 领域闭环已实现：幂等创建、列表/读取/更新、当前 Profile context、默认 TasteOverrides/ProfilePreferences、单文件 multipart 头像上传和切换协调顺序均已验证；v1 不提供 Profile 删除
 - [x] Library 后端已实现：Provider 输出严格归一化为稳定 source identity，支持搜索、幂等加入候选池、分页列表、异步歌单导入及快照、歌词和短期播放解析；搜索/歌词/播放缓存均有容量与 TTL，播放直链不持久化
 - [x] Feedback 与 Taste 记忆后端已实现：七类固定反馈按 Profile append-only 幂等写入，同事务按稳定 replay order 更新可重建 TasteProjection；人工 TasteOverrides 独立版本化并优先合并为只读 EffectiveTaste
@@ -90,7 +90,7 @@ AI Agent **不得**：
 
 - 把目标目录树描述成现有代码。
 - 把目标技术栈描述成已安装依赖。
-- 把尚未验证的 x64、安装升级回滚、包装 CI、Developer ID、公证或产品行为测试覆盖描述成已经可运行的事实。
+- 把尚未验证的 x64、包装 CI、Developer ID、公证或产品行为测试覆盖描述成已经可运行的事实。
 - 把本地 Session 描述为云账号、Profile 登录或远程访问认证。
 - 把 ADR 0003 的已接受架构描述为已经实现，或把本地 ad-hoc 产物描述为已通过 Developer ID 签名公证、可公开分发。
 - 把当前受控本机的真实 Provider 验收外推为其他机器、公开分发或长期服务可用性证明。
@@ -112,7 +112,7 @@ AI Agent **不得**：
 ### MVP 核心闭环
 
 1. 创建或选择本地电台档案。
-2. 配置本地 Codex，确认内置网易云 Provider 可用，并检测可选 Apple 系统 TTS。
+2. 配置本地 Codex，确认内置网易云 Provider 可用；需要语音串讲时在 Settings 首次下载约 1.84 GiB 的 Qwen3-TTS 模型。
 3. 在 Radio 页面描述当前场景。
 4. 生成节目计划、DJ 开场和歌曲队列。
 5. 播放、暂停、切歌、seek 并查看歌词或串讲。
@@ -176,7 +176,7 @@ Fastify Local Service
 | SQLite | Profile、Taste、Program、PlaybackTimeline、Feedback 等结构化事实 |
 | Local File Store | 音频缓存、头像、歌词缓存和受控文件引用 |
 | External Providers | Codex 与网易云；均视为不可信、可失败依赖 |
-| Native TTS | bundled macOS helper 调用 Apple `AVSpeechSynthesizer`；本机能力仍可失败并必须文字降级 |
+| Local TTS | bundled Python/MLX helper 调用固定 Qwen3-TTS 8-bit 模型；中文 Serena、英文 Ryan，本机能力仍可失败并必须完整文字降级 |
 
 ### 关键不变量
 
@@ -217,7 +217,7 @@ Fastify Local Service
 | Secrets | macOS Keychain via `/usr/bin/security` interactive stdin | Platform adapter and real round-trip verified · business use planned |
 | AI orchestration | Local Codex process | Adapter、持久化 generation runner、恢复 Snapshot 与显式 live composition 已验证；Production 默认 Live，Development/Test/CI 默认 Mock |
 | Music provider | Backend TypeScript NetEase `linuxapi` Adapter；no official CLI or .NET runtime | Adapter implemented and controlled smoke verified for Personal Local Preview |
-| Voice provider | Apple `AVSpeechSynthesizer` via bundled native helper；standard installed voices only | Adapter、稳定系统语音选择、受控同源媒体与 arm64 live 产品播放已验证；Production 默认 Live，Development/Test/CI 默认 Mock |
+| Voice provider | Qwen3-TTS 8-bit via bundled Python/MLX helper；Serena / Ryan | 固定模型清单、首次下载、持久化 helper、受控同源媒体与 arm64 本机合成已验证；Production 默认 Live，Development/Test/CI 默认 Mock |
 | Unit / integration test | Vitest 4.1.10 + V8 coverage | Configured and verified |
 | Component test | React Testing Library 16.3.2 + jsdom 29.1.1 | Configured and verified |
 | Browser / visual / a11y test | Playwright 1.61.1 + axe-core | Configured and CI verified |
@@ -234,19 +234,19 @@ Fastify Local Service
 
 由 [ADR 0003](docs/adr/0003-macos-packaging.md) 决定，S7-01～S7-02 已实现受控本机 arm64 验收：
 
-- 推荐 macOS 13.5+、arm64/x64 分架构 DMG、原生轻量 launcher + bundled Node Local Service + bundled native TTS helper + 外部浏览器 PWA；arm64 已通过本机 app/DMG、strict codesign、两版本安装/升级/回滚/卸载与数据保留验证，x64 尚未验收。
+- 当前目标为 macOS 15+ Apple Silicon、原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + 外部浏览器 PWA；Qwen 模型不进入 DMG，由用户首次下载。此前 arm64 Apple helper 包装的生命周期证据仅作为历史记录。
 - 当前只允许项目所有者从可信源码在受控本机构建并个人使用，不提供公开下载。
 - Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净环境仍未验证；这些是未来任何外部分发的硬门，不阻塞当前本地开发。
 
 由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 决定；Backend Adapter 与 native helper 已实装，Production 默认 Live，Development、Test 和 CI 默认 Mock：
 
-- v1 使用 Codex CLI、Backend TypeScript NetEase `linuxapi` Adapter 与 bundled Apple `AVSpeechSynthesizer` helper。
+- v1 使用 Codex CLI、Backend TypeScript NetEase `linuxapi` Adapter 与 bundled Qwen3-TTS Python/MLX helper。
 - NetEase Adapter 不调用官方 `ncm-cli`，不直接依赖 `wwh1004/NeteaseCloudMusicApi` C# 二进制，也不增加 .NET runtime。
 - 搜索、歌词、歌单、播放 URL、Range/MIME/CORS 与非法 ID 已完成脱敏 PoC；非官方协议只允许 Personal Local Preview，公开分发必须在 S7 重新验证。
 
 尚未决定：
 
-- 数据库和其他业务依赖的具体包与精确版本；Provider 与 Apple 系统 TTS 的 v1 接入形态已经由项目所有者明确。
+- 数据库和其他业务依赖的具体包与精确版本；Provider 与 Qwen3-TTS 的 v1 接入形态已经由项目所有者明确。
 
 ## 6. 目录结构
 
@@ -499,7 +499,7 @@ pnpm verify:package:macos <path-to-Koradio.app>
 - 已有 macOS Keychain Secret Store、受控 File Store 和结构化脱敏 logger；DeviceSettings 只持久化非敏感配置，TTS Adapter 只向受控 File Store 写入已校验音频。
 - 已有 Profiles、Library、Feedback、Taste、Programs 与 Playback application/persistence/public API、持久节目生成 Job、有序事件、Provider orchestration、MusicProvider Port、确定性 Mock、真实 Programs/Library 反馈目标校验和可重建 projection；Mock Provider 后端闭环已通过固定 fixture 验收。
 - 已有完整 v1 wire contracts；health/session/events、Profiles、Library、Feedback、Taste、Programs 历史/详情、Playback snapshot/checkpoint、DeviceSettings、ProfilePreferences 和数据目录迁移已有 route/use case。
-- 已有 Codex、NetEase 与 TTS Adapter、native TTS helper 及确定性 Mock；Production composition 默认 `live`，Development、Test 和 CI 默认 `mock`，也可由 `KORADIO_PROVIDER_MODE` 显式覆盖；arm64 包内 helper、受控 TTS 音频与真实 Provider 节目播放已验收。
+- 已有 Codex、NetEase 与 TTS Adapter、Qwen Python/MLX helper 及确定性 Mock；Production composition 默认 `live`，Development、Test 和 CI 默认 `mock`，也可由 `KORADIO_PROVIDER_MODE` 显式覆盖；Qwen 8-bit 本机完整句子合成与受控 TTS 音频已验收。
 - App Shell 提供五个一级 route、TanStack Query health snapshot、内存 Session、WebSocket 事件重连、完全离线异常页和只读 Settings；在线模式已提供 Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题/DJ 偏好、四服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、节目 generation command、Snapshot/有序事件恢复、原子节目替换、喜欢/不喜欢/跳过/节目收藏反馈、Library 搜索/试听/候选池/分页/缓存与网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看、字段约束和只写 overrides 的人工编辑，以及 Programs 分页历史、详情、Provider source identity 恢复、可用串讲重播、文字降级、场景草稿复用和收藏/撤销。
 - Session 只保护本地 HTTP 边界，不代表云账号或 Profile 身份；浏览器不会从 LocalStorage、SessionStorage、IndexedDB 或 Cookie 恢复 token。
 

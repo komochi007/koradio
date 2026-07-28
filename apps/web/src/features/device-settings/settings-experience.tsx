@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { HealthResponse, ProfileContext, ServiceHealth } from "@koradio/contracts";
+import type {
+  HealthResponse,
+  ProfileContext,
+  ServiceHealth,
+  TtsModelStatus,
+} from "@koradio/contracts";
 import { useEffect, useRef, useState, type ReactElement, type SyntheticEvent } from "react";
 
 import { updateProfilePreferences } from "../profile-preferences/api.js";
@@ -9,6 +14,8 @@ import type { ServiceTransport } from "../../shared/transport.js";
 import {
   getDeviceSettings,
   getServiceHealth,
+  getTtsModelStatus,
+  installTtsModel,
   migrateDataRoot,
   updateDeviceSettings,
 } from "./api.js";
@@ -27,7 +34,7 @@ const serviceLabels: Record<ServiceHealth["service"], string> = {
   "local-service": "Local Service",
   codex: "Codex",
   netease: "NetEase Music API",
-  tts: "Apple Text to Speech",
+  tts: "Qwen3-TTS",
 };
 
 type ThemeMode = ProfileContext["preferences"]["themeMode"];
@@ -140,7 +147,7 @@ function Diagnostics({
               {item.service === "tts" && item.status !== "available" ? (
                 <div className="diagnostic-guidance">
                   <p>
-                    Apple TTS 是可选能力。确认系统语音可用后重新检测；未恢复时 DJ
+                    Qwen3-TTS 是可选的本地模型。完成模型下载后重新检测；未恢复时 DJ
                     串讲会安全降级为文字。
                   </p>
                 </div>
@@ -190,6 +197,11 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
     queryKey: ["service-health-list"],
     queryFn: () => getServiceHealth(props.transport),
   });
+  const ttsModel = useQuery({
+    queryKey: ["tts-model-status"],
+    queryFn: () => getTtsModelStatus(props.transport),
+    refetchInterval: (query) => (query.state.data?.state === "downloading" ? 1000 : false),
+  });
   const [codexCommand, setCodexCommand] = useState("");
   const [djLanguage, setDjLanguage] = useState(props.current.preferences.djLanguage);
   const [voiceStyle, setVoiceStyle] = useState(props.current.preferences.djVoiceStyle);
@@ -207,6 +219,11 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
   useEffect(() => {
     applyTheme(props.current.preferences.themeMode);
   }, [props.current.preferences.themeMode]);
+  useEffect(() => {
+    if (ttsModel.data?.state === "ready") {
+      void services.refetch();
+    }
+  }, [ttsModel.data?.state, services.refetch]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -262,6 +279,31 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
       setSaveMessage("数据目录迁移未启动，当前目录保持不变。请选择空且可写的目录。");
     },
   });
+  const installModel = useMutation({
+    mutationFn: () => installTtsModel(props.transport),
+    onSuccess: (status) => {
+      queryClient.setQueryData(["tts-model-status"], status);
+      setSaveMessage(
+        status.state === "ready"
+          ? "Qwen3-TTS 模型已就绪。"
+          : "Qwen3-TTS 模型下载已启动，可离开此页面继续使用文字 DJ。",
+      );
+    },
+    onError: () => {
+      setSaveMessage("Qwen3-TTS 模型下载未能启动，现有节目和文字 DJ 不受影响。");
+    },
+  });
+
+  function modelStatusLabel(status: TtsModelStatus | undefined): string {
+    if (status === undefined) return "正在检测";
+    return {
+      unsupported: "当前设备不支持",
+      "not-installed": "尚未下载",
+      downloading: `下载中 ${String(status.progressPercent)}%`,
+      ready: "本地模型已就绪",
+      failed: "下载失败，可重试",
+    }[status.state];
+  }
 
   async function openDiagnostics(): Promise<void> {
     setSaveMessage(undefined);
@@ -361,10 +403,29 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
               <strong>内置 · 本地模式</strong>
               <small>不收集 API 地址、Cookie 或密钥</small>
             </div>
-            <div className="provider-readonly">
-              <span>Apple Text to Speech</span>
-              <strong>系统内置 · 可选</strong>
-              <small>不可用时串讲降级为文字</small>
+            <div className="provider-readonly tts-model-card">
+              <span>Qwen3-TTS 8-bit</span>
+              <strong>{modelStatusLabel(ttsModel.data)}</strong>
+              <small>中文使用 Serena，英文使用 Ryan；模型约 1.84 GiB，仅首次下载。</small>
+              {ttsModel.data?.state === "downloading" ? (
+                <progress
+                  aria-label="Qwen3-TTS 模型下载进度"
+                  max={100}
+                  value={ttsModel.data.progressPercent}
+                />
+              ) : null}
+              {ttsModel.data?.state === "not-installed" || ttsModel.data?.state === "failed" ? (
+                <button
+                  type="button"
+                  disabled={installModel.isPending}
+                  onClick={() => {
+                    installModel.mutate();
+                  }}
+                >
+                  {installModel.isPending ? "正在启动…" : "下载本地语音模型"}
+                </button>
+              ) : null}
+              <small>模型不可用时串讲自动降级为完整文字，不影响歌曲播放。</small>
             </div>
             <p className="secret-note">敏感凭据由本地服务管理，不向浏览器返回、缓存或显示。</p>
           </section>
@@ -415,7 +476,7 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                   setVoiceStyle(event.target.value as typeof voiceStyle);
                 }}
               >
-                <option value="british-soft-radio">British Soft Radio</option>
+                <option value="natural-radio">Natural Radio</option>
               </select>
             </label>
           </section>

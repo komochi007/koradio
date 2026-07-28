@@ -70,3 +70,4 @@ ADR 只有在决策人、验证证据和受影响权威文档均明确后才能�
 | [0002](0002-runtime-topology.md) | 已接受 | 2026-07-15 | S0-04 | 固定开发双进程、生产同源单服务、端口、Origin allowlist 与本地 session bootstrap |
 | [0003](0003-macos-packaging.md) | 已接受 | 2026-07-15 | S0-05 | 固定 macOS 13.5+ 的双架构 native launcher + PWA；当前仅本地个人使用，公开分发保留 Developer ID 与公证硬门 |
 | [0004](0004-provider-feasibility.md) | 已接受 | 2026-07-16 | S0-06 | 接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper；仅限 Personal Local Preview，公开分发保留 Provider 合规硬门 |
+| [0005](0005-qwen3-local-tts.md) | 已接受 | 2026-07-28 | UX-10 | 使用固定 revision 的 Qwen3-TTS 8-bit 本地模型替换 Apple TTS；中文 Serena、英文 Ryan，模型由用户首次下载 |

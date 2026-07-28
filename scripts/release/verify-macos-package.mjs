@@ -1,5 +1,4 @@
 import { mkdtemp } from "node:fs/promises";
-import { Buffer } from "node:buffer";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import process from "node:process";
@@ -43,40 +42,23 @@ async function verify() {
   }
   const launcher = resolve(application, "Contents/MacOS/Koradio");
   const node = resolve(application, "Contents/Resources/runtime/bin/node");
-  const helper = resolve(application, "Contents/Resources/koradio-tts-helper");
+  const python = resolve(application, "Contents/Resources/qwen-runtime/bin/python");
+  const helper = resolve(application, "Contents/Resources/qwen-tts-helper/main.py");
   const dataDirectory = await mkdtemp(resolve(tmpdir(), "koradio-package-smoke-"));
   await run("codesign", ["--verify", "--deep", "--strict", application]);
   const nodeVersion = await run(node, ["--version"]);
   if (nodeVersion.stdout.trim() !== "v24.18.0") {
     throw new Error("Bundled Node runtime version is not v24.18.0");
   }
-  const voices = await run(helper, ["voices", "--json"]);
-  const parsedVoices = JSON.parse(voices.stdout);
-  if (!Array.isArray(parsedVoices.voices)) {
-    throw new Error("Bundled TTS helper returned an invalid voice list");
+  const pythonVersion = await run(python, ["--version"]);
+  if (!pythonVersion.stdout.includes("Python 3.12.13")) {
+    throw new Error("Bundled Qwen Python runtime version is invalid");
   }
-  const voice = parsedVoices.voices.find((candidate) => candidate.language === "en-US");
-  if (voice === undefined) {
-    throw new Error("Bundled TTS helper has no standard en-US voice");
-  }
-  const synthesis = await run(helper, ["synthesize", "--json"], {
-    input: JSON.stringify({
-      language: voice.language,
-      text: "Koradio packaging verification.",
-      voiceIdentifier: voice.identifier,
-      voiceStyle: "british-soft-radio",
-    }),
-  });
-  const parsedSynthesis = JSON.parse(synthesis.stdout);
-  const audio = Buffer.from(parsedSynthesis.audioBase64, "base64");
-  if (
-    parsedSynthesis.extension !== "wav" ||
-    !Number.isInteger(parsedSynthesis.durationMs) ||
-    parsedSynthesis.durationMs < 1 ||
-    audio.subarray(0, 4).toString("ascii") !== "RIFF"
-  ) {
-    throw new Error("Bundled TTS helper returned invalid synthesized audio");
-  }
+  await run(python, [
+    "-c",
+    "import importlib.metadata, mlx_audio, numpy; assert importlib.metadata.version('mlx-audio') == '0.4.5'",
+  ]);
+  await run(python, ["-m", "py_compile", helper]);
   const smoke = await run(launcher, ["--smoke"], {
     env: {
       ...process.env,
@@ -88,7 +70,12 @@ async function verify() {
     throw new Error("Launcher smoke result is invalid");
   }
   process.stdout.write(
-    `${JSON.stringify({ app: application, node: nodeVersion.stdout.trim(), voices: parsedVoices.voices.length })}\n`,
+    `${JSON.stringify({
+      app: application,
+      node: nodeVersion.stdout.trim(),
+      python: pythonVersion.stdout.trim(),
+      qwenRuntime: true,
+    })}\n`,
   );
 }
 

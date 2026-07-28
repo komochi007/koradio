@@ -8,14 +8,13 @@ import { spawn } from "node:child_process";
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const nodeVersion = "24.18.0";
+const pythonVersion = "3.12.13";
+const uvVersion = "0.11.32";
+const uvArchiveSha256 = "ed336d0ba49db8ef89b2b41fffa372ce63bd032f22a56f001c265891aec32829";
 const nodeArchives = {
   arm64: {
     architecture: "arm64",
     sha256: "e1a97e14c99c803e96c7339403282ea05a499c32f8d83defe9ef5ec66f979ed1",
-  },
-  x64: {
-    architecture: "x64",
-    sha256: "dfd0dbd3e721503434df7b7205e719f61b3a3a31b2bcf9729b8b91fea240f080",
   },
 };
 
@@ -71,8 +70,8 @@ function parseArguments(argumentsList) {
       fail(`Unsupported argument: ${argument ?? ""}`);
     }
   }
-  if (!(architecture in nodeArchives)) {
-    fail("--arch must be arm64 or x64");
+  if (architecture !== "arm64") {
+    fail("Qwen3-TTS packaging supports arm64 only");
   }
   if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
     fail("--version must be a numeric semantic version such as 1.2.3");
@@ -117,6 +116,36 @@ async function downloadNodeArchive(architecture, cacheDirectory) {
   return archive;
 }
 
+async function downloadUvArchive(cacheDirectory) {
+  const filename = "uv-aarch64-apple-darwin.tar.gz";
+  const archive = resolve(cacheDirectory, `uv-${uvVersion}-${filename}`);
+  if (await exists(archive)) {
+    if ((await checksum(archive)) !== uvArchiveSha256) {
+      fail(`Cached uv archive checksum mismatch: ${archive}`);
+    }
+    return archive;
+  }
+  const temporaryArchive = `${archive}.partial`;
+  if (await exists(temporaryArchive)) {
+    fail(`Partial uv archive already exists: ${temporaryArchive}`);
+  }
+  await run("curl", [
+    "--fail",
+    "--location",
+    "--proto",
+    "=https",
+    "--tlsv1.2",
+    "--output",
+    temporaryArchive,
+    `https://github.com/astral-sh/uv/releases/download/${uvVersion}/${filename}`,
+  ]);
+  if ((await checksum(temporaryArchive)) !== uvArchiveSha256) {
+    fail("Downloaded uv archive checksum mismatch");
+  }
+  await run("mv", [temporaryArchive, archive]);
+  return archive;
+}
+
 async function writeInfoPlist(path, version) {
   await writeFile(
     path,
@@ -131,7 +160,7 @@ async function writeInfoPlist(path, version) {
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>${version}</string>
 <key>CFBundleVersion</key><string>${version}</string>
-<key>LSMinimumSystemVersion</key><string>13.5</string>
+<key>LSMinimumSystemVersion</key><string>15.0</string>
 <key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
@@ -165,6 +194,7 @@ async function build() {
     fail(`Refusing to overwrite existing artifact: ${dmg}`);
   }
   const archive = await downloadNodeArchive(architecture, cacheDirectory);
+  const uvArchive = await downloadUvArchive(cacheDirectory);
   const stagingRoot = await mkdtemp(resolve(outputDirectory, `.staging-${architecture}-`));
   const buildToolDirectory = resolve(stagingRoot, ".toolchain");
   const application = resolve(stagingRoot, "Koradio.app");
@@ -172,6 +202,8 @@ async function build() {
   const macOs = resolve(contents, "MacOS");
   const resources = resolve(contents, "Resources");
   const runtime = resolve(resources, "runtime");
+  const qwenRuntime = resolve(resources, "qwen-runtime");
+  const qwenHelper = resolve(resources, "qwen-tts-helper/main.py");
   const serverTarget = resolve(resources, "app/apps/server");
   const webTarget = resolve(resources, "app/apps/web/dist");
   await mkdir(macOs, { recursive: true });
@@ -179,6 +211,7 @@ async function build() {
   await mkdir(buildToolDirectory, { recursive: true });
   await mkdir(dirname(serverTarget), { recursive: true });
   await mkdir(dirname(webTarget), { recursive: true });
+  await mkdir(dirname(qwenHelper), { recursive: true });
   await writeInfoPlist(resolve(contents, "Info.plist"), version);
 
   await run("tar", [
@@ -192,6 +225,58 @@ async function build() {
   ]);
   const bundledNode = resolve(runtime, "bin/node");
   await chmod(bundledNode, 0o755);
+  await run("tar", [
+    "-xzf",
+    uvArchive,
+    "-C",
+    buildToolDirectory,
+    "--strip-components=1",
+    "uv-aarch64-apple-darwin/uv",
+  ]);
+  const uv = resolve(buildToolDirectory, "uv");
+  await chmod(uv, 0o755);
+  const pythonInstallDirectory = resolve(cacheDirectory, "python");
+  const uvCacheDirectory = resolve(cacheDirectory, "uv-packages");
+  await run(
+    uv,
+    ["python", "install", pythonVersion, "--install-dir", pythonInstallDirectory, "--no-bin"],
+    {
+      env: {
+        ...process.env,
+        UV_CACHE_DIR: uvCacheDirectory,
+      },
+    },
+  );
+  const managedPython = resolve(
+    pythonInstallDirectory,
+    `cpython-${pythonVersion}-macos-aarch64-none/bin/python3.12`,
+  );
+  await cp(resolve(managedPython, "../.."), qwenRuntime, {
+    recursive: true,
+    verbatimSymlinks: true,
+  });
+  await run(
+    uv,
+    [
+      "pip",
+      "install",
+      "--python",
+      resolve(qwenRuntime, "bin/python"),
+      "--system",
+      "--break-system-packages",
+      "--require-hashes",
+      "--requirement",
+      resolve(repositoryRoot, "native/macos/qwen-tts-helper/requirements.lock"),
+    ],
+    {
+      env: {
+        ...process.env,
+        UV_CACHE_DIR: uvCacheDirectory,
+      },
+    },
+  );
+  await cp(resolve(repositoryRoot, "native/macos/qwen-tts-helper/main.py"), qwenHelper);
+  await chmod(resolve(qwenRuntime, "bin/python"), 0o755);
   const pnpmEntry = process.env.KORADIO_PNPM_ENTRY;
   if (pnpmEntry !== undefined && pnpmEntry.trim().length > 0) {
     const pnpmWrapper = resolve(buildToolDirectory, "pnpm");
@@ -222,16 +307,7 @@ async function build() {
   );
   await cp(resolve(repositoryRoot, "apps/web/dist"), webTarget, { recursive: true });
 
-  const swiftTarget = architecture === "arm64" ? "arm64-apple-macos13.5" : "x86_64-apple-macos13.5";
-  await run("swiftc", [
-    "-target",
-    swiftTarget,
-    "-framework",
-    "AVFoundation",
-    "-o",
-    resolve(resources, "koradio-tts-helper"),
-    resolve(repositoryRoot, "native/macos/tts-helper/main.swift"),
-  ]);
+  const swiftTarget = "arm64-apple-macos15.0";
   await run("swiftc", [
     "-target",
     swiftTarget,
@@ -241,7 +317,6 @@ async function build() {
     resolve(macOs, "Koradio"),
     resolve(repositoryRoot, "packaging/macos/launcher/main.swift"),
   ]);
-  await chmod(resolve(resources, "koradio-tts-helper"), 0o755);
   await chmod(resolve(macOs, "Koradio"), 0o755);
   await run("codesign", [
     "--force",
@@ -253,13 +328,35 @@ async function build() {
     resolve(repositoryRoot, "packaging/macos/node-entitlements.plist"),
     resolve(runtime, "bin/node"),
   ]);
+  await run("find", [
+    qwenRuntime,
+    "-type",
+    "f",
+    "(",
+    "-name",
+    "*.so",
+    "-o",
+    "-name",
+    "*.dylib",
+    ")",
+    "-exec",
+    "codesign",
+    "--force",
+    "--sign",
+    "-",
+    "{}",
+    ";",
+  ]);
   await run("codesign", [
     "--force",
+    "--deep",
     "--sign",
     "-",
     "--options",
     "runtime",
-    resolve(resources, "koradio-tts-helper"),
+    "--entitlements",
+    resolve(repositoryRoot, "packaging/macos/python-entitlements.plist"),
+    resolve(qwenRuntime, "bin/python"),
   ]);
   await run("codesign", ["--force", "--deep", "--sign", "-", "--options", "runtime", application]);
   await run("codesign", ["--verify", "--deep", "--strict", application]);

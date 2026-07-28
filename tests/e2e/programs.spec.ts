@@ -42,7 +42,7 @@ function preferences(profileId: string) {
     profileId,
     themeMode: "dark" as const,
     djLanguage: "zh-CN" as const,
-    djVoiceStyle: "british-soft-radio" as const,
+    djVoiceStyle: "natural-radio" as const,
     updatedAt: "2026-07-20T08:00:00.000Z",
   };
 }

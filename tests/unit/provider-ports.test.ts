@@ -39,7 +39,7 @@ describe("Provider ports and deterministic mocks", () => {
     expect(first).toEqual(second);
     expect(codexProgramPlanSchema.parse(first)).toMatchObject({
       djLanguage: "zh-CN",
-      djPersona: "british-soft-radio",
+      djPersona: "natural-radio",
     });
 
     const tts = createMockTtsProvider();
@@ -47,7 +47,7 @@ describe("Provider ports and deterministic mocks", () => {
       text: "Tonight, we keep it quiet.",
       language: "en-GB",
       voiceIdentifier: "com.apple.voice.compact.en-GB.Daniel",
-      voiceStyle: "british-soft-radio",
+      voiceStyle: "natural-radio",
     };
     expect(ttsSynthesisResultSchema.parse(await tts.synthesize(command, options))).toEqual(
       ttsSynthesisResultSchema.parse(await tts.synthesize(command, options)),

@@ -1,5 +1,7 @@
 # ADR 0004：Provider 可行性与发布边界
 
+> 2026-07-28 更新：本文关于 Apple System TTS 的选择与证据已由 [ADR 0005](0005-qwen3-local-tts.md) 取代；Codex 与 NetEase 结论保持有效。以下 Apple TTS 内容作为当时决策记录保留。
+
 > 状态：已接受
 > 日期：2026-07-16
 > 决策人：项目所有者

@@ -27,7 +27,11 @@ export async function installS6LegacyMigrations(
   );
 }
 
-export async function seedS6LegacyData(client: DatabaseSync, dataRoot: string): Promise<void> {
+export async function seedS6LegacyData(
+  client: DatabaseSync,
+  dataRoot: string,
+  voiceStyle: "british-soft-radio" | "natural-radio" = "natural-radio",
+): Promise<void> {
   const avatarPath = join(dataRoot, "files", ...s6LegacyData.avatarRef.split("/"));
   await mkdir(dirname(avatarPath), { mode: 0o700, recursive: true });
   await writeFile(avatarPath, "s6-legacy-avatar-bytes");
@@ -76,10 +80,10 @@ export async function seedS6LegacyData(client: DatabaseSync, dataRoot: string): 
             dj_voice_style,
             updated_at
           )
-          VALUES (?, 'light', 'en-GB', 'british-soft-radio', ?)
+          VALUES (?, 'light', 'en-GB', ?, ?)
         `,
       )
-      .run(s6LegacyData.profileId, s6LegacyData.createdAt);
+      .run(s6LegacyData.profileId, voiceStyle, s6LegacyData.createdAt);
     client
       .prepare(
         `

@@ -46,7 +46,7 @@
   - Node.js 本地服务中枢。
   - 本地 Codex 编排：读取用户档案、生成节目计划、输出结构化播放指令。
   - 本地服务内置的网易云 Provider：通过 TypeScript `linuxapi` 适配器完成音乐搜索、歌曲信息、播放链接和歌词获取，v1 不要求用户填写网易云地址或密钥。
-  - 可选 Apple 系统 TTS：由 bundled macOS native helper 调用 `AVSpeechSynthesizer` 和当前设备已安装的标准系统语音；不可用时降级为文字 DJ，v1 不使用云 TTS 或 Personal Voice。
+  - 可选 Qwen3-TTS：由 bundled Python/MLX helper 调用固定 revision 的 8-bit 本地模型；中文固定 `Serena`、英文固定 `Ryan`，模型由用户首次下载，不可用时降级为完整文字 DJ。
   - 本地多档案：用户档案、品味标签、播放历史和反馈；Codex 与数据目录属于设备级配置，网易云与 TTS 属于设备级运行时能力。
   - Radio 主播放页：顶部品牌区、时间/ON AIR、播放器、队列、DJ 状态栏、DJ 对话区、底部输入的单列固定顺序。
   - DJ 状态栏详情态：全屏沉浸节目界面、深色声波区、浅色节目面、AI 串讲词、歌词、歌曲进度和节目整体进度。
@@ -158,7 +158,7 @@ Radio 主播放页和 Radio Detail Sheet 尽量使用英文状态词，例如 `O
 | Library | 准备音乐候选来源 | 搜索框、歌单导入、歌曲列表、加入候选池按钮 | “还没有导入歌单，可先搜索一首歌试播” | 网易云 API 不可用时提示切换关键词或重试 |
 | Taste | 管理个人音乐品味 | 品味标签、避雷规则、场景规则、反馈摘要、编辑按钮 | “播放和反馈后会在这里形成你的音乐品味” | 档案读取失败时提示重新选择档案 |
 | Programs/History | 回看和复用历史节目 | 节目卡片、播放记录、DJ 文案、重播按钮、复用场景按钮 | “还没有节目，去 Radio 生成第一段电台” | 历史音频文件缺失时保留文本并提示无法重播音频 |
-| Settings | 配置本地运行依赖和当前 Profile 偏好 | 本地服务状态、Codex 路径、内置网易云 Provider 状态、Apple 系统 TTS 状态、数据目录、主题模式、DJ 语言、DJ 声音风格、测试与迁移入口 | “完成 Codex 配置并确认音乐服务可用后即可开始播放” | Provider 或原生 helper 超时、迁移或配置保存失败时显示具体原因；完全离线时只读 |
+| Settings | 配置本地运行依赖和当前 Profile 偏好 | 本地服务状态、Codex 路径、内置网易云 Provider 状态、Qwen3-TTS 模型状态与下载进度、数据目录、主题模式、DJ 语言、DJ 声音风格、测试与迁移入口 | “完成 Codex 配置并确认音乐服务可用后即可开始播放” | Provider、模型下载或 helper 超时、迁移或配置保存失败时显示具体原因；完全离线时只读 |
 | Radio Detail Sheet | 沉浸查看当前节目 | 全屏沉浸节目界面、顶部状态、全宽动态波形、纯白节目面 `#FFFFFF`、节目标题、简洁当前歌曲、歌曲进度、`#F5F3F6` 串讲词/歌词卡片、节目整体进度、关闭按钮；DJ 段串讲为主，歌曲段歌词为主 | `No live session yet` | 歌词缺失、TTS 失败、播放失败时显示降级内容 |
 
 ### 3. Radio 主播放页布局规则
@@ -208,8 +208,8 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 11 | Taste 编辑状态 | `840px` | 返回、标签编辑、避雷规则、场景规则、取消、保存品味、数量限制 |
 | 12 | Programs 节目历史列表 | `840px` | 本周摘要、节目卡片、收藏、场景摘要、曲目数量、总时长 |
 | 13 | 节目历史详情 | `840px` | `PROGRAM ARCHIVE`、节目元数据、`YOUR SCENE`、复用场景、重播串讲、节目队列 |
-| 14 | Settings 服务配置 | `832px` | 服务状态、Codex 命令路径、内置网易云 Provider 只读状态、Apple System TTS `DEGRADED`、Theme Mode、DJ Language、DJ Voice Style、本地数据 |
-| 15 | Settings 连接检测结果 | `832px` | `3 OF 4 SERVICES AVAILABLE`、四张检测结果卡片、Apple System TTS 修复建议、返回 Radio、修改配置 |
+| 14 | Settings 服务配置 | `832px` | 服务状态、Codex 命令路径、内置网易云 Provider 只读状态、Qwen3-TTS 模型状态与下载进度、Theme Mode、DJ Language、DJ Voice Style、本地数据 |
+| 15 | Settings 连接检测结果 | `832px` | `3 OF 4 SERVICES AVAILABLE`、四张检测结果卡片、Qwen3-TTS 修复建议、返回 Radio、修改配置 |
 
 ### 5. 页面与功能映射
 
@@ -233,7 +233,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 播放 | 播放控制与队列管理 | 用户可播放、暂停、切歌、喜欢歌曲、通过 More 标记不喜欢，以及查看和折叠队列 | P0 |
 | 电台 | 沉浸节目界面 | 用户点击 DJ 状态栏后查看波形、串讲词和歌词跟随 | P0 |
 | 记忆 | 反馈与品味沉淀 | 用户喜欢/取消喜欢、不喜欢/取消不喜欢、收藏/取消收藏节目或跳过后，系统追加事件并更新品味投影 | P0 |
-| 配置 | 服务配置与健康检查 | 用户配置设备级 Codex 和数据目录，配置当前 Profile 的主题、DJ 语言与声音风格，并查看内置网易云 Provider、Apple 系统 TTS 等运行时服务状态 | P0 |
+| 配置 | 服务配置与健康检查 | 用户配置设备级 Codex 和数据目录，配置当前 Profile 的主题、DJ 语言与声音风格，并查看内置网易云 Provider、Qwen3-TTS runtime 与模型状态 | P0 |
 | 音乐库 | 音乐库搜索与歌单导入 | 用户可搜索歌曲、导入网易云歌单并加入候选池 | P1 |
 | 品味 | 品味档案查看与编辑 | 用户可查看和编辑风格标签、避雷规则和场景偏好 | P1 |
 | 历史 | 节目历史与复用 | 用户可查看历史节目、重播 DJ 串讲、复用历史场景 | P1 |
@@ -383,7 +383,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | TTS 失败 | TTS 45 秒超时或返回错误 | 保留文字 DJ，跳过语音串讲 | “语音合成失败，本次先用文字 DJ” |
 | 播放链接失效 | 歌曲 URL 不可播放 | 跳过该曲并尝试下一首 | “这首暂时不能播放，已切到下一首” |
 | 缺少核心配置 | 缺少 Codex 配置 | 阻止生成并跳转 Settings | “请先完成 Codex 配置” |
-| Apple 系统 TTS 不可用 | 原生 helper 不可用、没有匹配语言的标准系统语音或能力检查失败 | 直接使用文字 DJ，不阻止生成 | “系统语音不可用，本次使用文字 DJ” |
+| Qwen3-TTS 不可用 | 设备不支持、模型未安装或损坏、helper 不可用或能力检查失败 | 直接使用完整文字 DJ，不阻止生成 | “本地语音不可用，本次使用文字 DJ” |
 
 ### 功能 3：播放控制与队列管理
 
@@ -592,17 +592,18 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 **功能描述**
 
-用户可在 Settings 页面管理设备级 `DeviceSettings`（数据目录和 Codex）以及当前档案的 `ProfilePreferences`（主题、DJ 语言和声音风格），并查看内置网易云 Provider 与 Apple 系统 TTS 的运行时健康快照。首次启动自动使用 OS 应用数据目录，不要求用户先选择路径。
+用户可在 Settings 页面管理设备级 `DeviceSettings`（数据目录和 Codex）以及当前档案的 `ProfilePreferences`（主题、DJ 语言和声音风格），并查看内置网易云 Provider 与 Qwen3-TTS 的运行时健康和模型安装状态。首次启动自动使用 OS 应用数据目录，不要求用户先选择路径。
 
 **用户操作路径、界面元素、交互逻辑、数据变化**
 
 - 用户打开 Koradio 但本地服务未响应 → 已打开或缓存的 PWA 显示 `○ OFFLINE`；只读 Settings 禁用全部配置、测试与迁移控件，仅显示本地服务启动说明、脱敏的上次状态和重试。未缓存的 PWA 不承诺离线可达。
 - 用户点击 Settings → 系统分别读取共享 `DeviceSettings`、当前 `ProfilePreferences` 和运行时 `ServiceHealth` 快照。
-- 用户填写 Codex 命令路径并点击“保存配置” → 普通配置写入 `DeviceSettings` → 用户看到“配置已保存”；内置网易云 Provider 和 Apple 系统 TTS 都不保存用户地址或密钥。
+- 用户填写 Codex 命令路径并点击“保存配置” → 普通配置写入 `DeviceSettings` → 用户看到“配置已保存”；内置网易云 Provider 和 Qwen3-TTS 都不保存用户地址或密钥。
+- 用户点击“下载本地语音模型” → 系统从固定 revision 下载约 1.84 GiB 模型并显示进度 → 校验完成后原子启用；用户离开页面不终止下载，应用退出会安全中止并清理 partial。
 - 用户选择 `Theme Mode` 为 `Dark`、`Light` 或 `System` → 系统立即预览主题并保存偏好 → 用户看到 Radio 主播放页和详情页按对应昼夜视觉基准切换。
 - 用户选择 `DJ Language` 为中文或英文 → 系统保存串讲语言偏好 → 用户下一次生成节目时听到对应语言的 DJ 串讲。
-- 用户选择 `DJ Voice Style` 为 `British Soft Radio` → 系统将该声音风格传给 Codex 编排上下文，并在已安装的非 Personal Voice 中按 `en-GB` 与风格映射系统语音 → 用户听到最接近的英式电台主持人口吻；没有匹配语音时降级为文字 DJ。
-- 用户点击“测试连接” → 系统分别检查 Codex、内置网易云 Provider 和 Apple 系统 TTS 原生 helper/标准语音能力 → 用户看到每项成功或失败；网易云和 Apple 系统 TTS 不出现凭据或 `NOT CONFIGURED`。
+- 用户选择 `DJ Voice Style` 为 `Natural Radio` → 系统将该声音风格传给 Codex 编排上下文；中文通过 `Serena`、英文通过 `Ryan` 合成自然电台口吻，模型不可用时降级为完整文字 DJ。
+- 用户点击“测试连接” → 系统分别检查 Codex、内置网易云 Provider、Qwen runtime 与模型状态 → 用户看到每项成功或失败；网易云和 Qwen3-TTS 不出现凭据或 `NOT CONFIGURED`。
 - 用户查看服务检测结果 → 系统汇总可用服务数量并展开失败项修复建议 → 用户看到 `3 OF 4 SERVICES AVAILABLE`、TTS 降级说明、返回 Radio 和修改配置按钮。
 - 用户在 Settings 发起数据目录迁移 → 系统创建幂等异步迁移任务：验证目标为空且可写，暂停生成和播放，保存 checkpoint，备份并复制校验，原子切换 bootstrap 配置后重启服务；失败时回滚到旧目录，旧数据永不自动删除。
 - 数据变化：设备配置写入 `DeviceSettings`，档案偏好写入 `ProfilePreferences`；网易云配置不持久化，`ServiceHealth` 仅是运行时快照。原始 Codex 输出和未脱敏诊断不得进入播放历史或普通日志。
@@ -615,7 +616,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 [首次启动自动选择 OS 应用数据目录；用户查看服务状态]
   ├─ 本地服务未连接 → 显示 OFFLINE 异常页 → 重试或进入只读 Settings
   ├─ Codex 与网易云可用 → Radio 可生成节目
-  │      ├─ Apple 系统 TTS 可用 → 生成语音 DJ
+  │      ├─ Qwen3-TTS 模型就绪 → 中文 Serena / 英文 Ryan 生成语音 DJ
   │      └─ 原生 helper、匹配语音缺失或合成失败 → 文字 DJ 降级
   ├─ 用户切换 Theme Mode → 立即预览昼夜主题 → 保存偏好
   ├─ 用户切换 DJ Language → 下次生成节目使用对应语言
@@ -630,9 +631,9 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 | 状态名称 | 进入条件 | 退出条件 | 用户可见表现 |
 |----------|----------|----------|--------------|
-| 未配置 | Codex 配置缺失 | 用户保存完整 Codex 配置 | Codex 配置显示未完成，网易云与 Apple 系统 TTS 单独显示能力状态 |
+| 未配置 | Codex 配置缺失 | 用户保存完整 Codex 配置 | Codex 配置显示未完成，网易云与 Qwen3-TTS 单独显示能力状态 |
 | 服务未连接 | 打开产品时本地服务未响应 | 重连成功 | 已缓存 PWA 显示 `○ OFFLINE`、只读 Settings、启动说明和脱敏诊断 |
-| 已配置 | Codex 配置存在 | 用户修改 Codex 配置 | Codex 配置显示已填写，网易云与 Apple 系统 TTS 独立显示可用或降级 |
+| 已配置 | Codex 配置存在 | 用户修改 Codex 配置 | Codex 配置显示已填写，网易云与 Qwen3-TTS 独立显示可用或降级 |
 | 检测中 | 用户点击测试连接 | 检测完成或超时 | 每项显示检测中 |
 | 检测结果 | 服务检测完成 | 用户返回 Radio 或修改配置 | 显示可用服务数量、失败项和修复建议 |
 | 可用 | 服务测试成功 | 下次检测失败 | 状态点为绿色 |
@@ -650,7 +651,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 本地数据路径 | 本地路径 | 是 | 300 个字符 | 首次启动由 OS 应用数据目录提供；迁移目标必须为空且可写 | “请选择空且可写的数据目录” |
 | Theme Mode | 枚举 | 是 | 固定枚举 | `dark`、`light`、`system`，默认 `dark` | “请选择主题模式” |
 | DJ Language | 枚举 | 是 | 固定枚举 | `zh-CN`、`en-GB`，默认 `zh-CN` | “请选择 DJ 串讲语言” |
-| DJ Voice Style | 枚举 | 是 | 固定枚举 | 默认 `british-soft-radio` | “请选择 DJ 声音风格” |
+| DJ Voice Style | 枚举 | 是 | 固定枚举 | 默认 `natural-radio` | “请选择 DJ 声音风格” |
 
 **文案规范**
 
@@ -671,7 +672,9 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 |----------|----------|----------|----------|
 | Codex 不可用 | 命令不存在或返回错误 | 阻止场景生成 | “Codex 未连接，请检查命令路径” |
 | 内置网易云 Provider 不可用 | 健康检查失败或 15 秒超时 | 标记运行时不可用并允许重试，不展示地址或密钥表单 | “网易云服务暂不可用，无法搜索歌曲” |
-| Apple 系统 TTS 不可用 | 原生 helper 缺失、标准语音不匹配、合成错误或 45 秒超时 | 允许文字 DJ 降级，不请求 Personal Voice 权限 | “系统语音不可用，将仅显示文字串讲” |
+| Qwen3-TTS 不可用 | 设备不支持、模型缺失或损坏、helper 缺失、合成错误或 45 秒超时 | 允许完整文字 DJ 降级，不调用云 TTS | “本地语音不可用，将仅显示文字串讲” |
+| Qwen 模型下载失败 | 网络、磁盘空间或 SHA-256 校验失败 | 删除应用拥有的 partial，保留未安装状态并允许重试 | “模型下载失败，可稍后重试；文字 DJ 不受影响” |
+| 模型下载时迁移数据目录 | 用户在下载过程中发起迁移 | 返回冲突并保持现有目录 | “请等待模型下载完成后再迁移数据目录” |
 | 数据路径不可写 | 保存配置或历史失败 | 阻止相关写入 | “请选择可写的数据目录” |
 | 数据目录迁移失败 | 目标验证、复制校验、原子切换或重启失败 | 回滚 bootstrap 配置并恢复旧目录；旧数据保留 | “迁移未完成，已继续使用原数据目录” |
 | 完全离线 | Local Service 不可达 | 禁用配置、测试和迁移控件，只允许重试与查看启动说明/脱敏状态 | “本地服务未启动，设置暂时只读” |
@@ -890,7 +893,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 档案管理 | 创建、读取、选择、更新本地档案 | profile 字段 | 当前 profile | 本地目录不可写时阻止保存 |
 | 场景规划 | 调用本地 Codex 生成节目计划 | 场景文本、taste、history、时间、偏好、最多 500 首库内摘要与曲目上限 | 含有序 `trackIntents` 的结构化 program plan | Codex 失败时保留输入并提示重试 |
 | 意图解析与音乐搜索 | 通过 Library application API 解析库内 ID，或调用网易云 API 搜索探索歌曲和播放链接 | 有序 library/discovery intent | 稳定去重的歌曲元数据、播放 URL | 单 intent 失败时跳过；全部失败时保留旧节目 |
-| TTS 生成 | 调用 bundled macOS native helper，以 `AVSpeechSynthesizer` 和已安装标准语音生成 DJ 音频 | DJ 文案、语言、声音风格 | 受控音频引用、时长、可选 marker；无 marker 时估算时间 | 失败时保留文字 DJ |
+| TTS 生成 | 调用持久化 bundled Python/MLX helper，以固定 Qwen3-TTS 8-bit 模型生成完整 WAV | 完整 DJ 文案、语言、声音风格 | 受控音频引用、时长；无 marker 时估算时间 | 失败时保留完整文字 DJ |
 | 时间线构建 | 将节目转换为可播放判别联合并确定顺序 | program plan | `PlaybackTimelineItem[]` | 单曲失败时 Browser Audio Engine 跳到下一项 |
 | 播放 checkpoint | 在状态边界保存可恢复的低频播放快照 | program、timeline item、position、`leaseEpoch` | `PlaybackCheckpoint` | 保存失败不影响当前 Browser Audio Engine 播放；旧 epoch 写入被拒绝 |
 | 历史记录 | 保存节目、播放、反馈 | program、track、feedback | history record | 保存失败时提示但不中断播放 |
@@ -913,7 +916,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | PlaybackTimelineItem | `dj`：id、segmentId、audioRef、duration；或 `track`：id、trackId、resolvedAudioRef、duration | 有音频的判别联合；文字 DJ 不创建伪 item |
 | PlaybackCheckpoint | profileId、programId、timelineItemId、positionMs、volume、status、leaseEpoch、savedAt | 每个 Profile 只保留最新低频恢复快照；实时进度不持久化，旧 lease 不得覆盖新状态 |
 | FeedbackEvent | id、profileId、targetId、type、idempotencyKey、createdAt | append-only 显式反馈事件，type 使用功能 5 的固定枚举 |
-| DeviceSettings | dataRoot、codexCommand、updatedAt | 设备级共享配置；v1 的内置网易云 Provider 和 Apple 系统 TTS 不保存用户地址或密钥 |
+| DeviceSettings | dataRoot、codexCommand、updatedAt | 设备级共享配置；v1 的内置网易云 Provider 和 Qwen3-TTS 不保存用户地址或密钥，模型状态由受控文件系统推导 |
 | ProfilePreferences | profileId、themeMode、djLanguage、djVoiceStyle、updatedAt | Profile 级展示与 DJ 偏好 |
 | ServiceHealth | service、status、checkedAt、redactedSummary | 运行时快照，不是配置或历史事实 |
 
@@ -922,6 +925,8 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 接口 | 语义 |
 |------|------|
 | `GET/PATCH /api/v1/device-settings` | 读取或更新设备级非敏感配置；v1 不接受网易云地址、Cookie 或密钥字段 |
+| `GET /api/v1/device-settings/tts-model` | 读取固定 Qwen 模型的支持、安装、下载进度和脱敏错误状态 |
+| `POST /api/v1/device-settings/tts-model/install` | 明确触发固定 revision 模型首次下载；已就绪时幂等返回，设备不支持时返回冲突 |
 | `GET/POST /api/v1/profiles` | 列出或创建本地档案；创建命令要求 `Idempotency-Key`，并原子创建默认 `TasteOverrides` 与 `ProfilePreferences` |
 | `GET/PATCH /api/v1/profiles/:profileId` | 读取或更新显式指定的本地档案；v1 不提供删除接口 |
 | `POST /api/v1/profile-avatars` | 接收单个 `multipart/form-data` 头像文件，校验真实图片类型、大小与受控文件策略后返回 `avatarRef` |
@@ -935,7 +940,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | `DELETE /api/v1/profiles/:profileId/programs/:programId` | 永久删除节目；当前节目同时停止播放并清空指针，返回音频删除、保留和待清理数量 |
 | `GET /api/v1/profiles/:profileId/playback` | 读取指定 Profile 最新的低频 Playback checkpoint 与对应 timeline item；无 checkpoint 返回未找到 |
 | `PUT /api/v1/profiles/:profileId/playback/checkpoints` | 保存显式携带 `leaseEpoch` 的低频 checkpoint；校验 Program/timeline ownership、位置边界和完成边界 |
-| `POST /api/v1/device-settings/data-root-migrations` | 以 idempotency key 创建数据目录迁移，立即返回 `202 { jobId }`；重复命令返回同一任务 |
+| `POST /api/v1/device-settings/data-root-migrations` | 以 idempotency key 创建数据目录迁移，立即返回 `202 { jobId }`；重复命令返回同一任务；模型下载中返回冲突 |
 
 迁移阶段通过既有 WebSocket event envelope 发布，包含 `eventId`、`eventType`、`version`、`occurredAt`、可选 `profileId`、`correlationId`、`sequence` 和 `payload`。迁移事件类型为 `data_root_migration.stage_changed`，payload 中包含 `jobId`、`stage`、`status` 与脱敏错误码；不得包含路径中的用户名、密钥或文件正文。
 
@@ -948,7 +953,7 @@ Codex 作为本地编排大脑时，应输出可解析 JSON。MVP 最小结构�
   "programTitle": "Monday Night Exhale",
   "scenarioSummary": "夜晚写作，需要安静但不死板的 BGM",
   "djLanguage": "zh-CN",
-  "djPersona": "british-soft-radio",
+  "djPersona": "natural-radio",
   "djScripts": [
     {
       "type": "intro",
@@ -981,7 +986,7 @@ Codex 作为本地编排大脑时，应输出可解析 JSON。MVP 最小结构�
 Codex 输出必须遵守以下规则：
 
 - 根据 `ProfilePreferences.djLanguage` 输出中文或英文串讲；中文串讲可保留少量 `ON AIR`、`Now Playing` 等电台状态词。
-- 根据 `ProfilePreferences.djVoiceStyle = british-soft-radio` 控制文案：柔和、有磁性、专业克制、带轻微冷幽默。
+- 根据 `ProfilePreferences.djVoiceStyle = natural-radio` 控制文案：柔和、有磁性、专业克制、带轻微冷幽默。
 - 每次节目至少输出 `intro`；仅在风格明显切换、用户追问、关键歌曲或结束时输出 `segue` 或 `outro`。
 - 不输出每首歌固定口播，不编造无法确认的音乐背景；事实不确定时只描述歌曲氛围、听感和用户场景。
 - `displayText` 为旧数据和接口兼容字段；新节目提交时必须与 `text` 逐字一致。TTS、Radio、Detail 和节目历史统一使用完整 `text`。

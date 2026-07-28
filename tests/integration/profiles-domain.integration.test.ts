@@ -188,7 +188,7 @@ describe("S3-01 Profiles domain closure", () => {
       ).toEqual({
         theme_mode: "dark",
         dj_language: "zh-CN",
-        dj_voice_style: "british-soft-radio",
+        dj_voice_style: "natural-radio",
       });
     } finally {
       database.close();

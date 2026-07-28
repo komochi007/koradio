@@ -8,12 +8,15 @@ import {
   CodexAdapterError,
   ProviderProcessError,
   TtsAdapterError,
+  TtsHelperClientError,
   createCodexAdapter,
   createNetEaseAdapter,
   createTtsAdapter,
   runProviderProcess,
   type ProviderProcessInvocation,
   type ProviderProcessRunner,
+  type TtsHelperClient,
+  type TtsModelService,
 } from "../../apps/server/src/integrations/index.js";
 import {
   MusicProviderResponseError,
@@ -39,7 +42,6 @@ import {
   netEaseTrackFixture,
   providerCorrelationId,
   ttsSynthesisFixture,
-  ttsVoicesFixture,
 } from "../fixtures/providers.js";
 
 function jsonResponse(value: unknown, status = 200): Response {
@@ -284,36 +286,42 @@ describe("Codex adapter", () => {
 });
 
 describe("TTS adapter", () => {
-  it("validates installed standard voice, keeps DJ text in stdin and stores controlled audio", async () => {
+  const readyModel: TtsModelService = {
+    modelDirectory: "/trusted/qwen-model",
+    getStatus: () => ({
+      model: "Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit",
+      revision: "049ef77fe8816b536193c0c25f9a214d17921282",
+      state: "ready",
+      downloadedBytes: 1,
+      totalBytes: 1,
+      progressPercent: 100,
+    }),
+    startInstall() {
+      return this.getStatus();
+    },
+    close: () => Promise.resolve(),
+  };
+
+  it("routes the complete DJ text through the persistent helper and stores controlled audio", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "koradio-tts-adapter-"));
     const fileStore = createLocalFileStore({ dataRoot });
-    const invocations: ProviderProcessInvocation[] = [];
-    const responses = [
-      JSON.stringify({
-        voices: [
-          {
-            identifier: "com.apple.eloquence.zh-CN.Eddy",
-            language: "zh-CN",
-            name: "Eddy",
-            isPersonalVoice: false,
-          },
-          ...ttsVoicesFixture.voices,
-        ],
-      }),
-      JSON.stringify(ttsSynthesisFixture),
-    ];
-    const adapter = createTtsAdapter({
-      fileStore,
-      helperPath: "/trusted/tts-helper",
-      resolveExecutable: () => Promise.resolve("/trusted/tts-helper"),
-      runner: (invocation) => {
-        invocations.push(invocation);
+    const commands: unknown[] = [];
+    const client: TtsHelperClient = {
+      synthesize(command) {
+        commands.push(command);
         return Promise.resolve({
-          exitCode: 0,
-          stderr: "",
-          stdout: responses.shift() ?? "",
+          ...ttsSynthesisFixture,
+          markers: [],
         });
       },
+      close: () => Promise.resolve(),
+    };
+    const adapter = createTtsAdapter({
+      client,
+      fileStore,
+      helperPath: "/trusted/tts-helper",
+      modelService: readyModel,
+      pythonPath: "/trusted/python",
       runtimeDirectory: dataRoot,
     });
     const text = "今晚适合慢一点，但不要睡着。";
@@ -322,7 +330,7 @@ describe("TTS adapter", () => {
         {
           text,
           language: "zh-CN",
-          voiceStyle: "british-soft-radio",
+          voiceStyle: "natural-radio",
         },
         { correlationId: providerCorrelationId },
       ),
@@ -332,52 +340,61 @@ describe("TTS adapter", () => {
     await expect(fileStore.read(result.audioRef)).resolves.toEqual(
       Buffer.from(ttsSynthesisFixture.audioBase64, "base64"),
     );
-    expect(invocations[0]?.args).toEqual(["voices", "--json"]);
-    expect(invocations[1]?.args).toEqual(["synthesize", "--json"]);
-    expect(invocations.flatMap(({ args }) => args)).not.toContain(text);
-    expect(invocations[1]?.input).toContain(text);
-    expect(invocations[1]?.input).toContain("com.apple.voice.compact.zh-CN.Tingting");
+    expect(commands).toEqual([
+      {
+        language: "zh-CN",
+        text,
+        voiceStyle: "natural-radio",
+      },
+    ]);
+    await adapter.close();
   });
 
-  it("rejects Personal Voice, invalid audio and timeout with safe stable errors", async () => {
+  it("rejects unavailable models, invalid audio and timeout with safe stable errors", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "koradio-tts-failure-"));
     const fileStore = createLocalFileStore({ dataRoot });
     const command = {
       text: "DJ text that must not enter errors",
       language: "zh-CN",
-      voiceIdentifier: "com.apple.voice.compact.zh-CN.Tingting",
-      voiceStyle: "british-soft-radio",
+      voiceStyle: "natural-radio",
     } as const;
-    const personalVoice = createTtsAdapter({
+    const unavailableModel = createTtsAdapter({
+      client: {
+        synthesize: () => Promise.reject(new Error("must not run")),
+        close: () => Promise.resolve(),
+      },
       fileStore,
       helperPath: "/trusted/tts-helper",
-      resolveExecutable: () => Promise.resolve("/trusted/tts-helper"),
-      runner: () =>
-        Promise.resolve({
-          exitCode: 0,
-          stderr: "",
-          stdout: JSON.stringify({
-            voices: [{ ...ttsVoicesFixture.voices[0], isPersonalVoice: true }],
-          }),
+      modelService: {
+        ...readyModel,
+        getStatus: () => ({
+          ...readyModel.getStatus(),
+          state: "not-installed",
+          downloadedBytes: 0,
+          progressPercent: 0,
         }),
+      },
+      pythonPath: "/trusted/python",
       runtimeDirectory: dataRoot,
     });
     await expect(
-      personalVoice.synthesize(command, { correlationId: providerCorrelationId }),
-    ).rejects.toMatchObject({ code: "voice_unavailable" });
+      unavailableModel.synthesize(command, { correlationId: providerCorrelationId }),
+    ).rejects.toMatchObject({ code: "helper_unavailable" });
 
-    const responses = [
-      JSON.stringify(ttsVoicesFixture),
-      JSON.stringify({
-        ...ttsSynthesisFixture,
-        audioBase64: Buffer.from("bad").toString("base64"),
-      }),
-    ];
     const invalidAudio = createTtsAdapter({
+      client: {
+        synthesize: () =>
+          Promise.resolve({
+            ...ttsSynthesisFixture,
+            audioBase64: Buffer.from("bad").toString("base64"),
+            markers: [],
+          }),
+        close: () => Promise.resolve(),
+      },
       fileStore,
       helperPath: "/trusted/tts-helper",
-      resolveExecutable: () => Promise.resolve("/trusted/tts-helper"),
-      runner: () => Promise.resolve({ exitCode: 0, stderr: "", stdout: responses.shift() ?? "" }),
+      modelService: readyModel,
+      pythonPath: "/trusted/python",
       runtimeDirectory: dataRoot,
     });
     const invalidError = await invalidAudio
@@ -387,10 +404,14 @@ describe("TTS adapter", () => {
     expect(String(invalidError)).not.toContain(command.text);
 
     const timedOut = createTtsAdapter({
+      client: {
+        synthesize: () => Promise.reject(new TtsHelperClientError("timeout")),
+        close: () => Promise.resolve(),
+      },
       fileStore,
       helperPath: "/trusted/tts-helper",
-      resolveExecutable: () => Promise.resolve("/trusted/tts-helper"),
-      runner: () => Promise.reject(new ProviderProcessError("timeout")),
+      modelService: readyModel,
+      pythonPath: "/trusted/python",
       runtimeDirectory: dataRoot,
     });
     await expect(

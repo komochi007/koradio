@@ -4,7 +4,7 @@ export const s3GenerationPlanFixture = {
   programTitle: "Koradio S3 Mock Session",
   scenarioSummary: s3GenerationScenario,
   djLanguage: "zh-CN",
-  djPersona: "british-soft-radio",
+  djPersona: "natural-radio",
   djScripts: [
     {
       type: "intro",

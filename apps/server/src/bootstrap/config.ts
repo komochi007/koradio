@@ -22,6 +22,7 @@ const environmentSchema = z.object({
   KORADIO_STRICT_PORT: booleanStringSchema,
   KORADIO_DATA_DIR: z.string().trim().min(1).optional(),
   KORADIO_TTS_HELPER_PATH: z.string().trim().min(1).optional(),
+  KORADIO_TTS_PYTHON_PATH: z.string().trim().min(1).optional(),
 });
 
 export interface RuntimeConfig {
@@ -32,6 +33,7 @@ export interface RuntimeConfig {
   providerMode: "mock" | "live";
   strictPort: boolean;
   ttsHelperPath?: string;
+  ttsPythonPath?: string;
   dataRoot: string;
   initialDataRoot?: string;
   dataRootBootstrapPath?: string;
@@ -55,6 +57,9 @@ export function loadRuntimeConfig(environment: NodeJS.ProcessEnv = process.env):
     ...(parsed.KORADIO_TTS_HELPER_PATH === undefined
       ? {}
       : { ttsHelperPath: parsed.KORADIO_TTS_HELPER_PATH }),
+    ...(parsed.KORADIO_TTS_PYTHON_PATH === undefined
+      ? {}
+      : { ttsPythonPath: parsed.KORADIO_TTS_PYTHON_PATH }),
     dataRoot: initialDataRoot,
     initialDataRoot,
     dataRootBootstrapPath: resolveDataRootBootstrapPath(initialDataRoot),

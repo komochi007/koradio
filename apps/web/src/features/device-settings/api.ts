@@ -2,9 +2,11 @@ import {
   deviceSettingsSchema,
   jobAcceptedResponseSchema,
   serviceHealthListResponseSchema,
+  ttsModelStatusSchema,
   type DeviceSettings,
   type JobAcceptedResponse,
   type ServiceHealthListResponse,
+  type TtsModelStatus,
 } from "@koradio/contracts";
 
 import { createIdempotencyKey, jsonRequest, requestJson } from "../../shared/api.js";
@@ -28,6 +30,19 @@ export function updateDeviceSettings(
 
 export function getServiceHealth(transport: ServiceTransport): Promise<ServiceHealthListResponse> {
   return requestJson(transport, "/api/v1/health/services", serviceHealthListResponseSchema);
+}
+
+export function getTtsModelStatus(transport: ServiceTransport): Promise<TtsModelStatus> {
+  return requestJson(transport, "/api/v1/device-settings/tts-model", ttsModelStatusSchema);
+}
+
+export function installTtsModel(transport: ServiceTransport): Promise<TtsModelStatus> {
+  return requestJson(
+    transport,
+    "/api/v1/device-settings/tts-model/install",
+    ttsModelStatusSchema,
+    jsonRequest("POST", {}),
+  );
 }
 
 export function migrateDataRoot(

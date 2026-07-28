@@ -4,7 +4,7 @@ import { occurredAtSchema, profileIdSchema } from "./common.js";
 
 export const themeModeSchema = z.enum(["dark", "light", "system"]);
 export const djLanguageSchema = z.enum(["zh-CN", "en-GB"]);
-export const djVoiceStyleSchema = z.literal("british-soft-radio");
+export const djVoiceStyleSchema = z.literal("natural-radio");
 export const profilePreferencesSchema = z.strictObject({
   profileId: profileIdSchema,
   themeMode: themeModeSchema,

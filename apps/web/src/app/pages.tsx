@@ -162,7 +162,7 @@ interface OnlineShellPageProps {
 const providerLabels: Record<keyof HealthResponse["providers"], string> = {
   codex: "CODEX",
   netease: "NETEASE",
-  tts: "APPLE TTS",
+  tts: "QWEN3 TTS",
 };
 
 export function OnlineShellPage({
