@@ -192,6 +192,9 @@ async function runSmoke(application, dataDirectory, expectSuccess) {
   if (!expectSuccess && result.code === 0) {
     fail("Expected launcher startup failure");
   }
+  if (expectSuccess) {
+    await assertSignedApplication(application);
+  }
 }
 
 async function preserveApplication(application, recordDirectory, prefix) {

@@ -12,12 +12,18 @@
 
 ## 手动安装和升级
 
-1. 首次安装时，将已验证的 `Koradio.app` 复制到目标 `Applications` 目录，再启动 app。不要以管理员身份启动 Local Service。
+1. 首次安装时，将已验证的 `Koradio.app` 复制到 `/Applications`，再从该 app 启动。它是唯一正式入口；不要再使用 Chrome 的“安装为应用”创建第二个 Koradio，也不要以管理员身份启动 Local Service。
 2. 重复安装同一版本前先退出菜单栏中的 Koradio；替换 app 后启动并确认产品可用。
 3. 升级只接受相同架构、版本号更高的 app。退出旧 launcher，保留旧 app 作为可恢复副本，替换后启动新 app。
 4. 新 app 启动失败时，退出失败实例，恢复保留的旧 app，再启动旧 app；不得重建或清空数据目录。
 5. 不支持直接降级。应恢复保留的旧 app；如果数据 migration 已失败，按既有数据目录迁移恢复机制处理，不能手动删库。
 6. 卸载只移除 `Koradio.app`。数据目录、数据迁移备份和 Keychain item 默认保留；清理用户数据需要单独的明确授权。
+
+## 同名 Chrome PWA 迁移
+
+如果 Launchpad 同时出现两个 Koradio，先核对 `/Applications/Koradio.app` 已是完成 package smoke 的新版本，再在 Chrome 的应用管理界面卸载同名 Koradio PWA。卸载时不选择清除站点数据；不得删除 `~/Library/Application Support/Koradio`、数据迁移备份或 Keychain 凭据，也不得重置整个 Launchpad 数据库。
+
+新版 launcher 会使用现有品牌图标，并通过 Chrome 独立应用窗口打开当前包内 PWA。该窗口不创建新的 Chrome PWA 安装。若受限端口上已有其他版本的 Koradio 服务，launcher 会根据 PWA 构建指纹拒绝复用，并在 fallback 端口启动当前安装包的同版本服务。
 
 ## 受控本机验证矩阵
 
@@ -40,5 +46,8 @@ pnpm verify:lifecycle:macos --old "$OLD_APP" --new "$NEW_APP"
 | 启动失败回滚 | 缺失服务入口的候选 app 启动失败；上一可启动 app 被恢复。 |
 | 卸载 | 仅移除临时 `Applications/Koradio.app`；数据根和保留 app 副本仍存在。 |
 | 进程 | 每次冒烟结束后 `49373-49383` 没有 Koradio 监听端口。 |
+| 单一入口 | app 配置品牌 `.icns`，包内存在有效 PWA 构建指纹；Chrome PWA 不作为安装产物。 |
+| 版本隔离 | 已有 Koradio 服务的构建指纹不匹配时，新 launcher 在 fallback 端口启动并选中自身版本。 |
+| 签名只读 | Node/Python/launcher smoke 完成后 app 仍通过 `codesign --verify --deep --strict`。 |
 
 当前产品默认 Mock Provider，生命周期验证不创建或修改真实 Keychain item；手动 app 替换和移除均不调用 Keychain 操作。真实 Provider 凭据与外部分发环境的复验留给后续任务。

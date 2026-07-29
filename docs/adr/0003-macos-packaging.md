@@ -2,6 +2,8 @@
 
 > 2026-07-28 更新：TTS 运行时与支持矩阵已由 [ADR 0005](0005-qwen3-local-tts.md) 更新为 macOS 15+ arm64、bundled Python/MLX helper 与首次下载 Qwen 模型。本文中的 x64、macOS 13.5 和 Apple TTS 描述仅保留为原包装 PoC 的历史证据。
 
+> 2026-07-29 更新：Personal Local Preview 将 `/Applications/Koradio.app` 固定为唯一用户可见入口。launcher 以 Chrome `--app` 独立窗口呈现同源 PWA，不再要求安装第二个 Chrome PWA；服务复用增加包内前端 SHA-256 构建指纹校验，签名后的 bundled Python 禁止向 app bundle 写入 bytecode。
+
 > 状态：已接受
 > 日期：2026-07-15
 > 决策人：项目所有者
@@ -78,10 +80,11 @@ S0-05 需要比较 Electron 桌面壳一体包与 PWA + Local Service 安装器�
 
 ```text
 用户启动 Koradio launcher
-  → 检测 49373 是否为现有 Koradio Local Service
-  → 复用现有实例，或启动 bundled Node + deployed Server
+  → 检测 49373-49383 是否存在 health 与包内前端构建指纹均匹配的 Local Service
+  → 只复用同构建实例，或启动 bundled Node + deployed Server
   → 未知进程占用时在 49373-49383 有界 fallback
-  → health ready 后只打开 http://127.0.0.1:<selected-port>/
+  → health ready 后优先用 Chrome 独立应用窗口打开 http://127.0.0.1:<selected-port>/radio
+  → Chrome 不可用时回退默认浏览器
   → PWA 通过同源 POST bootstrap 取得内存 token
 
 用户退出 launcher
@@ -91,8 +94,10 @@ S0-05 需要比较 Electron 桌面壳一体包与 PWA + Local Service 安装器�
 ```
 
 - launcher URL 只能包含 origin 和普通路径，不得包含 token、key、profile 或敏感诊断。
+- `/Applications/Koradio.app` 是唯一正式安装入口；Chrome 的“安装为应用”不属于支持的安装路径，受控本机发现既有同名 Chrome PWA 时应通过 Chrome 正常卸载且不清除业务数据。
 - v1 不默认登录启动或后台常驻；直接打开已安装 PWA 而服务未运行时，继续使用既有只读离线 Settings 行为。
 - S7 正式 launcher 必须提供清晰的“打开 Koradio”和“退出 Koradio”生命周期入口；PoC 的无 UI agent 形态不是最终用户界面。
+- app bundle 使用与 PWA 相同的品牌图标；bundled Python 运行时不得在签名后的包内写入 `__pycache__`，package smoke 完成后必须再次通过 strict codesign。
 
 ### 5.3 数据与凭据
 

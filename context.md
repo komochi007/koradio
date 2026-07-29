@@ -37,6 +37,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - 根 manifest、pnpm workspace、单一锁文件、Node 版本文件、四个目标边界源码入口、strict TypeScript project references 与质量配置已创建；frozen install、`check`、Playwright、axe、视觉、`dev` 与 `build` 可运行。
 - React/Vite App Shell 与 Fastify Local Service 默认以 Mock 模式启动，受控本机可显式启用 live；五个一级 route、短期进程内 session bootstrap、认证 REST/WS、事件断线重连、production 同源静态托管和仅静态 App Shell 的离线缓存已验证；Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题与 DJ 偏好、服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、场景命令、Snapshot/有序事件恢复、失败保留旧节目、原子节目替换、唯一 Browser Audio Engine、预加载、checkpoint、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/分页/缓存/网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看、字段约束和保存失败草稿保留，以及 Programs 分页历史/详情、Provider source identity 恢复、串讲重播与文字降级、场景草稿复用和收藏/撤销已实现。
 - Desktop standalone PWA 将 `960 × 1600px` 保留为历史高保真原型基线，运行时使用最大 `960px` 宽、`100dvh` 高的中央单列自适应画布且不整体缩放；窄窗口不触发 Mobile 骨架，窗口、画布和页面外层不滚动，只有 Queue、DJ、管理内容与 Detail 文本卡片等明确内容层可独立滚动。Radio 输入的语音和发送按钮同尺寸，Tab 选中态为白色圆角底配纯黑图标；PWA 图标使用居中且留白充足的品牌标记。
+- macOS Personal Local Preview 以 `/Applications/Koradio.app` 为唯一用户可见入口，使用同一品牌图标并优先打开 Chrome 独立应用窗口；不再把 Chrome 安装的同名 PWA 作为产品入口。launcher 只复用 health 与包内 PWA SHA-256 构建指纹均一致的服务，签名后的 bundled Python 禁止向 app bundle 写入 bytecode。
 - Node 24 `node:sqlite`、Drizzle ORM/Kit 1.0 RC、OS 默认数据目录、版本化 migration、WAL、foreign keys、严格文件权限和失败迁移事务回滚已验证；Profile、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已实现。
 - macOS Keychain adapter 使用 `/usr/bin/security -i` 从 stdin 接收十六进制 secret，不把明文写入 argv；受控 File Store 只生成 data root 内相对引用并限制扩展名、MIME、大小、来源与重定向；日志移除 token、key、敏感正文、凭据 URL 和用户路径。
 - `packages/contracts/src/` 已包含完整 v1 REST DTO/command、显式 `profileId`、幂等 request、异步 job、事件与错误 Zod schemas；health/session/events、Profiles、Library、Programs/Playback、生成受理/Snapshot、DeviceSettings、ProfilePreferences 和数据目录迁移已有后端实现。
@@ -179,7 +180,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - 工具链采用 Node 24 LTS、Corepack/pnpm 11、TypeScript 6 project references；Web 由 Vite 8 构建，Server/shared 由 `tsc -b` 构建。
 - 质量工具采用 ESLint 10 + typescript-eslint、Prettier 3、Vitest 4 + Testing Library/jsdom、Playwright + axe-core；常规 CI 为 GitHub Actions。
 - 全仓使用单一 `pnpm-lock.yaml`、精确直接依赖、frozen CI install、24 小时 release age 和显式 dependency build allowlist。
-- macOS 包装采用原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + 外部浏览器 PWA；当前目标为 macOS 15+ arm64，Qwen 模型不进入 DMG。
+- macOS 包装采用唯一原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + Chrome 独立应用窗口；当前目标为 macOS 15+ arm64，Qwen 模型不进入 DMG。
 - 当前只支持项目所有者从可信源码在受控本机生成个人预览产物；公开下载与外部分发在当前开发阶段后置，不阻塞 Personal Local Preview，届时 Developer ID、Apple 公证、Gatekeeper 与独立干净环境验收仍是硬门。
 - Provider 可行性已裁决：NetEase 使用 Backend TypeScript 最小 `linuxapi` Adapter；搜索、歌词、歌单、播放 URL、Range/MIME/CORS 与非法 ID 已脱敏验证，只允许 Personal Local Preview，公开分发前必须重新验证协议、条款和内容边界。
 

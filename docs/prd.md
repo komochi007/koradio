@@ -72,6 +72,8 @@
 ### 4.1 运行模式与数据来源
 
 - Production Server、正式 PWA 和 macOS launcher 默认使用 `live`；Development、Test、CI 和显式 Demo 使用 `mock`。显式环境变量配置始终优先。
+- macOS Personal Local Preview 只允许 `/Applications/Koradio.app` 作为用户可见安装入口；launcher 启动与当前包内前端构建指纹一致的 Local Service，并优先使用 Chrome 独立应用窗口打开 `/radio`，Chrome 不再单独安装同名 PWA。
+- 已存在但构建指纹不同的 Koradio Local Service 不得被 launcher 复用；当前包应在受限 fallback 端口启动自己的同版本服务，避免安装升级、开发服务或旧进程造成界面版本漂移。
 - Radio、Library 和 Settings 必须显示 `LIVE` 或 `DEMO MODE`，不得用 `CONNECTED` 暗示当前连接了真实音乐服务。
 - Program、MusicTrack 和 PlaylistSource 保存 `originMode = live | mock`。既有演示数据只按稳定 Mock source ID 迁移标记，不按标题、歌手或场景文本模糊判断。
 - Live 模式的候选池数量和策展输入排除 Demo 数据；历史 Demo 节目保留并显示 `DEMO` 标识，用户可自行永久删除。

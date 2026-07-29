@@ -59,11 +59,13 @@ flowchart LR
 
 ### Packaging and delivery
 
-- macOS 包装采用原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + 外部浏览器 PWA；launcher 只负责进程生命周期、health ready 和打开同源 origin，不成为播放或业务事实源。
+- macOS 包装采用唯一用户可见的原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + Chrome 独立应用窗口；不再把 Chrome 安装的同名 PWA 作为第二个产品入口。launcher 只负责进程生命周期、构建指纹一致性、health ready 和打开同源 `/radio`，不成为播放或业务事实源。
+- built PWA 在打包时生成由 `index.html` 内容确定的 SHA-256 构建指纹。launcher 只复用同时通过 Koradio health 与构建指纹校验的服务；其他版本占用首选端口时由当前包在受限 fallback 端口启动自身服务。
 - 当前只生成 macOS 15+ arm64 app/DMG，捆绑 Node 24.18.0、可重定位 Python 3.12/MLX runtime、production Server 与 built PWA assets；Qwen 模型由用户首次下载到受控数据目录。
 - 当前交付渠道仅限项目所有者在受控本机从可信源码构建并个人使用。ad-hoc 签名只用于本地 bundle 结构和生命周期验证，不得作为公开下载或外部分发凭据。
 - 公开下载属于后续发布阶段；任何外部分发产物都必须先取得 Developer ID 签名、公证 ticket、Gatekeeper 与独立干净环境验收，不得通过关闭系统安全检查替代。
 - 应用二进制、用户数据与 Credential Store 分离；替换或移除 app 不自动删除数据、备份或凭据。
+- 签名后的 app bundle 在运行和验收期间保持只读；bundled Python 禁止在包内生成 bytecode，包验证必须在运行时 smoke 之后再次执行 strict codesign。
 
 ## 3. Frontend Architecture
 
