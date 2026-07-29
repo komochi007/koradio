@@ -505,6 +505,57 @@
   }
 }
 
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet {
+  --kr-detail-paper-top: clamp(144px, 24dvh, 220px);
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-drag-handle {
+  top: clamp(12px, 2dvh, 20px);
+  width: 64px;
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-close {
+  top: clamp(16px, 3dvh, 28px);
+  width: clamp(44px, 7dvh, 56px);
+  height: clamp(44px, 7dvh, 56px);
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-status {
+  top: clamp(28px, 5dvh, 44px);
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-waveform {
+  top: clamp(64px, 10dvh, 88px);
+  height: calc(var(--kr-detail-paper-top) - clamp(48px, 7dvh, 64px));
+  padding-top: clamp(10px, 2dvh, 18px);
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-paper {
+  grid-template-rows: auto auto 24px minmax(0, 1fr) 44px;
+  gap: clamp(8px, 1.5dvh, 14px);
+  padding-top: clamp(20px, 4dvh, 32px);
+  padding-bottom: clamp(12px, 2.5dvh, 20px);
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-copy {
+  min-height: 0;
+  padding: clamp(16px, 3vw, 28px);
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-bottom-control {
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: clamp(12px, 2vw, 20px);
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-program-progress {
+  height: 44px;
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-play {
+  width: 44px;
+  height: 44px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .radio-detail-layer--entering,
   .radio-detail-layer--closing,

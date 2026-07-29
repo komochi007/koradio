@@ -134,36 +134,30 @@ body {
 .desktop-canvas-viewport {
   display: grid;
   width: 100%;
-  height: 100%;
+  height: 100dvh;
   place-items: center;
   overflow: hidden;
 }
 
 .desktop-canvas {
   position: relative;
+  width: min(960px, 100%);
+  height: 100%;
+  min-width: 0;
   flex: 0 0 auto;
+  overflow: hidden;
 }
 
 .desktop-canvas__content {
-  width: 960px;
-  height: 1600px;
-  transform-origin: top left;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .desktop-canvas .app-surface {
-  width: 960px;
-  height: 1600px;
-  min-height: 1600px;
-}
-
-.desktop-canvas .library-main,
-.desktop-canvas .taste-main,
-.desktop-canvas .taste-edit-main,
-.desktop-canvas .programs-main,
-.desktop-canvas .program-detail-main,
-.desktop-canvas .settings-main,
-.desktop-canvas .settings-diagnostics-main {
-  max-height: 1456px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 button {
@@ -1714,45 +1708,79 @@ h1[tabindex="-1"]:focus-visible {
 }
 
 html[data-desktop-pwa-canvas="true"] {
-  --kr-nav-height: 88px;
-  --kr-safe-x: 56px;
-  --kr-safe-top: 40px;
-  --kr-safe-bottom: 140px;
+  --kr-nav-height: clamp(56px, 9dvh, 72px);
+  --kr-pwa-action-height: clamp(56px, 8dvh, 64px);
+  --kr-pwa-gap: clamp(8px, 1.5dvh, 16px);
+  --kr-pwa-nav-bottom: clamp(8px, 1.5dvh, 16px);
+  --kr-pwa-topbar-height: clamp(44px, 7dvh, 56px);
+  --kr-safe-x: clamp(20px, 4vw, 56px);
+  --kr-safe-top: clamp(12px, 3dvh, 24px);
+  --kr-safe-bottom: 0px;
 }
 
-html[data-desktop-pwa-canvas="true"] body {
+html[data-desktop-pwa-canvas="true"],
+html[data-desktop-pwa-canvas="true"] body,
+html[data-desktop-pwa-canvas="true"] #root {
   overflow: hidden;
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .app-surface {
-  width: 960px;
-  height: 1600px;
-  min-height: 1600px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: var(--kr-safe-top) var(--kr-safe-x) 0;
   overflow: hidden;
+  font-size: 18px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .eyebrow,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .status {
+  font-size: 14px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .topbar {
+  min-height: var(--kr-pwa-topbar-height);
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .brand {
+  min-height: var(--kr-pwa-topbar-height);
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .brand__mark {
+  width: clamp(36px, 6dvh, 48px);
+  height: clamp(36px, 6dvh, 48px);
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .icon-button,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .profile-tool {
+  width: var(--kr-pwa-topbar-height);
+  height: var(--kr-pwa-topbar-height);
+  flex-basis: var(--kr-pwa-topbar-height);
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .primary-nav {
-  bottom: calc(32px + env(safe-area-inset-bottom));
+  bottom: calc(var(--kr-pwa-nav-bottom) + env(safe-area-inset-bottom));
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .primary-nav__item::before {
-  width: 88px;
-  height: 64px;
+  width: clamp(52px, 9dvh, 72px);
+  height: clamp(44px, 7dvh, 56px);
   border-radius: 16px;
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .primary-nav__item img {
-  width: 40px;
-  height: 40px;
+  width: clamp(28px, 5dvh, 36px);
+  height: clamp(28px, 5dvh, 36px);
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-page,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-page,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-page,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-page,
-html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-page {
-  height: 1600px;
-  min-height: 1600px;
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-page,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .profile-page {
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -1762,7 +1790,15 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-main,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-main,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-main {
+  position: absolute;
+  top: calc(var(--kr-safe-top) + var(--kr-pwa-topbar-height) + var(--kr-pwa-gap));
+  right: var(--kr-safe-x);
+  bottom: calc(var(--kr-pwa-nav-bottom) + var(--kr-nav-height) + var(--kr-pwa-gap));
+  left: var(--kr-safe-x);
+  width: auto;
+  height: auto;
   max-height: none;
+  margin: 0 auto;
   padding-bottom: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1770,23 +1806,44 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-main {
   -ms-overflow-style: none;
 }
 
-html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main {
-  height: 1316px;
-}
-
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-main,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-main,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-main,
-html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main,
-html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-page--diagnostics .settings-main {
-  height: 1332px;
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main {
+  max-width: 840px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-main {
+  max-width: 832px;
 }
 
 html[data-desktop-pwa-canvas="true"]
   .desktop-canvas
   .settings-page:not(.settings-page--diagnostics)
   .settings-main {
-  height: 1180px;
+  bottom: calc(
+    var(--kr-pwa-nav-bottom) + var(--kr-nav-height) + var(--kr-pwa-action-height) +
+      (var(--kr-pwa-gap) * 2)
+  );
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .profile-main {
+  position: absolute;
+  top: calc(var(--kr-safe-top) + var(--kr-pwa-topbar-height) + var(--kr-pwa-gap));
+  right: var(--kr-safe-x);
+  bottom: var(--kr-pwa-gap);
+  left: var(--kr-safe-x);
+  width: auto;
+  max-width: 848px;
+  height: auto;
+  max-height: none;
+  margin: 0 auto;
+  padding-bottom: var(--kr-pwa-gap);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main::-webkit-scrollbar,
@@ -1794,7 +1851,8 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-main::-webkit-scroll
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-main::-webkit-scrollbar,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-main::-webkit-scrollbar,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main::-webkit-scrollbar,
-html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-main::-webkit-scrollbar {
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .profile-main::-webkit-scrollbar {
   display: none;
 }
 
@@ -1803,11 +1861,45 @@ html[data-desktop-pwa-canvas="true"]
   .settings-page:not(.settings-page--diagnostics)
   .settings-actions {
   position: absolute;
-  right: 0;
-  bottom: 140px;
-  left: 0;
-  width: 832px;
+  right: var(--kr-safe-x);
+  bottom: calc(var(--kr-pwa-nav-bottom) + var(--kr-nav-height) + var(--kr-pwa-gap));
+  left: var(--kr-safe-x);
+  width: auto;
+  max-width: 832px;
+  min-height: var(--kr-pwa-action-height);
+  height: var(--kr-pwa-action-height);
   margin: 0 auto;
+  padding: clamp(6px, 1dvh, 10px);
+}
+
+html[data-desktop-pwa-canvas="true"]
+  .desktop-canvas
+  .settings-page:not(.settings-page--diagnostics)
+  .settings-actions
+  .button {
+  min-height: 44px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-page--edit .taste-edit-main {
+  bottom: calc(var(--kr-pwa-action-height) + var(--kr-pwa-gap));
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-action {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-height: var(--kr-pwa-action-height);
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-action > div {
+  width: min(calc(100% - (var(--kr-safe-x) * 2)), 840px);
+  min-height: var(--kr-pwa-action-height);
+  padding: clamp(6px, 1dvh, 10px);
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-action .button {
+  min-height: 44px;
 }
 
 :root .primary-nav__item--active img {

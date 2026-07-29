@@ -44,6 +44,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] AI 工作规范与工程规则已建立
 - [x] Git 仓库已初始化并关联 GitHub 远端
 - [x] VDA-17 视觉基线已冻结：HTML / CSS / JavaScript 视觉主源、15 页 35 个固定状态、Dark / Light、五类响应式布局与 60 张正式截图基线均已建立
+- [x] Desktop standalone PWA 将 `960 × 1600px` 保留为高保真原型基线，运行时使用最大 `960px` 宽、`100dvh` 高的中央单列自适应画布，页面外层固定且只允许明确内容层独立滚动
 - [x] 视觉差异裁决、自动 QA、Figma 派生镜像与开发交接映射已建立
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、完整根命令族与 GitHub Actions CI 已实装并由真实 run 验证

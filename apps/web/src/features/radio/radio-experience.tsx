@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type KeyboardEvent,
   type ReactElement,
   type RefObject,
   type SyntheticEvent,
@@ -76,6 +77,28 @@ const iconPaths: Record<IconName, ReactElement> = {
   ),
   volume: <path d="M5 10v4h4l5 4V6L9 10Zm12-2a6 6 0 0 1 0 8m2.5-10.5a9 9 0 0 1 0 13" />,
 };
+
+function handleScrollableRegionKeyDown(event: KeyboardEvent<HTMLElement>): void {
+  const region = event.currentTarget;
+  const pageDistance = Math.max(44, region.clientHeight - 32);
+  const distance =
+    event.key === "ArrowDown"
+      ? 44
+      : event.key === "ArrowUp"
+        ? -44
+        : event.key === "PageDown"
+          ? pageDistance
+          : event.key === "PageUp"
+            ? -pageDistance
+            : undefined;
+  if (distance !== undefined) {
+    event.preventDefault();
+    region.scrollTop += distance;
+  } else if (event.key === "Home" || event.key === "End") {
+    event.preventDefault();
+    region.scrollTop = event.key === "Home" ? 0 : region.scrollHeight;
+  }
+}
 
 function Icon({ name }: { name: IconName }): ReactElement {
   return (
@@ -420,12 +443,14 @@ function RadioMain({
 function RadioQueue({
   currentTrackId,
   expanded,
+  keyboardScrollable,
   onExpandedChange,
   program,
   state,
 }: {
   currentTrackId: string | undefined;
   expanded: boolean;
+  keyboardScrollable: boolean;
   onExpandedChange: (expanded: boolean) => void;
   program: ProgramDetail | null;
   state: RadioViewState;
@@ -456,7 +481,12 @@ function RadioQueue({
         )}
       </header>
       {state === "generating" ? (
-        <ol aria-label="正在生成队列" aria-busy="true">
+        <ol
+          aria-label="正在生成队列"
+          aria-busy="true"
+          onKeyDown={keyboardScrollable ? handleScrollableRegionKeyDown : undefined}
+          tabIndex={keyboardScrollable ? 0 : undefined}
+        >
           {Array.from({ length: 4 }, (_, index) => (
             <li className="radio-queue__skeleton" key={index}>
               <i />
@@ -474,7 +504,11 @@ function RadioQueue({
           <p>Your next session will appear here.</p>
         </div>
       ) : expanded ? (
-        <ol aria-label="节目曲目" tabIndex={tracks.length > 4 ? 0 : undefined}>
+        <ol
+          aria-label="节目曲目"
+          onKeyDown={keyboardScrollable ? handleScrollableRegionKeyDown : undefined}
+          tabIndex={keyboardScrollable || tracks.length > 4 ? 0 : undefined}
+        >
           {tracks.map((track, index) => {
             const isCurrent = track.id === currentTrackId;
             return (
@@ -514,6 +548,7 @@ function RadioQueue({
 function RadioDialogue({
   failure,
   initialError,
+  keyboardScrollable,
   navigate,
   onRetry,
   program,
@@ -522,6 +557,7 @@ function RadioDialogue({
 }: {
   failure: { code: string; scenarioText: string } | undefined;
   initialError: boolean;
+  keyboardScrollable: boolean;
   navigate: (path: string) => void;
   onRetry: (scenario?: string) => void;
   program: ProgramDetail | null;
@@ -533,7 +569,12 @@ function RadioDialogue({
   const visibleScenario =
     scenarioText ?? (state === "playing" ? program?.program.scenarioText : undefined);
   return (
-    <section className={`radio-dialogue radio-dialogue--${state}`} aria-label="DJ 对话">
+    <section
+      className={`radio-dialogue radio-dialogue--${state}`}
+      aria-label="DJ 对话"
+      onKeyDown={keyboardScrollable ? handleScrollableRegionKeyDown : undefined}
+      tabIndex={keyboardScrollable ? 0 : undefined}
+    >
       {visibleScenario !== undefined && <p className="radio-user-bubble">{visibleScenario}</p>}
       {error !== undefined || initialError ? (
         <div className="radio-dialogue__error" role="alert">
@@ -618,6 +659,10 @@ export function RadioExperience({
   const detailOpenerRef = useRef<HTMLButtonElement>(null);
   const sceneInputRef = useRef<HTMLInputElement>(null);
   const [reuseNotice, setReuseNotice] = useState(initialScenarioDraft !== undefined);
+  const keyboardScrollable =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(display-mode: standalone)").matches &&
+    window.matchMedia("(pointer: fine)").matches;
   useEffect(() => {
     headingRef.current?.focus();
   }, [headingRef]);
@@ -734,6 +779,7 @@ export function RadioExperience({
             audio.currentItem?.kind === "track" ? audio.currentItem.trackId : undefined
           }
           expanded={queueExpanded}
+          keyboardScrollable={keyboardScrollable}
           onExpandedChange={setQueueExpanded}
           program={radio.program}
           state={radio.viewState}
@@ -786,6 +832,7 @@ export function RadioExperience({
         <RadioDialogue
           failure={radio.failure}
           initialError={radio.initialError}
+          keyboardScrollable={keyboardScrollable}
           navigate={navigate}
           onRetry={(scenario) => {
             if (scenario === undefined) {

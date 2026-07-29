@@ -139,6 +139,27 @@ function wav(durationMs: number): Buffer {
   return result;
 }
 
+async function enableStandaloneDesktopPwa(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const browserMatchMedia = window.matchMedia.bind(window);
+    window.matchMedia = (query: string): MediaQueryList => {
+      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
+        return {
+          addEventListener: () => undefined,
+          addListener: () => undefined,
+          dispatchEvent: () => false,
+          matches: true,
+          media: query,
+          onchange: null,
+          removeEventListener: () => undefined,
+          removeListener: () => undefined,
+        };
+      }
+      return browserMatchMedia(query);
+    };
+  });
+}
+
 async function openDetail(
   page: Page,
   options: {
@@ -405,5 +426,60 @@ for (const viewport of responsiveViewports) {
       animations: "disabled",
       fullPage: false,
     });
+  });
+}
+
+const standaloneViewports = [
+  { name: "internal-full", width: 1440, height: 801 },
+  { name: "desktop-medium", width: 960, height: 720 },
+  { name: "desktop-compact", width: 720, height: 650 },
+  { name: "desktop-narrow", width: 560, height: 600 },
+] as const;
+
+for (const viewport of standaloneViewports) {
+  test(`Detail remains fixed with internal copy scrolling at ${viewport.name}`, async ({
+    browserName,
+    page,
+  }) => {
+    test.skip(browserName !== "chromium", "standalone detail is verified once in Chromium");
+    await enableStandaloneDesktopPwa(page);
+    await page.setViewportSize(viewport);
+    await openDetail(page, { mode: "lyrics", playback: false });
+
+    const copy = page.getByRole("article", { name: "跟随歌词" });
+    const metrics = await page.evaluate(() => {
+      const layer = document.querySelector<HTMLElement>(".radio-detail-layer");
+      const sheet = document.querySelector<HTMLElement>(".radio-detail-sheet");
+      const copy = document.querySelector<HTMLElement>(".detail-copy");
+      if (layer === null || sheet === null || copy === null)
+        throw new Error("Standalone Detail geometry is unavailable");
+      return {
+        copyClientHeight: copy.clientHeight,
+        copyOverflowY: getComputedStyle(copy).overflowY,
+        copyScrollHeight: copy.scrollHeight,
+        documentHeight: document.documentElement.scrollHeight,
+        layer: layer.getBoundingClientRect(),
+        sheet: sheet.getBoundingClientRect(),
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+      };
+    });
+    expect(metrics.documentHeight).toBe(metrics.viewportHeight);
+    expect(metrics.layer.width).toBe(metrics.viewportWidth);
+    expect(metrics.layer.height).toBe(metrics.viewportHeight);
+    expect(metrics.sheet.width).toBe(metrics.viewportWidth);
+    expect(metrics.sheet.height).toBe(metrics.viewportHeight);
+    expect(metrics.copyOverflowY).toBe("auto");
+    expect(metrics.copyScrollHeight).toBeGreaterThan(metrics.copyClientHeight);
+
+    await copy.focus();
+    await page.keyboard.press("PageDown");
+    expect(await copy.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await copy.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await copy.hover();
+    await page.mouse.wheel(0, 240);
+    await expect.poll(async () => copy.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   });
 }

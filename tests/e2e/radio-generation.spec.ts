@@ -415,11 +415,141 @@ for (const viewport of responsiveViewports) {
   });
 }
 
-test("Radio standalone desktop PWA keeps the complete canvas in a narrow window", async ({
+const standaloneViewports = [
+  { name: "internal-full", width: 1440, height: 801 },
+  { name: "desktop-medium", width: 960, height: 720 },
+  { name: "desktop-compact", width: 720, height: 650 },
+  { name: "desktop-narrow", width: 560, height: 600 },
+] as const;
+
+for (const viewport of standaloneViewports) {
+  test(`Radio standalone desktop PWA adapts without page scrolling at ${viewport.name}`, async ({
+    browserName,
+    page,
+  }) => {
+    test.skip(browserName !== "chromium", "standalone baseline is captured once in Chromium");
+    await page.addInitScript(() => {
+      const browserMatchMedia = window.matchMedia.bind(window);
+      window.matchMedia = (query: string): MediaQueryList => {
+        if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
+          return {
+            addEventListener: () => undefined,
+            addListener: () => undefined,
+            dispatchEvent: () => false,
+            matches: true,
+            media: query,
+            onchange: null,
+            removeEventListener: () => undefined,
+            removeListener: () => undefined,
+          };
+        }
+        return browserMatchMedia(query);
+      };
+    });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize(viewport);
+    await mockRadio(page, { program: true });
+
+    const canvas = page.locator(".desktop-canvas");
+    const queue = page.locator(".radio-queue ol");
+    const dialogue = page.locator(".radio-dialogue");
+    await expect(canvas).toBeVisible();
+    await expect(queue).toBeVisible();
+    await expect(dialogue).toBeVisible();
+    await expect(page).toHaveScreenshot(`radio-playing-standalone-${viewport.name}.png`, {
+      animations: "disabled",
+      fullPage: false,
+    });
+
+    const metrics = await page.evaluate(() => {
+      const selectors = ["html", "body", "#root", ".desktop-canvas"] as const;
+      const targetSelector = [
+        ".radio-scene-input button",
+        ".radio-player button",
+        ".radio-queue header button",
+        ".radio-dj-status",
+        ".primary-nav__item",
+      ].join(",");
+      const element = (selector: string): HTMLElement => {
+        const match = document.querySelector<HTMLElement>(selector);
+        if (match === null) throw new Error(`${selector} is unavailable`);
+        return match;
+      };
+      const rect = (selector: string): DOMRect => {
+        return element(selector).getBoundingClientRect();
+      };
+      return {
+        anchors: {
+          input: rect(".radio-scene-input"),
+          nav: rect(".primary-nav"),
+          topbar: rect(".radio-page__topbar"),
+        },
+        canvas: rect(".desktop-canvas"),
+        dialogueFontSize: getComputedStyle(element(".radio-dj-copy > div > p")).fontSize,
+        outerOverflow: selectors.map((selector) => {
+          const element = document.querySelector<HTMLElement>(selector);
+          if (element === null) throw new Error(`${selector} is unavailable`);
+          return {
+            clientHeight: element.clientHeight,
+            clientWidth: element.clientWidth,
+            scrollHeight: element.scrollHeight,
+            scrollWidth: element.scrollWidth,
+          };
+        }),
+        queueFontSize: getComputedStyle(element(".radio-queue__track small")).fontSize,
+        targets: Array.from(document.querySelectorAll<HTMLElement>(targetSelector)).map(
+          (element) => {
+            const target = element.getBoundingClientRect();
+            return { height: target.height, width: target.width };
+          },
+        ),
+        transform: getComputedStyle(element(".desktop-canvas__content")).transform,
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+      };
+    });
+
+    expect(metrics.canvas.height).toBe(metrics.viewportHeight);
+    expect(metrics.canvas.width).toBe(Math.min(960, metrics.viewportWidth));
+    expect(metrics.outerOverflow).toEqual(
+      metrics.outerOverflow.map((item) => ({
+        ...item,
+        scrollHeight: item.clientHeight,
+        scrollWidth: item.clientWidth,
+      })),
+    );
+    expect(metrics.transform).toBe("none");
+    expect(metrics.dialogueFontSize).toBe("20px");
+    expect(metrics.queueFontSize).toBe("16px");
+    expect(metrics.targets.length).toBeGreaterThan(0);
+    expect(metrics.targets.every((target) => target.height >= 44 && target.width >= 44)).toBe(true);
+    expect(metrics.anchors.topbar.y).toBeGreaterThanOrEqual(0);
+    expect(metrics.anchors.input.y).toBeGreaterThan(metrics.anchors.topbar.y);
+    expect(metrics.anchors.input.y + metrics.anchors.input.height).toBeLessThan(
+      metrics.anchors.nav.y,
+    );
+    expect(metrics.anchors.nav.y + metrics.anchors.nav.height).toBeLessThanOrEqual(
+      metrics.viewportHeight,
+    );
+
+    await queue.focus();
+    await page.keyboard.press("PageDown");
+    expect(await queue.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await dialogue.focus();
+    await page.keyboard.press("PageDown");
+    expect(await dialogue.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    expect(await dialogue.evaluate((element) => getComputedStyle(element).transitionDuration)).toBe(
+      "0s",
+    );
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  });
+}
+
+test("Radio standalone desktop PWA remains operable at 200% visual zoom", async ({
   browserName,
   page,
 }) => {
-  test.skip(browserName !== "chromium", "visual baseline is captured once in Chromium");
+  test.skip(browserName !== "chromium", "Chromium exposes deterministic page zoom emulation");
   await page.addInitScript(() => {
     const browserMatchMedia = window.matchMedia.bind(window);
     window.matchMedia = (query: string): MediaQueryList => {
@@ -438,41 +568,19 @@ test("Radio standalone desktop PWA keeps the complete canvas in a narrow window"
       return browserMatchMedia(query);
     };
   });
-  await page.setViewportSize({ width: 560, height: 600 });
+  await page.setViewportSize({ width: 1440, height: 801 });
   await mockRadio(page, { program: true });
+  const session = await page.context().newCDPSession(page);
+  await session.send("Emulation.setPageScaleFactor", { pageScaleFactor: 2 });
 
-  const canvas = page.locator(".desktop-canvas");
-  const inputActions = page.locator(".radio-scene-input__mic, .radio-scene-input__send");
-  await expect(canvas).toBeVisible();
-  await expect(inputActions).toHaveCount(2);
-  await expect(page).toHaveScreenshot("radio-playing-standalone-narrow.png", {
-    animations: "disabled",
-    fullPage: false,
-  });
-
-  const metrics = await page.evaluate(() => ({
-    canvas: document.querySelector<HTMLElement>(".desktop-canvas")?.getBoundingClientRect(),
-    documentHeight: document.documentElement.scrollHeight,
-    inputActions: Array.from(
-      document.querySelectorAll<HTMLElement>(".radio-scene-input__mic, .radio-scene-input__send"),
-    ).map((element) => {
-      const style = getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      return { height: rect.height, radius: style.borderRadius, width: rect.width };
-    }),
-    navIconFilter: (() => {
-      const activeIcon = document.querySelector<HTMLElement>(".primary-nav__item--active img");
-      if (activeIcon === null) throw new Error("Active navigation icon is unavailable");
-      return getComputedStyle(activeIcon).filter;
-    })(),
-    viewportHeight: window.innerHeight,
-    viewportWidth: window.innerWidth,
-  }));
-
-  expect(metrics.canvas?.height).toBeLessThanOrEqual(metrics.viewportHeight);
-  expect(metrics.canvas?.width).toBeLessThanOrEqual(metrics.viewportWidth);
-  expect(metrics.documentHeight).toBeLessThanOrEqual(metrics.viewportHeight);
-  expect(metrics.inputActions).toHaveLength(2);
-  expect(metrics.inputActions[0]).toEqual(metrics.inputActions[1]);
-  expect(metrics.navIconFilter).toBe("brightness(0) saturate(1)");
+  await expect(page.getByRole("textbox", { name: "告诉 DJ 当前场景" })).toBeVisible();
+  await expect(page.locator(".primary-nav")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollHeight === document.documentElement.clientHeight &&
+        document.documentElement.scrollWidth === document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

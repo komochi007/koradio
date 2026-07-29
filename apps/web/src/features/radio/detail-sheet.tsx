@@ -30,6 +30,29 @@ const waveformBars = 64;
 const timelineBars = 96;
 const waveformControlPoints = [31, 46, 38, 61, 76, 58, 82, 67, 49, 72, 42, 30];
 
+function handleCopyKeyDown(event: KeyboardEvent<HTMLElement>): void {
+  if (event.target !== event.currentTarget) return;
+  const region = event.currentTarget;
+  const pageDistance = Math.max(44, region.clientHeight - 32);
+  const distance =
+    event.key === "ArrowDown"
+      ? 44
+      : event.key === "ArrowUp"
+        ? -44
+        : event.key === "PageDown"
+          ? pageDistance
+          : event.key === "PageUp"
+            ? -pageDistance
+            : undefined;
+  if (distance !== undefined) {
+    event.preventDefault();
+    region.scrollTop += distance;
+  } else if (event.key === "Home" || event.key === "End") {
+    event.preventDefault();
+    region.scrollTop = event.key === "Home" ? 0 : region.scrollHeight;
+  }
+}
+
 interface DetailSheetProps {
   audio: AudioEngineSnapshot;
   audioEngine: AudioEngineFacade;
@@ -369,6 +392,7 @@ export function DetailSheet({
             aria-label={speaking ? "DJ 串讲词" : "跟随歌词"}
             className={`detail-copy detail-copy--${speaking ? "speaking" : "lyrics"}`}
             data-detail-focus
+            onKeyDown={handleCopyKeyDown}
             tabIndex={0}
           >
             {speaking ? (
