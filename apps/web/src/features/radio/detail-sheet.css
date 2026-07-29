@@ -322,6 +322,31 @@
   color: var(--kr-detail-text-secondary);
 }
 
+.detail-copy__token {
+  border-radius: 4px;
+  transition:
+    color 120ms linear,
+    background-color 120ms linear,
+    box-shadow 120ms linear;
+}
+
+.detail-copy__token--read {
+  color: var(--kr-detail-text-read);
+  font-weight: 450;
+}
+
+.detail-copy__token--current {
+  color: var(--kr-detail-text);
+  background: color-mix(in srgb, #55b978 13%, transparent);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, #55b978 72%, transparent);
+  font-weight: 720;
+}
+
+.detail-copy__token--upcoming {
+  color: #767a80;
+  font-weight: 450;
+}
+
 .detail-copy--lyrics .detail-copy__line {
   font-size: clamp(24px, 3.75vw, 36px);
   line-height: 1.55;
@@ -506,40 +531,84 @@
 }
 
 html[data-desktop-pwa-canvas="true"] .radio-detail-sheet {
-  --kr-detail-paper-top: clamp(144px, 24dvh, 220px);
+  --kr-detail-content-width: min(calc(100% - 32px), var(--kr-content-max));
+  --kr-detail-gutter: 16px;
+  --kr-detail-paper-top: 168px;
 }
 
 html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-drag-handle {
-  top: clamp(12px, 2dvh, 20px);
+  top: 12px;
   width: 64px;
 }
 
 html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-close {
-  top: clamp(16px, 3dvh, 28px);
-  width: clamp(44px, 7dvh, 56px);
-  height: clamp(44px, 7dvh, 56px);
+  top: 16px;
+  width: 44px;
+  height: 44px;
 }
 
 html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-status {
-  top: clamp(28px, 5dvh, 44px);
+  top: 28px;
+  font-size: 12px;
 }
 
 html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-waveform {
-  top: clamp(64px, 10dvh, 88px);
-  height: calc(var(--kr-detail-paper-top) - clamp(48px, 7dvh, 64px));
-  padding-top: clamp(10px, 2dvh, 18px);
+  top: 64px;
+  height: calc(var(--kr-detail-paper-top) - 48px);
+  padding-top: 10px;
 }
 
 html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-paper {
   grid-template-rows: auto auto 24px minmax(0, 1fr) 44px;
-  gap: clamp(8px, 1.5dvh, 14px);
-  padding-top: clamp(20px, 4dvh, 32px);
-  padding-bottom: clamp(12px, 2.5dvh, 20px);
+  gap: 10px;
+  padding-top: 24px;
+  padding-bottom: 14px;
+  border-radius: 28px 28px 0 0;
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-paper h1 {
+  overflow: hidden;
+  font-size: 34px;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-track {
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-copy {
   min-height: 0;
-  padding: clamp(16px, 3vw, 28px);
+  padding: 20px;
+  border-radius: 20px;
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-copy__line {
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-copy__line p {
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-copy--lyrics .detail-copy__line {
+  font-size: 22px;
+  line-height: 1.5;
+}
+
+html[data-desktop-pwa-canvas="true"]
+  .radio-detail-sheet
+  .detail-copy--lyrics
+  .detail-copy__line--current {
+  font-size: 28px;
+  line-height: 1.4;
 }
 
 html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-bottom-control {
@@ -564,6 +633,10 @@ html[data-desktop-pwa-canvas="true"] .radio-detail-sheet .detail-play {
   }
 
   .radio-detail-sheet {
+    transition: none;
+  }
+
+  .detail-copy__token {
     transition: none;
   }
 }

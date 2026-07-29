@@ -103,6 +103,7 @@ function detail(value: Program, hasTts: boolean): ProgramDetail {
         displayText:
           "今晚不必急着找到答案。先从一首有点旧、有点温柔的歌开始，让房间里的声音慢下来。",
         estimatedTiming: true,
+        markers: [],
         ttsAudioRef: hasTts ? `tts/program-${suffix}.wav` : null,
       },
     ],

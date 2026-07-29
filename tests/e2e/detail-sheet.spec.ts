@@ -2,6 +2,7 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 import { installPlayableMedia } from "./playable-media.js";
+import { enableStandaloneDesktopPwa } from "./standalone-desktop.js";
 
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const profileId = "00000000-0000-4000-8000-000000000510";
@@ -137,27 +138,6 @@ function wav(durationMs: number): Buffer {
   result.write("data", 36);
   result.writeUInt32LE(dataSize, 40);
   return result;
-}
-
-async function enableStandaloneDesktopPwa(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const browserMatchMedia = window.matchMedia.bind(window);
-    window.matchMedia = (query: string): MediaQueryList => {
-      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
-        return {
-          addEventListener: () => undefined,
-          addListener: () => undefined,
-          dispatchEvent: () => false,
-          matches: true,
-          media: query,
-          onchange: null,
-          removeEventListener: () => undefined,
-          removeListener: () => undefined,
-        };
-      }
-      return browserMatchMedia(query);
-    };
-  });
 }
 
 async function openDetail(
@@ -310,9 +290,9 @@ test("Detail keeps long lyrics scrollable, hides scrollbars and centers the curr
 }) => {
   await openDetail(page, { mode: "lyrics" });
   const copy = page.getByRole("article", { name: "跟随歌词" });
-  const first = page.getByText(lyricLines[0]);
-  const next = page.getByText(lyricLines[1]);
-  const last = page.getByText(lyricLines.at(-1) ?? "");
+  const first = page.getByText(lyricLines[0]).locator("..");
+  const next = page.getByText(lyricLines[1]).locator("..");
+  const last = page.getByText(lyricLines.at(-1) ?? "").locator("..");
 
   const metrics = await copy.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -432,8 +412,7 @@ for (const viewport of responsiveViewports) {
 const standaloneViewports = [
   { name: "internal-full", width: 1440, height: 801 },
   { name: "desktop-medium", width: 960, height: 720 },
-  { name: "desktop-compact", width: 720, height: 650 },
-  { name: "desktop-narrow", width: 560, height: 600 },
+  { name: "desktop-default", width: 720, height: 800 },
 ] as const;
 
 for (const viewport of standaloneViewports) {
@@ -442,7 +421,10 @@ for (const viewport of standaloneViewports) {
     page,
   }) => {
     test.skip(browserName !== "chromium", "standalone detail is verified once in Chromium");
-    await enableStandaloneDesktopPwa(page);
+    await enableStandaloneDesktopPwa(page, {
+      width: viewport.width,
+      height: Math.max(viewport.height, 760),
+    });
     await page.setViewportSize(viewport);
     await openDetail(page, { mode: "lyrics", playback: false });
 
@@ -471,6 +453,12 @@ for (const viewport of standaloneViewports) {
     expect(metrics.sheet.height).toBe(metrics.viewportHeight);
     expect(metrics.copyOverflowY).toBe("auto");
     expect(metrics.copyScrollHeight).toBeGreaterThan(metrics.copyClientHeight);
+    if (viewport.name === "desktop-default") {
+      await expect(page).toHaveScreenshot("detail-lyrics-standalone-desktop-default.png", {
+        animations: "disabled",
+        fullPage: false,
+      });
+    }
 
     await copy.focus();
     await page.keyboard.press("PageDown");

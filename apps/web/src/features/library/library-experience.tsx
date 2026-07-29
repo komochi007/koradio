@@ -11,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactElement,
   type RefObject,
   type SyntheticEvent,
@@ -72,6 +73,28 @@ function errorMessage(error: unknown, fallback: string): string {
     return "网易云返回了无法识别的音乐信息，请重试。";
   }
   return fallback;
+}
+
+function handleScrollableRegionKeyDown(event: ReactKeyboardEvent<HTMLElement>): void {
+  const region = event.currentTarget;
+  const pageDistance = Math.max(44, region.clientHeight - 32);
+  const distance =
+    event.key === "ArrowDown"
+      ? 44
+      : event.key === "ArrowUp"
+        ? -44
+        : event.key === "PageDown"
+          ? pageDistance
+          : event.key === "PageUp"
+            ? -pageDistance
+            : undefined;
+  if (distance !== undefined) {
+    event.preventDefault();
+    region.scrollTop += distance;
+  } else if (event.key === "Home" || event.key === "End") {
+    event.preventDefault();
+    region.scrollTop = event.key === "Home" ? 0 : region.scrollHeight;
+  }
 }
 
 function LibraryTopbar({
@@ -246,6 +269,8 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
   const queryClient = useQueryClient();
   const audio = useAudioSnapshot(props.audioEngine);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const localScrollRef = useRef<HTMLDivElement>(null);
+  const localSentinelRef = useRef<HTMLSpanElement>(null);
   const handledImportRef = useRef<string | undefined>(undefined);
   const [searchDraft, setSearchDraft] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState<string>();
@@ -259,7 +284,7 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
 
   const library = useInfiniteQuery({
     queryKey: ["library", profileId],
-    queryFn: ({ pageParam }) => getLibraryPage(props.transport, profileId, pageParam, 5),
+    queryFn: ({ pageParam }) => getLibraryPage(props.transport, profileId, pageParam, 20),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
@@ -356,7 +381,7 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
   }, [importSnapshot.data, profileId, queryClient]);
 
   useEffect(() => {
-    const handleShortcut = (event: KeyboardEvent): void => {
+    const handleShortcut = (event: globalThis.KeyboardEvent): void => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         searchInputRef.current?.focus();
@@ -367,6 +392,31 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
       window.removeEventListener("keydown", handleShortcut);
     };
   }, []);
+
+  useEffect(() => {
+    const root = localScrollRef.current;
+    const sentinel = localSentinelRef.current;
+    if (
+      root === null ||
+      sentinel === null ||
+      typeof IntersectionObserver === "undefined" ||
+      !library.hasNextPage
+    ) {
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting) && !library.isFetchingNextPage) {
+          void library.fetchNextPage();
+        }
+      },
+      { root, rootMargin: "0px 0px 160px", threshold: 0 },
+    );
+    observer.observe(sentinel);
+    return () => {
+      observer.disconnect();
+    };
+  }, [library.fetchNextPage, library.hasNextPage, library.isFetchingNextPage, localItems.length]);
 
   useEffect(
     () => () => {
@@ -446,39 +496,41 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
           <p>{loadedCountLabel}</p>
         </header>
 
-        <form className="library-search" onSubmit={submitSearch} role="search">
-          <span aria-hidden="true">⌕</span>
-          <input
-            ref={searchInputRef}
-            role="searchbox"
-            value={searchDraft}
-            maxLength={100}
-            placeholder="搜索歌曲、歌手或专辑"
-            aria-label="搜索歌曲、歌手或专辑"
-            aria-invalid={searchValidation !== undefined}
-            aria-describedby={searchValidation === undefined ? undefined : "library-search-error"}
-            onChange={(event) => {
-              setSearchDraft(event.target.value);
-              setSearchValidation(undefined);
-            }}
-            disabled={providerUnavailable}
-          />
-          {searchDraft.length > 0 ? (
-            <button type="button" aria-label="清除搜索" onClick={clearSearch}>
-              ×
+        <div className="library-search-block">
+          <form className="library-search" onSubmit={submitSearch} role="search">
+            <span aria-hidden="true">⌕</span>
+            <input
+              ref={searchInputRef}
+              role="searchbox"
+              value={searchDraft}
+              maxLength={100}
+              placeholder="搜索歌曲、歌手或专辑"
+              aria-label="搜索歌曲、歌手或专辑"
+              aria-invalid={searchValidation !== undefined}
+              aria-describedby={searchValidation === undefined ? undefined : "library-search-error"}
+              onChange={(event) => {
+                setSearchDraft(event.target.value);
+                setSearchValidation(undefined);
+              }}
+              disabled={providerUnavailable}
+            />
+            {searchDraft.length > 0 ? (
+              <button type="button" aria-label="清除搜索" onClick={clearSearch}>
+                ×
+              </button>
+            ) : (
+              <kbd aria-hidden="true">⌘ K</kbd>
+            )}
+            <button className="visually-hidden" type="submit">
+              搜索音乐
             </button>
-          ) : (
-            <kbd aria-hidden="true">⌘ K</kbd>
-          )}
-          <button className="visually-hidden" type="submit">
-            搜索音乐
-          </button>
-        </form>
-        {searchValidation !== undefined ? (
-          <p className="library-field-error" id="library-search-error" role="alert">
-            {searchValidation}
-          </p>
-        ) : null}
+          </form>
+          {searchValidation !== undefined ? (
+            <p className="library-field-error" id="library-search-error" role="alert">
+              {searchValidation}
+            </p>
+          ) : null}
+        </div>
 
         <section className="library-results" aria-labelledby="library-results-title">
           <h2 id="library-results-title">
@@ -534,25 +586,40 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
               还没有导入歌单，可先搜索一首歌试播，也可以直接导入你的网易云歌单。
             </StatePanel>
           ) : (
-            <TrackList
-              addedTrackIds={addedTrackIds}
-              addingTrackId={undefined}
-              audioEngine={props.audioEngine}
-              onAdd={() => undefined}
-              onPreview={previewTrack}
-              previewingTrackId={previewingTrackId}
-              tracks={localTracks}
-            />
+            <div
+              aria-label="本地音乐列表，可滚动"
+              className="library-track-scroll"
+              onKeyDown={handleScrollableRegionKeyDown}
+              onScroll={(event) => {
+                const region = event.currentTarget;
+                if (
+                  library.hasNextPage &&
+                  !library.isFetchingNextPage &&
+                  region.scrollHeight - region.scrollTop - region.clientHeight <= 160
+                ) {
+                  void library.fetchNextPage();
+                }
+              }}
+              ref={localScrollRef}
+              role="region"
+              tabIndex={0}
+            >
+              <TrackList
+                addedTrackIds={addedTrackIds}
+                addingTrackId={undefined}
+                audioEngine={props.audioEngine}
+                onAdd={() => undefined}
+                onPreview={previewTrack}
+                previewingTrackId={previewingTrackId}
+                tracks={localTracks}
+              />
+              <span aria-hidden="true" className="library-scroll-sentinel" ref={localSentinelRef} />
+            </div>
           )}
           {!showingSearch && library.hasNextPage ? (
-            <button
-              className="button button--secondary library-load-more"
-              type="button"
-              disabled={library.isFetchingNextPage}
-              onClick={() => void library.fetchNextPage()}
-            >
-              {library.isFetchingNextPage ? "正在加载" : "加载更多"}
-            </button>
+            <p className="library-auto-load-status" role="status" aria-live="polite">
+              {library.isFetchingNextPage ? "正在加载更多本地音乐" : "继续向下滚动可浏览更多歌曲"}
+            </p>
           ) : null}
         </section>
 
@@ -627,20 +694,22 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
           ) : null}
         </section>
 
-        <section className="library-local-summary" aria-labelledby="library-local-title">
-          <header>
-            <h2 id="library-local-title">本地候选池</h2>
-            <span>{loadedCountLabel}</span>
-          </header>
-          <p>
-            {localItems.length === 0
-              ? "加入歌曲或完成歌单导入后，候选音乐会显示在这里。"
-              : `已显示 ${String(localItems.length)} / 总计 ${String(totalCount)} 首歌曲，下一次节目策展可使用这些来源。${props.health.mode === "live" && demoCount > 0 ? ` 已隔离 ${String(demoCount)} 首 Demo 歌曲。` : ""}`}
-          </p>
-        </section>
+        <div className="library-footer-stack">
+          <section className="library-local-summary" aria-labelledby="library-local-title">
+            <header>
+              <h2 id="library-local-title">本地候选池</h2>
+              <span>{loadedCountLabel}</span>
+            </header>
+            <p>
+              {localItems.length === 0
+                ? "加入歌曲或完成歌单导入后，候选音乐会显示在这里。"
+                : `下一次节目策展可使用这些来源。${props.health.mode === "live" && demoCount > 0 ? ` 已隔离 ${String(demoCount)} 首 Demo 歌曲。` : ""}`}
+            </p>
+          </section>
 
-        <div className="library-announcer" role="status" aria-live="polite">
-          {actionMessage}
+          <div className="library-announcer" role="status" aria-live="polite">
+            {actionMessage}
+          </div>
         </div>
       </main>
       <PrimaryNavigation active="library" onNavigate={props.navigate} />

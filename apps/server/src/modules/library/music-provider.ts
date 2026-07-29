@@ -8,6 +8,7 @@ import {
   musicSourceSchema,
   musicTrackSchema,
   occurredAtSchema,
+  timedTextLineSchema,
   trackLyricsSchema,
   type AudioResolution,
   type MusicSearchResponse,
@@ -43,6 +44,7 @@ export const providerLyricsResultSchema = z.discriminatedUnion("status", [
   z.strictObject({
     status: z.enum(["available", "untimed"]),
     content: z.string().min(1).max(1_000_000),
+    timedLines: z.array(timedTextLineSchema).max(10_000).optional(),
   }),
   z.strictObject({
     status: z.literal("unavailable"),

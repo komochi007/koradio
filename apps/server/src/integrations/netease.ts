@@ -62,6 +62,7 @@ const lyricsResponseSchema = z.object({
   nolyric: z.boolean().optional(),
   lrc: z.object({ lyric: z.string().max(1_000_000) }).optional(),
   tlyric: z.object({ lyric: z.string().max(1_000_000) }).optional(),
+  yrc: z.object({ lyric: z.string().max(1_000_000) }).optional(),
 });
 const audioResponseSchema = z.object({
   code: z.literal(200),
@@ -80,6 +81,48 @@ const audioResponseSchema = z.object({
 export interface DnsAddress {
   address: string;
   family: number;
+}
+
+export function parseEnhancedLyrics(value: string) {
+  return value
+    .split(/\r?\n/u)
+    .flatMap((line) => {
+      const lineMatch = /^\[(\d+),(\d+)\](.*)$/u.exec(line);
+      if (lineMatch === null) return [];
+      const lineStart = Number(lineMatch[1]);
+      const lineDuration = Number(lineMatch[2]);
+      const body = lineMatch[3] ?? "";
+      if (!Number.isSafeInteger(lineStart) || !Number.isSafeInteger(lineDuration)) return [];
+      const tokens = Array.from(body.matchAll(/\((\d+),(\d+),\d+\)([^()]*)/gu)).flatMap((match) => {
+        const rawStart = Number(match[1]);
+        const duration = Number(match[2]);
+        const text = match[3] ?? "";
+        const startMs = rawStart < lineStart ? lineStart + rawStart : rawStart;
+        if (
+          text.trim().length === 0 ||
+          !Number.isSafeInteger(startMs) ||
+          !Number.isSafeInteger(duration) ||
+          duration <= 0
+        ) {
+          return [];
+        }
+        return [{ text, startMs, endMs: startMs + duration }];
+      });
+      const text = tokens
+        .map((token) => token.text)
+        .join("")
+        .trim();
+      if (tokens.length === 0 || text.length === 0 || lineDuration <= 0) return [];
+      return [
+        {
+          text,
+          startMs: lineStart,
+          endMs: Math.max(lineStart + lineDuration, tokens.at(-1)?.endMs ?? lineStart + 1),
+          tokens,
+        },
+      ];
+    })
+    .sort((left, right) => left.startMs - right.startMs);
 }
 
 export type DnsResolver = (hostname: string) => Promise<readonly DnsAddress[]>;
@@ -509,7 +552,7 @@ export function createNetEaseAdapter(options: CreateNetEaseAdapterOptions = {}):
         throw new MusicProviderResponseError();
       }
       const parsed = lyricsResponseSchema.safeParse(
-        await request("/api/song/lyric", { id: id.data, lv: -1, tv: -1 }, callOptions),
+        await request("/api/song/lyric", { id: id.data, lv: -1, tv: -1, yv: -1 }, callOptions),
       );
       if (!parsed.success) {
         throw new MusicProviderResponseError();
@@ -520,9 +563,14 @@ export function createNetEaseAdapter(options: CreateNetEaseAdapterOptions = {}):
       }
       const translation = parsed.data.tlyric?.lyric.trim() ?? "";
       const content = translation.length === 0 ? original : `${original}\n${translation}`;
+      const timedLines = parseEnhancedLyrics(parsed.data.yrc?.lyric ?? "");
       return {
-        status: /\[\d{1,3}:\d{2}(?:\.\d{1,3})?\]/u.test(original) ? "available" : "untimed",
+        status:
+          timedLines.length > 0 || /\[\d{1,3}:\d{2}(?:\.\d{1,3})?\]/u.test(original)
+            ? "available"
+            : "untimed",
         content,
+        ...(timedLines.length === 0 ? {} : { timedLines }),
       };
     },
     async resolveAudio(sourceTrackId, callOptions) {

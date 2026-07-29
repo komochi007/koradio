@@ -81,7 +81,18 @@ describe("S3-04 Programs and Playback persistence", () => {
   it("commits complete programs, restores history and isolates profiles", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "koradio-programs-playback-"));
     let database = await bootstrapDatabase({ dataRoot });
-    const canonicalTrack = firstTrack(programDetailSchema.parse(programDetail));
+    const timedProgram = programDetailSchema.parse({
+      ...programDetail,
+      djScripts: programDetail.djScripts.map((segment) => ({
+        ...segment,
+        estimatedTiming: false,
+        markers: [
+          { text: "今晚", startMs: 0, endMs: 600 },
+          { text: "适合", startMs: 600, endMs: 1_200 },
+        ],
+      })),
+    });
+    const canonicalTrack = firstTrack(timedProgram);
     const tracks = createTrackReader([canonicalTrack]);
 
     database.client
@@ -149,8 +160,8 @@ describe("S3-04 Programs and Playback persistence", () => {
       timeline,
       tracks,
     });
-    const committed = programs.commit(programDetailSchema.parse(programDetail));
-    expect(committed).toEqual(programDetailSchema.parse(programDetail));
+    const committed = programs.commit(timedProgram);
+    expect(committed).toEqual(timedProgram);
     expect(programs.hasProgram(ids.profile, ids.program)).toBe(true);
     expect(programs.hasProgram(secondProfileId, ids.program)).toBe(false);
     expect(() => programs.get(secondProfileId, ids.program)).toThrow(ProgramNotFoundError);

@@ -226,6 +226,14 @@ describe("v1 resource and command contracts", () => {
         trackId: ids.track,
         status: "available",
         content: "[00:00.00]Night",
+        timedLines: [
+          {
+            text: "Night",
+            startMs: 0,
+            endMs: 1_000,
+            tokens: [{ text: "Night", startMs: 0, endMs: 1_000 }],
+          },
+        ],
       }).status,
     ).toBe("available");
     expect(
@@ -276,6 +284,13 @@ describe("v1 resource and command contracts", () => {
   it("accepts program, script, timeline and checkpoint DTOs", () => {
     expect(programSchema.parse(program)).toEqual(program);
     expect(djScriptSegmentSchema.parse(djScript)).toEqual(djScript);
+    expect(
+      djScriptSegmentSchema.parse({
+        ...djScript,
+        markers: [{ text: "今晚", startMs: 0, endMs: 600 }],
+        estimatedTiming: false,
+      }).markers,
+    ).toEqual([{ text: "今晚", startMs: 0, endMs: 600 }]);
     expect(playbackTimelineItemSchema.parse(djTimelineItem)).toEqual(djTimelineItem);
     expect(playbackTimelineItemSchema.parse(trackTimelineItem)).toEqual(trackTimelineItem);
     expect(

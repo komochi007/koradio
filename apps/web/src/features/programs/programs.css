@@ -854,3 +854,74 @@
     animation: none;
   }
 }
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-heading,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-heading {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  min-height: 60px;
+  padding-bottom: 8px;
+  background: var(--kr-bg);
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-heading h1,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-heading h1 {
+  font-size: 36px;
+  line-height: 40px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-heading p {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-search-mark,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-topbar .icon-button {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-segmented {
+  min-height: 48px;
+  margin: 12px 0 16px;
+  padding: 3px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-segmented button {
+  min-height: 40px;
+  font-size: 14px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-summary {
+  min-height: 144px;
+  padding: 16px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-summary dl {
+  margin: 10px 0 6px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-summary__chart {
+  height: 52px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-summary__chart span {
+  height: 48px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-list {
+  gap: 10px;
+  margin-top: 16px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-card,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-card__open {
+  min-height: 116px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-card__open {
+  padding: 16px 176px 16px 16px;
+}

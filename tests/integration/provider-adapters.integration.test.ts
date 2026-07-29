@@ -462,7 +462,23 @@ describe("NetEase linuxapi adapter", () => {
         await lyricsProvider.getLyrics("25638273"),
         "30000000-0000-4000-8000-000000000001",
       ),
-    ).toMatchObject({ status: "available" });
+    ).toMatchObject({
+      status: "available",
+      timedLines: [
+        {
+          startMs: 0,
+          endMs: 2_400,
+          text: "It was late at night",
+          tokens: [
+            { text: "It ", startMs: 0, endMs: 400 },
+            { text: "was ", startMs: 400, endMs: 800 },
+            { text: "late ", startMs: 800, endMs: 1_200 },
+            { text: "at ", startMs: 1_200, endMs: 1_600 },
+            { text: "night", startMs: 1_600, endMs: 2_400 },
+          ],
+        },
+      ],
+    });
   });
 
   it("completes a playlist from its full track id list when the detail response is partial", async () => {

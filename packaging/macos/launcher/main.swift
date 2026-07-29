@@ -277,6 +277,7 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
       "com.google.Chrome",
       "--args",
       "--app=\(url.absoluteString)",
+      "--window-size=720,840",
     ]
     do {
       try process.run()

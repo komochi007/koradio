@@ -139,7 +139,20 @@ describe("S3-06 Program generation orchestration", () => {
         return createMockCodexProvider().plan(context, options);
       },
     };
-    const harness = await createHarness(codex);
+    const tts: TtsProvider = {
+      synthesize() {
+        return Promise.resolve({
+          audioRef: "tts/30000000-0000-4000-8000-000000000099.wav",
+          durationMs: 2_400,
+          markers: [
+            { text: "今晚慢一点，", startMs: 0, endMs: 1_200 },
+            { text: "但别让思绪停下来。", startMs: 1_200, endMs: 2_400 },
+          ],
+          estimatedTiming: false,
+        });
+      },
+    };
+    const harness = await createHarness(codex, 5_000, tts);
     const command = { scenarioText: "今晚写作，保持安静但不要沉闷" };
     const started = harness.generation.start(harness.profile.id, command, "generation-001");
     const repeated = harness.generation.start(harness.profile.id, command, "generation-001");
@@ -176,6 +189,13 @@ describe("S3-06 Program generation orchestration", () => {
 
     const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
     expect(detail.program.scenarioText).toBe(command.scenarioText);
+    expect(detail.djScripts[0]).toMatchObject({
+      estimatedTiming: false,
+      markers: [
+        { text: "今晚慢一点，", startMs: 0, endMs: 1_200 },
+        { text: "但别让思绪停下来。", startMs: 1_200, endMs: 2_400 },
+      ],
+    });
     expect(detail.timeline.map((item) => item.kind)).toEqual(["dj", "track"]);
     const trackItem = detail.timeline.find((item) => item.kind === "track");
     expect(trackItem?.kind).toBe("track");

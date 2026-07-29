@@ -64,6 +64,7 @@ const generatedProgram: ProgramDetail = {
       text: "先让声音替房间留一点呼吸。",
       displayText: "先让声音替房间留一点呼吸。",
       estimatedTiming: true,
+      markers: [],
       ttsAudioRef: null,
     },
   ],

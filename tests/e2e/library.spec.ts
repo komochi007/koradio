@@ -1,6 +1,8 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { enableStandaloneDesktopPwa } from "./standalone-desktop.js";
+
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const profileId = "00000000-0000-4000-8000-000000000010";
 const profile = {
@@ -62,7 +64,11 @@ function wav(durationMs: number): Buffer {
 
 async function mockLibraryWorkspace(
   page: Page,
-  options: { netease?: "available" | "unavailable"; searchFails?: boolean } = {},
+  options: {
+    largeLibrary?: boolean;
+    netease?: "available" | "unavailable";
+    searchFails?: boolean;
+  } = {},
 ): Promise<void> {
   let importReads = 0;
   await page.route("**/api/v1/health", (route) =>
@@ -86,6 +92,24 @@ async function mockLibraryWorkspace(
     }),
   );
   await page.route("**/api/v1/profiles/*/library?*", async (route) => {
+    if (options.largeLibrary === true) {
+      await route.fulfill({
+        json: {
+          items: Array.from({ length: 401 }, (_, index) => ({
+            track: {
+              ...tracks[index % tracks.length],
+              id: `00000000-0000-4000-8000-${String(index + 1_000).padStart(12, "0")}`,
+              sourceTrackId: `large-library-${String(index)}`,
+            },
+            addedAt: "2026-07-19T08:00:00.000Z",
+            playlistSourceId: null,
+          })),
+          totalCount: 401,
+          demoCount: 401,
+        },
+      });
+      return;
+    }
     const cursor = new URL(route.request().url()).searchParams.get("cursor");
     await route.fulfill({
       json:
@@ -192,27 +216,6 @@ async function mockLibraryWorkspace(
   });
 }
 
-async function enableStandaloneDesktopPwa(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const browserMatchMedia = window.matchMedia.bind(window);
-    window.matchMedia = (query: string): MediaQueryList => {
-      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
-        return {
-          addEventListener: () => undefined,
-          addListener: () => undefined,
-          dispatchEvent: () => false,
-          matches: true,
-          media: query,
-          onchange: null,
-          removeEventListener: () => undefined,
-          removeListener: () => undefined,
-        };
-      }
-      return browserMatchMedia(query);
-    };
-  });
-}
-
 test("searches, previews, adds, paginates and imports Library music", async ({
   browserName,
   page,
@@ -247,7 +250,10 @@ test("searches, previews, adds, paginates and imports Library music", async ({
   await page.getByRole("button", { name: "加入候选池" }).nth(1).click();
   await expect(page.getByText("已加入本地音乐库")).toBeVisible();
   await page.getByRole("button", { name: "清除搜索" }).click();
-  await page.getByRole("button", { name: "加载更多" }).click();
+  await expect(page.getByRole("button", { name: "加载更多" })).toHaveCount(0);
+  await page.getByRole("region", { name: "本地音乐列表，可滚动" }).evaluate((element) => {
+    element.scrollTo({ top: element.scrollHeight });
+  });
   await expect(page.getByText("Space Song", { exact: true })).toBeVisible();
 
   const playlist = page.getByRole("textbox", { name: "网易云歌单链接或 ID" });
@@ -292,19 +298,20 @@ test("keeps Library scrolling inside the standalone desktop canvas without a scr
   page,
 }) => {
   test.skip(browserName !== "chromium", "standalone canvas is captured once in Chromium");
-  await enableStandaloneDesktopPwa(page);
-  await page.setViewportSize({ width: 560, height: 600 });
-  await mockLibraryWorkspace(page);
+  await enableStandaloneDesktopPwa(page, { width: 720, height: 800 });
+  await page.setViewportSize({ width: 720, height: 800 });
+  await mockLibraryWorkspace(page, { largeLibrary: true });
   await page.goto(`${appOrigin}/library`);
 
-  const region = page.locator(".library-main");
+  const region = page.getByRole("region", { name: "本地音乐列表，可滚动" });
   await expect(region).toBeVisible();
-  await page.getByRole("searchbox", { name: "搜索歌曲、歌手或专辑" }).fill("Beach House");
-  await page.keyboard.press("Enter");
-  await expect(page.getByText("搜索结果 · 5")).toBeVisible();
+  await expect(page).toHaveScreenshot("library-standalone-desktop-default.png", {
+    animations: "disabled",
+    fullPage: false,
+  });
 
   const metrics = await page.evaluate(() => {
-    const region = document.querySelector<HTMLElement>(".library-main");
+    const region = document.querySelector<HTMLElement>(".library-track-scroll");
     const canvas = document.querySelector<HTMLElement>(".desktop-canvas");
     if (region === null || canvas === null)
       throw new Error("Standalone Library canvas is unavailable");

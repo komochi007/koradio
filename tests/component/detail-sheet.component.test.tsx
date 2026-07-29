@@ -33,6 +33,7 @@ const program: ProgramDetail = {
       text: "今晚不必急着找到答案。先让声音替房间留一点呼吸。",
       displayText: "今晚不必急着找到答案。先让声音替房间留一点呼吸。",
       estimatedTiming: true,
+      markers: [],
       ttsAudioRef: "tts/intro.wav",
     },
   ],
@@ -165,13 +166,42 @@ describe("Detail Sheet", () => {
     const engine = audioEngine(pause);
     renderDetail({ engine });
     expect(
-      (await screen.findByText("A small light stayed awake")).getAttribute("aria-current"),
+      (await screen.findByText("A small light stayed awake"))
+        .closest("[aria-current]")
+        ?.getAttribute("aria-current"),
     ).toBe("true");
     expect(screen.getByRole("dialog", { name: "After Hours, Soft Focus" })).toBeTruthy();
     expect(screen.getAllByRole("button")).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "下一段" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "暂停" }));
     expect(pause).toHaveBeenCalledOnce();
+  });
+
+  it("uses provider word timing to highlight the current token without an approximation notice", async () => {
+    renderDetail({
+      lyrics: {
+        trackId,
+        status: "available",
+        content: "[00:01.00]A small light stayed awake",
+        timedLines: [
+          {
+            text: "A small light stayed awake",
+            startMs: 1_000,
+            endMs: 4_000,
+            tokens: [
+              { text: "A", startMs: 1_000, endMs: 2_000 },
+              { text: " small", startMs: 2_000, endMs: 3_000 },
+              { text: " light stayed awake", startMs: 3_000, endMs: 4_000 },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(
+      (await screen.findByText("small")).classList.contains("detail-copy__token--current"),
+    ).toBe(true);
+    expect(screen.queryByText("APPROXIMATE WORD TIMING")).toBeNull();
   });
 
   it("centers the current lyric whenever playback advances to another line", async () => {
@@ -204,12 +234,19 @@ describe("Detail Sheet", () => {
     );
     const { rerender } = render(view(initialAudio));
     expect(
-      (await screen.findByText("A small light stayed awake")).getAttribute("aria-current"),
+      (await screen.findByText("A small light stayed awake"))
+        .closest("[aria-current]")
+        ?.getAttribute("aria-current"),
     ).toBe("true");
 
     rerender(view({ ...initialAudio, positionMs: 4_500 }));
     await waitFor(() => {
-      expect(screen.getByText("We let the hours move").getAttribute("aria-current")).toBe("true");
+      expect(
+        screen
+          .getByText("We let the hours move")
+          .closest("[aria-current]")
+          ?.getAttribute("aria-current"),
+      ).toBe("true");
       expect(scrollIntoView).toHaveBeenLastCalledWith({ block: "center" });
     });
 

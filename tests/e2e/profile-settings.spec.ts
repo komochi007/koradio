@@ -1,6 +1,8 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { enableStandaloneDesktopPwa } from "./standalone-desktop.js";
+
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const profile = {
   id: "00000000-0000-4000-8000-000000000020",
@@ -74,27 +76,6 @@ async function mockProfileWorkspace(
       },
     }),
   );
-}
-
-async function enableStandaloneDesktopPwa(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const browserMatchMedia = window.matchMedia.bind(window);
-    window.matchMedia = (query: string): MediaQueryList => {
-      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
-        return {
-          addEventListener: () => undefined,
-          addListener: () => undefined,
-          dispatchEvent: () => false,
-          matches: true,
-          media: query,
-          onchange: null,
-          removeEventListener: () => undefined,
-          removeListener: () => undefined,
-        };
-      }
-      return browserMatchMedia(query);
-    };
-  });
 }
 
 async function ensureProfile(page: Page): Promise<void> {
@@ -293,8 +274,7 @@ for (const viewport of responsiveViewports) {
 const standaloneDesktopViewports = [
   { name: "internal-full", width: 1440, height: 801 },
   { name: "desktop-medium", width: 960, height: 720 },
-  { name: "desktop-compact", width: 720, height: 650 },
-  { name: "desktop-narrow", width: 560, height: 600 },
+  { name: "desktop-default", width: 720, height: 800 },
 ] as const;
 
 for (const viewport of standaloneDesktopViewports) {
@@ -303,7 +283,10 @@ for (const viewport of standaloneDesktopViewports) {
     page,
   }) => {
     test.skip(browserName !== "chromium", "standalone canvas is verified once in Chromium");
-    await enableStandaloneDesktopPwa(page);
+    await enableStandaloneDesktopPwa(page, {
+      width: viewport.width,
+      height: Math.max(viewport.height, 760),
+    });
     await page.setViewportSize(viewport);
     await mockProfileWorkspace(page, { current: true });
     await page.goto(`${appOrigin}/settings`);
@@ -338,7 +321,7 @@ for (const viewport of standaloneDesktopViewports) {
     const after = await actions.boundingBox();
 
     expect(metrics.canvas.height).toBe(metrics.viewportHeight);
-    expect(metrics.canvas.width).toBe(Math.min(960, metrics.viewportWidth));
+    expect(metrics.canvas.width).toBe(Math.min(720, metrics.viewportWidth));
     expect(metrics.documentHeight).toBe(metrics.viewportHeight);
     expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
     expect(metrics.scrollTop).toBeGreaterThan(0);
@@ -349,13 +332,13 @@ for (const viewport of standaloneDesktopViewports) {
   });
 }
 
-test("keeps Profile creation inside its own scroll region in a narrow standalone window", async ({
+test("keeps Profile creation inside its own scroll region in the default standalone window", async ({
   browserName,
   page,
 }) => {
   test.skip(browserName !== "chromium", "standalone canvas is verified once in Chromium");
-  await enableStandaloneDesktopPwa(page);
-  await page.setViewportSize({ width: 560, height: 600 });
+  await enableStandaloneDesktopPwa(page, { width: 720, height: 800 });
+  await page.setViewportSize({ width: 720, height: 800 });
   await mockProfileWorkspace(page, { current: false });
   await page.goto(`${appOrigin}/radio`);
 

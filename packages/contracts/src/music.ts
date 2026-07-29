@@ -62,11 +62,31 @@ export const libraryListResponseSchema = z.strictObject({
   demoCount: z.number().int().nonnegative().default(0),
   nextCursor: cursorSchema.optional(),
 });
+export const timedTextTokenSchema = z
+  .strictObject({
+    text: z.string().min(1).max(500),
+    startMs: z.number().int().nonnegative(),
+    endMs: z.number().int().positive(),
+  })
+  .refine((token) => token.endMs > token.startMs, {
+    message: "Timed text token must end after it starts",
+  });
+export const timedTextLineSchema = z
+  .strictObject({
+    text: z.string().trim().min(1).max(5000),
+    startMs: z.number().int().nonnegative(),
+    endMs: z.number().int().positive(),
+    tokens: z.array(timedTextTokenSchema).max(500),
+  })
+  .refine((line) => line.endMs > line.startMs, {
+    message: "Timed text line must end after it starts",
+  });
 export const trackLyricsSchema = z.discriminatedUnion("status", [
   z.strictObject({
     trackId: trackIdSchema,
     status: z.enum(["available", "untimed"]),
     content: z.string().min(1).max(1_000_000),
+    timedLines: z.array(timedTextLineSchema).max(10_000).optional(),
   }),
   z.strictObject({
     trackId: trackIdSchema,
@@ -106,6 +126,8 @@ export type MusicSearchResponse = z.infer<typeof musicSearchResponseSchema>;
 export type ImportPlaylistCommand = z.infer<typeof importPlaylistCommandSchema>;
 export type AddLibraryItemCommand = z.infer<typeof addLibraryItemCommandSchema>;
 export type LibraryListResponse = z.infer<typeof libraryListResponseSchema>;
+export type TimedTextToken = z.infer<typeof timedTextTokenSchema>;
+export type TimedTextLine = z.infer<typeof timedTextLineSchema>;
 export type TrackLyrics = z.infer<typeof trackLyricsSchema>;
 export type AudioResolution = z.infer<typeof audioResolutionSchema>;
 export type PlaylistImportProgress = z.infer<typeof playlistImportProgressSchema>;

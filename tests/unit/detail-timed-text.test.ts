@@ -4,10 +4,14 @@ import { describe, expect, it } from "vitest";
 import {
   deriveTimedText,
   estimateDjTiming,
+  estimateTokenTiming,
+  estimateUntimedLyrics,
   parseLrc,
   parseUntimedLyrics,
   programProgress,
   splitDjSentences,
+  timedLinesFromMarkers,
+  tokenizeTimedText,
 } from "../../apps/web/src/features/radio/detail-timed-text.js";
 
 describe("Detail timed text", () => {
@@ -27,7 +31,9 @@ describe("Detail timed text", () => {
 
   it("parses sorted LRC timestamps, multiple tags and ignores metadata", () => {
     expect(
-      parseLrc("[ar:Koradio]\n[00:04.50]Second line\n[00:01.250][00:02.00]First line", 8_000),
+      parseLrc("[ar:Koradio]\n[00:04.50]Second line\n[00:01.250][00:02.00]First line", 8_000).map(
+        ({ endMs, startMs, text }) => ({ endMs, startMs, text }),
+      ),
     ).toEqual([
       { startMs: 1_250, endMs: 2_000, text: "First line" },
       { startMs: 2_000, endMs: 4_500, text: "First line" },
@@ -45,12 +51,44 @@ describe("Detail timed text", () => {
         { startMs: 1_000, endMs: 2_000, text: "One" },
         { startMs: 2_000, endMs: 3_000, text: "Two" },
         { startMs: 3_000, endMs: 4_000, text: "Three" },
-      ],
+      ].map((line) => ({
+        ...line,
+        tokens: estimateTokenTiming(line.text, line.startMs, line.endMs),
+      })),
       2_500,
     );
     expect(displayed.map((line) => line.state)).toEqual(["read", "current", "upcoming"]);
+    expect(displayed[1]?.tokens.map((token) => token.state)).toContain("current");
     expect(deriveTimedText(displayed, 500)[0]?.state).toBe("current");
     expect(deriveTimedText(displayed, 9_000)[2]?.state).toBe("current");
+  });
+
+  it("tokenizes CJK by grapheme, keeps Latin words together and attaches punctuation", () => {
+    expect(tokenizeTimedText("你好， warm groove!")).toEqual(["你", "好，", " warm", " groove!"]);
+    const tokens = estimateTokenTiming("你好， warm groove!", 1_000, 5_000);
+    expect(tokens[0]).toMatchObject({ text: "你", startMs: 1_000 });
+    expect(tokens.at(-1)).toMatchObject({ text: " groove!", endMs: 5_000 });
+    expect(tokens.every((token) => token.endMs > token.startMs)).toBe(true);
+  });
+
+  it("uses exact markers when available and estimates untimed lyrics across the track", () => {
+    const exact = timedLinesFromMarkers(
+      "先听。再走。",
+      [
+        { text: "先", startMs: 0, endMs: 500 },
+        { text: "听。", startMs: 500, endMs: 1_000 },
+        { text: "再", startMs: 1_000, endMs: 1_500 },
+        { text: "走。", startMs: 1_500, endMs: 2_000 },
+      ],
+      9_000,
+    );
+    expect(exact).toHaveLength(2);
+    expect(exact[0]).toMatchObject({ text: "先听。", startMs: 0, endMs: 1_000 });
+
+    const estimated = estimateUntimedLyrics("Soft light\nStay here", 8_000);
+    expect(estimated).toHaveLength(2);
+    expect(estimated[0]?.startMs).toBe(0);
+    expect(estimated.at(-1)?.endMs).toBe(8_000);
   });
 
   it("derives clamped whole-program progress from the canonical timeline", () => {

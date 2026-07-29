@@ -45,6 +45,7 @@ interface DjScriptSegmentRow {
   language: "zh-CN" | "en-GB";
   program_id: string;
   text: string;
+  timing_markers_json: string;
   tts_audio_ref: string | null;
   type: "intro" | "segue" | "outro";
 }
@@ -79,6 +80,12 @@ export interface PendingCleanupRecord {
 }
 
 function mapSegment(row: DjScriptSegmentRow): DjScriptSegment {
+  let markers: unknown;
+  try {
+    markers = JSON.parse(row.timing_markers_json);
+  } catch {
+    throw new ProgramDataError();
+  }
   const parsed = djScriptSegmentSchema.safeParse({
     id: row.id,
     programId: row.program_id,
@@ -87,6 +94,7 @@ function mapSegment(row: DjScriptSegmentRow): DjScriptSegment {
     text: row.text,
     displayText: row.display_text,
     estimatedTiming: row.estimated_timing === 1,
+    markers,
     ttsAudioRef: row.tts_audio_ref,
   });
   if (!parsed.success) {
@@ -151,9 +159,9 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
   const insertSegment = client.prepare(`
     INSERT INTO dj_script_segment (
       id, program_id, position, type, language, text, display_text,
-      estimated_timing, tts_audio_ref
+      estimated_timing, timing_markers_json, tts_audio_ref
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const listPrograms = client.prepare(`
     SELECT * FROM program
@@ -258,6 +266,7 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
           segment.text,
           segment.displayText,
           segment.estimatedTiming ? 1 : 0,
+          JSON.stringify(segment.markers),
           segment.ttsAudioRef,
         );
       }

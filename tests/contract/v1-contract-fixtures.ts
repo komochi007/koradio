@@ -79,6 +79,7 @@ export const djScript = {
   text: "今晚适合慢一点，但不要睡着。",
   displayText: "今晚适合慢一点，但不要睡着。",
   estimatedTiming: true,
+  markers: [],
   ttsAudioRef: "tts/program/intro.m4a",
 } as const;
 

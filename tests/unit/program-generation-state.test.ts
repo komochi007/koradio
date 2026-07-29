@@ -31,6 +31,7 @@ function program(id: string, title: string): ProgramDetail {
         text: "先让房间慢下来。",
         displayText: "先让房间慢下来。",
         estimatedTiming: true,
+        markers: [],
         ttsAudioRef: null,
       },
     ],

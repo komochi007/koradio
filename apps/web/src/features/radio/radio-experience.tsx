@@ -291,6 +291,9 @@ function RadioMain({
     currentTrackId === undefined ? false : feedback.isPending("track_like", currentTrackId);
   const dislikePending =
     currentTrackId === undefined ? false : feedback.isPending("track_dislike", currentTrackId);
+  const primaryCopy = current?.title ?? program.program.title;
+  const secondaryCopy =
+    current === undefined ? program.program.title : `${current.artist} · ${current.album}`;
   return (
     <section className="radio-main radio-main--playing" aria-label="当前节目">
       <article className="radio-player">
@@ -302,12 +305,8 @@ function RadioMain({
           </span>
           <div className="radio-player__meta">
             <p className="radio-eyebrow">NOW PLAYING</p>
-            <h2>{current?.title ?? program.program.title}</h2>
-            <p>
-              {current === undefined
-                ? program.program.title
-                : `${current.artist} · ${current.album}`}
-            </p>
+            <h2 title={primaryCopy}>{primaryCopy}</h2>
+            <p title={secondaryCopy}>{secondaryCopy}</p>
           </div>
           <div
             className="radio-player__actions"

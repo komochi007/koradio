@@ -1,6 +1,8 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { enableStandaloneDesktopPwa } from "./standalone-desktop.js";
+
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const profile = {
   id: "00000000-0000-4000-8000-000000000010",
@@ -158,6 +160,7 @@ async function ensureProfile(page: Page): Promise<void> {
 async function mockRadio(
   page: Page,
   options: {
+    expectWindowNotice?: boolean;
     generation?: boolean;
     program?: boolean;
     theme?: "dark" | "light";
@@ -249,6 +252,10 @@ async function mockRadio(
     }),
   );
   await page.goto(`${appOrigin}/radio`);
+  if (options.expectWindowNotice === true) {
+    await expect(page.getByRole("alert")).toContainText("窗口空间不足");
+    return;
+  }
   await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeFocused();
   if (options.program === true) {
     await page.getByRole("button", { name: "播放", exact: true }).click();
@@ -418,8 +425,7 @@ for (const viewport of responsiveViewports) {
 const standaloneViewports = [
   { name: "internal-full", width: 1440, height: 801 },
   { name: "desktop-medium", width: 960, height: 720 },
-  { name: "desktop-compact", width: 720, height: 650 },
-  { name: "desktop-narrow", width: 560, height: 600 },
+  { name: "desktop-default", width: 720, height: 800 },
 ] as const;
 
 for (const viewport of standaloneViewports) {
@@ -428,23 +434,9 @@ for (const viewport of standaloneViewports) {
     page,
   }) => {
     test.skip(browserName !== "chromium", "standalone baseline is captured once in Chromium");
-    await page.addInitScript(() => {
-      const browserMatchMedia = window.matchMedia.bind(window);
-      window.matchMedia = (query: string): MediaQueryList => {
-        if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
-          return {
-            addEventListener: () => undefined,
-            addListener: () => undefined,
-            dispatchEvent: () => false,
-            matches: true,
-            media: query,
-            onchange: null,
-            removeEventListener: () => undefined,
-            removeListener: () => undefined,
-          };
-        }
-        return browserMatchMedia(query);
-      };
+    await enableStandaloneDesktopPwa(page, {
+      width: viewport.width,
+      height: Math.max(viewport.height, 760),
     });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize(viewport);
@@ -485,6 +477,7 @@ for (const viewport of standaloneViewports) {
           topbar: rect(".radio-page__topbar"),
         },
         canvas: rect(".desktop-canvas"),
+        date: rect(".radio-time__date"),
         dialogueFontSize: getComputedStyle(element(".radio-dj-copy > div > p")).fontSize,
         outerOverflow: selectors.map((selector) => {
           const element = document.querySelector<HTMLElement>(selector);
@@ -497,6 +490,16 @@ for (const viewport of standaloneViewports) {
           };
         }),
         queueFontSize: getComputedStyle(element(".radio-queue__track small")).fontSize,
+        playerLines: [".radio-player__meta h2", ".radio-player__meta > p:last-child"].map(
+          (selector) => {
+            const line = element(selector);
+            return {
+              clientHeight: line.clientHeight,
+              scrollHeight: line.scrollHeight,
+              whiteSpace: getComputedStyle(line).whiteSpace,
+            };
+          },
+        ),
         targets: Array.from(document.querySelectorAll<HTMLElement>(targetSelector)).map(
           (element) => {
             const target = element.getBoundingClientRect();
@@ -504,13 +507,14 @@ for (const viewport of standaloneViewports) {
           },
         ),
         transform: getComputedStyle(element(".desktop-canvas__content")).transform,
+        time: rect(".radio-time__clock"),
         viewportHeight: window.innerHeight,
         viewportWidth: window.innerWidth,
       };
     });
 
     expect(metrics.canvas.height).toBe(metrics.viewportHeight);
-    expect(metrics.canvas.width).toBe(Math.min(960, metrics.viewportWidth));
+    expect(metrics.canvas.width).toBe(Math.min(720, metrics.viewportWidth));
     expect(metrics.outerOverflow).toEqual(
       metrics.outerOverflow.map((item) => ({
         ...item,
@@ -519,8 +523,19 @@ for (const viewport of standaloneViewports) {
       })),
     );
     expect(metrics.transform).toBe("none");
-    expect(metrics.dialogueFontSize).toBe("20px");
-    expect(metrics.queueFontSize).toBe("16px");
+    expect(metrics.time.bottom).toBeLessThanOrEqual(metrics.date.top);
+    expect(
+      Math.abs(metrics.time.x + metrics.time.width / 2 - (metrics.date.x + metrics.date.width / 2)),
+    ).toBeLessThanOrEqual(1);
+    expect(metrics.dialogueFontSize).toBe("16px");
+    expect(metrics.queueFontSize).toBe("13px");
+    expect(metrics.playerLines).toEqual(
+      metrics.playerLines.map((line) => ({
+        ...line,
+        scrollHeight: line.clientHeight,
+        whiteSpace: "nowrap",
+      })),
+    );
     expect(metrics.targets.length).toBeGreaterThan(0);
     expect(metrics.targets.every((target) => target.height >= 44 && target.width >= 44)).toBe(true);
     expect(metrics.anchors.topbar.y).toBeGreaterThanOrEqual(0);
@@ -545,29 +560,28 @@ for (const viewport of standaloneViewports) {
   });
 }
 
+test("Radio standalone desktop PWA shows only the minimum-window notice below 680 × 760", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "standalone minimum-window behavior is verified once");
+  await enableStandaloneDesktopPwa(page, { width: 679, height: 759 });
+  await page.setViewportSize({ width: 679, height: 759 });
+  await mockRadio(page, { expectWindowNotice: true });
+
+  await expect(page.getByRole("alert")).toContainText("窗口空间不足");
+  await expect(page.getByRole("alert")).toContainText("680 × 760");
+  await expect(page.getByRole("heading", { name: "Radio", exact: true })).toHaveCount(0);
+  await expect(page.locator(".primary-nav")).toHaveCount(0);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
 test("Radio standalone desktop PWA remains operable at 200% visual zoom", async ({
   browserName,
   page,
 }) => {
   test.skip(browserName !== "chromium", "Chromium exposes deterministic page zoom emulation");
-  await page.addInitScript(() => {
-    const browserMatchMedia = window.matchMedia.bind(window);
-    window.matchMedia = (query: string): MediaQueryList => {
-      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
-        return {
-          addEventListener: () => undefined,
-          addListener: () => undefined,
-          dispatchEvent: () => false,
-          matches: true,
-          media: query,
-          onchange: null,
-          removeEventListener: () => undefined,
-          removeListener: () => undefined,
-        };
-      }
-      return browserMatchMedia(query);
-    };
-  });
+  await enableStandaloneDesktopPwa(page, { width: 1440, height: 801 });
   await page.setViewportSize({ width: 1440, height: 801 });
   await mockRadio(page, { program: true });
   const session = await page.context().newCDPSession(page);
