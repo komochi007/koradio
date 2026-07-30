@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { access, cp, mkdir, mkdtemp, readFile, rename, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rename, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import process from "node:process";
@@ -136,7 +136,7 @@ async function installCandidate(candidate, application, backupDirectory, metadat
     `.Koradio.update-${metadata.sourceCommit.slice(0, 12)}-${randomUUID()}.app`,
   );
   try {
-    await cp(candidate, stagingApplication, { recursive: true, verbatimSymlinks: true });
+    await run("/usr/bin/ditto", [candidate, stagingApplication]);
     await run("/usr/bin/codesign", ["--verify", "--deep", "--strict", stagingApplication]);
   } catch (error) {
     await rm(stagingApplication, { force: true, recursive: true });
