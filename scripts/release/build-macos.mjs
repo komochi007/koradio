@@ -409,7 +409,7 @@ async function build() {
     }
     const buildEnvironment = {
       ...process.env,
-      PATH: `${buildToolDirectory}:${process.env.PATH ?? ""}`,
+      PATH: `${buildToolDirectory}:${dirname(bundledNode)}:${process.env.PATH ?? ""}`,
     };
     await runPnpm(bundledNode, ["install", "--frozen-lockfile"], buildEnvironment);
     await runPnpm(bundledNode, ["build"], buildEnvironment);
