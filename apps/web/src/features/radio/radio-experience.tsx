@@ -26,6 +26,8 @@ import { applyTheme, updateProfilePreferences } from "../profile-preferences/ind
 import { FeedbackNotice, useFeedback } from "../feedback/index.js";
 import { Brand, PrimaryNavigation } from "../../shared/ui.js";
 import type { AppEventBus } from "../../shared/events.js";
+import { formatClockDuration } from "../../shared/format.js";
+import { Icon as SharedIcon, type IconName } from "../../shared/icon.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import { DetailSheet, DetailSheetBoundary } from "./detail-sheet.js";
 import { useRadioProgram, type RadioViewState } from "./use-radio-program.js";
@@ -46,43 +48,8 @@ interface RadioExperienceProps {
   transport: ServiceTransport;
 }
 
-type IconName =
-  | "heart"
-  | "mic"
-  | "moon"
-  | "more"
-  | "next"
-  | "pause"
-  | "play"
-  | "previous"
-  | "queue"
-  | "send"
-  | "sun"
-  | "volume";
-
-const iconPaths: Record<IconName, ReactElement> = {
-  heart: <path d="M12 20.4 4.8 13.6A4.9 4.9 0 0 1 12 7a4.9 4.9 0 0 1 7.2 6.6Z" />,
-  mic: <path d="M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0Zm-3 6a6 6 0 0 0 12 0M12 17v4m-4 0h8" />,
-  moon: <path d="M20 15.2A8.7 8.7 0 0 1 8.8 4 8.7 8.7 0 1 0 20 15.2Z" />,
-  more: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
-  next: <path d="m7 5 9 7-9 7Zm10 0v14" />,
-  pause: <path d="M8 5v14m8-14v14" />,
-  play: <path d="m8 5 11 7-11 7Z" />,
-  previous: <path d="m17 5-9 7 9 7ZM7 5v14" />,
-  queue: <path d="M4 7h11M4 12h11M4 17h11m4-10v10l3-2" />,
-  send: <path d="m4 5 16 7-16 7 3-7Zm3 7h13" />,
-  sun: (
-    <path d="M12 4V2m0 20v-2m8-8h2M2 12h2m13.7-5.7 1.4-1.4M4.9 19.1l1.4-1.4m0-11.4L4.9 4.9m14.2 14.2-1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />
-  ),
-  volume: <path d="M5 10v4h4l5 4V6L9 10Zm12-2a6 6 0 0 1 0 8m2.5-10.5a9 9 0 0 1 0 13" />,
-};
-
 function Icon({ name }: { name: IconName }): ReactElement {
-  return (
-    <svg aria-hidden="true" className="radio-icon" viewBox="0 0 24 24">
-      {iconPaths[name]}
-    </svg>
-  );
+  return <SharedIcon className="radio-icon" name={name} />;
 }
 
 function TransientToast({
@@ -143,11 +110,6 @@ function useRadioClock(): { date: string; time: string } {
     date: `${day} · ${date}`,
     time: now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
   };
-}
-
-function formatDuration(durationMs: number): string {
-  const seconds = Math.floor(durationMs / 1000);
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 function orderedTracks(program: ProgramDetail): MusicTrack[] {
@@ -354,7 +316,7 @@ function RadioMain({
           </div>
         </div>
         <div className="radio-player__progress">
-          <span>{formatDuration(audio.positionMs)}</span>
+          <span>{formatClockDuration(audio.positionMs)}</span>
           <input
             aria-label="播放进度"
             type="range"
@@ -368,7 +330,7 @@ function RadioMain({
               void audioEngine.seek(Number(event.target.value));
             }}
           />
-          <span>{formatDuration(audio.durationMs || current?.durationMs || 1)}</span>
+          <span>{formatClockDuration(audio.durationMs || current?.durationMs || 1)}</span>
         </div>
         <div className="radio-player__controls" aria-label="播放控制">
           <button
@@ -501,7 +463,7 @@ function RadioQueue({
                   <strong>{track.title}</strong>
                   <small>{track.artist}</small>
                 </span>
-                <span>{formatDuration(track.durationMs)}</span>
+                <span>{formatClockDuration(track.durationMs)}</span>
               </li>
             );
           })}

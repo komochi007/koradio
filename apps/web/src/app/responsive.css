@@ -1,0 +1,357 @@
+@media (max-width: 767px) {
+  :root {
+    --kr-nav-height: 72px;
+    --kr-safe-x: 20px;
+    --kr-safe-top: 24px;
+    --kr-safe-bottom: 112px;
+  }
+
+  .topbar {
+    min-height: 48px;
+  }
+
+  .topbar > .status {
+    max-width: 142px;
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  .topbar-tools > .status {
+    display: none;
+  }
+
+  .icon-button,
+  .profile-tool {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+  }
+
+  .brand {
+    min-height: 48px;
+    gap: 12px;
+  }
+
+  .brand__mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brand__wordmark {
+    width: 120px;
+    min-height: 28px;
+    font-size: 18px;
+  }
+
+  .primary-nav {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .primary-nav__item::before {
+    width: 64px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  .primary-nav__item img {
+    width: 32px;
+    height: 32px;
+  }
+
+  body {
+    overflow: auto;
+  }
+
+  .offline-panel,
+  .connection-page__content {
+    margin-top: 56px;
+  }
+
+  .offline-signal {
+    width: 128px;
+    height: 128px;
+  }
+
+  .offline-signal__ring {
+    inset: 6px;
+  }
+
+  .offline-signal__break {
+    left: 52px;
+    width: 24px;
+  }
+
+  .offline-signal__wave {
+    gap: 6px;
+    transform: scale(0.72);
+  }
+
+  .offline-panel h1,
+  .connection-page h1 {
+    font-size: 28px;
+    line-height: 36px;
+  }
+
+  .offline-panel__description,
+  .connection-page__content > p:last-child {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .settings-panel,
+  .online-panel {
+    margin-top: 48px;
+  }
+
+  .settings-page {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .settings-page .settings-main {
+    max-height: calc(100dvh - 72px);
+    padding-bottom: 220px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .page-heading h1 {
+    font-size: 40px;
+  }
+
+  .settings-card {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 20px;
+  }
+
+  .settings-panel__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .connection-ledger article {
+    grid-template-columns: 32px minmax(0, 1fr);
+    padding: 16px 0;
+  }
+
+  .connection-ledger strong {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .profile-main,
+  .settings-main {
+    margin-top: 44px;
+  }
+
+  .profile-heading h1,
+  .settings-heading h1,
+  .diagnostics-heading h1 {
+    font-size: 40px;
+  }
+
+  .profile-card {
+    min-height: 0;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 18px;
+    padding: 20px;
+  }
+
+  .profile-avatar {
+    width: 96px;
+    height: 96px;
+    flex-basis: 96px;
+    font-size: 28px;
+  }
+
+  .profile-card__select {
+    min-height: 120px;
+    grid-template-columns: minmax(0, 1fr) 40px;
+    gap: 10px;
+  }
+
+  .profile-card__copy strong {
+    font-size: 21px;
+  }
+
+  .profile-card__edit {
+    right: 62px;
+    bottom: 16px;
+  }
+
+  .avatar-field {
+    align-items: flex-start;
+  }
+
+  .avatar-field .profile-avatar {
+    width: 104px;
+    height: 104px;
+    flex-basis: 104px;
+  }
+
+  .genre-add,
+  .profile-form__actions,
+  .diagnostics-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .service-list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 12px 16px;
+  }
+
+  .service-list button {
+    grid-column: 2;
+  }
+
+  .provider-readonly,
+  .preference-row,
+  .data-card > div {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-readonly strong,
+  .provider-readonly small {
+    grid-column: 1;
+  }
+
+  .preference-row {
+    gap: 10px;
+  }
+
+  .data-card > div {
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .data-card button {
+    justify-self: start;
+  }
+
+  .settings-actions {
+    position: fixed;
+    right: 20px;
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    left: 20px;
+    width: auto;
+    margin: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+html[data-desktop-pwa-canvas="true"] {
+  --kr-nav-height: 88px;
+  --kr-safe-x: 56px;
+  --kr-safe-top: 40px;
+  --kr-safe-bottom: 140px;
+}
+
+html[data-desktop-pwa-canvas="true"] body {
+  overflow: hidden;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .app-surface {
+  width: 960px;
+  height: 1600px;
+  min-height: 1600px;
+  overflow: hidden;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .primary-nav {
+  bottom: calc(32px + env(safe-area-inset-bottom));
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .primary-nav__item::before {
+  width: 88px;
+  height: 64px;
+  border-radius: 16px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .primary-nav__item img {
+  width: 40px;
+  height: 40px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-page,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-page,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-page,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-page,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-page {
+  height: 1600px;
+  min-height: 1600px;
+  overflow: hidden;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-main {
+  max-height: none;
+  padding-bottom: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main {
+  height: 1316px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-page--diagnostics .settings-main {
+  height: 1332px;
+}
+
+html[data-desktop-pwa-canvas="true"]
+  .desktop-canvas
+  .settings-page:not(.settings-page--diagnostics)
+  .settings-main {
+  height: 1180px;
+}
+
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main::-webkit-scrollbar,
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-main::-webkit-scrollbar {
+  display: none;
+}
+
+html[data-desktop-pwa-canvas="true"]
+  .desktop-canvas
+  .settings-page:not(.settings-page--diagnostics)
+  .settings-actions {
+  position: absolute;
+  right: 0;
+  bottom: 140px;
+  left: 0;
+  width: 832px;
+  margin: 0 auto;
+}
+
+:root .primary-nav__item--active img {
+  filter: brightness(0) saturate(100%);
+}

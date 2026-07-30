@@ -1,0 +1,216 @@
+.radio-player {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--radio-player-height);
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--kr-text) 2.5%, transparent), transparent),
+    var(--kr-surface);
+}
+
+.radio-player__topline {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+}
+
+.radio-cover {
+  position: relative;
+  display: block;
+  width: 132px;
+  height: 132px;
+  overflow: hidden;
+  border-radius: 14px;
+  background:
+    linear-gradient(142deg, transparent 42%, rgba(243, 245, 247, 0.15) 43% 52%, transparent 53%),
+    linear-gradient(25deg, #242b32 0 45%, #4c514c 46% 55%, #171a1f 56% 100%);
+}
+
+.radio-cover::after {
+  position: absolute;
+  inset: 20px;
+  border: 1px solid rgba(243, 245, 247, 0.16);
+  border-radius: 50%;
+  content: "";
+}
+
+.radio-cover img {
+  position: absolute;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.radio-player__meta {
+  min-width: 0;
+}
+
+.radio-player__meta h2 {
+  overflow: hidden;
+  margin: 4px 0 0;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 40px;
+  letter-spacing: -0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.radio-player__meta > p:last-child {
+  overflow: hidden;
+  margin: 0;
+  color: var(--kr-text-secondary);
+  font-size: 18px;
+  line-height: 28px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.radio-player__actions {
+  position: relative;
+  display: flex;
+  gap: 12px;
+}
+
+.radio-player .radio-feedback-action--active {
+  color: var(--kr-text-primary);
+  background: var(--kr-surface-elevated);
+}
+
+.radio-player .radio-feedback-action--active .radio-icon {
+  fill: currentColor;
+}
+
+.radio-feedback-menu {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  padding: 8px;
+  border: 1px solid var(--kr-border);
+  border-radius: 14px;
+  background: var(--kr-surface-elevated);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 18%);
+}
+
+.radio-player .radio-feedback-menu button {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  justify-items: start;
+  color: var(--kr-text-primary);
+  background: transparent;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.radio-player .radio-feedback-menu button:hover,
+.radio-player .radio-feedback-menu button:focus-visible {
+  background: var(--kr-surface);
+}
+
+.radio-player button,
+.radio-scene-input__mic {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 50%;
+  color: var(--kr-text-secondary);
+  background: transparent;
+}
+
+.radio-player button:disabled,
+.radio-scene-input__mic:disabled,
+.radio-dj-status:disabled {
+  color: var(--kr-text-secondary);
+  background: transparent;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.radio-player__progress {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: 16px;
+  color: var(--kr-text-tertiary);
+  font-size: 14px;
+}
+
+.radio-player__progress > input {
+  width: 100%;
+  height: 3px;
+  margin: 0;
+  appearance: none;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--kr-accent) 0 max(2%, var(--radio-progress)),
+    var(--kr-border) max(2%, var(--radio-progress)) 100%
+  );
+  cursor: pointer;
+}
+
+.radio-player__progress > input::-webkit-slider-thumb {
+  width: 0;
+  height: 0;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.radio-player__progress > input::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.radio-player__progress > input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.radio-player__progress > span:last-child {
+  text-align: right;
+}
+
+.radio-player__controls {
+  display: grid;
+  width: 520px;
+  grid-template-columns: 64px 64px 96px 64px 64px;
+  align-items: center;
+  gap: 42px;
+  margin: 0 auto;
+}
+
+.radio-player__controls .radio-player__pause,
+.radio-player__controls .radio-player__pause:disabled {
+  width: 96px;
+  height: 96px;
+  color: var(--radio-on-primary);
+  background: var(--radio-primary);
+  border-color: transparent;
+}
+
+.radio-player__pause .radio-icon {
+  width: 36px;
+  height: 36px;
+  stroke-width: 2;
+}

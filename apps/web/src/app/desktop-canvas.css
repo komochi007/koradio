@@ -1,0 +1,54 @@
+.desktop-canvas-viewport {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  overflow: hidden;
+}
+
+.desktop-canvas {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.desktop-canvas__content {
+  width: 960px;
+  height: 1600px;
+  transform-origin: top left;
+}
+
+.desktop-canvas .app-surface {
+  width: 960px;
+  height: 1600px;
+  min-height: 1600px;
+}
+
+.desktop-canvas .library-main,
+.desktop-canvas .taste-main,
+.desktop-canvas .taste-edit-main,
+.desktop-canvas .programs-main,
+.desktop-canvas .program-detail-main,
+.desktop-canvas .settings-main,
+.desktop-canvas .settings-diagnostics-main {
+  max-height: 1456px;
+}
+
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+[tabindex="-1"]:focus-visible {
+  outline: none;
+  box-shadow: var(--kr-focus);
+}
+
+h1[tabindex="-1"]:focus-visible {
+  box-shadow: none;
+}

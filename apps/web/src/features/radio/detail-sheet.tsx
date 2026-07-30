@@ -15,6 +15,7 @@ import {
 
 import type { AudioEngineFacade, AudioEngineSnapshot } from "../../audio/index.js";
 import type { ServiceTransport } from "../../shared/transport.js";
+import { formatClockDuration } from "../../shared/format.js";
 import { getTrackLyrics } from "./detail-api.js";
 import {
   deriveTimedText,
@@ -65,11 +66,6 @@ export class DetailSheetBoundary extends Component<
   render(): ReactNode {
     return this.state.failed ? null : this.props.children;
   }
-}
-
-function formatDuration(durationMs: number): string {
-  const seconds = Math.floor(Math.max(0, durationMs) / 1_000);
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 function deterministicNoise(index: number): number {
@@ -152,7 +148,7 @@ function TimedLines({ lines, speaking }: { lines: DisplayTimedTextLine[]; speaki
         key={`${String(line.startMs)}-${line.text}`}
         ref={setCurrent}
       >
-        <small>KORADIO · {formatDuration(line.startMs)}</small>
+        <small>KORADIO · {formatClockDuration(line.startMs)}</small>
         <p>{line.text}</p>
       </div>
     ) : (
@@ -354,16 +350,16 @@ export function DetailSheet({
             {track === undefined ? "Koradio live session" : `${track.title} · ${track.artist}`}
           </p>
           <div
-            aria-label={`当前段进度 ${formatDuration(audio.positionMs)} / ${formatDuration(audio.durationMs)}`}
+            aria-label={`当前段进度 ${formatClockDuration(audio.positionMs)} / ${formatClockDuration(audio.durationMs)}`}
             aria-valuemax={Math.max(1, audio.durationMs)}
             aria-valuemin={0}
             aria-valuenow={audio.positionMs}
             className="detail-track-progress"
             role="progressbar"
           >
-            <span>{formatDuration(audio.positionMs)}</span>
+            <span>{formatClockDuration(audio.positionMs)}</span>
             <i />
-            <span>{formatDuration(audio.durationMs)}</span>
+            <span>{formatClockDuration(audio.durationMs)}</span>
           </div>
           <article
             aria-label={speaking ? "DJ 串讲词" : "跟随歌词"}

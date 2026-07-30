@@ -14,6 +14,7 @@ import { type AudioEngineFacade, useAudioSnapshot } from "../../audio/index.js";
 import type { AppEventBus } from "../../shared/events.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
+import { Icon as SharedIcon, type IconName } from "../../shared/icon.js";
 import { FeedbackNotice, useFeedback } from "../feedback/index.js";
 import { deleteProgram, getProgram, getPrograms } from "./api.js";
 import {
@@ -36,24 +37,8 @@ interface ProgramsExperienceProps {
   transport: ServiceTransport;
 }
 
-type IconName = "back" | "bookmark" | "heart" | "more" | "pause" | "play" | "search";
-
-const iconPaths: Record<IconName, ReactElement> = {
-  back: <path d="m15 18-6-6 6-6" />,
-  bookmark: <path d="M7 4h10v16l-5-3-5 3Z" />,
-  heart: <path d="M12 20.4 4.8 13.6A4.9 4.9 0 0 1 12 7a4.9 4.9 0 0 1 7.2 6.6Z" />,
-  more: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
-  pause: <path d="M8 5v14m8-14v14" />,
-  play: <path d="m8 5 11 7-11 7Z" />,
-  search: <path d="m21 21-4.4-4.4m2.4-5.1a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />,
-};
-
 function Icon({ name }: { name: IconName }): ReactElement {
-  return (
-    <svg aria-hidden="true" className="programs-icon" viewBox="0 0 24 24">
-      {iconPaths[name]}
-    </svg>
-  );
+  return <SharedIcon className="programs-icon" name={name} />;
 }
 
 function formatProgramDate(value: string): string {
