@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 
 import { deleteProgramResponseSchema, type DeleteProgramResponse } from "@koradio/contracts";
+import { z } from "zod";
 
+import { parseSqliteRows } from "../../platform/db/rows.js";
 import { FileStoreError, type LocalFileStore } from "../../platform/files/index.js";
 import type { ProgramRepository } from "./persistence.js";
 import type { ProgramService } from "./service.js";
@@ -19,6 +21,12 @@ interface StagedAudio {
   reference: string;
   stagedName: string;
 }
+
+const stagedAudioSchema: z.ZodType<StagedAudio> = z.object({
+  id: z.string(),
+  reference: z.string(),
+  stagedName: z.string(),
+});
 
 export interface ProgramDeletionService {
   delete(
@@ -123,7 +131,7 @@ export function createProgramDeletionService(options: {
       });
     },
     async retryPendingCleanup() {
-      const pending = listPending.all() as unknown as StagedAudio[];
+      const pending = parseSqliteRows(stagedAudioSchema, listPending.all());
       for (const audio of pending) {
         try {
           await options.fileStore.finalizeDelete(audio.stagedName);

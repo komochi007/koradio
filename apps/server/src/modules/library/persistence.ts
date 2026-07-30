@@ -16,6 +16,8 @@ import {
 } from "@koradio/contracts";
 import { z } from "zod";
 
+import { parseSqliteRows } from "../../platform/db/rows.js";
+
 interface MusicTrackRow {
   id: string;
   source: "netease";
@@ -35,6 +37,23 @@ interface LibraryItemRow extends MusicTrackRow {
   added_at: string;
   playlist_source_id: string | null;
 }
+
+const libraryItemRowSchema: z.ZodType<LibraryItemRow> = z.object({
+  id: z.string(),
+  source: z.literal("netease"),
+  source_track_id: z.string(),
+  title: z.string(),
+  artist: z.string(),
+  album: z.string(),
+  artwork_url: z.string().nullable(),
+  duration_ms: z.number(),
+  lyric_status: z.enum(["available", "untimed", "unavailable"]),
+  lyrics_queried: z.number(),
+  playable: z.number(),
+  origin_mode: z.enum(["live", "mock"]),
+  added_at: z.string(),
+  playlist_source_id: z.string().nullable(),
+});
 
 interface PlaylistSourceRow {
   id: string;
@@ -486,12 +505,10 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
     list(profileId, cursor, requestedLimit, originMode = "mock") {
       const offset = decodeCursor(cursor);
       const limit = requestedLimit ?? 50;
-      const rows = listItems.all(
-        profileId,
-        originMode,
-        limit + 1,
-        offset,
-      ) as unknown as LibraryItemRow[];
+      const rows = parseSqliteRows(
+        libraryItemRowSchema,
+        listItems.all(profileId, originMode, limit + 1, offset),
+      );
       const totalCount = (
         client
           .prepare(

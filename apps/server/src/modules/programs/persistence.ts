@@ -9,6 +9,9 @@ import {
   type Program,
   type ProgramListResponse,
 } from "@koradio/contracts";
+import { z } from "zod";
+
+import { parseSqliteRow, parseSqliteRows } from "../../platform/db/rows.js";
 
 export class ProgramDataError extends Error {
   constructor() {
@@ -48,6 +51,31 @@ interface DjScriptSegmentRow {
   tts_audio_ref: string | null;
   type: "intro" | "segue" | "outro";
 }
+
+const programRowSchema: z.ZodType<ProgramRow> = z.object({
+  created_at: z.string(),
+  id: z.string(),
+  origin_mode: z.enum(["live", "mock"]),
+  profile_id: z.string(),
+  scenario_text: z.string(),
+  status: z.enum(["ready", "completed"]),
+  title: z.string(),
+});
+const programTrackRowSchema: z.ZodType<ProgramTrackRow> = z.object({
+  track_id: z.string(),
+});
+const djScriptSegmentRowSchema: z.ZodType<DjScriptSegmentRow> = z.object({
+  display_text: z.string(),
+  estimated_timing: z.number(),
+  id: z.string(),
+  language: z.enum(["zh-CN", "en-GB"]),
+  program_id: z.string(),
+  text: z.string(),
+  tts_audio_ref: z.string().nullable(),
+  type: z.enum(["intro", "segue", "outro"]),
+});
+const ttsReferenceRowSchema = z.object({ tts_audio_ref: z.string() });
+const countRowSchema = z.object({ count: z.number() });
 
 export interface ProgramRecord {
   djScripts: DjScriptSegment[];
@@ -194,16 +222,17 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
   `);
 
   function readProgram(row: ProgramRow): Program {
-    const trackIds = (findProgramTracks.all(row.id) as unknown as ProgramTrackRow[]).map(
+    const trackIds = parseSqliteRows(programTrackRowSchema, findProgramTracks.all(row.id)).map(
       (track) => track.track_id,
     );
     return mapProgram(row, trackIds);
   }
 
   function readRecord(row: ProgramRow): ProgramRecord {
-    const djScripts = (findProgramSegments.all(row.id) as unknown as DjScriptSegmentRow[]).map(
-      mapSegment,
-    );
+    const djScripts = parseSqliteRows(
+      djScriptSegmentRowSchema,
+      findProgramSegments.all(row.id),
+    ).map(mapSegment);
     return {
       program: readProgram(row),
       djScripts,
@@ -212,7 +241,8 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
 
   return {
     current(profileId) {
-      const row = findCurrentProgram.get(profileId) as unknown as ProgramRow | undefined;
+      const value = findCurrentProgram.get(profileId);
+      const row = value === undefined ? undefined : parseSqliteRow(programRowSchema, value);
       return row === undefined ? null : readRecord(row);
     },
     delete(profileId, programId, cleanup) {
@@ -229,7 +259,8 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
       return { clearedCurrent: cleared, deleted: result.changes > 0 };
     },
     find(profileId, programId) {
-      const row = findProgram.get(profileId, programId) as unknown as ProgramRow | undefined;
+      const value = findProgram.get(profileId, programId);
+      const row = value === undefined ? undefined : parseSqliteRow(programRowSchema, value);
       return row === undefined ? null : readRecord(row);
     },
     has(profileId, programId) {
@@ -264,7 +295,10 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
     },
     list(profileId, cursor, limit = 20) {
       const offset = decodeCursor(cursor);
-      const rows = listPrograms.all(profileId, limit + 1, offset) as unknown as ProgramRow[];
+      const rows = parseSqliteRows(
+        programRowSchema,
+        listPrograms.all(profileId, limit + 1, offset),
+      );
       const hasNext = rows.length > limit;
       const items = rows.slice(0, limit).map(readProgram);
       return programListResponseSchema.parse({
@@ -274,19 +308,20 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
     },
     markCompleted(profileId, programId) {
       updateCompleted.run(profileId, programId);
-      const row = findProgram.get(profileId, programId) as unknown as ProgramRow | undefined;
+      const value = findProgram.get(profileId, programId);
+      const row = value === undefined ? undefined : parseSqliteRow(programRowSchema, value);
       return row === undefined ? null : readProgram(row);
     },
     setCurrent(profileId, programId) {
       upsertCurrent.run(profileId, programId);
     },
     ttsReferences(programId) {
-      return (listTtsReferences.all(programId) as unknown as Array<{ tts_audio_ref: string }>).map(
+      return parseSqliteRows(ttsReferenceRowSchema, listTtsReferences.all(programId)).map(
         (row) => row.tts_audio_ref,
       );
     },
     ttsReferenceUseCount(reference) {
-      const row = countTtsReference.get(reference) as unknown as { count: number };
+      const row = parseSqliteRow(countRowSchema, countTtsReference.get(reference));
       return row.count;
     },
   };

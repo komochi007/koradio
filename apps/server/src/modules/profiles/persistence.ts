@@ -2,6 +2,8 @@ import { profileSchema, type Profile, type UpdateProfileCommand } from "@koradio
 import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 
+import { parseSqliteRow, parseSqliteRows } from "../../platform/db/rows.js";
+
 interface ProfileRow {
   id: string;
   creation_idempotency_key: string;
@@ -13,6 +15,18 @@ interface ProfileRow {
   created_at: string;
   updated_at: string;
 }
+
+const profileRowSchema: z.ZodType<ProfileRow> = z.object({
+  id: z.string(),
+  creation_idempotency_key: z.string(),
+  radio_name: z.string(),
+  nickname: z.string(),
+  avatar_ref: z.string().nullable(),
+  frequent_genres_json: z.string(),
+  default_scenario: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
 
 export class ProfileDataError extends Error {
   constructor() {
@@ -104,7 +118,8 @@ export function createProfileRepository(client: DatabaseSync): ProfileRepository
   `);
 
   function find(statement: ReturnType<DatabaseSync["prepare"]>, value: string): Profile | null {
-    const row = statement.get(value) as ProfileRow | undefined;
+    const valueRow = statement.get(value);
+    const row = valueRow === undefined ? undefined : parseSqliteRow(profileRowSchema, valueRow);
     return row === undefined ? null : mapRow(row);
   }
 
@@ -129,7 +144,7 @@ export function createProfileRepository(client: DatabaseSync): ProfileRepository
       );
     },
     list() {
-      const rows = selectAll.all() as unknown as ProfileRow[];
+      const rows = parseSqliteRows(profileRowSchema, selectAll.all());
       const profiles: Profile[] = [];
 
       for (const row of rows) {

@@ -1,5 +1,8 @@
 import { feedbackEventSchema, type FeedbackEvent } from "@koradio/contracts";
 import type { DatabaseSync } from "node:sqlite";
+import { z } from "zod";
+
+import { parseSqliteRow, parseSqliteRows } from "../../platform/db/rows.js";
 
 interface FeedbackEventRow {
   replay_order: number;
@@ -10,6 +13,16 @@ interface FeedbackEventRow {
   idempotency_key: string;
   created_at: string;
 }
+
+const feedbackEventRowSchema: z.ZodType<FeedbackEventRow> = z.object({
+  replay_order: z.number(),
+  id: z.string(),
+  profile_id: z.string(),
+  target_id: z.string(),
+  type: feedbackEventSchema.shape.type,
+  idempotency_key: z.string(),
+  created_at: z.string(),
+});
 
 export class FeedbackDataError extends Error {
   constructor() {
@@ -67,8 +80,8 @@ export function createFeedbackRepository(client: DatabaseSync): FeedbackReposito
 
   return {
     findByIdempotencyKey(profileId, idempotencyKey) {
-      const row = findByIdempotencyKey.get(profileId, idempotencyKey) as
-        FeedbackEventRow | undefined;
+      const value = findByIdempotencyKey.get(profileId, idempotencyKey);
+      const row = value === undefined ? undefined : parseSqliteRow(feedbackEventRowSchema, value);
       return row === undefined ? null : mapRow(row);
     },
     insert(event) {
@@ -82,7 +95,7 @@ export function createFeedbackRepository(client: DatabaseSync): FeedbackReposito
       );
     },
     list(profileId) {
-      return (list.all(profileId) as unknown as FeedbackEventRow[]).map(mapRow);
+      return parseSqliteRows(feedbackEventRowSchema, list.all(profileId)).map(mapRow);
     },
   };
 }

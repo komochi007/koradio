@@ -6,6 +6,9 @@ import {
   type PlaybackCheckpoint,
   type PlaybackTimelineItem,
 } from "@koradio/contracts";
+import { z } from "zod";
+
+import { parseSqliteRow, parseSqliteRows } from "../../platform/db/rows.js";
 
 export class PlaybackDataError extends Error {
   constructor() {
@@ -35,6 +38,28 @@ interface CheckpointRow {
   timeline_item_id: string;
   volume: number;
 }
+
+const timelineRowSchema: z.ZodType<TimelineRow> = z.object({
+  audio_ref: z.string(),
+  duration_ms: z.number(),
+  id: z.string(),
+  kind: z.enum(["dj", "track"]),
+  position: z.number(),
+  program_id: z.string(),
+  segment_id: z.string().nullable(),
+  track_id: z.string().nullable(),
+});
+
+const checkpointRowSchema: z.ZodType<CheckpointRow> = z.object({
+  lease_epoch: z.number(),
+  position_ms: z.number(),
+  profile_id: z.string(),
+  program_id: z.string(),
+  saved_at: z.string(),
+  status: z.enum(["playing", "paused", "completed", "failed"]),
+  timeline_item_id: z.string(),
+  volume: z.number(),
+});
 
 export interface StoredCheckpoint {
   checkpoint: PlaybackCheckpoint;
@@ -122,16 +147,17 @@ export function createPlaybackRepository(client: DatabaseSync): PlaybackReposito
 
   return {
     findCheckpoint(profileId) {
-      const row = findCheckpoint.get(profileId) as unknown as CheckpointRow | undefined;
+      const value = findCheckpoint.get(profileId);
+      const row = value === undefined ? undefined : parseSqliteRow(checkpointRowSchema, value);
       return row === undefined ? null : mapCheckpoint(row);
     },
     findTimelineItem(programId, timelineItemId) {
-      const row = findTimelineItem.get(programId, timelineItemId) as unknown as
-        TimelineRow | undefined;
+      const value = findTimelineItem.get(programId, timelineItemId);
+      const row = value === undefined ? undefined : parseSqliteRow(timelineRowSchema, value);
       return row === undefined ? null : mapTimeline(row);
     },
     getTimeline(programId) {
-      return (listTimeline.all(programId) as unknown as TimelineRow[]).map(mapTimeline);
+      return parseSqliteRows(timelineRowSchema, listTimeline.all(programId)).map(mapTimeline);
     },
     insertTimeline(programId, items) {
       for (const item of items) {

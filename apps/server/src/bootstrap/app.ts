@@ -3,24 +3,19 @@ import { randomUUID } from "node:crypto";
 
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
-import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
 import {
   audioResolutionRequestSchema,
   audioResolutionSchema,
   createFeedbackRequestSchema,
   createLibraryItemRequestSchema,
-  createDataRootMigrationRequestSchema,
   createProfileRequestSchema,
   currentProgramResponseSchema,
   currentProfileResponseSchema,
   deleteProgramResponseSchema,
-  errorEnvelopeSchema,
   feedbackEventSchema,
   feedbackPersistedEventSchema,
   generateProgramRequestSchema,
-  healthResponseSchema,
-  jobAcceptedResponseSchema,
   libraryItemSchema,
   libraryListRequestSchema,
   libraryListResponseSchema,
@@ -43,24 +38,18 @@ import {
   profileSchema,
   selectCurrentProfileRequestSchema,
   savePlaybackCheckpointRequestSchema,
-  serviceHealthListResponseSchema,
-  serviceHealthChangedEventSchema,
-  sessionAuthenticateSchema,
-  sessionBootstrapResponseSchema,
   trackLyricsRequestSchema,
   trackLyricsSchema,
   tasteResponseSchema,
   importPlaylistRequestSchema,
-  updateDeviceSettingsRequestSchema,
+  jobAcceptedResponseSchema,
   updateProfileRequestSchema,
   updateProfilePreferencesRequestSchema,
   updateTasteOverridesRequestSchema,
-  ttsModelStatusSchema,
 } from "@koradio/contracts";
-import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
+import Fastify, { type FastifyInstance } from "fastify";
 
 import {
-  DataRootMigrationConflictError,
   createDataRootMigrationService,
   type DataRootMigrationRuntimeCoordinator,
   type DataRootRestartRequest,
@@ -145,54 +134,15 @@ import { FileStoreError, createLocalFileStore } from "../platform/files/index.js
 import { createTtsModelService, type TtsModelService } from "../integrations/tts-model.js";
 import { createAllowedOrigins, type RuntimeConfig } from "./config.js";
 import { createRuntimeProviders } from "./providers.js";
+import { sendApiError } from "./routes/api-error.js";
+import { createHealthSettingsRoutes } from "./routes/health-settings.js";
+import { createMediaRoutes } from "./routes/media.js";
+import { createSessionEventRoutes } from "./routes/session-events.js";
+import { createStaticPageRoutes } from "./routes/static-pages.js";
 import { enforceApiSecurity, isAllowedOrigin } from "./security.js";
 import { createSessionState, type SessionState } from "./session.js";
 
 const liveProviderGenerationTimeoutMs = 6 * 60_000;
-const ttsFileNamePattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:aiff|caf|m4a|wav)$/u;
-const mockMediaFileNames = new Set([
-  "00000000-0000-4000-8000-000000000001.wav",
-  "00000000-0000-4000-8000-000000000002.wav",
-]);
-
-function createMockWave(): Buffer {
-  const sampleRate = 8_000;
-  const sampleCount = sampleRate;
-  const dataSize = sampleCount * 2;
-  const content = Buffer.alloc(44 + dataSize);
-  content.write("RIFF", 0);
-  content.writeUInt32LE(36 + dataSize, 4);
-  content.write("WAVEfmt ", 8);
-  content.writeUInt32LE(16, 16);
-  content.writeUInt16LE(1, 20);
-  content.writeUInt16LE(1, 22);
-  content.writeUInt32LE(sampleRate, 24);
-  content.writeUInt32LE(sampleRate * 2, 28);
-  content.writeUInt16LE(2, 32);
-  content.writeUInt16LE(16, 34);
-  content.write("data", 36);
-  content.writeUInt32LE(dataSize, 40);
-  for (let index = 0; index < sampleCount; index += 1) {
-    const envelope = Math.min(1, index / 400, (sampleCount - index) / 400);
-    const sample = Math.sin((2 * Math.PI * 220 * index) / sampleRate) * envelope * 2_400;
-    content.writeInt16LE(Math.round(sample), 44 + index * 2);
-  }
-  return content;
-}
-
-function ttsMimeType(fileName: string): string {
-  if (fileName.endsWith(".aiff")) {
-    return "audio/aiff";
-  }
-  if (fileName.endsWith(".caf")) {
-    return "audio/x-caf";
-  }
-  if (fileName.endsWith(".m4a")) {
-    return "audio/mp4";
-  }
-  return "audio/wav";
-}
 
 export interface CreateAppOptions {
   config: RuntimeConfig;
@@ -208,23 +158,6 @@ export interface CreateAppOptions {
   ttsModelService?: TtsModelService;
   ttsProvider?: TtsProvider;
   webSocketAuthenticationTimeoutMs?: number;
-}
-
-function sendApiError(
-  reply: FastifyReply,
-  statusCode: number,
-  code: string,
-  message: string,
-  retryable: boolean,
-): FastifyReply {
-  return reply.status(statusCode).send(
-    errorEnvelopeSchema.parse({
-      code,
-      message,
-      retryable,
-      correlationId: randomUUID(),
-    }),
-  );
 }
 
 export async function createApp(options: CreateAppOptions): Promise<FastifyInstance> {
@@ -432,101 +365,12 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     }
   });
 
-  app.get("/tts/:fileName", async (request, reply) => {
-    const params = request.params as { fileName?: unknown };
-    if (
-      request.headers["sec-fetch-site"] !== "same-origin" ||
-      typeof params.fileName !== "string" ||
-      !ttsFileNamePattern.test(params.fileName)
-    ) {
-      return sendApiError(reply, 403, "MEDIA_ACCESS_DENIED", "Media access is not allowed", false);
-    }
-
-    if (
-      options.config.providerMode === "mock" &&
-      params.fileName === "00000000-0000-4000-8000-000000000001.wav"
-    ) {
-      reply.header("Cache-Control", "no-store");
-      reply.header("Cross-Origin-Resource-Policy", "same-origin");
-      reply.header("X-Content-Type-Options", "nosniff");
-      return await reply.type("audio/wav").send(createMockWave());
-    }
-
-    try {
-      const content = await fileStore.read(`tts/${params.fileName}`);
-      reply.header("Cache-Control", "no-store");
-      reply.header("Cross-Origin-Resource-Policy", "same-origin");
-      reply.header("X-Content-Type-Options", "nosniff");
-      return await reply.type(ttsMimeType(params.fileName)).send(content);
-    } catch (error) {
-      if (error instanceof FileStoreError) {
-        return sendApiError(reply, 404, "MEDIA_NOT_FOUND", "Media was not found", false);
-      }
-      throw error;
-    }
-  });
-
-  app.get("/media/:fileName", async (request, reply) => {
-    const params = request.params as { fileName?: unknown };
-    if (
-      request.headers["sec-fetch-site"] !== "same-origin" ||
-      options.config.providerMode !== "mock" ||
-      typeof params.fileName !== "string" ||
-      !mockMediaFileNames.has(params.fileName)
-    ) {
-      return sendApiError(reply, 403, "MEDIA_ACCESS_DENIED", "Media access is not allowed", false);
-    }
-    reply.header("Cache-Control", "no-store");
-    reply.header("Cross-Origin-Resource-Policy", "same-origin");
-    reply.header("X-Content-Type-Options", "nosniff");
-    return await reply.type("audio/wav").send(createMockWave());
-  });
-
-  app.get("/api/v1/health", () => healthResponseSchema.parse(health.getHealth()));
-
-  app.get("/api/v1/health/services", () =>
-    serviceHealthListResponseSchema.parse(health.getServiceHealth()),
+  await app.register(
+    createMediaRoutes({
+      fileStore,
+      providerMode: options.config.providerMode,
+    }),
   );
-
-  app.get("/api/v1/device-settings", () => deviceSettings.get());
-
-  app.get("/api/v1/device-settings/tts-model", () =>
-    ttsModelStatusSchema.parse(ttsModelService.getStatus()),
-  );
-
-  app.post("/api/v1/device-settings/tts-model/install", (_request, reply) => {
-    const status = ttsModelService.startInstall();
-    if (status.state === "unsupported") {
-      return sendApiError(
-        reply,
-        409,
-        "TTS_MODEL_UNSUPPORTED",
-        "Qwen3-TTS requires Apple Silicon and macOS 15 or later",
-        false,
-      );
-    }
-    return reply
-      .status(status.state === "ready" ? 200 : 202)
-      .send(ttsModelStatusSchema.parse(status));
-  });
-
-  app.patch("/api/v1/device-settings", (request, reply) => {
-    const parsed = updateDeviceSettingsRequestSchema.safeParse({
-      body: request.body,
-    });
-
-    if (!parsed.success) {
-      return sendApiError(
-        reply,
-        400,
-        "DEVICE_SETTINGS_VALIDATION_FAILED",
-        "Device settings are invalid",
-        false,
-      );
-    }
-
-    return deviceSettings.update(parsed.data.body);
-  });
 
   app.get("/api/v1/profiles", () => profileListResponseSchema.parse(profiles.list()));
 
@@ -1634,128 +1478,26 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     },
   );
 
-  app.post("/api/v1/device-settings/data-root-migrations", (request, reply) => {
-    if (ttsModelService.getStatus().state === "downloading") {
-      return sendApiError(
-        reply,
-        409,
-        "TTS_MODEL_DOWNLOAD_IN_PROGRESS",
-        "Wait for the Qwen3-TTS model download to finish before migrating the data root",
-        true,
-      );
-    }
-    const parsed = createDataRootMigrationRequestSchema.safeParse({
-      headers: {
-        "idempotency-key": request.headers["idempotency-key"],
-      },
-      body: request.body,
-    });
+  await app.register(
+    createHealthSettingsRoutes({
+      dataRootMigration,
+      deviceSettings,
+      health,
+      ttsModelService,
+    }),
+  );
 
-    if (!parsed.success) {
-      return sendApiError(
-        reply,
-        400,
-        "DATA_ROOT_MIGRATION_VALIDATION_FAILED",
-        "Data root migration request is invalid",
-        false,
-      );
-    }
-
-    try {
-      const result = dataRootMigration.create(
-        parsed.data.body,
-        parsed.data.headers["idempotency-key"],
-      );
-      return reply.status(202).send(jobAcceptedResponseSchema.parse({ jobId: result.jobId }));
-    } catch (error) {
-      if (error instanceof DataRootMigrationConflictError) {
-        return sendApiError(
-          reply,
-          409,
-          "DATA_ROOT_MIGRATION_ALREADY_RUNNING",
-          "Another data root migration is already running",
-          true,
-        );
-      }
-
-      throw error;
-    }
-  });
-
-  app.post("/api/v1/session/bootstrap", (_request, reply) => {
-    reply.header("Cache-Control", "no-store");
-    reply.header("Pragma", "no-cache");
-    reply.header("Vary", "Origin");
-    return sessionBootstrapResponseSchema.parse(session.issue());
-  });
-
-  app.get("/api/v1/events", { websocket: true }, (socket) => {
-    const authenticationTimeout = setTimeout(() => {
-      socket.close(1008, "Authentication required");
-    }, webSocketAuthenticationTimeoutMs);
-    authenticationTimeout.unref();
-    socket.once("close", () => {
-      clearTimeout(authenticationTimeout);
-    });
-
-    socket.once("message", (rawMessage, isBinary) => {
-      let decoded: unknown;
-
-      try {
-        if (isBinary) {
-          throw new TypeError("Authentication message must be a text frame");
-        }
-        const serialized = Array.isArray(rawMessage)
-          ? Buffer.concat(rawMessage).toString("utf8")
-          : rawMessage instanceof ArrayBuffer
-            ? Buffer.from(rawMessage).toString("utf8")
-            : rawMessage.toString("utf8");
-        if (Buffer.byteLength(serialized) > 4_096) {
-          throw new TypeError("Authentication message is too large");
-        }
-        decoded = JSON.parse(serialized);
-      } catch {
-        clearTimeout(authenticationTimeout);
-        socket.close(1008, "Invalid authentication message");
-        return;
-      }
-
-      const command = sessionAuthenticateSchema.safeParse(decoded);
-      if (!command.success || session.validate(command.data.accessToken).status !== "valid") {
-        clearTimeout(authenticationTimeout);
-        socket.close(1008, "Authentication failed");
-        return;
-      }
-
-      clearTimeout(authenticationTimeout);
-      eventHub.add(socket);
-      socket.once("close", () => {
-        eventHub.remove(socket);
-      });
-      socket.send(
-        JSON.stringify(
-          serviceHealthChangedEventSchema.parse({
-            eventId: randomUUID(),
-            eventType: "service.health.changed",
-            version: 1,
-            correlationId: randomUUID(),
-            sequence: 0,
-            occurredAt: new Date().toISOString(),
-            payload: health.getHealth(),
-          }),
-        ),
-      );
-    });
-  });
+  await app.register(
+    createSessionEventRoutes({
+      authenticationTimeoutMs: webSocketAuthenticationTimeoutMs,
+      eventHub,
+      health,
+      session,
+    }),
+  );
 
   if (options.config.environment === "production") {
-    await app.register(fastifyStatic, {
-      root: options.config.webRoot,
-      wildcard: false,
-    });
-    for (const appShellRoute of ["/radio", "/library", "/taste", "/programs", "/settings"]) {
-      app.get(appShellRoute, (_request, reply) => reply.sendFile("index.html"));
-    }
+    await app.register(createStaticPageRoutes(options.config.webRoot));
   }
 
   await app.ready();
