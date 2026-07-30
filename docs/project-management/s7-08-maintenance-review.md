@@ -62,4 +62,4 @@
 - Node 24.18.0 下 `pnpm check` 通过：86 unit、60 contract、93 integration、35 component、274 coverage 用例与 production build 全部通过。
 - 依赖审计发现的 `@fastify/static`、`find-my-way`、`fast-uri` 与 `brace-expansion` 漏洞已升级到修复版本；安全审计为 0 已知漏洞，89 个 production packages license 审计通过。
 - 使用共享缓存真实构建临时 `0.0.17` arm64 DMG；默认未保留独立 app，成功后 staging 为空。验证器只读挂载 DMG，strict codesign、Node 24.18.0、Python 3.12.13、MLX/Qwen runtime 与 launcher smoke 通过，并确认退出后无残留挂载。
-- 三浏览器功能门为 103 通过、74 个按既有规则跳过；3 个 Chromium 截图因当前系统字体 glyph 宽度/抗锯齿与历史基线存在约 0.01% 差异而失败。功能、axe、几何断言均通过，CSS 分层前后内容顺序相同；遵守“历史视觉二进制保持不变”，未更新基线或放宽阈值。
+- 三浏览器功能门为 103 通过、74 个按既有规则跳过；独立 Chromium visual suite 1/1 通过。三浏览器门内另有 3 个 Chromium 截图因当前系统字体 glyph 宽度/抗锯齿与历史基线存在约 0.01% 差异而失败；功能、axe、几何断言均通过，CSS 分层前后内容顺序相同。遵守“历史视觉二进制保持不变”，未更新基线或放宽阈值。
