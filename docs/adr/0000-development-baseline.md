@@ -32,7 +32,7 @@ Koradio 在进入工具链与脚手架决策前，需要把 VDA-17 冻结点、�
 |---|---|---|
 | VDA-17 冻结证据 | `README.md`、`context.md`、`design/assets/reports/`、`design/tasks/visual-assets.md` | 已归属 VDA-17 收口并提交到 `1e6c518`；作为视觉追溯证据保留 |
 | 产品、流程与架构语义校准 | `docs/prd.md`、`docs/user-flow.md`、`architecture.md`、`AI_RULES.md`、`context.md` | 已归属开发前语义校准并提交到 `7f8c1d1`；后续实现按各 Concern 的权威文档读取 |
-| 视觉语义与文档导航 | `design/assets/prototype/app.js`、`design/assets/prototype/README.md`、`design/design.md`、`design/prompt.md`、`design/references/README.md`、`design/design-qa.md` 及交接/任务记录 | 已归属冻结后业务语义、ARIA 文案与导航校准并提交到 `7f8c1d1`；不构成新的像素版本 |
+| 视觉语义与文档导航 | `design/assets/prototype/app.js`、`design/assets/prototype/README.md`、`design/design.md`、`design/prompt.md`、`design/references/README.md`、`design/assets/reports/vda-11-light-management-qa.md` 及交接/任务记录 | 已归属冻结后业务语义、ARIA 文案与导航校准并提交到 `7f8c1d1`；不构成新的像素版本 |
 | 项目管理事实源 | `docs/project-management/README.md`、`roadmap.md`、`tasks.md`、`release-checklist.md` 及根 `README.md` 导航 | 已归属 S0-01 并提交到 `7f8c1d1` |
 | Git 与 Worktree 治理 | `AGENTS.md`、`docs/project-management/git-workflow.md` 及项目管理同步项 | 已归属 S0-07 并通过 squash 结果 `51399f1` 合入 `main` |
 | S0-07 保留 worktree | `/Users/kleinblue/Project/Koradio-worktrees/s0-07-git-workflow`、`codex/s0-07-git-workflow` | 工作树 clean；分支仍保留 squash 前的独有提交，归属 S0-07。按 Git 规范未经用户批准不清理、不提交到 S0-02 |

@@ -9,9 +9,9 @@
 
 | 判断项 | 当前结论 | AI 行动 |
 |---|---|---|
-| 当前阶段 | S7 本机个人预览运行与后置发布工程 | S6 阶段门与 S7-01、S7-02、S7-06 已通过；下一步执行 S7-07 个人本机稳定性试用，不启动外部分发 |
+| 当前阶段 | S7 本机个人预览运行与维护 | S6 阶段门与 S7-01、S7-02、S7-06、UX-10 已通过；S7-07 稳定性试用与 S7-08 维护性优化进行中，不启动外部分发 |
 | 已通过阶段门 | S0 基线与关键决策；S1 工程脚手架；S2 平台、数据与安全底座；S3 核心领域与 Provider 后端；S4 P0 核心产品体验；S5 P1 全量功能；S6 集成、质量与安全加固 | ADR 0000～0004、平台与后端闭环、P0/P1 产品实现、九项能力和 15 页面全量验收，以及 [S6-05 内部质量门记录](s6-05-internal-quality-gate.md) 均已验证 |
-| 当前关键路径 | S7-07 个人本机稳定性试用；公开发布等待授权 | Mock 保持默认测试/CI 模式；用真实日常使用收口本机缺陷，未获项目所有者新授权前不领取 S7-03～S7-05 或 S8/S9 外部分发任务 |
+| 当前关键路径 | S7-08 维护性优化 + S7-07 个人本机稳定性试用；公开发布等待授权 | Mock 保持默认测试/CI 模式；先降低维护成本并用真实日常使用收口本机缺陷，未获项目所有者新授权前不领取 S7-03～S7-05 或 S8/S9 外部分发任务 |
 | 产品实现状态 | PRD 九项能力与 15 个页面状态已由真实产品承载并通过 S5-04 | 以 [S5-04 验收记录](s5-04-full-function-acceptance.md) 为功能完整基线，继续加固非功能质量 |
 | 外部测试状态 | 禁止开始 | `S5-04` 已完成；仅当 `S6-05`、`S7-05` 也完成后解除 |
 | 当前交付渠道 | Personal Local Preview，只在项目所有者受控本机使用 | 不上传、不建立公开下载入口、不向外部分发 ad-hoc 产物 |
@@ -88,7 +88,7 @@ S3 的独立模块、S4 的视觉实现和 S6 的测试建设可以在依赖明�
 | S0-03 | 已创建 | `docs/adr/0001-toolchain-and-quality.md` | 工具链、命令族、测试、CI 与升级策略；不代表配置已实装 |
 | S0-04 | 已创建 | `docs/adr/0002-runtime-topology.md` | 运行拓扑、端口、Origin allowlist 与本地 session bootstrap 决策 |
 | S0-05 | 已创建 · 已接受 | `docs/adr/0003-macos-packaging.md`、`docs/adr/evidence/0003-macos-packaging-poc.md` | 包装架构与本地个人使用边界；未来公开分发仍需正式签名、公证和独立干净环境验收 |
-| S0-06 | 已创建 · 已接受 | `docs/adr/0004-provider-feasibility.md` 及脱敏验证报告 | 接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper；仅限 Personal Local Preview |
+| S0-06 | 已创建 · 已接受 | `docs/adr/0004-provider-feasibility.md` 及脱敏验证报告 | 接受 Codex CLI 与 TypeScript NetEase `linuxapi` Adapter；当时的 Apple TTS 裁决已被 ADR 0005 / UX-10 取代 |
 | S1-01 | 已创建 | 根 `package.json`、workspace manifest、锁文件、Node 版本文件 | 固定安装和 workspace 入口 |
 | S1-02 | 已创建 | 根 TypeScript、lint、format、test 配置 | strict 类型和统一质量门 |
 | S1-03 | 已创建 | `apps/web/`、`apps/server/`、`packages/contracts/`、`packages/design-tokens/`、`.env.example` | 四边界最小源码、Mock health、REST/WS、dev/build 与同源静态托管 |
@@ -117,8 +117,9 @@ S3 的独立模块、S4 的视觉实现和 S6 的测试建设可以在依赖明�
 | S6-05 | 已创建 | `docs/project-management/s6-05-internal-quality-gate.md` | 完整流水线、依赖审计、显式跳过审计和 CI 追溯均已记录；不提前开始外部 Beta |
 | S7-01 | 已完成 | `packaging/macos/`、`native/macos/tts-helper/`、`scripts/release/` | arm64 个人预览 app/DMG、启动停止、strict codesign 与包内 Node/TTS 验收已通过；安装、升级、回滚和卸载由 S7-02 继续 |
 | S7-02 | 已完成 | `scripts/release/`、`docs/runbooks/install-and-recovery.md`、`s7-02-install-lifecycle-acceptance.md` | arm64 两真实版本完成手动安装、升级、失败回滚、卸载与数据保留验证；不删除数据、备份或 Keychain 凭据 |
-| S7-06 | 已完成 | Provider composition、受控 TTS 媒体、live 配置/诊断测试与 `s7-06-real-provider-acceptance.md` | 项目所有者本机真实 Codex/NetEase/Apple TTS 生成、PWA 播放、无结果/失败保护与 Mock 默认回归已通过 |
+| S7-06 | 已完成 | Provider composition、受控 TTS 媒体、live 配置/诊断测试与 `s7-06-real-provider-acceptance.md` | 当时的 Codex/NetEase/Apple TTS 历史验收已通过；Apple TTS 已被 UX-10 取代，失败保护与 Mock 回归继续有效 |
 | S7-07 | 进行中 | `docs/project-management/s7-07-local-stability-acceptance.md` 与按实际缺陷新增的 regression tests | 连续本机试用、脱敏缺陷登记、修复/保留结论与最终质量门；不包含遥测、外部 Beta 或公开分发 |
+| S7-08 | 进行中 | `docs/project-management/s7-08-maintenance-review.md`、工具链、包装、文档与代码热点 | 清理可再生产物和旧分支，对齐事实源，拆分维护热点并通过完整质量门 |
 | S7-03 | 计划 | `.github/workflows/release.yml` | 签名、公证、校验和和发布证据；秘密只进入受控 CI Secret |
 | S7-04 | 计划 | `docs/runbooks/`、`CHANGELOG.md`、`SECURITY.md`、`PRIVACY.md`、`THIRD_PARTY_NOTICES.md` | 安装、诊断、恢复、发布和热修复手册，以及对外发布所需说明；`LICENSE` 由授权决策决定是否创建 |
 | S7-05 | 计划 | macOS 发布工程验收记录和候选包校验信息 | 在独立干净 macOS 验收已签名、公证候选包，不开始外部 Beta |

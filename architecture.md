@@ -77,7 +77,7 @@ Frontend 按 feature 组织；Page 负责组合，不拥有领域规则或 Provi
 | UI State | Sheet、draft、折叠、临时选择 | Feature-local state |
 | Shared UI | 无领域语义的 primitives 与无障碍行为 | design-tokens |
 
-- TanStack Query 管理服务端状态；Zustand 只管理跨组件、非持久 UI；WebSocket event 校验后才能更新缓存。
+- TanStack Query 管理服务端状态；React feature-local state 管理非持久 UI，Audio Engine facade 管理跨播放组件状态；WebSocket event 校验后才能更新缓存。
 - Audio Engine 通过单一 facade 暴露快照；Radio 与 Detail Sheet 共用时间线，页面不得维护多个媒体实例。
 - Local Service 完全离线时，只有已打开或被 Service Worker 缓存的 App Shell 可展示只读 Settings；所有配置、Secret、测试和迁移命令禁用，不从浏览器缓存恢复敏感值。
 ## 4. Backend Architecture
@@ -189,7 +189,7 @@ Feedback target 必须先通过 owner 提供的公开 Port 校验：歌曲目标
 | Async job state | Backend durable metadata + runtime executor | Ordered events + REST snapshot fallback |
 | Live media state | Browser Audio Engine | Local subscription + throttled checkpoint |
 | Cached remote state | TanStack Query | Event patch or invalidation |
-| Cross-component UI | Feature-local Zustand | In-memory only |
+| Cross-component UI | React feature-local state + Audio Engine facade | In-memory only |
 | Local UI | React component | Props/events |
 ```mermaid
 stateDiagram-v2

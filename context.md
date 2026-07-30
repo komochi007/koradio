@@ -28,7 +28,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 
 ### 当前事实
 
-- S1 工程脚手架、S2 平台/数据/安全底座、S3 核心领域与 Provider 后端、S4 P0 前端、S5 P1 全量功能与 S6 集成、质量、安全阶段门均已通过；S6-01～S6-05 已依次关闭跨层失败、数据生命周期与恢复、安全/隐私/依赖审计、性能/无障碍回归和内部全质量门。S7-01～S7-02 已完成 arm64 受控本机 macOS 包装、bundled native helper 与两版本安装生命周期验收；S7-06 已完成显式 live 的真实 Codex、NetEase、Apple TTS 与 PWA 播放闭环。S7-03 签名、公证与发布流水线在项目所有者授权外部分发前继续后置。
+- S1～S6 阶段门均已通过；S7-01～S7-02 已完成 arm64 受控本机 macOS 包装与两版本安装生命周期验收，S7-06 的 Codex/NetEase/Apple TTS 事实只保留为历史验收，当前 TTS 已由 UX-10 替换为 Qwen3-TTS 8-bit。S7-07 稳定性试用仍在进行，当前执行 S7-08 维护性优化；S7-03 签名、公证与发布流水线继续后置。
 - 当前有产品、流程、架构、视觉规范、原型提示词和参考图。
 - Git 仓库已初始化并关联 GitHub 远端。
 - VDA-17 已冻结并纳入开发基线：`design/assets/prototype/` 是 HTML/CSS/JavaScript 视觉主源，`design/assets/baselines/` 包含 60 张正式基线，`design/assets/reports/handoff-map.md` 是开发交接索引。
@@ -46,7 +46,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - Programs 通过 Library 公开 API 解析曲目元数据、通过 Playback 公开事务写入 Port 原子提交 Program、ordered track refs、DJ segments 与 timeline；production Feedback composition 使用真实 Programs owner 校验节目目标。
 - Programs application 以持久 Job 元数据和内存 executor 编排 Codex、Music 与可选 TTS；规划上下文通过 Library application Port 获取当前 Profile 最多 500 首同运行模式、可播放的库内曲目摘要，并提供 `maximumTracks` 与约 70% 的建议库内数量。Codex 返回有序 `library` / `discovery` track intents；Library intent 只解析上下文内 ID，Discovery intent 每个关键词至多选择一首非库内结果，稳定去重且不随机跨 Profile 补位。
 - 固定 Provider fixtures 已验收从 REST 场景受理到 Program/segments/timeline 原子提交的成功流，以及默认五首 4/1、空音乐库探索、显式约束、非法/跨 Profile/重复 intent、搜索与库内音频失败、单关键词至多一首、Codex 错误/非法计划、TTS/歌词/部分曲目降级、旧节目保护和提交事务回滚；常规质量门不调用真实 Provider。
-- S7-06 在 macOS 15.7.3 arm64 受控本机验证真实 Codex/NetEase/Apple TTS 可生成并播放节目；真实无结果、Codex 配置失败、TTS 缺失文字降级、旧节目保护、受控同源 TTS 媒体和脱敏错误均有证据，常规测试与 CI 继续只使用 Mock/fixture。
+- S7-06 曾在 macOS 15.7.3 arm64 验证 Codex/NetEase/Apple TTS 闭环；该 TTS 实现已被 UX-10 取代，失败保护与 Mock/fixture 回归边界继续有效。
 - S6-01 使用固定故障 fixtures、数据库快照和 Chromium/Firefox 产品 E2E 证明生成阻断保留旧 Program/Audio、局部依赖失败确定降级、反馈失败回滚且不中断播放、媒体失败稳定收敛；生成状态同时丢弃低于当前 sequence 的迟到 REST Snapshot，避免覆盖较新 WebSocket 阶段或终态。
 - S6-02 使用固定 v6 production migration fixture 和临时数据根证明当前 schema 只执行待处理升级且保持 Profile、Taste、Library、Feedback、Program、Playback 与受控文件可读；数据根迁移在八个阶段失败、真实 SHA-256 不匹配或重启失败时均回到旧 bootstrap，旧目录、备份和部分目标不自动删除。
 - S6-03 证明 loopback/Origin/session、Keychain、受控文件、MIME/大小/重定向、Provider 恶意输入与日志/API 脱敏边界；未映射的 parser/5xx 异常现统一返回安全 error envelope。完整依赖树无已知漏洞，生产 license allowlist 通过；NetEase 非官方协议仍只允许 Personal Local Preview，任何外部分发前必须在 S7 重新验证条款、内容边界与替代路径。
@@ -54,7 +54,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - Playback 每个 Profile 只保存最新 checkpoint；写入校验 Program/timeline ownership、item 时长、完成边界和 `leaseEpoch`，拒绝旧标签页用更低 epoch 覆盖新状态。
 - `POST /api/v1/profile-avatars` 使用固定版本 `@fastify/multipart` 接收单文件上传，校验 PNG/JPEG/WebP 文件签名、声明 MIME 与 5 MiB 上限后才写入受控 File Store。
 - [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 的运行版本、workspace、锁文件、完整根命令族和 Linux GitHub Actions CI 已实装并由真实 run 验证。[ADR 0002](docs/adr/0002-runtime-topology.md) 的完整 REST/WS session、Origin 与浏览器存储安全矩阵已由 S2-04 实装验证。
-- [ADR 0004](docs/adr/0004-provider-feasibility.md) 已接受：v1 Personal Local Preview 使用 Codex CLI、Backend TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper；三个 Backend Adapter、bundled native helper 与显式 live composition 已完成本机闭环，application 默认 Mock，非官方协议不构成公开分发许可。
+- [ADR 0004](docs/adr/0004-provider-feasibility.md) 记录历史 Provider 可行性裁决；其中 Apple TTS 已由 [ADR 0005](docs/adr/0005-qwen3-local-tts.md) 与 UX-10 取代。当前组合为 Codex CLI、Backend TypeScript NetEase `linuxapi` Adapter 与 bundled Qwen3-TTS helper；production 默认 Live，development/test/CI 默认 Mock。
 - 设计预览可直接打开 `design/assets/prototype/index.html`，但这是零构建设计 fixture，不代表产品可运行。
 - `architecture.md` 中超出当前本机真实 Provider/PWA 闭环的 x64 生命周期、Developer ID、签名公证、独立干净 Mac 和公开分发仍是目标设计；当前事实以本节与真实仓库为准。
 

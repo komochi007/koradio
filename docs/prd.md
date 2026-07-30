@@ -78,7 +78,7 @@
 - Mock Provider 必须返回同源、可播放的确定性媒体 fixture，不得返回无效占位域名。
 | 设计规范 | `design/design.md`，用于约束视觉系统、组件细节、原型画布和页面状态 |
 | 视觉开发基线 | `design/assets/prototype/` 为 VDA-17 HTML 主源，`design/assets/baselines/` 的 60 张图片为正式像素基线，`design/assets/reports/handoff-map.md` 为开发交接索引 |
-| 历史视觉任务 | `design/tasks/visual-assets.md`、根目录 `design-qa.md` 仅保留过程与历史结论，不属于开发必读入口 |
+| 历史视觉任务 | `design/tasks/visual-assets.md`、`design/assets/reports/vda-11-light-management-qa.md` 仅保留过程与历史结论，不属于开发必读入口 |
 
 ### 5. 产品体验与视觉原则
 

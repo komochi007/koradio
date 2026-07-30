@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1 engineering scaffold complete · S2 platform foundations complete · S3 backend stage complete · S4 P0 frontend stage complete · S5 full-function stage complete · S6 quality hardening complete through S6-05 · S7-06 personal local real Provider verification complete · external distribution deferred · production defaults to Live mode**
+> Status: **S1–S6 stage gates complete · S7 local packaging and Provider verification complete · UX-10 Qwen3-TTS replacement complete · S7-07 stability trial and S7-08 maintenance in progress · external distribution deferred · production defaults to Live mode**
 > Audience: AI Coding Agents、开发者、维护者  
 > Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；Production Server 与 macOS launcher 默认使用真实 Provider，Development、Test、CI 与 `start:mock` 使用确定性 Mock Provider
 
@@ -49,7 +49,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、完整根命令族与 GitHub Actions CI 已实装并由真实 run 验证
 - [x] Development 双进程、Production 同源静态托管、loopback 端口、精确 Origin、短期内存 Session、REST Bearer 与 WebSocket 首消息认证已实装；非法 Origin、过期/URL/持久化 token 和未认证连接均有负向验证
 - [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 的 native launcher + 外部浏览器 PWA 已由 S7-01 在受控本机完成 arm64 app/DMG、strict codesign 和启动停止验收，当前仍仅限个人使用
-- [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；三个 Backend Adapter、native helper 与 Live composition 已完成本机闭环验收，Production Server 与 macOS launcher 默认 Live
+- [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭；其中 Apple TTS 仅为 S7-06 历史验收事实，已由 [ADR 0005](docs/adr/0005-qwen3-local-tts.md) 与 UX-10 的 bundled Qwen3-TTS helper 取代。Production Server 与 macOS launcher 默认 Live
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
 - [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Radio 三态、节目生成 command/Snapshot/有序事件与失败恢复、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
 - [x] Fastify Local Service health/session/events、Profiles、Library、Feedback、Taste、Programs、Playback、异步节目生成、DeviceSettings、ProfilePreferences 与数据目录迁移路由已实现；生成命令立即返回 `202 + jobId`，终态可通过 REST Snapshot 恢复
@@ -75,14 +75,14 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] S6-05 内部全质量门已通过：[S6-05 质量门记录](docs/project-management/s6-05-internal-quality-gate.md) 记录冻结环境下的完整质量流水线、依赖审计、三浏览器 E2E、视觉门、显式跳过复核与 CI 追溯
 - [x] S7-01 受控本机 macOS 包装已通过：[S7-01 验收记录](docs/project-management/s7-01-macos-packaging-acceptance.md) 记录 arm64 app/DMG、Node 24.18.0、native helper、launcher 生命周期与 strict codesign 验证
 - [x] S7-02 受控本机安装生命周期已通过：[S7-02 验收记录](docs/project-management/s7-02-install-lifecycle-acceptance.md) 记录 arm64 两版本安装、升级、失败回滚、卸载、数据保留与端口残留验证
-- [x] S7-06 个人本机真实 Provider 闭环已通过：[S7-06 验收记录](docs/project-management/s7-06-real-provider-acceptance.md) 记录显式 live composition、真实 Codex/NetEase/Apple TTS 生成与 PWA 播放、无结果/失败保护、受控 TTS 媒体和确定性 Mock 回归
+- [x] S7-06 个人本机真实 Provider 闭环已通过：[S7-06 验收记录](docs/project-management/s7-06-real-provider-acceptance.md) 保留当时 Codex/NetEase/Apple TTS 历史证据；Apple TTS 已被 UX-10 的 Qwen3-TTS 实现取代
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
 - [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证
 - [x] `pnpm check`、Linux 常规质量门、三浏览器 E2E、axe 与视觉回归已进入 GitHub Actions
 
 ### Agent safety note
 
-当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线，以及 App Shell 路由、内存 Session、事件重连、服务断线恢复、完全离线静态壳、Profile/Settings、Radio 三态/生成恢复、Browser Audio Engine、多标签接管、Detail 跟随、反馈闭环和 Library/Taste/Programs 三个 P1 页面；后端还可验证 Profiles、Library、Feedback/Taste、Programs/Playback、Mock Provider 生成闭环、Provider adapter 边界、同源托管、SQLite、数据目录迁移、受控文件/秘密、脱敏日志和 Session/Origin 安全矩阵。macOS 登录会话还已验证真实 Codex/NetEase/Apple TTS 组合、受控 TTS 媒体与 PWA 播放，以及 arm64 本机 app/DMG 的 Node、native helper、launcher 启停；这些证据仅适用于项目所有者当前本机，不证明 x64、Developer ID、公证、独立干净 Mac 或公开分发可运行。
+当前可以在本地和 GitHub Actions 验证运行版本、workspace、锁文件、frozen install、`check`、三浏览器 E2E、axe、视觉基线和完整前后端核心闭环。macOS 15+ arm64 登录会话已验证当前 Codex/NetEase/Qwen3-TTS 组合、受控 TTS 媒体与 PWA 播放，以及 app/DMG 的 Node、native helper、launcher 启停；S7-06 的 Apple TTS 只保留为历史证据。这些证据不证明 x64、Developer ID、公证、独立干净 Mac 或公开分发可运行。
 
 视觉资产的权威关系为：产品行为看 PRD，流程看 User Flow，明确 UI 规则看 `design/design.md`，当前视觉实现语义看 `design/assets/prototype/`，正式 PNG 只用于回归，Figma 只用于协作查看。完整追溯见 [handoff map](design/assets/reports/handoff-map.md)。
 
@@ -204,7 +204,7 @@ Fastify Local Service
 | Frontend build | Vite 8.1.4 | Installed and verified |
 | App delivery | Web / PWA | Static App Shell cache verified · sensitive/API data bypassed |
 | Server state | TanStack Query 5.101.2 | Installed · memory-only health cache and event updates verified |
-| Cross-component UI state | Zustand | Planned |
+| UI state | React feature-local state、TanStack Query、Audio Engine facade | Implemented |
 | Audio | Browser `HTMLAudio` | S4-04 single engine、preload、checkpoint 与多标签 lease verified |
 | Backend | Node.js + Fastify 5.10.0 modular monolith | Bootstrap、Profiles、Library、Feedback/Taste、Programs/Playback、生成 Job 与平台模块已实现 |
 | API | REST `/api/v1` + WebSocket events | Health/session/events、Profiles、Library、Feedback/Taste、Programs/Playback、生成受理/Snapshot 与配置 API 已验证 |
@@ -246,7 +246,7 @@ Fastify Local Service
 
 尚未决定：
 
-- 数据库和其他业务依赖的具体包与精确版本；Provider 与 Qwen3-TTS 的 v1 接入形态已经由项目所有者明确。
+- 后续公开分发所需的签名、公证与发布平台依赖；当前 SQLite/Drizzle 与 Provider/Qwen3-TTS 的 v1 接入形态已明确并实装。
 
 ## 6. 目录结构
 
@@ -274,7 +274,7 @@ Koradio/
 ├── AI_RULES.md
 ├── context.md
 ├── architecture.md
-├── design-qa.md
+├── design/assets/reports/vda-11-light-management-qa.md
 ├── apps/
 │   ├── web/
 │   │   ├── public/
@@ -409,7 +409,7 @@ Koradio/
 
 ### 目标源码目录
 
-> `apps/*` 与 `packages/*` 边界 manifest 已存在，Server 的八个业务 module、integrations 与 platform 边界均已落地；Web 的 app/shared/audio、profiles、radio、programs、feedback、device-settings 与 profile-preferences 已存在，library、taste 与 native helper 仍是目标结构。
+> `apps/*` 与 `packages/*` 边界 manifest 已存在，Server 的业务 module、integrations 与 platform 边界均已落地；Web 的 app/shared/audio、profiles、radio、programs、feedback、device-settings、profile-preferences、library 与 taste 已存在，bundled Qwen3-TTS native helper 也已实装。
 
 ```text
 apps/
