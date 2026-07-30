@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import process from "node:process";
@@ -34,49 +34,84 @@ function run(executable, commandArguments, { input, ...options } = {}) {
   });
 }
 
-async function verify() {
-  const application =
-    process.argv[2] === undefined ? undefined : resolve(repositoryRoot, process.argv[2]);
-  if (application === undefined || !application.endsWith(".app")) {
-    throw new Error("Usage: node scripts/release/verify-macos-package.mjs <Koradio.app>");
-  }
+async function verifyApplication(application) {
   const launcher = resolve(application, "Contents/MacOS/Koradio");
   const node = resolve(application, "Contents/Resources/runtime/bin/node");
   const python = resolve(application, "Contents/Resources/qwen-runtime/bin/python");
   const helper = resolve(application, "Contents/Resources/qwen-tts-helper/main.py");
   const dataDirectory = await mkdtemp(resolve(tmpdir(), "koradio-package-smoke-"));
-  await run("codesign", ["--verify", "--deep", "--strict", application]);
-  const nodeVersion = await run(node, ["--version"]);
-  if (nodeVersion.stdout.trim() !== "v24.18.0") {
-    throw new Error("Bundled Node runtime version is not v24.18.0");
-  }
-  const pythonVersion = await run(python, ["--version"]);
-  if (!pythonVersion.stdout.includes("Python 3.12.13")) {
-    throw new Error("Bundled Qwen Python runtime version is invalid");
-  }
-  await run(python, [
-    "-c",
-    "import importlib.metadata, mlx_audio, numpy; assert importlib.metadata.version('mlx-audio') == '0.4.5'",
-  ]);
-  await run(python, ["-m", "py_compile", helper]);
-  const smoke = await run(launcher, ["--smoke"], {
-    env: {
-      ...process.env,
-      KORADIO_LAUNCHER_SMOKE_DATA_DIR: dataDirectory,
-    },
-  });
-  const smokeLines = smoke.stdout.trim().split("\n");
-  if (smokeLines.at(-1) !== '{"ok":true}') {
-    throw new Error("Launcher smoke result is invalid");
-  }
-  process.stdout.write(
-    `${JSON.stringify({
-      app: application,
+  try {
+    await run("codesign", ["--verify", "--deep", "--strict", application]);
+    const nodeVersion = await run(node, ["--version"]);
+    if (nodeVersion.stdout.trim() !== "v24.18.0") {
+      throw new Error("Bundled Node runtime version is not v24.18.0");
+    }
+    const pythonVersion = await run(python, ["--version"]);
+    if (!pythonVersion.stdout.includes("Python 3.12.13")) {
+      throw new Error("Bundled Qwen Python runtime version is invalid");
+    }
+    await run(python, [
+      "-c",
+      "import importlib.metadata, mlx_audio, numpy; assert importlib.metadata.version('mlx-audio') == '0.4.5'",
+    ]);
+    await run(python, ["-m", "py_compile", helper]);
+    const smoke = await run(launcher, ["--smoke"], {
+      env: {
+        ...process.env,
+        KORADIO_LAUNCHER_SMOKE_DATA_DIR: dataDirectory,
+      },
+    });
+    const smokeLines = smoke.stdout.trim().split("\n");
+    if (smokeLines.at(-1) !== '{"ok":true}') {
+      throw new Error("Launcher smoke result is invalid");
+    }
+    return {
       node: nodeVersion.stdout.trim(),
       python: pythonVersion.stdout.trim(),
       qwenRuntime: true,
-    })}\n`,
-  );
+    };
+  } finally {
+    await rm(dataDirectory, { force: true, recursive: true });
+  }
+}
+
+async function verify() {
+  const packagePath =
+    process.argv[2] === undefined ? undefined : resolve(repositoryRoot, process.argv[2]);
+  if (
+    packagePath === undefined ||
+    (!packagePath.endsWith(".app") && !packagePath.endsWith(".dmg"))
+  ) {
+    throw new Error(
+      "Usage: node scripts/release/verify-macos-package.mjs <Koradio.app|Koradio.dmg>",
+    );
+  }
+  if (packagePath.endsWith(".app")) {
+    const result = await verifyApplication(packagePath);
+    process.stdout.write(`${JSON.stringify({ app: packagePath, ...result })}\n`);
+    return;
+  }
+  const mountPoint = await mkdtemp(resolve(tmpdir(), "koradio-package-mount-"));
+  let mounted = false;
+  try {
+    await run("hdiutil", [
+      "attach",
+      "-readonly",
+      "-nobrowse",
+      "-mountpoint",
+      mountPoint,
+      packagePath,
+    ]);
+    mounted = true;
+    const application = resolve(mountPoint, "Koradio.app");
+    const result = await verifyApplication(application);
+    process.stdout.write(`${JSON.stringify({ app: application, dmg: packagePath, ...result })}\n`);
+  } finally {
+    if (mounted) {
+      await run("hdiutil", ["detach", mountPoint]);
+    }
+    await rm(mountPoint, { force: true, recursive: true });
+  }
 }
 
 verify().catch((error) => {

@@ -1,5 +1,15 @@
 import { createHash } from "node:crypto";
-import { access, chmod, cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import {
+  access,
+  chmod,
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { arch, platform } from "node:os";
 import { dirname, resolve } from "node:path";
 import process from "node:process";
@@ -58,6 +68,7 @@ function parseArguments(argumentsList) {
   let architecture = platform() === "darwin" && arch() === "arm64" ? "arm64" : "x64";
   let outputDirectory = resolve(repositoryRoot, "artifacts/macos");
   let version = "0.0.0";
+  let keepApp = false;
   while (values.length > 0) {
     const argument = values.shift();
     if (argument === "--arch") {
@@ -66,6 +77,8 @@ function parseArguments(argumentsList) {
       outputDirectory = resolve(repositoryRoot, values.shift() ?? "");
     } else if (argument === "--version") {
       version = values.shift() ?? "";
+    } else if (argument === "--keep-app") {
+      keepApp = true;
     } else {
       fail(`Unsupported argument: ${argument ?? ""}`);
     }
@@ -76,7 +89,7 @@ function parseArguments(argumentsList) {
   if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
     fail("--version must be a numeric semantic version such as 1.2.3");
   }
-  return { architecture, outputDirectory, version };
+  return { architecture, keepApp, outputDirectory, version };
 }
 
 async function checksum(path) {
@@ -186,192 +199,219 @@ async function build() {
   if (platform() !== "darwin") {
     fail("macOS packaging can only run on macOS");
   }
-  const { architecture, outputDirectory, version } = parseArguments(process.argv.slice(2));
-  const cacheDirectory = resolve(outputDirectory, "cache");
+  const { architecture, keepApp, outputDirectory, version } = parseArguments(process.argv.slice(2));
+  const cacheDirectory = resolve(repositoryRoot, "artifacts/macos/cache");
   await mkdir(cacheDirectory, { recursive: true });
+  await mkdir(outputDirectory, { recursive: true });
   const dmg = resolve(outputDirectory, `Koradio-${version}-${architecture}.dmg`);
+  const retainedApplication = resolve(outputDirectory, `Koradio-${version}-${architecture}.app`);
   if (await exists(dmg)) {
     fail(`Refusing to overwrite existing artifact: ${dmg}`);
+  }
+  if (keepApp && (await exists(retainedApplication))) {
+    fail(`Refusing to overwrite existing artifact: ${retainedApplication}`);
   }
   const archive = await downloadNodeArchive(architecture, cacheDirectory);
   const uvArchive = await downloadUvArchive(cacheDirectory);
   const stagingRoot = await mkdtemp(resolve(outputDirectory, `.staging-${architecture}-`));
-  const buildToolDirectory = resolve(stagingRoot, ".toolchain");
-  const application = resolve(stagingRoot, "Koradio.app");
-  const contents = resolve(application, "Contents");
-  const macOs = resolve(contents, "MacOS");
-  const resources = resolve(contents, "Resources");
-  const runtime = resolve(resources, "runtime");
-  const qwenRuntime = resolve(resources, "qwen-runtime");
-  const qwenHelper = resolve(resources, "qwen-tts-helper/main.py");
-  const serverTarget = resolve(resources, "app/apps/server");
-  const webTarget = resolve(resources, "app/apps/web/dist");
-  await mkdir(macOs, { recursive: true });
-  await mkdir(runtime, { recursive: true });
-  await mkdir(buildToolDirectory, { recursive: true });
-  await mkdir(dirname(serverTarget), { recursive: true });
-  await mkdir(dirname(webTarget), { recursive: true });
-  await mkdir(dirname(qwenHelper), { recursive: true });
-  await writeInfoPlist(resolve(contents, "Info.plist"), version);
+  try {
+    const buildToolDirectory = resolve(stagingRoot, ".toolchain");
+    const application = resolve(stagingRoot, "Koradio.app");
+    const contents = resolve(application, "Contents");
+    const macOs = resolve(contents, "MacOS");
+    const resources = resolve(contents, "Resources");
+    const runtime = resolve(resources, "runtime");
+    const qwenRuntime = resolve(resources, "qwen-runtime");
+    const qwenHelper = resolve(resources, "qwen-tts-helper/main.py");
+    const serverTarget = resolve(resources, "app/apps/server");
+    const webTarget = resolve(resources, "app/apps/web/dist");
+    await mkdir(macOs, { recursive: true });
+    await mkdir(runtime, { recursive: true });
+    await mkdir(buildToolDirectory, { recursive: true });
+    await mkdir(dirname(serverTarget), { recursive: true });
+    await mkdir(dirname(webTarget), { recursive: true });
+    await mkdir(dirname(qwenHelper), { recursive: true });
+    await writeInfoPlist(resolve(contents, "Info.plist"), version);
 
-  await run("tar", [
-    "-xzf",
-    archive,
-    "-C",
-    runtime,
-    "--strip-components=1",
-    `node-v${nodeVersion}-darwin-${architecture}/bin/node`,
-    `node-v${nodeVersion}-darwin-${architecture}/LICENSE`,
-  ]);
-  const bundledNode = resolve(runtime, "bin/node");
-  await chmod(bundledNode, 0o755);
-  await run("tar", [
-    "-xzf",
-    uvArchive,
-    "-C",
-    buildToolDirectory,
-    "--strip-components=1",
-    "uv-aarch64-apple-darwin/uv",
-  ]);
-  const uv = resolve(buildToolDirectory, "uv");
-  await chmod(uv, 0o755);
-  const pythonInstallDirectory = resolve(cacheDirectory, "python");
-  const uvCacheDirectory = resolve(cacheDirectory, "uv-packages");
-  await run(
-    uv,
-    ["python", "install", pythonVersion, "--install-dir", pythonInstallDirectory, "--no-bin"],
-    {
-      env: {
-        ...process.env,
-        UV_CACHE_DIR: uvCacheDirectory,
+    await run("tar", [
+      "-xzf",
+      archive,
+      "-C",
+      runtime,
+      "--strip-components=1",
+      `node-v${nodeVersion}-darwin-${architecture}/bin/node`,
+      `node-v${nodeVersion}-darwin-${architecture}/LICENSE`,
+    ]);
+    const bundledNode = resolve(runtime, "bin/node");
+    await chmod(bundledNode, 0o755);
+    await run("tar", [
+      "-xzf",
+      uvArchive,
+      "-C",
+      buildToolDirectory,
+      "--strip-components=1",
+      "uv-aarch64-apple-darwin/uv",
+    ]);
+    const uv = resolve(buildToolDirectory, "uv");
+    await chmod(uv, 0o755);
+    const pythonInstallDirectory = resolve(cacheDirectory, "python");
+    const uvCacheDirectory = resolve(cacheDirectory, "uv-packages");
+    await run(
+      uv,
+      ["python", "install", pythonVersion, "--install-dir", pythonInstallDirectory, "--no-bin"],
+      {
+        env: {
+          ...process.env,
+          UV_CACHE_DIR: uvCacheDirectory,
+        },
       },
-    },
-  );
-  const managedPython = resolve(
-    pythonInstallDirectory,
-    `cpython-${pythonVersion}-macos-aarch64-none/bin/python3.12`,
-  );
-  await cp(resolve(managedPython, "../.."), qwenRuntime, {
-    recursive: true,
-    verbatimSymlinks: true,
-  });
-  await run(
-    uv,
-    [
-      "pip",
-      "install",
-      "--python",
-      resolve(qwenRuntime, "bin/python"),
-      "--system",
-      "--break-system-packages",
-      "--require-hashes",
-      "--requirement",
-      resolve(repositoryRoot, "native/macos/qwen-tts-helper/requirements.lock"),
-    ],
-    {
-      env: {
-        ...process.env,
-        UV_CACHE_DIR: uvCacheDirectory,
-      },
-    },
-  );
-  await cp(resolve(repositoryRoot, "native/macos/qwen-tts-helper/main.py"), qwenHelper);
-  await chmod(resolve(qwenRuntime, "bin/python"), 0o755);
-  const pnpmEntry = process.env.KORADIO_PNPM_ENTRY;
-  if (pnpmEntry !== undefined && pnpmEntry.trim().length > 0) {
-    const pnpmWrapper = resolve(buildToolDirectory, "pnpm");
-    await writeFile(
-      pnpmWrapper,
-      `#!/bin/sh\nexec ${shellQuote(bundledNode)} ${shellQuote(resolve(pnpmEntry))} "$@"\n`,
-      "utf8",
     );
-    await chmod(pnpmWrapper, 0o755);
-  }
-  const buildEnvironment = {
-    ...process.env,
-    PATH: `${buildToolDirectory}:${process.env.PATH ?? ""}`,
-  };
-  await runPnpm(bundledNode, ["install", "--frozen-lockfile"], buildEnvironment);
-  await runPnpm(bundledNode, ["build"], buildEnvironment);
-  await runPnpm(
-    bundledNode,
-    [
-      "--config.inject-workspace-packages=true",
-      "--filter",
-      "@koradio/server",
-      "deploy",
-      "--prod",
-      serverTarget,
-    ],
-    buildEnvironment,
-  );
-  await cp(resolve(repositoryRoot, "apps/web/dist"), webTarget, { recursive: true });
+    const managedPython = resolve(
+      pythonInstallDirectory,
+      `cpython-${pythonVersion}-macos-aarch64-none/bin/python3.12`,
+    );
+    await cp(resolve(managedPython, "../.."), qwenRuntime, {
+      recursive: true,
+      verbatimSymlinks: true,
+    });
+    await run(
+      uv,
+      [
+        "pip",
+        "install",
+        "--python",
+        resolve(qwenRuntime, "bin/python"),
+        "--system",
+        "--break-system-packages",
+        "--require-hashes",
+        "--requirement",
+        resolve(repositoryRoot, "native/macos/qwen-tts-helper/requirements.lock"),
+      ],
+      {
+        env: {
+          ...process.env,
+          UV_CACHE_DIR: uvCacheDirectory,
+        },
+      },
+    );
+    await cp(resolve(repositoryRoot, "native/macos/qwen-tts-helper/main.py"), qwenHelper);
+    await chmod(resolve(qwenRuntime, "bin/python"), 0o755);
+    const pnpmEntry = process.env.KORADIO_PNPM_ENTRY;
+    if (pnpmEntry !== undefined && pnpmEntry.trim().length > 0) {
+      const pnpmWrapper = resolve(buildToolDirectory, "pnpm");
+      await writeFile(
+        pnpmWrapper,
+        `#!/bin/sh\nexec ${shellQuote(bundledNode)} ${shellQuote(resolve(pnpmEntry))} "$@"\n`,
+        "utf8",
+      );
+      await chmod(pnpmWrapper, 0o755);
+    }
+    const buildEnvironment = {
+      ...process.env,
+      PATH: `${buildToolDirectory}:${process.env.PATH ?? ""}`,
+    };
+    await runPnpm(bundledNode, ["install", "--frozen-lockfile"], buildEnvironment);
+    await runPnpm(bundledNode, ["build"], buildEnvironment);
+    await runPnpm(
+      bundledNode,
+      [
+        "--config.inject-workspace-packages=true",
+        "--filter",
+        "@koradio/server",
+        "deploy",
+        "--prod",
+        serverTarget,
+      ],
+      buildEnvironment,
+    );
+    await cp(resolve(repositoryRoot, "apps/web/dist"), webTarget, { recursive: true });
 
-  const swiftTarget = "arm64-apple-macos15.0";
-  await run("swiftc", [
-    "-target",
-    swiftTarget,
-    "-framework",
-    "AppKit",
-    "-o",
-    resolve(macOs, "Koradio"),
-    resolve(repositoryRoot, "packaging/macos/launcher/main.swift"),
-  ]);
-  await chmod(resolve(macOs, "Koradio"), 0o755);
-  await run("codesign", [
-    "--force",
-    "--sign",
-    "-",
-    "--options",
-    "runtime",
-    "--entitlements",
-    resolve(repositoryRoot, "packaging/macos/node-entitlements.plist"),
-    resolve(runtime, "bin/node"),
-  ]);
-  await run("find", [
-    qwenRuntime,
-    "-type",
-    "f",
-    "(",
-    "-name",
-    "*.so",
-    "-o",
-    "-name",
-    "*.dylib",
-    ")",
-    "-exec",
-    "codesign",
-    "--force",
-    "--sign",
-    "-",
-    "{}",
-    ";",
-  ]);
-  await run("codesign", [
-    "--force",
-    "--deep",
-    "--sign",
-    "-",
-    "--options",
-    "runtime",
-    "--entitlements",
-    resolve(repositoryRoot, "packaging/macos/python-entitlements.plist"),
-    resolve(qwenRuntime, "bin/python"),
-  ]);
-  await run("codesign", ["--force", "--deep", "--sign", "-", "--options", "runtime", application]);
-  await run("codesign", ["--verify", "--deep", "--strict", application]);
-  await run("hdiutil", [
-    "create",
-    "-volname",
-    "Koradio",
-    "-srcfolder",
-    application,
-    "-ov",
-    "-format",
-    "UDZO",
-    dmg,
-  ]);
-  process.stdout.write(`${JSON.stringify({ app: application, architecture, dmg, version })}\n`);
+    const swiftTarget = "arm64-apple-macos15.0";
+    await run("swiftc", [
+      "-target",
+      swiftTarget,
+      "-framework",
+      "AppKit",
+      "-o",
+      resolve(macOs, "Koradio"),
+      resolve(repositoryRoot, "packaging/macos/launcher/main.swift"),
+    ]);
+    await chmod(resolve(macOs, "Koradio"), 0o755);
+    await run("codesign", [
+      "--force",
+      "--sign",
+      "-",
+      "--options",
+      "runtime",
+      "--entitlements",
+      resolve(repositoryRoot, "packaging/macos/node-entitlements.plist"),
+      resolve(runtime, "bin/node"),
+    ]);
+    await run("find", [
+      qwenRuntime,
+      "-type",
+      "f",
+      "(",
+      "-name",
+      "*.so",
+      "-o",
+      "-name",
+      "*.dylib",
+      ")",
+      "-exec",
+      "codesign",
+      "--force",
+      "--sign",
+      "-",
+      "{}",
+      ";",
+    ]);
+    await run("codesign", [
+      "--force",
+      "--deep",
+      "--sign",
+      "-",
+      "--options",
+      "runtime",
+      "--entitlements",
+      resolve(repositoryRoot, "packaging/macos/python-entitlements.plist"),
+      resolve(qwenRuntime, "bin/python"),
+    ]);
+    await run("codesign", [
+      "--force",
+      "--deep",
+      "--sign",
+      "-",
+      "--options",
+      "runtime",
+      application,
+    ]);
+    await run("codesign", ["--verify", "--deep", "--strict", application]);
+    await run("hdiutil", [
+      "create",
+      "-volname",
+      "Koradio",
+      "-srcfolder",
+      application,
+      "-ov",
+      "-format",
+      "UDZO",
+      dmg,
+    ]);
+    if (keepApp) {
+      await rename(application, retainedApplication);
+    }
+    process.stdout.write(
+      `${JSON.stringify({
+        app: keepApp ? retainedApplication : null,
+        architecture,
+        dmg,
+        version,
+      })}\n`,
+    );
+  } finally {
+    await rm(stagingRoot, { force: true, recursive: true });
+  }
 }
 
 build().catch((error) => {
