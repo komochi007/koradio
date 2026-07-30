@@ -35,7 +35,7 @@
 | 2026-07-27 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
 | 2026-07-28 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
 | 2026-07-29 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
-| 2026-07-30 | 0 | 0 | 0 | 唯一 Launchpad 入口与启动前强制联网更新实现、安装和重开复验 | 未记录 | S7-07-011 | `0.0.133` 已安装，专项回归通过；不计入稳定性样本 |
+| 2026-07-30 | 0 | 0 | 0 | 唯一 Launchpad 入口与启动前强制联网更新实现、安装和重开复验 | 未记录 | S7-07-011、S7-07-012 | `0.0.137` 修复版已作为自动更新终验基线；不计入稳定性样本 |
 
 ## 4. 必测路径
 
@@ -61,6 +61,7 @@
 | S7-07-009 | 2026-07-24 | Medium | 首次 PWA UI 修复仍会在 standalone 窄窗口落入 Mobile 媒体查询，造成页面放大/纵向滚动、输入按钮尺寸不一致；选中图标未稳定呈黑色，品牌标记亦未在图标画布正中。 | standalone 桌面 PWA 应始终完整显示 960 × 1600 画布，页面不滚动；两个输入按钮同尺寸、选中 Tab 图标纯黑、图标标记居中且缩小。 | 以 standalone + fine pointer 启用独立画布并覆盖窄窗口 Mobile 样式；统一输入变量、强化选中图标滤镜，按实际边界重算品牌标记变换并更新图标缓存版本。 | `desktop-canvas.test.ts`、Radio Chromium 视觉基线、PWA manifest 检查和本机包启动复验。 |
 | S7-07-010 | 2026-07-25 | Medium | standalone 窄窗口的 Library、Taste、Settings 内容层仍按真实 `100dvh` 计算并显示滚动条；Settings 的内容区与固定操作区没有共同分配画布高度，产生大块空白。 | 页面、画布和浏览器窗口均无纵向滚动条；仅内容区可滚动且滚动条隐藏，Settings 操作区固定在导航上方并且全部字段可达。 | 在 `960 × 1600` 画布内为管理内容区配置固定滚动边界并隐藏滚动条；将 Settings 操作区移出可滚动表单并通过原生 `form` 关联提交。 | Chromium 在 `560 × 600` standalone 下验证 Library / Taste / Settings / Radio，画布和文档无纵向溢出、内容可滚动、滚动条隐藏；`0.0.10` arm64 包启动、静态资源与 strict codesign 通过。 |
 | S7-07-011 | 2026-07-30 | High | Launchpad 同时存在原生 launcher 与 Chrome PWA，且已安装原生包可能落后于仓库最新提交；用户无法判断哪个入口是最新版。 | 固定圆角品牌图标应是唯一入口；每次打开必须联网确认并自动更新，旧版、普通网页标签和未来新增图标都不得成为入口。 | 固定 `/Applications/Koradio.app`，由包内 updater 在独立缓存 checkout 中对可信 `origin/main` 执行 frozen build、包验证与原位替换；失败关闭，备份使用非 `.app` 后缀，Chrome 仅以 `--app` 打开。Chrome PWA 已通过自身卸载界面移除，不删除站点数据。 | `macos-update.test.ts` 4 项、Swift typecheck、完整质量门（90 unit、60 contract、93 integration、35 component、278 coverage tests 与 production build）和依赖审计通过；`0.0.133` arm64 包连续验证后 strict codesign 有效，metadata 精确绑定 `61f6d03`。固定 app 在线检查返回 `current`，关闭独立窗口后重开会刷新 updater `FETCH_HEAD` 且仍只有 1 个 launcher；Chrome 窗口无地址栏或普通标签，PWA app id/shim、Dock、LaunchAgent 与后台登录项均不存在，Applications 和 Launch Services 只登记固定 app，旧 `0.0.16` 仅以非 `.app` 备份保留。 |
+| S7-07-012 | 2026-07-30 | High | 首次真实自动更新在候选构建和安装复制阶段分别被 Node 版本硬门与 strict codesign 拒绝；launcher 没有打开旧版，但无法完成原位替换。 | updater 应在 launcher 的最小环境中始终使用 bundled Node，并以保持 macOS bundle 封印的方式复制候选；失败 staging 不得留在 Applications。 | 构建 PATH 显式加入候选 `runtime/bin`；安装复制改用系统 `ditto`，复制或签名失败时清理 updater 自有 staging。此前失败 staging 已移动为非 `.app` 备份。 | 最小 `/usr/bin:/bin` PATH 下完整 arm64 构建使用 Node 24.18.0 并通过；完整质量门再次通过。`0.0.137` 修复包的 metadata 精确绑定 `87e9f33`，package verifier 与安装前后 strict codesign 通过；`0.0.133` 仅以非 `.app` 回滚副本保留。 |
 
 ## 6. 完成前复核
 
