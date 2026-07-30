@@ -18,6 +18,7 @@ export default [
       "design/**",
       "docs/**",
       "node_modules/**",
+      "artifacts/**",
       "**/dist/**",
       "coverage/**",
       "playwright-report/**",

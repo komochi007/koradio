@@ -2,6 +2,7 @@
 design/
 docs/
 node_modules/
+artifacts/
 .pnpm-store/
 dist/
 coverage/

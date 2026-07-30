@@ -10,9 +10,13 @@
   },
   "scripts": {
     "build:packages": "pnpm --filter @koradio/contracts build && pnpm --filter @koradio/design-tokens build",
-    "predev": "pnpm build:packages",
+    "runtime:check": "node scripts/quality/check-runtime.mjs",
+    "docs:check": "node scripts/quality/check-markdown-links.mjs",
+    "predev": "pnpm runtime:check && pnpm build:packages",
     "dev": "pnpm --parallel --filter @koradio/server --filter @koradio/web dev",
+    "prebuild": "pnpm runtime:check",
     "build": "pnpm build:packages && pnpm --filter @koradio/server build && pnpm --filter @koradio/web build",
+    "prestart": "pnpm runtime:check",
     "start": "pnpm --filter @koradio/server start",
     "start:mock": "KORADIO_PROVIDER_MODE=mock pnpm start",
     "typecheck": "tsc -b --pretty false",
@@ -29,10 +33,11 @@
     "audit:security": "pnpm audit --audit-level high",
     "audit:licenses": "node scripts/security/audit-licenses.mjs",
     "audit:dependencies": "pnpm audit:security && pnpm audit:licenses",
+    "prepackage:macos": "pnpm runtime:check",
     "package:macos": "node scripts/release/build-macos.mjs",
     "verify:package:macos": "node scripts/release/verify-macos-package.mjs",
     "verify:lifecycle:macos": "node scripts/release/verify-macos-lifecycle.mjs",
-    "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm test:unit && pnpm test:contract && pnpm test:integration && pnpm test:component && pnpm test:coverage && pnpm build"
+    "check": "pnpm runtime:check && pnpm docs:check && pnpm format:check && pnpm typecheck && pnpm lint && pnpm test:unit && pnpm test:contract && pnpm test:integration && pnpm test:component && pnpm test:coverage && pnpm build"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
