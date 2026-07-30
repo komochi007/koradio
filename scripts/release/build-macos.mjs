@@ -71,6 +71,9 @@ function parseArguments(argumentsList) {
   let keepApp = false;
   while (values.length > 0) {
     const argument = values.shift();
+    if (argument === "--") {
+      continue;
+    }
     if (argument === "--arch") {
       architecture = values.shift() ?? "";
     } else if (argument === "--output") {

@@ -54,7 +54,12 @@ async function verifyApplication(application) {
       "-c",
       "import importlib.metadata, mlx_audio, numpy; assert importlib.metadata.version('mlx-audio') == '0.4.5'",
     ]);
-    await run(python, ["-m", "py_compile", helper]);
+    await run(python, ["-m", "py_compile", helper], {
+      env: {
+        ...process.env,
+        PYTHONPYCACHEPREFIX: resolve(dataDirectory, "pycache"),
+      },
+    });
     const smoke = await run(launcher, ["--smoke"], {
       env: {
         ...process.env,
@@ -77,7 +82,9 @@ async function verifyApplication(application) {
 
 async function verify() {
   const packagePath =
-    process.argv[2] === undefined ? undefined : resolve(repositoryRoot, process.argv[2]);
+    process.argv.slice(2).find((argument) => argument !== "--") === undefined
+      ? undefined
+      : resolve(repositoryRoot, process.argv.slice(2).find((argument) => argument !== "--") ?? "");
   if (
     packagePath === undefined ||
     (!packagePath.endsWith(".app") && !packagePath.endsWith(".dmg"))
