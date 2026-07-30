@@ -135,8 +135,13 @@ async function installCandidate(candidate, application, backupDirectory, metadat
     dirname(application),
     `.Koradio.update-${metadata.sourceCommit.slice(0, 12)}-${randomUUID()}.app`,
   );
-  await cp(candidate, stagingApplication, { recursive: true });
-  await run("/usr/bin/codesign", ["--verify", "--deep", "--strict", stagingApplication]);
+  try {
+    await cp(candidate, stagingApplication, { recursive: true, verbatimSymlinks: true });
+    await run("/usr/bin/codesign", ["--verify", "--deep", "--strict", stagingApplication]);
+  } catch (error) {
+    await rm(stagingApplication, { force: true, recursive: true });
+    throw error;
+  }
 
   await mkdir(backupDirectory, { recursive: true });
   const backup = join(backupDirectory, backupDirectoryName(metadata, Date.now()));
