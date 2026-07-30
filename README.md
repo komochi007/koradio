@@ -75,6 +75,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] S6-05 内部全质量门已通过：[S6-05 质量门记录](docs/project-management/s6-05-internal-quality-gate.md) 记录冻结环境下的完整质量流水线、依赖审计、三浏览器 E2E、视觉门、显式跳过复核与 CI 追溯
 - [x] S7-01 受控本机 macOS 包装已通过：[S7-01 验收记录](docs/project-management/s7-01-macos-packaging-acceptance.md) 记录 arm64 app/DMG、Node 24.18.0、native helper、launcher 生命周期与 strict codesign 验证
 - [x] S7-02 受控本机安装生命周期已通过：[S7-02 验收记录](docs/project-management/s7-02-install-lifecycle-acceptance.md) 记录 arm64 两版本安装、升级、失败回滚、卸载、数据保留与端口残留验证
+- [ ] S7-07 正在把本机入口收敛为唯一 `/Applications/Koradio.app`：每次从 Launchpad 打开先联网确认可信 `origin/main`，必要时本机构建、验证并原位替换；任何更新失败都不打开旧版，浏览器 PWA shim 将被移除
 - [x] S7-06 个人本机真实 Provider 闭环已通过：[S7-06 验收记录](docs/project-management/s7-06-real-provider-acceptance.md) 保留当时 Codex/NetEase/Apple TTS 历史证据；Apple TTS 已被 UX-10 的 Qwen3-TTS 实现取代
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
 - [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证
@@ -235,6 +236,7 @@ Fastify Local Service
 由 [ADR 0003](docs/adr/0003-macos-packaging.md) 决定，S7-01～S7-02 已实现受控本机 arm64 验收：
 
 - 当前目标为 macOS 15+ Apple Silicon、原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + 外部浏览器 PWA；Qwen 模型不进入 DMG，由用户首次下载。此前 arm64 Apple helper 包装的生命周期证据仅作为历史记录。
+- Personal Local Preview 目标入口已由项目所有者更新为固定 `/Applications/Koradio.app`：Launchpad 只保留品牌圆角图标，每次打开联网确认可信 `origin/main`，新提交经本机构建和包验证后原位替换，再用 Chrome 独立应用窗口打开；失败不启动旧版。
 - 当前只允许项目所有者从可信源码在受控本机构建并个人使用，不提供公开下载。
 - Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净环境仍未验证；这些是未来任何外部分发的硬门，不阻塞当前本地开发。
 

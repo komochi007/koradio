@@ -179,4 +179,4 @@ Go/No-Go 时间：
 - [ ] Hotfix 重跑受影响测试、完整核心 E2E、安装/升级/回滚和安全检查。
 - [ ] 稳定期退出时无未处理 Blocker/Critical，High 均有明确结论。
 - [ ] v1.0 复盘记录事实、根因、有效控制、失效控制、后续任务和负责人。
-- [ ] Windows、自动更新、Mac App Store 和新功能只进入后续 roadmap，不回写为 v1.0 已完成内容。
+- [ ] Windows、面向外部用户的签名自动更新 feed、Mac App Store 和新功能只进入后续 roadmap；Personal Local Preview 从可信 `origin/main` 本机构建的启动前更新不得被描述为公开更新渠道。

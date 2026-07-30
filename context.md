@@ -29,6 +29,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 ### 当前事实
 
 - S1～S6 阶段门均已通过；S7-01～S7-02 已完成 arm64 受控本机 macOS 包装与两版本安装生命周期验收，S7-06 的 Codex/NetEase/Apple TTS 事实只保留为历史验收，当前 TTS 已由 UX-10 替换为 Qwen3-TTS 8-bit。S7-08 维护性优化已关闭，S7-07 稳定性试用仍在进行；S7-03 签名、公证与发布流水线继续后置。
+- S7-07 正在收敛本机启动入口：固定 `/Applications/Koradio.app` 是唯一 Launchpad 图标，每次打开先联网检查可信 `origin/main`；新提交只在独立缓存源码完成 frozen install、构建、strict codesign 与包验证后原位替换，失败时不打开旧版。浏览器 PWA shim 不再作为入口，产品由 launcher 打开 Chrome 独立应用窗口。
 - 当前有产品、流程、架构、视觉规范、原型提示词和参考图。
 - Git 仓库已初始化并关联 GitHub 远端。
 - VDA-17 已冻结并纳入开发基线：`design/assets/prototype/` 是 HTML/CSS/JavaScript 视觉主源，`design/assets/baselines/` 包含 60 张正式基线，`design/assets/reports/handoff-map.md` 是开发交接索引。
@@ -180,6 +181,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - 质量工具采用 ESLint 10 + typescript-eslint、Prettier 3、Vitest 4 + Testing Library/jsdom、Playwright + axe-core；常规 CI 为 GitHub Actions。
 - 全仓使用单一 `pnpm-lock.yaml`、精确直接依赖、frozen CI install、24 小时 release age 和显式 dependency build allowlist。
 - macOS 包装采用原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + 外部浏览器 PWA；当前目标为 macOS 15+ arm64，Qwen 模型不进入 DMG。
+- Personal Local Preview 的唯一桌面入口固定为 `/Applications/Koradio.app`；启动前从可信 `origin/main` 本机构建更新并 fail-closed，不修改开发工作树、不创建第二个 PWA 图标或普通网页标签。
 - 当前只支持项目所有者从可信源码在受控本机生成个人预览产物；公开下载与外部分发在当前开发阶段后置，不阻塞 Personal Local Preview，届时 Developer ID、Apple 公证、Gatekeeper 与独立干净环境验收仍是硬门。
 - Provider 可行性已裁决：NetEase 使用 Backend TypeScript 最小 `linuxapi` Adapter；搜索、歌词、歌单、播放 URL、Range/MIME/CORS 与非法 ID 已脱敏验证，只允许 Personal Local Preview，公开分发前必须重新验证协议、条款和内容边界。
 

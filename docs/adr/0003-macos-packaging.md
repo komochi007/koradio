@@ -2,6 +2,8 @@
 
 > 2026-07-28 更新：TTS 运行时与支持矩阵已由 [ADR 0005](0005-qwen3-local-tts.md) 更新为 macOS 15+ arm64、bundled Python/MLX helper 与首次下载 Qwen 模型。本文中的 x64、macOS 13.5 和 Apple TTS 描述仅保留为原包装 PoC 的历史证据。
 
+> 2026-07-30 更新：项目所有者要求 Launchpad 只保留固定路径的 Koradio 圆角图标，并要求每次打开都联网确认 `origin/main`。Personal Local Preview 因此改为启动前本机构建更新、验证后原位替换、失败不启动旧版；这不建立公开更新源，也不授权上传 ad-hoc 产物。
+
 > 状态：已接受
 > 日期：2026-07-15
 > 决策人：项目所有者
@@ -28,7 +30,8 @@ S0-05 需要比较 Electron 桌面壳一体包与 PWA + Local Service 安装器�
 
 ### 不包含
 
-- 产品源码、完整 launcher、正式安装器、release workflow 或自动更新实现。
+- 产品源码、完整 launcher、正式安装器或 release workflow；这些不属于原 S0-05 PoC。
+- 面向外部用户的更新服务、签名更新 feed 或后台静默更新；2026-07-30 新增的能力只适用于项目所有者受控本机从可信 `origin/main` 本机构建。
 - SQLite、Secret Store、Provider 或其他 native dependency 的具体包选择。
 - Windows、Mac App Store、登录自动启动、后台常驻服务或远程访问。
 - 产品页面、视觉设计或 PRD 公共行为变更。
@@ -103,7 +106,9 @@ S0-05 需要比较 Electron 桌面壳一体包与 PWA + Local Service 安装器�
 
 ### 5.4 升级与卸载
 
-- 当前个人使用采用手动升级：从可信源码构建相同架构的新 app/DMG，停止旧 launcher，替换 `.app`，再启动并由产品 migration 处理数据版本。
+- 当前个人使用采用启动前自动升级：唯一 `/Applications/Koradio.app` 每次打开先联网读取可信 `origin/main`；发现新提交时在应用拥有的独立缓存源码中本机构建并验证相同架构候选，停止旧 launcher，固定路径原位替换，再启动并由产品 migration 处理数据版本。
+- 远端检查、同步、构建、验证或替换失败时必须 fail-closed：保留当前 app、用户数据和非 `.app` 回滚副本，但不启动已知旧版。当前渠道不承诺离线启动。
+- Launchpad 不保留浏览器安装的第二个 PWA shim；品牌圆角图标属于固定原生 launcher。launcher 只通过 Chrome 独立应用窗口打开同源页面，不创建普通网页标签。
 - 未来公开分发时，架构选择错误必须在下载页和启动诊断中明确；不能静默用 Rosetta 代替 arm64 原生包。
 - 卸载默认只移除 `.app`。数据目录、备份和 Credential Store 保留，防止未经确认的数据删除。
 - S7 必须用两个真实版本验证替换升级、失败回滚和数据保留；本 S0 PoC 只证明包装边界与进程生命周期。
@@ -166,7 +171,7 @@ ad-hoc 签名不证明开发者身份，也不能替代 Developer ID 或 Apple �
 
 - Production 同源、loopback、端口 fallback、session bootstrap 与 Origin 规则不变。
 - Browser Audio Engine、Backend、DeviceSettings、ProfilePreferences、Secret Store 和数据迁移 owner 不变。
-- v1 仍不包含 Windows、Mac App Store、自动更新、云身份、远程访问或默认登录启动。
+- v1 仍不包含 Windows、Mac App Store、面向外部用户的签名更新 feed、云身份、远程访问或默认登录启动；受控本机从 `origin/main` 本机构建的启动前更新是 Personal Local Preview 特例。
 
 ## 7. 实施与验证
 

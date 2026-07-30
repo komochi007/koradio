@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import process from "node:process";
@@ -37,28 +37,56 @@ function run(executable, commandArguments, { input, ...options } = {}) {
 async function verifyApplication(application) {
   const launcher = resolve(application, "Contents/MacOS/Koradio");
   const node = resolve(application, "Contents/Resources/runtime/bin/node");
+  const corepack = resolve(
+    application,
+    "Contents/Resources/runtime/lib/node_modules/corepack/dist/pnpm.js",
+  );
   const python = resolve(application, "Contents/Resources/qwen-runtime/bin/python");
   const helper = resolve(application, "Contents/Resources/qwen-tts-helper/main.py");
+  const icon = resolve(application, "Contents/Resources/Koradio.icns");
+  const updater = resolve(application, "Contents/Resources/updater/update-macos.mjs");
+  const updaterCore = resolve(application, "Contents/Resources/updater/macos-update-core.mjs");
+  const metadata = JSON.parse(
+    await readFile(resolve(application, "Contents/Resources/build-metadata.json"), "utf8"),
+  );
+  if (
+    metadata.schemaVersion !== 1 ||
+    !/^[0-9a-f]{40}$/.test(metadata.sourceCommit) ||
+    metadata.sourceRemote !== "https://github.com/komochi007/koradio.git"
+  ) {
+    throw new Error("Build metadata is invalid");
+  }
+  await Promise.all([access(corepack), access(icon), access(updater), access(updaterCore)]);
   const dataDirectory = await mkdtemp(resolve(tmpdir(), "koradio-package-smoke-"));
+  const pythonEnvironment = {
+    ...process.env,
+    PYTHONDONTWRITEBYTECODE: "1",
+    PYTHONPYCACHEPREFIX: resolve(dataDirectory, "pycache"),
+  };
   try {
     await run("codesign", ["--verify", "--deep", "--strict", application]);
     const nodeVersion = await run(node, ["--version"]);
     if (nodeVersion.stdout.trim() !== "v24.18.0") {
       throw new Error("Bundled Node runtime version is not v24.18.0");
     }
-    const pythonVersion = await run(python, ["--version"]);
+    const pythonVersion = await run(python, ["--version"], {
+      env: pythonEnvironment,
+    });
     if (!pythonVersion.stdout.includes("Python 3.12.13")) {
       throw new Error("Bundled Qwen Python runtime version is invalid");
     }
-    await run(python, [
-      "-c",
-      "import importlib.metadata, mlx_audio, numpy; assert importlib.metadata.version('mlx-audio') == '0.4.5'",
-    ]);
-    await run(python, ["-m", "py_compile", helper], {
-      env: {
-        ...process.env,
-        PYTHONPYCACHEPREFIX: resolve(dataDirectory, "pycache"),
+    await run(
+      python,
+      [
+        "-c",
+        "import importlib.metadata, mlx_audio, numpy; assert importlib.metadata.version('mlx-audio') == '0.4.5'",
+      ],
+      {
+        env: pythonEnvironment,
       },
+    );
+    await run(python, ["-m", "py_compile", helper], {
+      env: pythonEnvironment,
     });
     const smoke = await run(launcher, ["--smoke"], {
       env: {
@@ -70,10 +98,12 @@ async function verifyApplication(application) {
     if (smokeLines.at(-1) !== '{"ok":true}') {
       throw new Error("Launcher smoke result is invalid");
     }
+    await run("codesign", ["--verify", "--deep", "--strict", application]);
     return {
       node: nodeVersion.stdout.trim(),
       python: pythonVersion.stdout.trim(),
       qwenRuntime: true,
+      sourceCommit: metadata.sourceCommit,
     };
   } finally {
     await rm(dataDirectory, { force: true, recursive: true });

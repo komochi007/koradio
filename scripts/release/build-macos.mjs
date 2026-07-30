@@ -54,6 +54,38 @@ function run(executable, commandArguments, options = {}) {
   });
 }
 
+function runCapture(executable, commandArguments, options = {}) {
+  return new Promise((resolveRun, reject) => {
+    const child = spawn(executable, commandArguments, {
+      cwd: repositoryRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+      ...options,
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      if (code === 0) {
+        resolveRun({ stderr, stdout });
+      } else {
+        reject(
+          new Error(
+            `${executable} exited with ${String(code)}${
+              signal === null ? "" : ` (${signal})`
+            }: ${stderr.trim()}`,
+          ),
+        );
+      }
+    });
+  });
+}
+
 async function exists(path) {
   try {
     await access(path);
@@ -69,6 +101,8 @@ function parseArguments(argumentsList) {
   let outputDirectory = resolve(repositoryRoot, "artifacts/macos");
   let version = "0.0.0";
   let keepApp = false;
+  let noDmg = false;
+  let sourceCommit;
   while (values.length > 0) {
     const argument = values.shift();
     if (argument === "--") {
@@ -80,8 +114,12 @@ function parseArguments(argumentsList) {
       outputDirectory = resolve(repositoryRoot, values.shift() ?? "");
     } else if (argument === "--version") {
       version = values.shift() ?? "";
+    } else if (argument === "--commit") {
+      sourceCommit = values.shift() ?? "";
     } else if (argument === "--keep-app") {
       keepApp = true;
+    } else if (argument === "--no-dmg") {
+      noDmg = true;
     } else {
       fail(`Unsupported argument: ${argument ?? ""}`);
     }
@@ -92,7 +130,13 @@ function parseArguments(argumentsList) {
   if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
     fail("--version must be a numeric semantic version such as 1.2.3");
   }
-  return { architecture, keepApp, outputDirectory, version };
+  if (sourceCommit !== undefined && !/^[0-9a-f]{40}$/.test(sourceCommit)) {
+    fail("--commit must be a full lowercase Git commit");
+  }
+  if (noDmg && !keepApp) {
+    fail("--no-dmg requires --keep-app");
+  }
+  return { architecture, keepApp, noDmg, outputDirectory, sourceCommit, version };
 }
 
 async function checksum(path) {
@@ -172,6 +216,7 @@ async function writeInfoPlist(path, version) {
 <key>CFBundleExecutable</key><string>Koradio</string>
 <key>CFBundleIdentifier</key><string>app.koradio.launcher</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+<key>CFBundleIconFile</key><string>Koradio.icns</string>
 <key>CFBundleName</key><string>Koradio</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>${version}</string>
@@ -202,13 +247,33 @@ async function build() {
   if (platform() !== "darwin") {
     fail("macOS packaging can only run on macOS");
   }
-  const { architecture, keepApp, outputDirectory, version } = parseArguments(process.argv.slice(2));
-  const cacheDirectory = resolve(repositoryRoot, "artifacts/macos/cache");
+  const {
+    architecture,
+    keepApp,
+    noDmg,
+    outputDirectory,
+    sourceCommit: requestedSourceCommit,
+    version,
+  } = parseArguments(process.argv.slice(2));
+  const sourceCommit =
+    requestedSourceCommit ??
+    (
+      await runCapture("/usr/bin/git", ["rev-parse", "HEAD"], {
+        cwd: repositoryRoot,
+      })
+    ).stdout.trim();
+  if (!/^[0-9a-f]{40}$/.test(sourceCommit)) {
+    fail("Could not resolve a full lowercase Git source commit");
+  }
+  const cacheDirectory =
+    process.env.KORADIO_PACKAGING_CACHE_DIRECTORY === undefined
+      ? resolve(repositoryRoot, "artifacts/macos/cache")
+      : resolve(process.env.KORADIO_PACKAGING_CACHE_DIRECTORY);
   await mkdir(cacheDirectory, { recursive: true });
   await mkdir(outputDirectory, { recursive: true });
   const dmg = resolve(outputDirectory, `Koradio-${version}-${architecture}.dmg`);
   const retainedApplication = resolve(outputDirectory, `Koradio-${version}-${architecture}.app`);
-  if (await exists(dmg)) {
+  if (!noDmg && (await exists(dmg))) {
     fail(`Refusing to overwrite existing artifact: ${dmg}`);
   }
   if (keepApp && (await exists(retainedApplication))) {
@@ -226,6 +291,7 @@ async function build() {
     const runtime = resolve(resources, "runtime");
     const qwenRuntime = resolve(resources, "qwen-runtime");
     const qwenHelper = resolve(resources, "qwen-tts-helper/main.py");
+    const updaterTarget = resolve(resources, "updater");
     const serverTarget = resolve(resources, "app/apps/server");
     const webTarget = resolve(resources, "app/apps/web/dist");
     await mkdir(macOs, { recursive: true });
@@ -234,7 +300,38 @@ async function build() {
     await mkdir(dirname(serverTarget), { recursive: true });
     await mkdir(dirname(webTarget), { recursive: true });
     await mkdir(dirname(qwenHelper), { recursive: true });
+    await mkdir(updaterTarget, { recursive: true });
     await writeInfoPlist(resolve(contents, "Info.plist"), version);
+    await run("sips", [
+      "-s",
+      "format",
+      "icns",
+      resolve(repositoryRoot, "apps/web/public/icons/koradio-512.png"),
+      "--out",
+      resolve(resources, "Koradio.icns"),
+    ]);
+    await writeFile(
+      resolve(resources, "build-metadata.json"),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          sourceCommit,
+          sourceRemote: "https://github.com/komochi007/koradio.git",
+          version,
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    await cp(
+      resolve(repositoryRoot, "scripts/release/macos-update-core.mjs"),
+      resolve(updaterTarget, "macos-update-core.mjs"),
+    );
+    await cp(
+      resolve(repositoryRoot, "scripts/release/update-macos.mjs"),
+      resolve(updaterTarget, "update-macos.mjs"),
+    );
 
     await run("tar", [
       "-xzf",
@@ -244,6 +341,7 @@ async function build() {
       "--strip-components=1",
       `node-v${nodeVersion}-darwin-${architecture}/bin/node`,
       `node-v${nodeVersion}-darwin-${architecture}/LICENSE`,
+      `node-v${nodeVersion}-darwin-${architecture}/lib/node_modules/corepack`,
     ]);
     const bundledNode = resolve(runtime, "bin/node");
     await chmod(bundledNode, 0o755);
@@ -390,17 +488,19 @@ async function build() {
       application,
     ]);
     await run("codesign", ["--verify", "--deep", "--strict", application]);
-    await run("hdiutil", [
-      "create",
-      "-volname",
-      "Koradio",
-      "-srcfolder",
-      application,
-      "-ov",
-      "-format",
-      "UDZO",
-      dmg,
-    ]);
+    if (!noDmg) {
+      await run("hdiutil", [
+        "create",
+        "-volname",
+        "Koradio",
+        "-srcfolder",
+        application,
+        "-ov",
+        "-format",
+        "UDZO",
+        dmg,
+      ]);
+    }
     if (keepApp) {
       await rename(application, retainedApplication);
     }
@@ -408,7 +508,8 @@ async function build() {
       `${JSON.stringify({
         app: keepApp ? retainedApplication : null,
         architecture,
-        dmg,
+        dmg: noDmg ? null : dmg,
+        sourceCommit,
         version,
       })}\n`,
     );

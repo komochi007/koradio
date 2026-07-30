@@ -3,7 +3,7 @@
 > Task：`S7-07`
 > 状态：进行中
 > 开始日期：2026-07-23
-> 范围：项目所有者 macOS arm64、Personal Local Preview、本机 PWA、显式 `live` Provider；不含外部分发、遥测、x64、独立干净 Mac 与 Developer ID 签名公证。
+> 范围：项目所有者 macOS arm64、Personal Local Preview、固定原生入口打开的 Chrome 独立窗口、显式 `live` Provider；不含外部分发、遥测、x64、独立干净 Mac 与 Developer ID 签名公证。
 
 ## 1. 启动基线
 
@@ -35,6 +35,7 @@
 | 2026-07-27 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
 | 2026-07-28 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
 | 2026-07-29 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
+| 2026-07-30 | 0 | 0 | 0 | 唯一 Launchpad 入口与启动前强制联网更新实现 | 未记录 | S7-07-011 | 专项回归进行中，不计入稳定性样本 |
 
 ## 4. 必测路径
 
@@ -59,6 +60,7 @@
 | S7-07-008 | 2026-07-24 | Low | 已安装 PWA 的应用图标内层品牌标记贴近边缘并被裁切。 | 图案应完整显示且保留安全留白；实际标记过大。 | 新增带安全边距的 SVG 源图，重生成 192 与 512 图标并为 manifest 图标 URL 增加版本标识。 | `pwa-manifest.test.ts` 验证 manifest、PNG 签名与精确像素尺寸。 |
 | S7-07-009 | 2026-07-24 | Medium | 首次 PWA UI 修复仍会在 standalone 窄窗口落入 Mobile 媒体查询，造成页面放大/纵向滚动、输入按钮尺寸不一致；选中图标未稳定呈黑色，品牌标记亦未在图标画布正中。 | standalone 桌面 PWA 应始终完整显示 960 × 1600 画布，页面不滚动；两个输入按钮同尺寸、选中 Tab 图标纯黑、图标标记居中且缩小。 | 以 standalone + fine pointer 启用独立画布并覆盖窄窗口 Mobile 样式；统一输入变量、强化选中图标滤镜，按实际边界重算品牌标记变换并更新图标缓存版本。 | `desktop-canvas.test.ts`、Radio Chromium 视觉基线、PWA manifest 检查和本机包启动复验。 |
 | S7-07-010 | 2026-07-25 | Medium | standalone 窄窗口的 Library、Taste、Settings 内容层仍按真实 `100dvh` 计算并显示滚动条；Settings 的内容区与固定操作区没有共同分配画布高度，产生大块空白。 | 页面、画布和浏览器窗口均无纵向滚动条；仅内容区可滚动且滚动条隐藏，Settings 操作区固定在导航上方并且全部字段可达。 | 在 `960 × 1600` 画布内为管理内容区配置固定滚动边界并隐藏滚动条；将 Settings 操作区移出可滚动表单并通过原生 `form` 关联提交。 | Chromium 在 `560 × 600` standalone 下验证 Library / Taste / Settings / Radio，画布和文档无纵向溢出、内容可滚动、滚动条隐藏；`0.0.10` arm64 包启动、静态资源与 strict codesign 通过。 |
+| S7-07-011 | 2026-07-30 | High | Launchpad 同时存在原生 launcher 与 Chrome PWA，且已安装原生包可能落后于仓库最新提交；用户无法判断哪个入口是最新版。 | 固定圆角品牌图标应是唯一入口；每次打开必须联网确认并自动更新，旧版、普通网页标签和未来新增图标都不得成为入口。 | 固定 `/Applications/Koradio.app`，由包内 updater 在独立缓存 checkout 中对可信 `origin/main` 执行 frozen build、包验证与原位替换；失败关闭，备份使用非 `.app` 后缀，Chrome 仅以 `--app` 打开。Chrome PWA shim 在本机安装完成后卸载。 | `macos-update.test.ts`、Node/Swift 静态检查、完整质量门、候选包验证、本机在线更新检查、唯一入口与残留端口盘点；结果待本任务结束补录。 |
 
 ## 6. 完成前复核
 

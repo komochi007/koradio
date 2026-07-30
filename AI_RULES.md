@@ -165,6 +165,8 @@
 - **MUST** 精确固定直接依赖，设置 24 小时 release age、严格 engine、frozen lockfile 和 pnpm `allowBuilds` 审批；依赖 build script 默认拒绝。
 - **MUST** 让 GitHub Actions 的常规质量门运行在 Linux，让 Credential Store、数据目录、进程生命周期与包装探针运行在 macOS；第三方 Actions 固定完整 commit SHA。
 - **MUST** 按 `docs/adr/0003-macos-packaging.md` 使用原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + 外部浏览器 PWA，并生成 macOS 15+ arm64 产物；Qwen 模型不进入 app/DMG，由用户首次下载到受控数据目录；launcher 与 TTS helper 均不得拥有播放或业务事实。
+- **MUST** 让 Personal Local Preview 只使用固定 `/Applications/Koradio.app` 作为 Launchpad 入口；launcher 每次打开必须先联网确认可信 `origin/main`，只在精确提交完成本机构建、strict codesign、包验证和原位替换后启动。检查或更新失败时不得打开已知旧版。
+- **MUST** 让更新缓存与回滚副本位于非应用目录，旧 app 使用非 `.app` 后缀；不得修改开发工作树、创建第二个浏览器 PWA 图标、普通 Koradio 网页标签、LaunchAgent 或 Login Item。
 - **MUST** 让本地个人预览产物从可信源码在受控本机构建；ad-hoc 签名只用于本地 bundle 结构与生命周期验证，不得上传、公开下载或分发给外部用户。
 - **MUST** 在任何公开下载或外部分发前完成 Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净环境验收；不得关闭或绕过系统安全检查来替代发布门。
 - **MUST NOT** 混用 package manager 或锁文件、依赖浮动 tag、启用 `dangerouslyAllowAllBuilds`，或自动合并 major 工具升级。
