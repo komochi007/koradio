@@ -64,7 +64,6 @@ const generatedProgram: ProgramDetail = {
       text: "先让声音替房间留一点呼吸。",
       displayText: "先让声音替房间留一点呼吸。",
       estimatedTiming: true,
-      markers: [],
       ttsAudioRef: null,
     },
   ],
@@ -159,14 +158,6 @@ function parseRequestBody(init: RequestInit | undefined): unknown {
   return JSON.parse(init.body) as unknown;
 }
 
-function getDjLanguageControl(): HTMLSelectElement {
-  const control = screen.getByLabelText("DJ Language");
-  if (!(control instanceof HTMLSelectElement)) {
-    throw new TypeError("DJ Language control must be a select");
-  }
-  return control;
-}
-
 function createHealthEvent(): V1Event {
   return {
     eventId: "00000000-0000-4000-8000-000000000001",
@@ -240,7 +231,6 @@ function createTestAudioEngine(): AudioEngineFacade {
 function createOnlineTransport(
   options: {
     empty?: boolean;
-    failDjLanguage?: boolean;
     failTheme?: boolean;
     generation?: "failed" | "succeeded";
     latestProgram?: ProgramDetail;
@@ -383,19 +373,6 @@ function createOnlineTransport(
     }
     if (path.endsWith("/preferences") && method === "PATCH") {
       const command = parseRequestBody(init) as Partial<ProfileContext["preferences"]>;
-      if (options.failDjLanguage === true && command.djLanguage !== undefined) {
-        return Promise.resolve(
-          jsonResponse(
-            {
-              code: "PROFILE_PREFERENCES_SAVE_FAILED",
-              message: "Profile preferences could not be saved",
-              retryable: true,
-              correlationId: "00000000-0000-4000-8000-000000000099",
-            },
-            500,
-          ),
-        );
-      }
       if (options.failTheme === true && command.themeMode !== undefined) {
         return Promise.resolve(
           jsonResponse(
@@ -621,43 +598,6 @@ describe("App Shell", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("已恢复到之前的主题");
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(screen.getByRole("radio", { name: "Dark" }).getAttribute("aria-checked")).toBe("true");
-  });
-
-  it("immediately persists DJ language and retains the successful selection", async () => {
-    window.history.replaceState(null, "", "/settings");
-    const transport = createOnlineTransport();
-    render(<App audioEngine={createTestAudioEngine()} transport={transport} />);
-
-    expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("DJ Language"), { target: { value: "en-GB" } });
-
-    await waitFor(() => {
-      const preferenceCall = transport.request.mock.calls.find(
-        ([path, init]) =>
-          path.endsWith(`/profiles/${primaryProfile.id}/preferences`) && init?.method === "PATCH",
-      );
-      expect(preferenceCall).toBeDefined();
-      expect(parseRequestBody(preferenceCall?.[1])).toEqual({ djLanguage: "en-GB" });
-    });
-
-    expect(getDjLanguageControl().value).toBe("en-GB");
-    expect(await screen.findByText(/DJ 语言已保存/)).toBeTruthy();
-  });
-
-  it("rolls DJ language back when its immediate save fails", async () => {
-    window.history.replaceState(null, "", "/settings");
-    render(
-      <App
-        audioEngine={createTestAudioEngine()}
-        transport={createOnlineTransport({ failDjLanguage: true })}
-      />,
-    );
-
-    expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("DJ Language"), { target: { value: "en-GB" } });
-
-    expect((await screen.findByRole("alert")).textContent).toContain("DJ 语言保存失败");
-    expect(getDjLanguageControl().value).toBe("zh-CN");
   });
 
   it("treats degraded TTS as optional and never exposes secret inputs", async () => {

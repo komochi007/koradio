@@ -1,68 +1,52 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveDesktopCanvasState } from "../../apps/web/src/app/desktop-canvas.js";
+import {
+  prototypeCanvasHeight,
+  prototypeCanvasWidth,
+  resolveDesktopCanvasState,
+} from "../../apps/web/src/app/desktop-canvas.js";
 
 describe("DesktopCanvas", () => {
-  it("enables the adaptive canvas for a standalone desktop PWA", () => {
+  it("scales a standalone desktop PWA down to the entire available viewport", () => {
     const state = resolveDesktopCanvasState({
       hasFinePointer: true,
       isStandalone: true,
-      outerHeight: 840,
-      outerWidth: 720,
+      viewportHeight: 600,
+      viewportWidth: 560,
     });
 
-    expect(state).toEqual({ enabled: true, tooSmall: false });
+    expect(state).toEqual({
+      enabled: true,
+      height: 600,
+      scale: 0.375,
+      width: 360,
+    });
   });
 
-  it("keeps ordinary browser layouts responsive", () => {
+  it("never enlarges the prototype when the standalone PWA viewport is larger", () => {
+    const state = resolveDesktopCanvasState({
+      hasFinePointer: true,
+      isStandalone: true,
+      viewportHeight: 2_400,
+      viewportWidth: 1_920,
+    });
+
+    expect(state).toEqual({
+      enabled: true,
+      height: prototypeCanvasHeight,
+      scale: 1,
+      width: prototypeCanvasWidth,
+    });
+  });
+
+  it("keeps ordinary browser and mobile layouts responsive", () => {
     expect(
       resolveDesktopCanvasState({
         hasFinePointer: true,
         isStandalone: false,
-        outerHeight: 600,
-        outerWidth: 560,
+        viewportHeight: 844,
+        viewportWidth: 390,
       }),
-    ).toEqual({ enabled: false, tooSmall: false });
-  });
-
-  it("keeps touch-first standalone layouts responsive", () => {
-    expect(
-      resolveDesktopCanvasState({
-        hasFinePointer: false,
-        isStandalone: true,
-        outerHeight: 600,
-        outerWidth: 560,
-      }),
-    ).toEqual({ enabled: false, tooSmall: false });
-  });
-
-  it("blocks a standalone desktop window below either supported dimension", () => {
-    expect(
-      resolveDesktopCanvasState({
-        hasFinePointer: true,
-        isStandalone: true,
-        outerHeight: 840,
-        outerWidth: 679,
-      }),
-    ).toEqual({ enabled: true, tooSmall: true });
-    expect(
-      resolveDesktopCanvasState({
-        hasFinePointer: true,
-        isStandalone: true,
-        outerHeight: 759,
-        outerWidth: 720,
-      }),
-    ).toEqual({ enabled: true, tooSmall: true });
-  });
-
-  it("uses outer dimensions so browser zoom does not change the size decision", () => {
-    expect(
-      resolveDesktopCanvasState({
-        hasFinePointer: true,
-        isStandalone: true,
-        outerHeight: 760,
-        outerWidth: 680,
-      }),
-    ).toEqual({ enabled: true, tooSmall: false });
+    ).toEqual({ enabled: false, height: 1600, scale: 1, width: 960 });
   });
 });

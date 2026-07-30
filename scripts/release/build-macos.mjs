@@ -154,7 +154,6 @@ async function writeInfoPlist(path, version) {
 <plist version="1.0"><dict>
 <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
 <key>CFBundleExecutable</key><string>Koradio</string>
-<key>CFBundleIconFile</key><string>Koradio.icns</string>
 <key>CFBundleIdentifier</key><string>app.koradio.launcher</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>Koradio</string>
@@ -168,42 +167,6 @@ async function writeInfoPlist(path, version) {
 `,
     "utf8",
   );
-}
-
-async function createApplicationIcon(source, resources, stagingRoot) {
-  const iconset = resolve(stagingRoot, "Koradio.iconset");
-  const rasterSource = resolve(stagingRoot, "Koradio-icon-source.png");
-  await mkdir(iconset, { recursive: true });
-  await run("sips", ["--setProperty", "format", "png", source, "--out", rasterSource]);
-  const outputs = [
-    ["icon_16x16.png", 16],
-    ["icon_16x16@2x.png", 32],
-    ["icon_32x32.png", 32],
-    ["icon_32x32@2x.png", 64],
-    ["icon_128x128.png", 128],
-    ["icon_128x128@2x.png", 256],
-    ["icon_256x256.png", 256],
-    ["icon_256x256@2x.png", 512],
-    ["icon_512x512.png", 512],
-    ["icon_512x512@2x.png", 1024],
-  ];
-  for (const [filename, size] of outputs) {
-    await run("sips", [
-      "--resampleHeightWidth",
-      String(size),
-      String(size),
-      rasterSource,
-      "--out",
-      resolve(iconset, filename),
-    ]);
-  }
-  await run("iconutil", [
-    "--convert",
-    "icns",
-    "--output",
-    resolve(resources, "Koradio.icns"),
-    iconset,
-  ]);
 }
 
 async function runPnpm(nodeExecutable, commandArguments, environment) {
@@ -250,11 +213,6 @@ async function build() {
   await mkdir(dirname(webTarget), { recursive: true });
   await mkdir(dirname(qwenHelper), { recursive: true });
   await writeInfoPlist(resolve(contents, "Info.plist"), version);
-  await createApplicationIcon(
-    resolve(repositoryRoot, "apps/web/public/icons/koradio-macos-icon.svg"),
-    resources,
-    stagingRoot,
-  );
 
   await run("tar", [
     "-xzf",
@@ -348,12 +306,6 @@ async function build() {
     buildEnvironment,
   );
   await cp(resolve(repositoryRoot, "apps/web/dist"), webTarget, { recursive: true });
-  const buildId = await checksum(resolve(webTarget, "index.html"));
-  await writeFile(
-    resolve(webTarget, "koradio-build.json"),
-    `${JSON.stringify({ buildId, version })}\n`,
-    "utf8",
-  );
 
   const swiftTarget = "arm64-apple-macos15.0";
   await run("swiftc", [

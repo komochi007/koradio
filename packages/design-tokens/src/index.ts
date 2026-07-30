@@ -28,21 +28,9 @@ export const radiusTokens = {
 } as const;
 
 export const layoutTokens = {
-  radioRailMaxWidth: "720px",
-  desktopContentMaxWidth: "720px",
+  radioRailMaxWidth: "816px",
   pageSafeInset: "56px",
   minimumTargetSize: "44px",
-} as const;
-
-export const desktopWindowTokens = {
-  defaultWidth: 720,
-  defaultHeight: 840,
-  minimumWidth: 680,
-  minimumHeight: 760,
-  navigationHeight: "64px",
-  topbarHeight: "48px",
-  actionHeight: "52px",
-  sectionGap: "12px",
 } as const;
 
 export const radioTokens = {

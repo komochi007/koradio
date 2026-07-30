@@ -102,9 +102,6 @@ export const netEaseLyricsFixture = {
   code: 200,
   lrc: { lyric: "[00:00.00]It was late at night" },
   tlyric: { lyric: "[00:00.00]夜色已深" },
-  yrc: {
-    lyric: "[0,2400](0,400,0)It (400,400,0)was (800,400,0)late (1200,400,0)at (1600,800,0)night",
-  },
 } as const;
 
 export const netEaseAudioFixture = {

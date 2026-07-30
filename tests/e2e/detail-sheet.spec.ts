@@ -2,7 +2,6 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 import { installPlayableMedia } from "./playable-media.js";
-import { enableStandaloneDesktopPwa } from "./standalone-desktop.js";
 
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const profileId = "00000000-0000-4000-8000-000000000510";
@@ -290,9 +289,9 @@ test("Detail keeps long lyrics scrollable, hides scrollbars and centers the curr
 }) => {
   await openDetail(page, { mode: "lyrics" });
   const copy = page.getByRole("article", { name: "跟随歌词" });
-  const first = page.getByText(lyricLines[0]).locator("..");
-  const next = page.getByText(lyricLines[1]).locator("..");
-  const last = page.getByText(lyricLines.at(-1) ?? "").locator("..");
+  const first = page.getByText(lyricLines[0]);
+  const next = page.getByText(lyricLines[1]);
+  const last = page.getByText(lyricLines.at(-1) ?? "");
 
   const metrics = await copy.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -406,68 +405,5 @@ for (const viewport of responsiveViewports) {
       animations: "disabled",
       fullPage: false,
     });
-  });
-}
-
-const standaloneViewports = [
-  { name: "internal-full", width: 1440, height: 801 },
-  { name: "desktop-medium", width: 960, height: 720 },
-  { name: "desktop-default", width: 720, height: 800 },
-] as const;
-
-for (const viewport of standaloneViewports) {
-  test(`Detail remains fixed with internal copy scrolling at ${viewport.name}`, async ({
-    browserName,
-    page,
-  }) => {
-    test.skip(browserName !== "chromium", "standalone detail is verified once in Chromium");
-    await enableStandaloneDesktopPwa(page, {
-      width: viewport.width,
-      height: Math.max(viewport.height, 760),
-    });
-    await page.setViewportSize(viewport);
-    await openDetail(page, { mode: "lyrics", playback: false });
-
-    const copy = page.getByRole("article", { name: "跟随歌词" });
-    const metrics = await page.evaluate(() => {
-      const layer = document.querySelector<HTMLElement>(".radio-detail-layer");
-      const sheet = document.querySelector<HTMLElement>(".radio-detail-sheet");
-      const copy = document.querySelector<HTMLElement>(".detail-copy");
-      if (layer === null || sheet === null || copy === null)
-        throw new Error("Standalone Detail geometry is unavailable");
-      return {
-        copyClientHeight: copy.clientHeight,
-        copyOverflowY: getComputedStyle(copy).overflowY,
-        copyScrollHeight: copy.scrollHeight,
-        documentHeight: document.documentElement.scrollHeight,
-        layer: layer.getBoundingClientRect(),
-        sheet: sheet.getBoundingClientRect(),
-        viewportHeight: window.innerHeight,
-        viewportWidth: window.innerWidth,
-      };
-    });
-    expect(metrics.documentHeight).toBe(metrics.viewportHeight);
-    expect(metrics.layer.width).toBe(metrics.viewportWidth);
-    expect(metrics.layer.height).toBe(metrics.viewportHeight);
-    expect(metrics.sheet.width).toBe(metrics.viewportWidth);
-    expect(metrics.sheet.height).toBe(metrics.viewportHeight);
-    expect(metrics.copyOverflowY).toBe("auto");
-    expect(metrics.copyScrollHeight).toBeGreaterThan(metrics.copyClientHeight);
-    if (viewport.name === "desktop-default") {
-      await expect(page).toHaveScreenshot("detail-lyrics-standalone-desktop-default.png", {
-        animations: "disabled",
-        fullPage: false,
-      });
-    }
-
-    await copy.focus();
-    await page.keyboard.press("PageDown");
-    expect(await copy.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-    await copy.evaluate((element) => {
-      element.scrollTop = 0;
-    });
-    await copy.hover();
-    await page.mouse.wheel(0, 240);
-    await expect.poll(async () => copy.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   });
 }

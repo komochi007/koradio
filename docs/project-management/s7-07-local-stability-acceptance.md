@@ -34,7 +34,7 @@
 | 2026-07-26 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
 | 2026-07-27 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
 | 2026-07-28 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
-| 2026-07-29 | 0 | 0 | 0 | standalone PWA 自适应可读性、macOS 单一入口、版本隔离与 Launchpad 复验 | 未记录 | S7-07-011、S7-07-012 | `0.0.14` arm64 预览包、单一圆角品牌图标、同版本服务与 Chrome 独立窗口启动通过 |
+| 2026-07-29 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
 
 ## 4. 必测路径
 
@@ -59,8 +59,6 @@
 | S7-07-008 | 2026-07-24 | Low | 已安装 PWA 的应用图标内层品牌标记贴近边缘并被裁切。 | 图案应完整显示且保留安全留白；实际标记过大。 | 新增带安全边距的 SVG 源图，重生成 192 与 512 图标并为 manifest 图标 URL 增加版本标识。 | `pwa-manifest.test.ts` 验证 manifest、PNG 签名与精确像素尺寸。 |
 | S7-07-009 | 2026-07-24 | Medium | 首次 PWA UI 修复仍会在 standalone 窄窗口落入 Mobile 媒体查询，造成页面放大/纵向滚动、输入按钮尺寸不一致；选中图标未稳定呈黑色，品牌标记亦未在图标画布正中。 | standalone 桌面 PWA 应始终完整显示 960 × 1600 画布，页面不滚动；两个输入按钮同尺寸、选中 Tab 图标纯黑、图标标记居中且缩小。 | 以 standalone + fine pointer 启用独立画布并覆盖窄窗口 Mobile 样式；统一输入变量、强化选中图标滤镜，按实际边界重算品牌标记变换并更新图标缓存版本。 | `desktop-canvas.test.ts`、Radio Chromium 视觉基线、PWA manifest 检查和本机包启动复验。 |
 | S7-07-010 | 2026-07-25 | Medium | standalone 窄窗口的 Library、Taste、Settings 内容层仍按真实 `100dvh` 计算并显示滚动条；Settings 的内容区与固定操作区没有共同分配画布高度，产生大块空白。 | 页面、画布和浏览器窗口均无纵向滚动条；仅内容区可滚动且滚动条隐藏，Settings 操作区固定在导航上方并且全部字段可达。 | 在 `960 × 1600` 画布内为管理内容区配置固定滚动边界并隐藏滚动条；将 Settings 操作区移出可滚动表单并通过原生 `form` 关联提交。 | Chromium 在 `560 × 600` standalone 下验证 Library / Taste / Settings / Radio，画布和文档无纵向溢出、内容可滚动、滚动条隐藏；`0.0.10` arm64 包启动、静态资源与 strict codesign 通过。 |
-| S7-07-011 | 2026-07-29 | High | standalone PWA 仍把 `960 × 1600` 原型画布整体缩放到窗口，内置屏上正文和控件过小，窗口尺寸变化时整套界面同步缩放且视觉差异过大。 | 正文字号应在常见内置屏窗口中保持稳定，页面外层不滚动，仅内容面板独立滚动；实际字号、控件和留白随全局缩放一起变化。 | 运行时画布改为最大 `960px × 100dvh` 的自适应中央单列，移除整体 `transform: scale()`；以高度档位连续压缩留白和非文字组件，并为 Queue、DJ、管理内容与 Detail 文本建立独立滚动边界。 | `desktop-canvas.test.ts`、Detail、Profile/Settings 与 Radio Chromium 回归覆盖 `1440 × 801`、`960 × 720`、`720 × 650`、`560 × 600` standalone 基线，生产构建通过。 |
-| S7-07-012 | 2026-07-29 | High | Launchpad 同时存在原生 `app.koradio.launcher` 与 Chrome 安装的同名 PWA；旧 PWA 仍可连接旧 Koradio 服务并展示升级前界面，原生包还缺少一致的品牌图标。 | macOS 只应保留一个 Koradio 入口，启动后必须使用当前安装包的前端版本；实际有两个同名图标且可进入不同版本。 | `/Applications/Koradio.app` 固定为唯一入口，launcher 使用 Chrome `--app` 打开 `/radio` 而不再安装第二个 PWA；包内写入 PWA SHA-256 构建指纹，只复用同指纹服务；补齐圆角品牌 `.icns`，禁止 bundled Python 在签名包内写入 bytecode。既有 Chrome PWA 已从安装位置移出并保留备份，Launchpad 仅删除精确匹配的残留记录。 | `0.0.14` arm64 app/DMG package smoke 验证 Node、Python、Qwen runtime、品牌图标、构建指纹、错版本服务拒绝与运行后 strict codesign；本机 Launchpad 截图确认只剩一个圆角 Koradio，安装 app 启动为同版本 Chrome 独立窗口。 |
 
 ## 6. 完成前复核
 

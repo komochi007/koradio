@@ -38,15 +38,6 @@ const serviceLabels: Record<ServiceHealth["service"], string> = {
 };
 
 type ThemeMode = ProfileContext["preferences"]["themeMode"];
-type DjPreferenceCommand = Partial<
-  Pick<ProfileContext["preferences"], "djLanguage" | "djVoiceStyle">
->;
-
-interface DjPreferenceMutation {
-  command: DjPreferenceCommand;
-  previousLanguage: ProfileContext["preferences"]["djLanguage"];
-  previousVoiceStyle: ProfileContext["preferences"]["djVoiceStyle"];
-}
 
 const themeLabels: Record<ThemeMode, string> = {
   dark: "Dark",
@@ -216,7 +207,6 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
   const [voiceStyle, setVoiceStyle] = useState(props.current.preferences.djVoiceStyle);
   const [themeMode, setThemeMode] = useState<ThemeMode>(props.current.preferences.themeMode);
   const [themeError, setThemeError] = useState<string>();
-  const [djPreferenceError, setDjPreferenceError] = useState<string>();
   const [saveMessage, setSaveMessage] = useState<string>();
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [migrationOpen, setMigrationOpen] = useState(false);
@@ -230,15 +220,6 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
     applyTheme(props.current.preferences.themeMode);
   }, [props.current.preferences.themeMode]);
   useEffect(() => {
-    setDjLanguage(props.current.preferences.djLanguage);
-    setVoiceStyle(props.current.preferences.djVoiceStyle);
-    setDjPreferenceError(undefined);
-  }, [
-    props.current.preferences.djLanguage,
-    props.current.preferences.djVoiceStyle,
-    props.current.profile.id,
-  ]);
-  useEffect(() => {
     if (ttsModel.data?.state === "ready") {
       void services.refetch();
     }
@@ -250,10 +231,16 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
       if (trimmedCommand.length === 0 || trimmedCommand.length > 300)
         throw new TypeError("CODEX_COMMAND_INVALID");
       const device = await updateDeviceSettings(props.transport, trimmedCommand);
-      return device;
+      const preferences = await updateProfilePreferences(
+        props.transport,
+        props.current.profile.id,
+        { djLanguage, djVoiceStyle: voiceStyle },
+      );
+      return { device, preferences };
     },
-    onSuccess: (device) => {
+    onSuccess: ({ device, preferences }) => {
       queryClient.setQueryData(["device-settings"], device);
+      props.onCurrentChanged({ ...props.current, preferences });
       setSaveMessage("配置已保存。");
     },
     onError: (error) => {
@@ -262,30 +249,6 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
           ? "Codex 命令路径为必填项，最多 300 个字符。"
           : "配置保存失败，当前运行配置保持不变。",
       );
-    },
-  });
-
-  const djPreferences = useMutation({
-    mutationFn: ({ command }: DjPreferenceMutation) =>
-      updateProfilePreferences(props.transport, props.current.profile.id, command),
-    onSuccess: (preferences, { command }) => {
-      props.onCurrentChanged({ ...props.current, preferences });
-      setDjPreferenceError(undefined);
-      setSaveMessage(
-        command.djLanguage === undefined
-          ? "DJ 声音风格已保存。"
-          : "DJ 语言已保存，下一次生成将使用对应语言的串讲。",
-      );
-    },
-    onError: (_error, { command, previousLanguage, previousVoiceStyle }) => {
-      if (command.djLanguage !== undefined) {
-        setDjLanguage(previousLanguage);
-        setDjPreferenceError("DJ 语言保存失败，已恢复到之前的设置。");
-        return;
-      }
-
-      setVoiceStyle(previousVoiceStyle);
-      setDjPreferenceError("DJ 声音风格保存失败，已恢复到之前的设置。");
     },
   });
 
@@ -478,7 +441,7 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                     aria-checked={themeMode === mode}
                     className={themeMode === mode ? "is-active" : ""}
                     key={mode}
-                    disabled={theme.isPending || djPreferences.isPending}
+                    disabled={theme.isPending}
                     onClick={() => {
                       theme.mutate({ next: mode, previous: themeMode });
                     }}
@@ -493,27 +456,12 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                 {themeError}
               </p>
             )}
-            {djPreferenceError === undefined ? null : (
-              <p className="inline-error" role="alert">
-                {djPreferenceError}
-              </p>
-            )}
             <label className="preference-row">
               <span>DJ Language</span>
               <select
                 value={djLanguage}
-                disabled={theme.isPending || djPreferences.isPending}
                 onChange={(event) => {
-                  const next = event.target.value as typeof djLanguage;
-                  const previousLanguage = djLanguage;
-                  setDjLanguage(next);
-                  setDjPreferenceError(undefined);
-                  setSaveMessage(undefined);
-                  djPreferences.mutate({
-                    command: { djLanguage: next },
-                    previousLanguage,
-                    previousVoiceStyle: voiceStyle,
-                  });
+                  setDjLanguage(event.target.value as typeof djLanguage);
                 }}
               >
                 <option value="zh-CN">中文</option>
@@ -524,18 +472,8 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
               <span>DJ Voice Style</span>
               <select
                 value={voiceStyle}
-                disabled={theme.isPending || djPreferences.isPending}
                 onChange={(event) => {
-                  const next = event.target.value as typeof voiceStyle;
-                  const previousVoiceStyle = voiceStyle;
-                  setVoiceStyle(next);
-                  setDjPreferenceError(undefined);
-                  setSaveMessage(undefined);
-                  djPreferences.mutate({
-                    command: { djVoiceStyle: next },
-                    previousLanguage: djLanguage,
-                    previousVoiceStyle,
-                  });
+                  setVoiceStyle(event.target.value as typeof voiceStyle);
                 }}
               >
                 <option value="natural-radio">Natural Radio</option>

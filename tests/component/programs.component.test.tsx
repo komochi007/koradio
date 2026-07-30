@@ -93,7 +93,6 @@ function detail(value: Program, hasTts: boolean): ProgramDetail {
         text: "今晚不必急着找到答案。",
         displayText: "今晚不必急着找到答案。先从一首温柔的歌开始。",
         estimatedTiming: true,
-        markers: [],
         ttsAudioRef: hasTts ? "tts/history-opening.m4a" : null,
       },
     ],

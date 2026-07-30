@@ -44,12 +44,11 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] AI 工作规范与工程规则已建立
 - [x] Git 仓库已初始化并关联 GitHub 远端
 - [x] VDA-17 视觉基线已冻结：HTML / CSS / JavaScript 视觉主源、15 页 35 个固定状态、Dark / Light、五类响应式布局与 60 张正式截图基线均已建立
-- [x] Desktop standalone PWA 将 `960 × 1600px` 保留为高保真原型基线，运行时使用最大 `720px` 宽、`100dvh` 高的中央单列画布；launcher 默认外窗 `720 × 840px`，低于 `680 × 760px` 显示窗口提示，页面外层固定且只允许明确内容层独立滚动
 - [x] 视觉差异裁决、自动 QA、Figma 派生镜像与开发交接映射已建立
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、完整根命令族与 GitHub Actions CI 已实装并由真实 run 验证
 - [x] Development 双进程、Production 同源静态托管、loopback 端口、精确 Origin、短期内存 Session、REST Bearer 与 WebSocket 首消息认证已实装；非法 Origin、过期/URL/持久化 token 和未认证连接均有负向验证
-- [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 的唯一 native launcher + Chrome 独立应用窗口已由 S7-01 基线及 S7-07 本机缺陷修复覆盖 arm64 app/DMG、构建指纹隔离、strict codesign 和启动停止，当前仍仅限个人使用
+- [x] macOS 两种包装形态已完成隔离 PoC；[ADR 0003](docs/adr/0003-macos-packaging.md) 的 native launcher + 外部浏览器 PWA 已由 S7-01 在受控本机完成 arm64 app/DMG、strict codesign 和启动停止验收，当前仍仅限个人使用
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭：接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper，仅限 Personal Local Preview；三个 Backend Adapter、native helper 与 Live composition 已完成本机闭环验收，Production Server 与 macOS launcher 默认 Live
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
 - [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Radio 三态、节目生成 command/Snapshot/有序事件与失败恢复、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
@@ -235,7 +234,7 @@ Fastify Local Service
 
 由 [ADR 0003](docs/adr/0003-macos-packaging.md) 决定，S7-01～S7-02 已实现受控本机 arm64 验收：
 
-- 当前目标为 macOS 15+ Apple Silicon、唯一原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + Chrome 独立应用窗口；不再安装第二个同名 Chrome PWA。launcher 只复用前端构建指纹一致的服务，Qwen 模型不进入 DMG，由用户首次下载。
+- 当前目标为 macOS 15+ Apple Silicon、原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + 外部浏览器 PWA；Qwen 模型不进入 DMG，由用户首次下载。此前 arm64 Apple helper 包装的生命周期证据仅作为历史记录。
 - 当前只允许项目所有者从可信源码在受控本机构建并个人使用，不提供公开下载。
 - Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净环境仍未验证；这些是未来任何外部分发的硬门，不阻塞当前本地开发。
 
@@ -493,7 +492,6 @@ pnpm verify:package:macos <path-to-Koradio.app>
 - `pnpm build && pnpm start` 以 `NODE_ENV=production` 启动并默认使用 `live`。
 - `pnpm start:mock` 显式启动同源生产构建的 Demo 模式。
 - `KORADIO_PROVIDER_MODE=live|mock` 始终覆盖上述默认值；macOS launcher 未显式覆盖时使用 `live`。
-- Personal Local Preview 从 `/Applications/Koradio.app` 启动；launcher 以 Chrome 独立应用窗口打开 `/radio`，Chrome 不可用时回退默认浏览器。不要再使用 Chrome 的“安装为应用”创建同名入口。
 
 当前骨架边界：
 

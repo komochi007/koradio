@@ -1,90 +1,94 @@
 import { useLayoutEffect, useState, type ReactNode } from "react";
 
-export const desktopCanvasMinimumSize = {
-  height: 760,
-  width: 680,
-} as const;
+export const prototypeCanvasHeight = 1600;
+export const prototypeCanvasWidth = 960;
 
 export interface DesktopCanvasState {
   enabled: boolean;
-  tooSmall: boolean;
+  height: number;
+  scale: number;
+  width: number;
 }
 
 export interface DesktopCanvasEnvironment {
   hasFinePointer: boolean;
   isStandalone: boolean;
-  outerHeight: number;
-  outerWidth: number;
+  viewportHeight: number;
+  viewportWidth: number;
 }
 
 export function resolveDesktopCanvasState({
   hasFinePointer,
   isStandalone,
-  outerHeight,
-  outerWidth,
+  viewportHeight,
+  viewportWidth,
 }: DesktopCanvasEnvironment): DesktopCanvasState {
   const enabled = isStandalone && hasFinePointer;
+  const scale = enabled
+    ? Math.min(viewportWidth / prototypeCanvasWidth, viewportHeight / prototypeCanvasHeight, 1)
+    : 1;
   return {
     enabled,
-    tooSmall:
-      enabled &&
-      (outerWidth < desktopCanvasMinimumSize.width ||
-        outerHeight < desktopCanvasMinimumSize.height),
+    height: Math.round(prototypeCanvasHeight * scale),
+    scale,
+    width: Math.round(prototypeCanvasWidth * scale),
   };
 }
 
 function readCanvasState(): DesktopCanvasState {
+  const viewport = window.visualViewport;
   return resolveDesktopCanvasState({
     hasFinePointer: window.matchMedia("(pointer: fine)").matches,
     isStandalone: window.matchMedia("(display-mode: standalone)").matches,
-    outerHeight: window.outerHeight,
-    outerWidth: window.outerWidth,
+    viewportHeight: viewport?.height ?? window.innerHeight,
+    viewportWidth: viewport?.width ?? window.innerWidth,
   });
 }
 
 export function DesktopCanvas({ children }: { children: ReactNode }): ReactNode {
-  const [state, setState] = useState(readCanvasState);
+  const [state, setState] = useState<DesktopCanvasState>(() => readCanvasState());
+
+  useLayoutEffect(() => {
+    const update = (): void => {
+      setState(readCanvasState());
+    };
+    window.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("resize", update);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     const root = document.documentElement;
     if (state.enabled) {
       root.dataset.desktopPwaCanvas = "true";
-      root.dataset.desktopPwaTooSmall = String(state.tooSmall);
-    } else {
-      delete root.dataset.desktopPwaCanvas;
-      delete root.dataset.desktopPwaTooSmall;
+      return () => {
+        delete root.dataset.desktopPwaCanvas;
+      };
     }
-    const handleResize = (): void => {
-      setState(readCanvasState());
-    };
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      delete root.dataset.desktopPwaCanvas;
-      delete root.dataset.desktopPwaTooSmall;
-    };
-  }, [state.enabled, state.tooSmall]);
+    delete root.dataset.desktopPwaCanvas;
+    return undefined;
+  }, [state.enabled]);
 
   if (!state.enabled) return children;
 
   return (
     <div className="desktop-canvas-viewport desktop-canvas-viewport--standalone">
-      <div className="desktop-canvas">
-        {state.tooSmall ? (
-          <main aria-labelledby="desktop-window-notice-title" className="desktop-window-notice">
-            <section aria-live="assertive" className="desktop-window-notice__alert" role="alert">
-              <span aria-hidden="true" className="desktop-window-notice__signal" />
-              <p className="eyebrow">WINDOW SIZE</p>
-              <h1 id="desktop-window-notice-title">窗口空间不足</h1>
-              <p>
-                请将 Koradio 窗口调整到至少 {desktopCanvasMinimumSize.width} ×{" "}
-                {desktopCanvasMinimumSize.height}，即可恢复完整的单列电台界面。
-              </p>
-            </section>
-          </main>
-        ) : (
-          <div className="desktop-canvas__content">{children}</div>
-        )}
+      <div
+        className="desktop-canvas"
+        style={{
+          height: `${String(state.height)}px`,
+          width: `${String(state.width)}px`,
+        }}
+      >
+        <div
+          className="desktop-canvas__content"
+          style={{ transform: `scale(${String(state.scale)})` }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

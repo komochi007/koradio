@@ -1,8 +1,6 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-import { enableStandaloneDesktopPwa } from "./standalone-desktop.js";
-
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const profile = {
   id: "00000000-0000-4000-8000-000000000020",
@@ -76,6 +74,27 @@ async function mockProfileWorkspace(
       },
     }),
   );
+}
+
+async function enableStandaloneDesktopPwa(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const browserMatchMedia = window.matchMedia.bind(window);
+    window.matchMedia = (query: string): MediaQueryList => {
+      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
+        return {
+          addEventListener: () => undefined,
+          addListener: () => undefined,
+          dispatchEvent: () => false,
+          matches: true,
+          media: query,
+          onchange: null,
+          removeEventListener: () => undefined,
+          removeListener: () => undefined,
+        };
+      }
+      return browserMatchMedia(query);
+    };
+  });
 }
 
 async function ensureProfile(page: Page): Promise<void> {
@@ -271,91 +290,52 @@ for (const viewport of responsiveViewports) {
   });
 }
 
-const standaloneDesktopViewports = [
-  { name: "internal-full", width: 1440, height: 801 },
-  { name: "desktop-medium", width: 960, height: 720 },
-  { name: "desktop-default", width: 720, height: 800 },
-] as const;
-
-for (const viewport of standaloneDesktopViewports) {
-  test(`keeps Settings content internal and actions fixed at ${viewport.name}`, async ({
-    browserName,
-    page,
-  }) => {
-    test.skip(browserName !== "chromium", "standalone canvas is verified once in Chromium");
-    await enableStandaloneDesktopPwa(page, {
-      width: viewport.width,
-      height: Math.max(viewport.height, 760),
-    });
-    await page.setViewportSize(viewport);
-    await mockProfileWorkspace(page, { current: true });
-    await page.goto(`${appOrigin}/settings`);
-
-    const region = page.locator(".settings-main");
-    const actions = page.locator(".settings-actions");
-    await expect(region).toBeVisible();
-    await expect(actions).toBeVisible();
-    await expect(page.getByRole("button", { name: "保存配置" })).toHaveAttribute(
-      "form",
-      "settings-form",
-    );
-    const before = await actions.boundingBox();
-    const metrics = await page.evaluate(() => {
-      const region = document.querySelector<HTMLElement>(".settings-main");
-      const canvas = document.querySelector<HTMLElement>(".desktop-canvas");
-      if (region === null || canvas === null)
-        throw new Error("Standalone Settings canvas is unavailable");
-      const style = getComputedStyle(region);
-      region.scrollTop = region.scrollHeight;
-      return {
-        canvas: canvas.getBoundingClientRect(),
-        clientHeight: region.clientHeight,
-        documentHeight: document.documentElement.scrollHeight,
-        scrollHeight: region.scrollHeight,
-        scrollTop: region.scrollTop,
-        scrollbarWidth: style.scrollbarWidth,
-        viewportHeight: window.innerHeight,
-        viewportWidth: window.innerWidth,
-      };
-    });
-    const after = await actions.boundingBox();
-
-    expect(metrics.canvas.height).toBe(metrics.viewportHeight);
-    expect(metrics.canvas.width).toBe(Math.min(720, metrics.viewportWidth));
-    expect(metrics.documentHeight).toBe(metrics.viewportHeight);
-    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
-    expect(metrics.scrollTop).toBeGreaterThan(0);
-    expect(metrics.scrollbarWidth).toBe("none");
-    expect(after).toEqual(before);
-    await expect(page.getByText("数据路径")).toBeVisible();
-    await expect(page.locator(".primary-nav")).toBeVisible();
-  });
-}
-
-test("keeps Profile creation inside its own scroll region in the default standalone window", async ({
+test("keeps Settings content scrollable without blank space in a standalone desktop canvas", async ({
   browserName,
   page,
 }) => {
-  test.skip(browserName !== "chromium", "standalone canvas is verified once in Chromium");
-  await enableStandaloneDesktopPwa(page, { width: 720, height: 800 });
-  await page.setViewportSize({ width: 720, height: 800 });
-  await mockProfileWorkspace(page, { current: false });
-  await page.goto(`${appOrigin}/radio`);
+  test.skip(browserName !== "chromium", "standalone canvas is captured once in Chromium");
+  await enableStandaloneDesktopPwa(page);
+  await page.setViewportSize({ width: 560, height: 600 });
+  await mockProfileWorkspace(page, { current: true });
+  await page.goto(`${appOrigin}/settings`);
 
-  const region = page.locator(".profile-main");
+  const region = page.locator(".settings-main");
+  const actions = page.locator(".settings-actions");
   await expect(region).toBeVisible();
-  const metrics = await region.evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
+  await expect(actions).toBeVisible();
+  await expect(page.getByRole("button", { name: "保存配置" })).toHaveAttribute(
+    "form",
+    "settings-form",
+  );
+  const before = await actions.boundingBox();
+  const metrics = await page.evaluate(() => {
+    const region = document.querySelector<HTMLElement>(".settings-main");
+    const canvas = document.querySelector<HTMLElement>(".desktop-canvas");
+    if (region === null || canvas === null)
+      throw new Error("Standalone Settings canvas is unavailable");
+    const style = getComputedStyle(region);
+    region.scrollTop = region.scrollHeight;
     return {
-      clientHeight: element.clientHeight,
+      canvas: canvas.getBoundingClientRect(),
+      clientHeight: region.clientHeight,
       documentHeight: document.documentElement.scrollHeight,
-      scrollHeight: element.scrollHeight,
-      scrollTop: element.scrollTop,
+      scrollHeight: region.scrollHeight,
+      scrollTop: region.scrollTop,
+      scrollbarWidth: style.scrollbarWidth,
       viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
     };
   });
-  expect(metrics.documentHeight).toBe(metrics.viewportHeight);
+  const after = await actions.boundingBox();
+
+  expect(metrics.canvas.height).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.canvas.width).toBeLessThanOrEqual(metrics.viewportWidth);
+  expect(metrics.documentHeight).toBeLessThanOrEqual(metrics.viewportHeight);
   expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
   expect(metrics.scrollTop).toBeGreaterThan(0);
-  await expect(page.getByRole("button", { name: "保存并进入 Koradio" })).toBeVisible();
+  expect(metrics.scrollbarWidth).toBe("none");
+  expect(after).toEqual(before);
+  await expect(page.getByText("数据路径")).toBeVisible();
+  await expect(page.locator(".primary-nav")).toBeVisible();
 });

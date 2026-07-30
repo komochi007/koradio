@@ -10,7 +10,7 @@ import {
   timelineItemIdSchema,
   trackIdSchema,
 } from "./common.js";
-import { musicTrackSchema, originModeSchema, timedTextTokenSchema } from "./music.js";
+import { musicTrackSchema, originModeSchema } from "./music.js";
 import { djLanguageSchema } from "./preferences.js";
 
 export const programStatusSchema = z.enum(["ready", "completed"]);
@@ -23,7 +23,6 @@ export const djScriptSegmentSchema = z.strictObject({
   text: z.string().trim().min(1).max(5000),
   displayText: z.string().trim().min(1).max(5000),
   estimatedTiming: z.boolean(),
-  markers: z.array(timedTextTokenSchema).max(500).default([]),
   ttsAudioRef: controlledFileRefSchema.nullable(),
 });
 export const djTimelineItemSchema = z.strictObject({

@@ -2,8 +2,6 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import type { TasteResponse, UpdateTasteOverridesCommand } from "@koradio/contracts";
 
-import { enableStandaloneDesktopPwa } from "./standalone-desktop.js";
-
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const firstProfileId = "00000000-0000-4000-8000-000000000010";
 const secondProfileId = "00000000-0000-4000-8000-000000000011";
@@ -222,6 +220,27 @@ async function mockTasteWorkspace(
   return { commands };
 }
 
+async function enableStandaloneDesktopPwa(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const browserMatchMedia = window.matchMedia.bind(window);
+    window.matchMedia = (query: string): MediaQueryList => {
+      if (query === "(display-mode: standalone)" || query === "(pointer: fine)") {
+        return {
+          addEventListener: () => undefined,
+          addListener: () => undefined,
+          dispatchEvent: () => false,
+          matches: true,
+          media: query,
+          onchange: null,
+          removeEventListener: () => undefined,
+          removeListener: () => undefined,
+        };
+      }
+      return browserMatchMedia(query);
+    };
+  });
+}
+
 test("views, edits, validates and saves Taste overrides", async ({ browserName, page }) => {
   test.skip(browserName === "webkit", "受控 Taste 路由由 Chromium 与 Firefox 验收");
   await page.setViewportSize({ width: 960, height: 1600 });
@@ -361,8 +380,8 @@ test("keeps Taste scrolling inside the standalone desktop canvas without a scrol
   page,
 }) => {
   test.skip(browserName !== "chromium", "standalone canvas is captured once in Chromium");
-  await enableStandaloneDesktopPwa(page, { width: 720, height: 800 });
-  await page.setViewportSize({ width: 720, height: 800 });
+  await enableStandaloneDesktopPwa(page);
+  await page.setViewportSize({ width: 560, height: 600 });
   await mockTasteWorkspace(page);
   await page.goto(`${appOrigin}/taste`);
 

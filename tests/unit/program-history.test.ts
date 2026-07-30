@@ -35,7 +35,6 @@ function detail(value: Program, durations: number[]): ProgramDetail {
         text: "慢一点开始。",
         displayText: "慢一点开始。",
         estimatedTiming: true,
-        markers: [],
         ttsAudioRef: null,
       },
     ],

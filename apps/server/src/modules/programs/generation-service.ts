@@ -341,7 +341,6 @@ export function createProgramGenerationService(
     for (const [index, script] of plan.djScripts.entries()) {
       let ttsAudioRef: string | null = null;
       let estimatedTiming = script.estimatedTiming;
-      let markers: DjScriptSegment["markers"] = [];
       let durationMs: number | null = null;
       if (playableScriptIndexes.has(index) && options.tts !== undefined) {
         try {
@@ -362,7 +361,6 @@ export function createProgramGenerationService(
           assertActive(snapshot.jobId, signal);
           ttsAudioRef = result.audioRef;
           estimatedTiming = result.estimatedTiming;
-          markers = result.markers;
           durationMs = result.durationMs;
         } catch (error) {
           if (signal.aborted || error instanceof GenerationAbortedError) {
@@ -381,7 +379,6 @@ export function createProgramGenerationService(
         text: script.text,
         displayText: script.text,
         estimatedTiming,
-        markers,
         ttsAudioRef,
         durationMs,
       });
@@ -446,7 +443,6 @@ export function createProgramGenerationService(
         text: segment.text,
         displayText: segment.text,
         estimatedTiming: segment.estimatedTiming,
-        markers: segment.markers,
         ttsAudioRef: segment.ttsAudioRef,
       })),
       tracks: resolvedTracks.map(({ track }) => track),

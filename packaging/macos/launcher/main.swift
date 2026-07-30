@@ -32,11 +32,7 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
     guard let selectedPort else {
       return
     }
-    let url = URL(string: "http://127.0.0.1:\(selectedPort)/radio")!
-    if openChromeAppWindow(url) {
-      return
-    }
-    NSWorkspace.shared.open(url)
+    NSWorkspace.shared.open(URL(string: "http://127.0.0.1:\(selectedPort)/")!)
   }
 
   @objc private func quitKoradio() {
@@ -58,13 +54,7 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
     if smokeMode {
       FileHandle.standardOutput.write(Data("{\"stage\":\"start\"}\n".utf8))
     }
-    guard bundledBuildIdentifier() != nil else {
-      failureCode = "bundle_build_identity_missing"
-      failStart()
-      return
-    }
-
-    if let existingPort = (firstPort...lastPort).first(where: isCompatibleKoradioService) {
+    if let existingPort = (firstPort...lastPort).first(where: isKoradioService) {
       selectedPort = existingPort
       finishStart()
       return
@@ -76,7 +66,7 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
     }
     let deadline = Date().addingTimeInterval(15)
     while Date() < deadline {
-      if let port = (firstPort...lastPort).first(where: isCompatibleKoradioService) {
+      if let port = (firstPort...lastPort).first(where: isKoradioService) {
         selectedPort = port
         ownsService = true
         finishStart()
@@ -161,7 +151,6 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
       "KORADIO_HOST": "127.0.0.1",
       "KORADIO_PORT": String(firstPort),
       "KORADIO_PROVIDER_MODE": providerMode,
-      "PYTHONDONTWRITEBYTECODE": "1",
     ]
     if FileManager.default.fileExists(atPath: ttsHelper.path),
        FileManager.default.isExecutableFile(atPath: ttsPython.path)
@@ -183,41 +172,6 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
       failureCode = "service_process_failed"
       return false
     }
-  }
-
-  private func bundledBuildIdentifier() -> String? {
-    guard let resources = Bundle.main.resourceURL else {
-      return nil
-    }
-    let metadata = resources.appendingPathComponent(
-      "app/apps/web/dist/koradio-build.json",
-      isDirectory: false
-    )
-    guard let data = try? Data(contentsOf: metadata),
-          let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-          let buildIdentifier = value["buildId"] as? String,
-          !buildIdentifier.isEmpty
-    else {
-      return nil
-    }
-    return buildIdentifier
-  }
-
-  private func isCompatibleKoradioService(port: Int) -> Bool {
-    guard isKoradioService(port: port),
-          let expectedBuildIdentifier = bundledBuildIdentifier()
-    else {
-      return false
-    }
-    let buildRequest = URLRequest(
-      url: URL(string: "http://127.0.0.1:\(port)/koradio-build.json")!
-    )
-    guard let buildData = requestData(buildRequest),
-          let build = try? JSONSerialization.jsonObject(with: buildData) as? [String: Any]
-    else {
-      return false
-    }
-    return build["buildId"] as? String == expectedBuildIdentifier
   }
 
   private func isKoradioService(port: Int) -> Bool {
@@ -246,7 +200,6 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
     let semaphore = DispatchSemaphore(value: 0)
     var result: Data?
     var request = input
-    request.cachePolicy = .reloadIgnoringLocalCacheData
     request.timeoutInterval = 0.5
     URLSession.shared.dataTask(with: request) { data, response, _ in
       defer { semaphore.signal() }
@@ -261,30 +214,6 @@ final class KoradioLauncher: NSObject, NSApplicationDelegate {
     }.resume()
     _ = semaphore.wait(timeout: .now() + 1)
     return result
-  }
-
-  private func openChromeAppWindow(_ url: URL) -> Bool {
-    guard NSWorkspace.shared.urlForApplication(
-      withBundleIdentifier: "com.google.Chrome"
-    ) != nil else {
-      return false
-    }
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-    process.arguments = [
-      "-n",
-      "-b",
-      "com.google.Chrome",
-      "--args",
-      "--app=\(url.absoluteString)",
-      "--window-size=720,840",
-    ]
-    do {
-      try process.run()
-      return true
-    } catch {
-      return false
-    }
   }
 }
 

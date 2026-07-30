@@ -40,7 +40,6 @@ const program: ProgramDetail = {
       text: "先让房间安静下来。",
       displayText: "先让房间安静下来。",
       estimatedTiming: false,
-      markers: [],
       ttsAudioRef: "tts/00000000-0000-4000-8000-000000000081.wav",
     },
   ],

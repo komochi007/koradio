@@ -1,14 +1,15 @@
-import type { PlaybackTimelineItem, TimedTextLine, TimedTextToken } from "@koradio/contracts";
+import type { PlaybackTimelineItem } from "@koradio/contracts";
 
 export type TimedTextState = "read" | "current" | "upcoming";
 
-export interface DisplayTimedTextToken extends TimedTextToken {
-  state: TimedTextState;
+export interface TimedTextLine {
+  endMs: number;
+  startMs: number;
+  text: string;
 }
 
 export interface DisplayTimedTextLine extends TimedTextLine {
   state: TimedTextState;
-  tokens: DisplayTimedTextToken[];
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -17,49 +18,6 @@ function clamp(value: number, minimum: number, maximum: number): number {
 
 function readableLength(value: string): number {
   return Math.max(1, Array.from(value.replace(/\s/gu, "")).length);
-}
-
-export function tokenizeTimedText(value: string): string[] {
-  const units =
-    value.match(
-      /\s*(?:[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]|[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*|[^\s])/gu,
-    ) ?? [];
-  const tokens: string[] = [];
-  for (const unit of units) {
-    const visible = unit.trimStart();
-    if (/^[\p{P}\p{S}]+$/u.test(visible) && tokens.length > 0) {
-      const previousIndex = tokens.length - 1;
-      tokens[previousIndex] = `${tokens[previousIndex] ?? ""}${unit}`;
-    } else {
-      tokens.push(unit);
-    }
-  }
-  return tokens.filter((token) => token.trim().length > 0);
-}
-
-export function estimateTokenTiming(
-  text: string,
-  startMs: number,
-  endMs: number,
-): TimedTextToken[] {
-  const tokens = tokenizeTimedText(text);
-  if (tokens.length === 0) return [];
-  const safeEnd = Math.max(startMs + 1, endMs);
-  const durationMs = safeEnd - startMs;
-  const totalWeight = tokens.reduce((total, token) => total + readableLength(token), 0);
-  let elapsed = startMs;
-  return tokens.map((token, index) => {
-    const tokenStart = elapsed;
-    elapsed =
-      index === tokens.length - 1
-        ? safeEnd
-        : Math.round(elapsed + (durationMs * readableLength(token)) / totalWeight);
-    return {
-      text: token,
-      startMs: tokenStart,
-      endMs: Math.max(tokenStart + 1, elapsed),
-    };
-  });
 }
 
 export function splitDjSentences(value: string): string[] {
@@ -80,12 +38,7 @@ export function estimateDjTiming(value: string, durationMs: number): TimedTextLi
       index === sentences.length - 1
         ? safeDuration
         : Math.round(elapsed + (safeDuration * readableLength(text)) / totalWeight);
-    return {
-      endMs: elapsed,
-      startMs,
-      text,
-      tokens: estimateTokenTiming(text, startMs, elapsed),
-    };
+    return { endMs: elapsed, startMs, text };
   });
 }
 
@@ -108,14 +61,10 @@ export function parseLrc(value: string, durationMs: number): TimedTextLine[] {
       );
     })
     .sort((left, right) => left.startMs - right.startMs);
-  return parsed.map((line, index) => {
-    const endMs = Math.max(line.startMs + 1, parsed[index + 1]?.startMs ?? durationMs);
-    return {
-      ...line,
-      endMs,
-      tokens: estimateTokenTiming(line.text, line.startMs, endMs),
-    };
-  });
+  return parsed.map((line, index) => ({
+    ...line,
+    endMs: Math.max(line.startMs + 1, parsed[index + 1]?.startMs ?? durationMs),
+  }));
 }
 
 export function parseUntimedLyrics(value: string): string[] {
@@ -123,55 +72,6 @@ export function parseUntimedLyrics(value: string): string[] {
     .split(/\r?\n/u)
     .map((line) => line.replace(/^\[[^\]]+\]\s*/u, "").trim())
     .filter((line) => line.length > 0);
-}
-
-export function estimateUntimedLyrics(value: string, durationMs: number): TimedTextLine[] {
-  const lines = parseUntimedLyrics(value);
-  if (lines.length === 0) return [];
-  const safeDuration = Math.max(1, Math.round(durationMs));
-  const totalWeight = lines.reduce((total, line) => total + readableLength(line), 0);
-  let elapsed = 0;
-  return lines.map((text, index) => {
-    const startMs = elapsed;
-    elapsed =
-      index === lines.length - 1
-        ? safeDuration
-        : Math.round(elapsed + (safeDuration * readableLength(text)) / totalWeight);
-    return {
-      text,
-      startMs,
-      endMs: Math.max(startMs + 1, elapsed),
-      tokens: estimateTokenTiming(text, startMs, Math.max(startMs + 1, elapsed)),
-    };
-  });
-}
-
-export function timedLinesFromMarkers(
-  text: string,
-  markers: TimedTextToken[],
-  durationMs: number,
-): TimedTextLine[] {
-  if (markers.length === 0) return estimateDjTiming(text, durationMs);
-  const lines: TimedTextLine[] = [];
-  let current: TimedTextToken[] = [];
-  const flush = (): void => {
-    const first = current[0];
-    const last = current.at(-1);
-    if (first === undefined || last === undefined) return;
-    lines.push({
-      text: current.map((marker) => marker.text).join(""),
-      startMs: first.startMs,
-      endMs: last.endMs,
-      tokens: current,
-    });
-    current = [];
-  };
-  for (const marker of markers) {
-    current.push(marker);
-    if (/[。！？!?；;]\s*$/u.test(marker.text)) flush();
-  }
-  flush();
-  return lines;
 }
 
 export function deriveTimedText(
@@ -186,35 +86,10 @@ export function deriveTimedText(
   if (currentIndex < 0) {
     currentIndex = safePosition < (lines[0]?.startMs ?? 0) ? 0 : lines.length - 1;
   }
-  return lines.map((line, index) => {
-    const state = index < currentIndex ? "read" : index === currentIndex ? "current" : "upcoming";
-    let currentTokenIndex = line.tokens.findIndex(
-      (token) => safePosition >= token.startMs && safePosition < token.endMs,
-    );
-    if (currentTokenIndex < 0) {
-      currentTokenIndex =
-        safePosition < (line.tokens[0]?.startMs ?? line.startMs)
-          ? 0
-          : Math.max(0, line.tokens.length - 1);
-    }
-    return {
-      ...line,
-      state,
-      tokens: line.tokens.map((token, tokenIndex) => ({
-        ...token,
-        state:
-          state === "read"
-            ? "read"
-            : state === "upcoming"
-              ? "upcoming"
-              : tokenIndex < currentTokenIndex
-                ? "read"
-                : tokenIndex === currentTokenIndex
-                  ? "current"
-                  : "upcoming",
-      })),
-    };
-  });
+  return lines.map((line, index) => ({
+    ...line,
+    state: index < currentIndex ? "read" : index === currentIndex ? "current" : "upcoming",
+  }));
 }
 
 export function programProgress(
