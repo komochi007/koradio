@@ -17,8 +17,8 @@ import {
 } from "react";
 
 import { type AudioEngineFacade, useAudioSnapshot } from "../../audio/index.js";
-import { ApiRequestError } from "../../shared/api.js";
 import type { ServiceTransport } from "../../shared/transport.js";
+import { apiErrorMessage } from "../../shared/error.js";
 import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
 import {
   addLibraryItem,
@@ -64,14 +64,14 @@ function isValidPlaylistReference(value: string): boolean {
 }
 
 function errorMessage(error: unknown, fallback: string): string {
-  if (!(error instanceof ApiRequestError)) return fallback;
-  if (error.envelope?.code === "MUSIC_PROVIDER_UNAVAILABLE") {
-    return "网易云连接失败，请稍后重试。";
-  }
-  if (error.envelope?.code === "MUSIC_PROVIDER_RESPONSE_INVALID") {
-    return "网易云返回了无法识别的音乐信息，请重试。";
-  }
-  return fallback;
+  return apiErrorMessage(
+    error,
+    {
+      MUSIC_PROVIDER_UNAVAILABLE: "网易云连接失败，请稍后重试。",
+      MUSIC_PROVIDER_RESPONSE_INVALID: "网易云返回了无法识别的音乐信息，请重试。",
+    },
+    fallback,
+  );
 }
 
 function LibraryTopbar({

@@ -84,5 +84,6 @@ export function createSessionEventRoutes(options: {
         );
       });
     });
+    await app.after();
   };
 }

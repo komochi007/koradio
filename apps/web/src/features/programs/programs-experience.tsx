@@ -15,6 +15,7 @@ import type { AppEventBus } from "../../shared/events.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
 import { Icon as SharedIcon, type IconName } from "../../shared/icon.js";
+import { formatLongProgramDate as formatLongDate, formatProgramDate } from "../../shared/date.js";
 import { FeedbackNotice, useFeedback } from "../feedback/index.js";
 import { deleteProgram, getProgram, getPrograms } from "./api.js";
 import {
@@ -39,18 +40,6 @@ interface ProgramsExperienceProps {
 
 function Icon({ name }: { name: IconName }): ReactElement {
   return <SharedIcon className="programs-icon" name={name} />;
-}
-
-function formatProgramDate(value: string): string {
-  const date = new Date(value);
-  const month = date.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
-  return `${month} ${String(date.getDate()).padStart(2, "0")} · ${date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
-}
-
-function formatLongDate(value: string): string {
-  const date = new Date(value);
-  const month = date.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
-  return `${month} ${String(date.getDate()).padStart(2, "0")}, ${String(date.getFullYear())} · ${date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 function languageLabel(language: string): string {

@@ -109,5 +109,6 @@ export function createMediaRoutes(options: {
       reply.header("X-Content-Type-Options", "nosniff");
       return await reply.type("audio/wav").send(createMockWave());
     });
+    await app.after();
   };
 }

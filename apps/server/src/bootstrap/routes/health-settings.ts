@@ -102,5 +102,6 @@ export function createHealthSettingsRoutes(options: {
         throw error;
       }
     });
+    await app.after();
   };
 }
