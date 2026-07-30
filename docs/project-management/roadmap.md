@@ -9,9 +9,9 @@
 
 | 判断项 | 当前结论 | AI 行动 |
 |---|---|---|
-| 当前阶段 | S7 本机个人预览运行与维护 | S6 阶段门与 S7-01、S7-02、S7-06、UX-10 已通过；S7-07 稳定性试用与 S7-08 维护性优化进行中，不启动外部分发 |
+| 当前阶段 | S7 本机个人预览运行与维护 | S6 阶段门与 S7-01、S7-02、S7-06、S7-08、UX-10 已通过；S7-07 稳定性试用进行中，不启动外部分发 |
 | 已通过阶段门 | S0 基线与关键决策；S1 工程脚手架；S2 平台、数据与安全底座；S3 核心领域与 Provider 后端；S4 P0 核心产品体验；S5 P1 全量功能；S6 集成、质量与安全加固 | ADR 0000～0004、平台与后端闭环、P0/P1 产品实现、九项能力和 15 页面全量验收，以及 [S6-05 内部质量门记录](s6-05-internal-quality-gate.md) 均已验证 |
-| 当前关键路径 | S7-08 维护性优化 + S7-07 个人本机稳定性试用；公开发布等待授权 | Mock 保持默认测试/CI 模式；先降低维护成本并用真实日常使用收口本机缺陷，未获项目所有者新授权前不领取 S7-03～S7-05 或 S8/S9 外部分发任务 |
+| 当前关键路径 | S7-07 个人本机稳定性试用；公开发布等待授权 | S7-08 维护性优化已关闭；Mock 保持默认测试/CI 模式，用真实日常使用收口本机缺陷，未获项目所有者新授权前不领取 S7-03～S7-05 或 S8/S9 外部分发任务 |
 | 产品实现状态 | PRD 九项能力与 15 个页面状态已由真实产品承载并通过 S5-04 | 以 [S5-04 验收记录](s5-04-full-function-acceptance.md) 为功能完整基线，继续加固非功能质量 |
 | 外部测试状态 | 禁止开始 | `S5-04` 已完成；仅当 `S6-05`、`S7-05` 也完成后解除 |
 | 当前交付渠道 | Personal Local Preview，只在项目所有者受控本机使用 | 不上传、不建立公开下载入口、不向外部分发 ad-hoc 产物 |
@@ -119,7 +119,7 @@ S3 的独立模块、S4 的视觉实现和 S6 的测试建设可以在依赖明�
 | S7-02 | 已完成 | `scripts/release/`、`docs/runbooks/install-and-recovery.md`、`s7-02-install-lifecycle-acceptance.md` | arm64 两真实版本完成手动安装、升级、失败回滚、卸载与数据保留验证；不删除数据、备份或 Keychain 凭据 |
 | S7-06 | 已完成 | Provider composition、受控 TTS 媒体、live 配置/诊断测试与 `s7-06-real-provider-acceptance.md` | 当时的 Codex/NetEase/Apple TTS 历史验收已通过；Apple TTS 已被 UX-10 取代，失败保护与 Mock 回归继续有效 |
 | S7-07 | 进行中 | `docs/project-management/s7-07-local-stability-acceptance.md` 与按实际缺陷新增的 regression tests | 连续本机试用、脱敏缺陷登记、修复/保留结论与最终质量门；不包含遥测、外部 Beta 或公开分发 |
-| S7-08 | 进行中 | `docs/project-management/s7-08-maintenance-review.md`、工具链、包装、文档与代码热点 | 清理可再生产物和旧分支，对齐事实源，拆分维护热点并通过完整质量门 |
+| S7-08 | 已完成 | `docs/project-management/s7-08-maintenance-review.md`、工具链、包装、文档与代码热点 | 生成物/旧分支收口、事实源对齐、维护性优化、依赖与真实 DMG 验证完成；3 张字体渲染差异经项目所有者接受且不校准历史基线 |
 | S7-03 | 计划 | `.github/workflows/release.yml` | 签名、公证、校验和和发布证据；秘密只进入受控 CI Secret |
 | S7-04 | 计划 | `docs/runbooks/`、`CHANGELOG.md`、`SECURITY.md`、`PRIVACY.md`、`THIRD_PARTY_NOTICES.md` | 安装、诊断、恢复、发布和热修复手册，以及对外发布所需说明；`LICENSE` 由授权决策决定是否创建 |
 | S7-05 | 计划 | macOS 发布工程验收记录和候选包校验信息 | 在独立干净 macOS 验收已签名、公证候选包，不开始外部 Beta |

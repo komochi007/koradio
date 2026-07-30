@@ -1,7 +1,7 @@
 # Koradio Engineering Rules
 
 > Scope: Koradio 的所有源码、配置、测试、migration 与工程文档  
-> Status: Active engineering law；S1～S6 阶段门、S7 本机包装/真实 Provider 验收与 UX-10 Qwen3-TTS 替换已完成，当前执行 S7-08 维护性优化
+> Status: Active engineering law；S1～S6 阶段门、S7 本机包装/真实 Provider 验收、S7-08 维护性优化与 UX-10 Qwen3-TTS 替换已完成，当前进行 S7-07 稳定性试用
 > Keywords: `MUST`、`MUST NOT`、`ALWAYS`、`NEVER` 均为强制要求
 
 ## 1. 权威与适用性

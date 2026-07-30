@@ -28,7 +28,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 
 ### 当前事实
 
-- S1～S6 阶段门均已通过；S7-01～S7-02 已完成 arm64 受控本机 macOS 包装与两版本安装生命周期验收，S7-06 的 Codex/NetEase/Apple TTS 事实只保留为历史验收，当前 TTS 已由 UX-10 替换为 Qwen3-TTS 8-bit。S7-07 稳定性试用仍在进行，当前执行 S7-08 维护性优化；S7-03 签名、公证与发布流水线继续后置。
+- S1～S6 阶段门均已通过；S7-01～S7-02 已完成 arm64 受控本机 macOS 包装与两版本安装生命周期验收，S7-06 的 Codex/NetEase/Apple TTS 事实只保留为历史验收，当前 TTS 已由 UX-10 替换为 Qwen3-TTS 8-bit。S7-08 维护性优化已关闭，S7-07 稳定性试用仍在进行；S7-03 签名、公证与发布流水线继续后置。
 - 当前有产品、流程、架构、视觉规范、原型提示词和参考图。
 - Git 仓库已初始化并关联 GitHub 远端。
 - VDA-17 已冻结并纳入开发基线：`design/assets/prototype/` 是 HTML/CSS/JavaScript 视觉主源，`design/assets/baselines/` 包含 60 张正式基线，`design/assets/reports/handoff-map.md` 是开发交接索引。

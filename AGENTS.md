@@ -37,7 +37,7 @@
 
 ## 3. 当前阶段保护
 
-当前项目已完成 S1～S6 全量阶段门、S7-01/02/06 本机包装与真实 Provider 验收，以及 UX-01～UX-10 个人体验优化；当前执行 S7-08 项目维护性优化，S7-07 稳定性试用仍在进行。当前 TTS 为 bundled Python/MLX helper + Qwen3-TTS 8-bit（中文 Serena、英文 Ryan），仅支持 macOS 15+ arm64；Apple TTS 只属于已被 UX-10 取代的历史验收事实。
+当前项目已完成 S1～S6 全量阶段门、S7-01/02/06 本机包装与真实 Provider 验收、S7-08 维护性优化，以及 UX-01～UX-10 个人体验优化；当前只保留 S7-07 稳定性试用进行中。当前 TTS 为 bundled Python/MLX helper + Qwen3-TTS 8-bit（中文 Serena、英文 Ryan），仅支持 macOS 15+ arm64；Apple TTS 只属于已被 UX-10 取代的历史验收事实。
 
 - 不得声称尚不存在的业务代码、平台能力、脚本或依赖已经可用。
 - 不得把 `architecture.md` 的目标目录当作真实目录。
