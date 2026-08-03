@@ -21,12 +21,25 @@ const nodeVersion = "24.18.0";
 const pythonVersion = "3.12.13";
 const uvVersion = "0.11.32";
 const uvArchiveSha256 = "ed336d0ba49db8ef89b2b41fffa372ce63bd032f22a56f001c265891aec32829";
+const applicationIconName = "KoradioAppIconPadded";
 const nodeArchives = {
   arm64: {
     architecture: "arm64",
     sha256: "e1a97e14c99c803e96c7339403282ea05a499c32f8d83defe9ef5ec66f979ed1",
   },
 };
+const applicationIconRepresentations = [
+  ["icon_16x16.png", 16],
+  ["icon_16x16@2x.png", 32],
+  ["icon_32x32.png", 32],
+  ["icon_32x32@2x.png", 64],
+  ["icon_128x128.png", 128],
+  ["icon_128x128@2x.png", 256],
+  ["icon_256x256.png", 256],
+  ["icon_256x256@2x.png", 512],
+  ["icon_512x512.png", 512],
+  ["icon_512x512@2x.png", 1024],
+];
 
 function fail(message) {
   throw new Error(message);
@@ -216,7 +229,7 @@ async function writeInfoPlist(path, version) {
 <key>CFBundleExecutable</key><string>Koradio</string>
 <key>CFBundleIdentifier</key><string>app.koradio.launcher</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-<key>CFBundleIconFile</key><string>Koradio.icns</string>
+<key>CFBundleIconFile</key><string>${applicationIconName}</string>
 <key>CFBundleName</key><string>Koradio</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>${version}</string>
@@ -228,6 +241,25 @@ async function writeInfoPlist(path, version) {
 `,
     "utf8",
   );
+}
+
+async function writeApplicationIcon(iconsetDirectory, destination) {
+  const source = resolve(repositoryRoot, "apps/web/public/icons/koradio-app-icon.svg");
+  await mkdir(iconsetDirectory, { recursive: true });
+  for (const [filename, size] of applicationIconRepresentations) {
+    await run("/usr/bin/sips", [
+      "-z",
+      String(size),
+      String(size),
+      "-s",
+      "format",
+      "png",
+      source,
+      "--out",
+      resolve(iconsetDirectory, filename),
+    ]);
+  }
+  await run("/usr/bin/iconutil", ["--convert", "icns", "--output", destination, iconsetDirectory]);
 }
 
 async function runPnpm(nodeExecutable, commandArguments, environment) {
@@ -302,14 +334,10 @@ async function build() {
     await mkdir(dirname(qwenHelper), { recursive: true });
     await mkdir(updaterTarget, { recursive: true });
     await writeInfoPlist(resolve(contents, "Info.plist"), version);
-    await run("sips", [
-      "-s",
-      "format",
-      "icns",
-      resolve(repositoryRoot, "apps/web/public/icons/koradio-512.png"),
-      "--out",
-      resolve(resources, "Koradio.icns"),
-    ]);
+    await writeApplicationIcon(
+      resolve(buildToolDirectory, "Koradio.iconset"),
+      resolve(resources, `${applicationIconName}.icns`),
+    );
     await writeFile(
       resolve(resources, "build-metadata.json"),
       `${JSON.stringify(

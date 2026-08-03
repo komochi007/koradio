@@ -6,6 +6,20 @@ import { URL, fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
+const applicationBundleIdentifier = "app.koradio.launcher";
+const applicationIconName = "KoradioAppIconPadded";
+const applicationIconRepresentations = [
+  "icon_16x16.png",
+  "icon_16x16@2x.png",
+  "icon_32x32.png",
+  "icon_32x32@2x.png",
+  "icon_128x128.png",
+  "icon_128x128@2x.png",
+  "icon_256x256.png",
+  "icon_256x256@2x.png",
+  "icon_512x512.png",
+  "icon_512x512@2x.png",
+];
 
 function run(executable, commandArguments, { input, ...options } = {}) {
   return new Promise((resolveRun, reject) => {
@@ -35,6 +49,7 @@ function run(executable, commandArguments, { input, ...options } = {}) {
 }
 
 async function verifyApplication(application) {
+  const infoPlist = resolve(application, "Contents/Info.plist");
   const launcher = resolve(application, "Contents/MacOS/Koradio");
   const node = resolve(application, "Contents/Resources/runtime/bin/node");
   const corepack = resolve(
@@ -43,7 +58,7 @@ async function verifyApplication(application) {
   );
   const python = resolve(application, "Contents/Resources/qwen-runtime/bin/python");
   const helper = resolve(application, "Contents/Resources/qwen-tts-helper/main.py");
-  const icon = resolve(application, "Contents/Resources/Koradio.icns");
+  const icon = resolve(application, `Contents/Resources/${applicationIconName}.icns`);
   const updater = resolve(application, "Contents/Resources/updater/update-macos.mjs");
   const updaterCore = resolve(application, "Contents/Resources/updater/macos-update-core.mjs");
   const metadata = JSON.parse(
@@ -65,6 +80,29 @@ async function verifyApplication(application) {
   };
   try {
     await run("codesign", ["--verify", "--deep", "--strict", application]);
+    const bundleIdentifier = await run("/usr/bin/plutil", [
+      "-extract",
+      "CFBundleIdentifier",
+      "raw",
+      infoPlist,
+    ]);
+    const iconName = await run("/usr/bin/plutil", [
+      "-extract",
+      "CFBundleIconFile",
+      "raw",
+      infoPlist,
+    ]);
+    if (
+      bundleIdentifier.stdout.trim() !== applicationBundleIdentifier ||
+      iconName.stdout.trim() !== applicationIconName
+    ) {
+      throw new Error("Application identity metadata is invalid");
+    }
+    const iconset = resolve(dataDirectory, "Koradio.iconset");
+    await run("/usr/bin/iconutil", ["--convert", "iconset", "--output", iconset, icon]);
+    await Promise.all(
+      applicationIconRepresentations.map((filename) => access(resolve(iconset, filename))),
+    );
     const nodeVersion = await run(node, ["--version"]);
     if (nodeVersion.stdout.trim() !== "v24.18.0") {
       throw new Error("Bundled Node runtime version is not v24.18.0");
