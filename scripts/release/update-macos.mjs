@@ -79,8 +79,15 @@ function parseArguments(argumentsList) {
       fail(`Unsupported argument: ${argument ?? ""}`);
     }
   }
-  if (application === undefined || basename(application) !== "Koradio.app") {
-    fail("Usage: update-macos.mjs --application <Koradio.app> [--check-only]");
+  if (
+    application === undefined ||
+    !/^Koradio(?:-(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-arm64)?\.app$/.test(
+      basename(application),
+    )
+  ) {
+    fail(
+      "Usage: update-macos.mjs --application <Koradio.app|Koradio-<version>-arm64.app> [--check-only]",
+    );
   }
   return { application, checkOnly };
 }

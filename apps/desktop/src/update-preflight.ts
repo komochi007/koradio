@@ -11,6 +11,10 @@ export interface UpdatePreflightOptions {
   resourcesPath: string;
 }
 
+export function isSupportedApplicationBundleName(value: string): boolean {
+  return /^Koradio(?:-(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-arm64)?\.app$/.test(value);
+}
+
 async function assertExecutable(path: string): Promise<void> {
   try {
     await access(path);
@@ -50,7 +54,7 @@ export function parseUpdateOutput(output: string): UpdateStatus {
 }
 
 export async function runUpdatePreflight(options: UpdatePreflightOptions): Promise<UpdateStatus> {
-  if (basename(options.applicationPath) !== "Koradio.app") {
+  if (!isSupportedApplicationBundleName(basename(options.applicationPath))) {
     throw new Error("Updater application path is invalid");
   }
   const node = `${options.resourcesPath}/runtime/bin/node`;

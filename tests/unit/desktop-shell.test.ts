@@ -11,7 +11,10 @@ import {
   createServiceController,
   createServiceEnvironment,
 } from "../../apps/desktop/src/service-controller.js";
-import { parseUpdateOutput } from "../../apps/desktop/src/update-preflight.js";
+import {
+  isSupportedApplicationBundleName,
+  parseUpdateOutput,
+} from "../../apps/desktop/src/update-preflight.js";
 import {
   isAllowedNavigation,
   isLoopbackOrigin,
@@ -71,6 +74,14 @@ describe("Electron desktop shell policy", () => {
     expect(parseUpdateOutput('diagnostic\n{"status":"current"}\n')).toBe("current");
     expect(parseUpdateOutput('{"status":"updated"}\n')).toBe("updated");
     expect(() => parseUpdateOutput('{"status":"failed"}\n')).toThrow("recognized status");
+  });
+
+  it("accepts fixed and versioned arm64 application bundles", () => {
+    expect(isSupportedApplicationBundleName("Koradio.app")).toBe(true);
+    expect(isSupportedApplicationBundleName("Koradio-0.0.912-arm64.app")).toBe(true);
+    expect(isSupportedApplicationBundleName("Koradio-1.2.3-arm64.app")).toBe(true);
+    expect(isSupportedApplicationBundleName("Koradio-0.0.912-x64.app")).toBe(false);
+    expect(isSupportedApplicationBundleName("Other.app")).toBe(false);
   });
 
   it("injects service probing and process ownership for lifecycle tests", async () => {
