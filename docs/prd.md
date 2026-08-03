@@ -34,7 +34,7 @@
 |------|----------|----------|
 | 场景点歌闭环 | 当前无产品实现 | 在 Codex 与网易云可用时，提交合法场景后生成至少 1 首可播放歌曲和 1 段开场文字；新节目提交成功后原子切换并开始播放 |
 | 首次启动 | 当前无配置流程 | 首次启动自动选择可写的 OS 应用数据目录；用户只需创建档案并完成 Codex 配置，内置网易云 Provider 通过健康检查后即可发起首次生成 |
-| 桌面入口与更新 | 当前存在 launcher 与浏览器 PWA 重复入口 | Launchpad 只保留固定路径的品牌圆角 `Koradio.app`；每次打开先联网检查可信 `origin/main`，只有当前提交完成本机构建与包装验证后才打开 Chrome 独立应用窗口，检查或更新失败时不得继续打开旧版 |
+| 桌面入口与更新 | 迁移前存在 Native launcher 与浏览器 PWA 重复入口 | Launchpad 只保留固定路径的品牌圆角 `Koradio.app`；Electron 主进程每次正常打开先联网检查可信 `origin/main`，只有当前提交完成本机构建与 Electron 包装验证后才加载 `http://127.0.0.1:<port>/radio`，检查或更新失败时不得继续打开旧版 |
 | DJ 串讲降级 | 当前无串讲 | TTS 缺失、无效或超时时仍保存文字 DJ，时间线不创建伪音频项，歌曲可继续播放 |
 | 推荐反馈沉淀 | 当前无反馈记录 | 喜欢、取消喜欢、不喜欢、取消不喜欢、节目收藏、取消收藏和跳过均追加显式事件，重建自动品味时不覆盖人工规则 |
 | 异常可恢复性 | 当前无错误处理 | 完全离线、生成失败、Profile 切换、数据迁移失败和多标签接管均有确定结果，不破坏既有节目、旧数据或人工设置 |
@@ -74,7 +74,7 @@
 
 ### 4.1 运行模式与数据来源
 
-- Production Server、正式 PWA 和 macOS launcher 默认使用 `live`；Development、Test、CI 和显式 Demo 使用 `mock`。显式环境变量配置始终优先。
+- Production Server、Electron 桌面壳和现有 Web Renderer 默认使用 `live`；Development、Test、CI 和显式 Demo 使用 `mock`。显式环境变量配置始终优先。
 - Radio、Library 和 Settings 必须显示 `LIVE` 或 `DEMO MODE`，不得用 `CONNECTED` 暗示当前连接了真实音乐服务。
 - Program、MusicTrack 和 PlaylistSource 保存 `originMode = live | mock`。既有演示数据只按稳定 Mock source ID 迁移标记，不按标题、歌手或场景文本模糊判断。
 - Live 模式的候选池数量和策展输入排除 Demo 数据；历史 Demo 节目保留并显示 `DEMO` 标识，用户可自行永久删除。
@@ -249,7 +249,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 用户可在 Onboarding/Profile 页面创建或选择本地电台档案，隔离各 Profile 的品味、历史与展示偏好；设备级服务配置在所有 Profile 间共享。
 
-在进入本流程前，项目所有者从 Launchpad 的唯一 Koradio 圆角图标打开产品。launcher 必须先联网读取可信 `origin/main`，在独立的应用缓存源码中检出精确远端提交，并完成 frozen install、构建、签名结构与 launcher 冒烟验证；已安装提交不是远端最新、检查失败或候选验证失败时，不得打开旧版网页或独立应用窗口。更新成功后固定覆盖 `/Applications/Koradio.app`，旧 app 只以非 `.app` 回滚副本保留在非应用目录。
+在进入本流程前，项目所有者从 Launchpad 的唯一 Koradio 圆角图标打开产品。Electron 主进程必须先联网读取可信 `origin/main`，在独立的应用缓存源码中检出精确远端提交，并完成 frozen install、构建、签名结构与 Electron smoke 验证；已安装提交不是远端最新、检查失败或候选验证失败时，不得打开旧版窗口。更新成功后固定覆盖 `/Applications/Koradio.app`，旧 app 只以非 `.app` 回滚副本保留在非应用目录。
 
 **用户操作路径、界面元素、交互逻辑、数据变化**
 

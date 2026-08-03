@@ -1,6 +1,6 @@
 # Koradio System Architecture
 
-> Status: Target Architecture · S1/S2 foundations, S3 backend loop, S4 P0 frontend and S5 full-function product implemented
+> Status: Target Architecture · S1/S2 foundations, S3 backend loop, S4 P0 frontend and S5 full-function product implemented · S7-09 Electron shell implementation in progress
 > Scope: Local-first Web/PWA MVP  
 > Audience: AI Coding Agents, maintainers, system architects  
 > Sources: `docs/prd.md`, `docs/user-flow.md`, `design/design.md`
@@ -9,11 +9,12 @@
 它不承载产品需求、视觉规范、编码规则或实现教程；跨边界实现与本文冲突时，应先更新架构决策。
 ## 1. System Overview
 
-Koradio 是运行在单台设备上的私人 AI 音乐电台，由浏览器 PWA 与本地 Node.js 服务组成。
+Koradio 是运行在单台设备上的私人 AI 音乐电台，由 Electron 桌面壳、现有 Web Renderer 与本地 Node.js 服务组成。
 系统读取当前档案的品味与历史，通过 Codex 规划节目，经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled Python/MLX helper 调用 Qwen3-TTS 8-bit 本地模型生成 DJ 语音。
 ### System boundaries
 
 - **Client**：界面、HTMLAudio、实时播放进度和短生命周期交互状态。
+- **Desktop shell**：Electron 主进程负责单实例、启动前更新、Local Service 生命周期、窗口和 Renderer 安全策略；不拥有播放或业务事实。
 - **Local Service**：业务规则、任务编排、持久化、外部服务访问和事件发布。
 - **Device**：SQLite、音频缓存、头像与日志只保存在本机。
 - **External**：Codex 与网易云均为不可信、可失败依赖，只允许 Backend Adapter 访问。
@@ -59,9 +60,9 @@ flowchart LR
 
 ### Packaging and delivery
 
-- macOS 包装采用原生轻量 launcher + bundled Node Local Service + bundled Python/MLX TTS runtime + 外部浏览器 PWA；launcher 只负责进程生命周期、health ready 和打开同源 origin，不成为播放或业务事实源。
-- Personal Local Preview 只允许 `/Applications/Koradio.app` 作为 Launchpad 桌面入口，并使用同一品牌圆角图标；浏览器不得再安装第二个 Koradio PWA shim。launcher 启动产品时通过 Chrome `--app` 独立窗口打开同源 Radio，不创建普通网页标签。
-- 每次桌面打开都先从固定 HTTPS 仓库检查 `origin/main`。更新器在应用拥有的缓存目录维护独立源码副本，不修改开发工作树；只有精确远端提交完成 frozen install、production build、ad-hoc strict codesign、包结构与 launcher 冒烟后，才原位替换固定应用路径并重新启动。
+- macOS 包装采用 Electron 主进程 + 现有 Web Renderer + bundled Node Local Service + bundled Python/MLX TTS runtime；Electron 主进程只负责进程生命周期、health ready、窗口和加载同源 origin，不成为播放或业务事实源。
+- Personal Local Preview 只允许 `/Applications/Koradio.app` 作为 Launchpad 桌面入口，并使用同一品牌圆角图标；不安装第二个 PWA shim。Electron 窗口只加载 `http://127.0.0.1:<port>/radio`，不创建普通网页标签。
+- 每次正常桌面打开都先从固定 HTTPS 仓库检查 `origin/main`。更新器在应用拥有的缓存目录维护独立源码副本，不修改开发工作树；只有精确远端提交完成 frozen install、production build、ad-hoc strict codesign、Electron 包结构与 smoke 后，才原位替换固定应用路径并重新启动。
 - 更新行为是 fail-closed：远端检查、源码同步、构建、验证或替换任一步失败时保留已安装 app、用户数据与回滚副本，但不得启动已知旧版本或打开产品页面。旧 app 只允许以非 `.app` 目录保留在非应用位置，避免被 Launch Services、Launchpad 或 Dock 注册为入口。
 - 当前只生成 macOS 15+ arm64 app/DMG，捆绑 Node 24.18.0、可重定位 Python 3.12/MLX runtime、production Server 与 built PWA assets；Qwen 模型由用户首次下载到受控数据目录。
 - 当前交付渠道仅限项目所有者在受控本机从可信源码构建并个人使用。ad-hoc 签名只用于本地 bundle 结构和生命周期验证，不得作为公开下载或外部分发凭据。
@@ -412,6 +413,8 @@ apps/
 │       │   └── profile-preferences/
 │       ├── audio/                  # single Audio Engine facade
 │       └── shared/                 # transport, primitives, utilities
+├── desktop/
+│   └── src/                        # Electron main process and shell policy
 └── server/
     └── src/
         ├── bootstrap/              # process composition, Fastify startup
@@ -433,7 +436,7 @@ native/
 └── macos/
     └── qwen-tts-helper/            # persistent Python/MLX JSONL bridge
 packaging/
-└── macos/                           # launcher and Node entitlements
+└── macos/                           # Electron, Node and Python entitlements
 scripts/
 └── release/                         # local package build and verification
 ```
@@ -479,7 +482,7 @@ scripts/
 - Codex 通过参数数组启动，禁止拼接 shell command；命令路径需验证。
 - Qwen3-TTS 通过固定路径的 bundled Python/MLX helper 调用；参数使用数组，DJ 文本经结构化 stdin 传递而不得进入 argv，stdout 只允许脱敏 JSON 结果。
 - 固定 revision 模型由用户明确触发下载，逐文件校验大小与 SHA-256 后原子安装；下载与数据目录迁移互斥，退出时中止并清理应用拥有的 partial。
-- Python helper 继承受限环境且不拥有业务秘密；当前 ad-hoc 个人预览仅对 Python 子进程使用加载已重签 native extensions 所需的 library-validation entitlement，launcher 与 Node 不继承。外部分发前必须以 Developer ID 同 Team 重签全部 Mach-O 并重新评估该权限。
+- Python helper 继承受限环境且不拥有业务秘密；当前 ad-hoc 个人预览对 Electron 主进程、Electron helpers 和 Python 子进程分别使用最小化的 hardened-runtime entitlements，Qwen native extensions 所需的 library-validation 权限不向业务 Renderer 暴露。外部分发前必须以 Developer ID 同 Team 重签全部 Mach-O 并重新评估该权限。
 - v1 只枚举并使用当前设备已安装的标准系统语音；显式 voice identifier 每次合成前验证仍在可用列表，未显式指定时按语言优先 compact、再选 ttsbundle、最后选择其他标准语音，同级按 identifier 排序，不请求 Personal Voice 授权。
 - TTS helper 输出的 PCM/音频元数据必须校验，目标文件只能由 FileStore 分配；超时或取消时终止 helper 并忽略迟到输出。
 - DB 与缓存使用当前用户最小权限且备份无明文密钥；错误只暴露稳定 code 与安全 message。

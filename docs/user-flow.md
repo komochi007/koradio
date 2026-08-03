@@ -19,7 +19,7 @@
              v                          v
 +------------------------+      +----------------------+
 | 不打开旧版             |      | 启动 bundled 服务     |
-| 显示更新失败与重试说明 |      | 打开 Chrome 独立窗口  |
+| 显示更新失败与重试说明 |      | 打开 Electron 桌面窗口  |
 +------------------------+      +----------+-----------+
                                         |
                                         v
@@ -338,13 +338,13 @@
      ├─ 成功：原位替换 /Applications/Koradio.app，重新启动最新版
      └─ 失败：保留当前 app 与用户数据，但不打开旧版
   -> 网络或远端检查失败：不启动服务、不打开普通网页或独立窗口
-  -> 产品页面只以 Chrome 独立应用窗口打开，不创建第二个 PWA 安装图标
+  -> 产品页面只在 Electron 桌面窗口中打开，不创建第二个 PWA 安装图标
 ```
 
 ## 6.1 运行模式与数据来源
 
 ```text
-[Production / macOS launcher]
+[Production / macOS Electron shell]
   -> 默认 LIVE
   -> Radio / Library / Settings 显示 LIVE
   -> Library 总数和策展候选排除 DEMO 数据
