@@ -7,14 +7,16 @@ import {
   readFile,
   readdir,
   rename,
+  rm,
   stat,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import process from "node:process";
 import { URL, fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import { setTimeout as delay } from "node:timers/promises";
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
@@ -97,7 +99,7 @@ async function readApplicationVersion(application) {
 }
 
 async function assertApplication(application) {
-  if (!application.endsWith("Koradio.app")) {
+  if (!/^Koradio(?:-\d+\.\d+\.\d+-arm64)?\.app$/.test(basename(application))) {
     fail(`Expected a Koradio.app bundle: ${application}`);
   }
   await access(join(application, "Contents/MacOS/Koradio"));
@@ -165,28 +167,44 @@ async function assertDataRetained(dataDirectory, expectedSnapshot) {
 }
 
 async function assertNoKoradioListeners() {
-  const result = await run("lsof", ["-nP", "-iTCP:49373-49383", "-sTCP:LISTEN"]);
-  if (result.code === 0 && result.stdout.trim().length > 0) {
-    fail(`Koradio loopback port is already in use: ${result.stdout.trim()}`);
+  const deadline = Date.now() + 15_000;
+  let lastListeners = "";
+  while (Date.now() < deadline) {
+    const result = await run("lsof", ["-nP", "-iTCP:49373-49383", "-sTCP:LISTEN"]);
+    if (result.code === 0 && result.stdout.trim().length > 0) {
+      lastListeners = result.stdout.trim();
+      await delay(100);
+      continue;
+    }
+    if (result.code !== 0 && result.code !== 1) {
+      fail(`Could not inspect Koradio loopback ports: ${result.stderr.trim()}`);
+    }
+    return;
   }
-  if (result.code !== 0 && result.code !== 1) {
-    fail(`Could not inspect Koradio loopback ports: ${result.stderr.trim()}`);
-  }
+  fail(`Koradio loopback port is already in use: ${lastListeners}`);
 }
 
 async function runSmoke(application, dataDirectory, expectSuccess) {
+  const smokeUserDataDirectory = `${dataDirectory}-electron-user-data`;
+  await mkdir(dataDirectory, { recursive: true });
+  await mkdir(smokeUserDataDirectory, { recursive: true });
   await assertNoKoradioListeners();
   const result = await run(join(application, "Contents/MacOS/Koradio"), ["--smoke"], {
     env: {
       ...process.env,
+      KORADIO_DESKTOP_SMOKE_USER_DATA_DIR: smokeUserDataDirectory,
       KORADIO_LAUNCHER_SMOKE_DATA_DIR: dataDirectory,
     },
   });
   await assertNoKoradioListeners();
-  if (
-    expectSuccess &&
-    (result.code !== 0 || result.stdout.trim().split("\n").at(-1) !== '{"ok":true}')
-  ) {
+  const smokeLine = result.stdout.trim().split("\n").at(-1);
+  let smokePayload;
+  try {
+    smokePayload = smokeLine === undefined ? undefined : JSON.parse(smokeLine);
+  } catch {
+    smokePayload = undefined;
+  }
+  if (expectSuccess && (result.code !== 0 || smokePayload?.ok !== true)) {
     fail(`Expected launcher startup success: ${result.stderr.trim()}`);
   }
   if (!expectSuccess && result.code === 0) {
@@ -217,7 +235,7 @@ async function installApplication(source, target, recordDirectory) {
 
   const stagingDirectory = await mkdtemp(join(recordDirectory, "candidate-"));
   const candidate = join(stagingDirectory, "Koradio.app");
-  await cp(source, candidate, { recursive: true });
+  await cp(source, candidate, { recursive: true, verbatimSymlinks: true });
   if ((await assertApplication(candidate)) !== candidateVersion) {
     fail("Copied app version does not match the selected candidate");
   }
@@ -258,69 +276,77 @@ async function verifyLifecycle() {
   }
 
   const root = await mkdtemp(join(tmpdir(), "koradio-lifecycle-"));
-  const applications = join(root, "Applications");
-  const installedApplication = join(applications, "Koradio.app");
-  const records = join(root, "preserved-apps");
-  const dataDirectory = join(root, "Koradio-data");
-  await mkdir(applications, { recursive: true });
-  await mkdir(records, { recursive: true });
-
-  await installApplication(oldApplication, installedApplication, records);
-  await runSmoke(installedApplication, dataDirectory, true);
-  await writeFile(
-    join(dataDirectory, "s7-02-data-retention-sentinel.txt"),
-    "preserve this user data\n",
-    "utf8",
-  );
-  const dataSnapshot = await snapshotDirectory(dataDirectory);
-
-  await installApplication(oldApplication, installedApplication, records);
-  await assertSameDataRoot(dataDirectory, dataSnapshot);
-
-  await installApplication(newApplication, installedApplication, records);
-  await runSmoke(installedApplication, dataDirectory, true);
-  await assertDataRetained(dataDirectory, dataSnapshot);
-
-  let downgradeRefused = false;
   try {
+    const applications = join(root, "Applications");
+    const installedApplication = join(applications, "Koradio.app");
+    const records = join(root, "preserved-apps");
+    const dataDirectory = join(root, "Koradio-data");
+    await mkdir(applications, { recursive: true });
+    await mkdir(records, { recursive: true });
+
     await installApplication(oldApplication, installedApplication, records);
-  } catch (error) {
-    downgradeRefused = error instanceof Error && error.message.includes("Refusing downgrade");
-  }
-  if (!downgradeRefused || (await readApplicationVersion(installedApplication)) !== newVersion) {
-    fail("Downgrade was not refused before replacing the installed app");
-  }
-  await assertDataRetained(dataDirectory, dataSnapshot);
+    await runSmoke(installedApplication, dataDirectory, true);
+    await writeFile(
+      join(dataDirectory, "s7-02-data-retention-sentinel.txt"),
+      "preserve this user data\n",
+      "utf8",
+    );
+    const dataSnapshot = await snapshotDirectory(dataDirectory);
 
-  const brokenDirectory = await mkdtemp(join(records, "broken-candidate-"));
-  const brokenApplication = join(brokenDirectory, "Koradio.app");
-  await cp(newApplication, brokenApplication, { recursive: true });
-  await rename(
-    join(brokenApplication, "Contents/Resources/app/apps/server/dist/bootstrap/main.js"),
-    join(brokenApplication, "Contents/Resources/app/apps/server/dist/bootstrap/main.js.disabled"),
-  );
-  const failedInstall = await installApplication(brokenApplication, installedApplication, records);
-  if (failedInstall.previous === undefined) {
-    fail("Failed startup candidate did not preserve the previous app");
-  }
-  await runSmoke(installedApplication, dataDirectory, false);
-  await rollbackApplication(installedApplication, failedInstall.previous, records);
-  await runSmoke(installedApplication, dataDirectory, true);
-  await assertDataRetained(dataDirectory, dataSnapshot);
+    await installApplication(oldApplication, installedApplication, records);
+    await assertSameDataRoot(dataDirectory, dataSnapshot);
 
-  await preserveApplication(installedApplication, records, "uninstalled");
-  try {
-    await stat(installedApplication);
-    fail("Uninstall did not remove the app from the Applications target");
-  } catch (error) {
-    if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
-  }
-  await assertDataRetained(dataDirectory, dataSnapshot);
-  await assertNoKoradioListeners();
+    await installApplication(newApplication, installedApplication, records);
+    await runSmoke(installedApplication, dataDirectory, true);
+    await assertDataRetained(dataDirectory, dataSnapshot);
 
-  process.stdout.write(
-    `${JSON.stringify({ architecture: oldArchitecture, newVersion, oldVersion, root, scenarios: 7 })}\n`,
-  );
+    let downgradeRefused = false;
+    try {
+      await installApplication(oldApplication, installedApplication, records);
+    } catch (error) {
+      downgradeRefused = error instanceof Error && error.message.includes("Refusing downgrade");
+    }
+    if (!downgradeRefused || (await readApplicationVersion(installedApplication)) !== newVersion) {
+      fail("Downgrade was not refused before replacing the installed app");
+    }
+    await assertDataRetained(dataDirectory, dataSnapshot);
+
+    const brokenDirectory = await mkdtemp(join(records, "broken-candidate-"));
+    const brokenApplication = join(brokenDirectory, "Koradio.app");
+    await cp(newApplication, brokenApplication, { recursive: true, verbatimSymlinks: true });
+    await rename(
+      join(brokenApplication, "Contents/Resources/app/apps/server/dist/bootstrap/main.js"),
+      join(brokenApplication, "Contents/Resources/app/apps/server/dist/bootstrap/main.js.disabled"),
+    );
+    const failedInstall = await installApplication(
+      brokenApplication,
+      installedApplication,
+      records,
+    );
+    if (failedInstall.previous === undefined) {
+      fail("Failed startup candidate did not preserve the previous app");
+    }
+    await runSmoke(installedApplication, dataDirectory, false);
+    await rollbackApplication(installedApplication, failedInstall.previous, records);
+    await runSmoke(installedApplication, dataDirectory, true);
+    await assertDataRetained(dataDirectory, dataSnapshot);
+
+    await preserveApplication(installedApplication, records, "uninstalled");
+    try {
+      await stat(installedApplication);
+      fail("Uninstall did not remove the app from the Applications target");
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+    }
+    await assertDataRetained(dataDirectory, dataSnapshot);
+    await assertNoKoradioListeners();
+
+    process.stdout.write(
+      `${JSON.stringify({ architecture: oldArchitecture, newVersion, oldVersion, root, scenarios: 7 })}\n`,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 }
 
 verifyLifecycle().catch((error) => {

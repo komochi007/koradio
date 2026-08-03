@@ -6,18 +6,24 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
+  readlink,
   rename,
   rm,
+  symlink,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import { arch, platform } from "node:os";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import process from "node:process";
 import { URL, fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import { packager } from "@electron/packager";
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const nodeVersion = "24.18.0";
+const electronVersion = "43.2.0";
 const pythonVersion = "3.12.13";
 const uvVersion = "0.11.32";
 const uvArchiveSha256 = "ed336d0ba49db8ef89b2b41fffa372ce63bd032f22a56f001c265891aec32829";
@@ -219,30 +225,6 @@ async function downloadUvArchive(cacheDirectory) {
   return archive;
 }
 
-async function writeInfoPlist(path, version) {
-  await writeFile(
-    path,
-    `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-<key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
-<key>CFBundleExecutable</key><string>Koradio</string>
-<key>CFBundleIdentifier</key><string>app.koradio.launcher</string>
-<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-<key>CFBundleIconFile</key><string>${applicationIconName}</string>
-<key>CFBundleName</key><string>Koradio</string>
-<key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>${version}</string>
-<key>CFBundleVersion</key><string>${version}</string>
-<key>LSMinimumSystemVersion</key><string>15.0</string>
-<key>LSUIElement</key><true/>
-<key>NSHighResolutionCapable</key><true/>
-</dict></plist>
-`,
-    "utf8",
-  );
-}
-
 async function writeApplicationIcon(iconsetDirectory, destination) {
   const source = resolve(repositoryRoot, "apps/web/public/icons/koradio-app-icon.svg");
   await mkdir(iconsetDirectory, { recursive: true });
@@ -260,6 +242,36 @@ async function writeApplicationIcon(iconsetDirectory, destination) {
     ]);
   }
   await run("/usr/bin/iconutil", ["--convert", "icns", "--output", destination, iconsetDirectory]);
+}
+
+function isWithin(root, candidate) {
+  return candidate === root || candidate.startsWith(`${root}/`);
+}
+
+async function repairCopiedSymlinks(sourceRoot, targetRoot) {
+  const directories = [targetRoot];
+  while (directories.length > 0) {
+    const directory = directories.pop();
+    const entries = await readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      const current = resolve(directory, entry.name);
+      if (entry.isSymbolicLink()) {
+        const target = await readlink(current);
+        const resolvedTarget = resolve(dirname(current), target);
+        if (isWithin(targetRoot, resolvedTarget)) continue;
+        if (!isWithin(sourceRoot, resolvedTarget)) {
+          fail(`Packaged server symlink escapes its resource root: ${current}`);
+        }
+        const sourceRelative = relative(sourceRoot, resolvedTarget);
+        const destinationTarget = resolve(targetRoot, sourceRelative);
+        const repairedTarget = relative(dirname(current), destinationTarget);
+        await unlink(current);
+        await symlink(repairedTarget, current);
+      } else if (entry.isDirectory()) {
+        directories.push(current);
+      }
+    }
+  }
 }
 
 async function runPnpm(nodeExecutable, commandArguments, environment) {
@@ -316,33 +328,31 @@ async function build() {
   const stagingRoot = await mkdtemp(resolve(outputDirectory, `.staging-${architecture}-`));
   try {
     const buildToolDirectory = resolve(stagingRoot, ".toolchain");
-    const application = resolve(stagingRoot, "Koradio.app");
-    const contents = resolve(application, "Contents");
-    const macOs = resolve(contents, "MacOS");
-    const resources = resolve(contents, "Resources");
-    const runtime = resolve(resources, "runtime");
-    const qwenRuntime = resolve(resources, "qwen-runtime");
-    const qwenHelper = resolve(resources, "qwen-tts-helper/main.py");
-    const updaterTarget = resolve(resources, "updater");
-    const serverTarget = resolve(resources, "app/apps/server");
-    const webTarget = resolve(resources, "app/apps/web/dist");
-    await mkdir(macOs, { recursive: true });
+    const electronSource = resolve(stagingRoot, "electron-app");
+    const runtime = resolve(stagingRoot, "runtime");
+    const qwenRuntime = resolve(stagingRoot, "qwen-runtime");
+    const qwenHelperDirectory = resolve(stagingRoot, "qwen-tts-helper");
+    const qwenHelper = resolve(qwenHelperDirectory, "main.py");
+    const updaterTarget = resolve(stagingRoot, "updater");
+    const serverTarget = resolve(electronSource, "apps/server");
+    const webTarget = resolve(electronSource, "apps/web/dist");
+    const metadataTarget = resolve(stagingRoot, "build-metadata.json");
+    const iconTarget = resolve(stagingRoot, `${applicationIconName}.icns`);
     await mkdir(runtime, { recursive: true });
     await mkdir(buildToolDirectory, { recursive: true });
     await mkdir(dirname(serverTarget), { recursive: true });
     await mkdir(dirname(webTarget), { recursive: true });
-    await mkdir(dirname(qwenHelper), { recursive: true });
+    await mkdir(electronSource, { recursive: true });
+    await mkdir(qwenHelperDirectory, { recursive: true });
     await mkdir(updaterTarget, { recursive: true });
-    await writeInfoPlist(resolve(contents, "Info.plist"), version);
-    await writeApplicationIcon(
-      resolve(buildToolDirectory, "Koradio.iconset"),
-      resolve(resources, `${applicationIconName}.icns`),
-    );
+    await writeApplicationIcon(resolve(buildToolDirectory, "Koradio.iconset"), iconTarget);
     await writeFile(
-      resolve(resources, "build-metadata.json"),
+      metadataTarget,
       `${JSON.stringify(
         {
+          electronVersion,
           schemaVersion: 1,
+          shell: "electron",
           sourceCommit,
           sourceRemote: "https://github.com/komochi007/koradio.git",
           version,
@@ -401,7 +411,7 @@ async function build() {
     );
     await cp(resolve(managedPython, "../.."), qwenRuntime, {
       recursive: true,
-      verbatimSymlinks: true,
+      dereference: true,
     });
     await run(
       uv,
@@ -454,67 +464,84 @@ async function build() {
       buildEnvironment,
     );
     await cp(resolve(repositoryRoot, "apps/web/dist"), webTarget, { recursive: true });
+    await mkdir(resolve(electronSource, "apps"), { recursive: true });
+    await cp(
+      resolve(repositoryRoot, "apps/desktop/package.json"),
+      resolve(electronSource, "package.json"),
+    );
+    await cp(resolve(repositoryRoot, "apps/desktop/dist"), resolve(electronSource, "dist"), {
+      recursive: true,
+    });
 
-    const swiftTarget = "arm64-apple-macos15.0";
-    await run("swiftc", [
-      "-target",
-      swiftTarget,
-      "-framework",
-      "AppKit",
-      "-o",
-      resolve(macOs, "Koradio"),
-      resolve(repositoryRoot, "packaging/macos/launcher/main.swift"),
-    ]);
-    await chmod(resolve(macOs, "Koradio"), 0o755);
-    await run("codesign", [
-      "--force",
-      "--sign",
-      "-",
-      "--options",
-      "runtime",
-      "--entitlements",
-      resolve(repositoryRoot, "packaging/macos/node-entitlements.plist"),
-      resolve(runtime, "bin/node"),
-    ]);
-    await run("find", [
-      qwenRuntime,
-      "-type",
-      "f",
-      "(",
-      "-name",
-      "*.so",
-      "-o",
-      "-name",
-      "*.dylib",
-      ")",
-      "-exec",
-      "codesign",
-      "--force",
-      "--sign",
-      "-",
-      "{}",
-      ";",
-    ]);
-    await run("codesign", [
-      "--force",
-      "--deep",
-      "--sign",
-      "-",
-      "--options",
-      "runtime",
-      "--entitlements",
-      resolve(repositoryRoot, "packaging/macos/python-entitlements.plist"),
-      resolve(qwenRuntime, "bin/python"),
-    ]);
-    await run("codesign", [
-      "--force",
-      "--deep",
-      "--sign",
-      "-",
-      "--options",
-      "runtime",
-      application,
-    ]);
+    const [packageDirectory] = await packager({
+      appBundleId: "app.koradio.launcher",
+      appVersion: version,
+      arch: architecture,
+      asar: false,
+      buildVersion: version,
+      dir: electronSource,
+      derefSymlinks: false,
+      download: { cacheRoot: resolve(cacheDirectory, "electron") },
+      electronVersion,
+      executableName: "Koradio",
+      extendInfo: {
+        CFBundleIconFile: `${applicationIconName}.icns`,
+        LSMinimumSystemVersion: "15.0",
+        NSHighResolutionCapable: true,
+      },
+      extraResource: [runtime, qwenRuntime, qwenHelperDirectory, updaterTarget, metadataTarget],
+      icon: iconTarget,
+      name: "Koradio",
+      out: stagingRoot,
+      overwrite: true,
+      platform: "darwin",
+      prune: false,
+      afterCopy: [
+        async ({ buildPath }) => {
+          await repairCopiedSymlinks(serverTarget, resolve(buildPath, "apps/server"));
+        },
+      ],
+      osxSign: {
+        continueOnError: false,
+        identity: "-",
+        identityValidation: false,
+        preAutoEntitlements: false,
+        preEmbedProvisioningProfile: false,
+        optionsForFile(filePath) {
+          const normalizedPath = filePath.replaceAll("\\", "/");
+          if (normalizedPath.endsWith("/Contents/Resources/runtime/bin/node")) {
+            return {
+              entitlements: resolve(repositoryRoot, "packaging/macos/node-entitlements.plist"),
+              hardenedRuntime: true,
+              signatureFlags: "runtime",
+            };
+          }
+          if (normalizedPath.endsWith("/Contents/Resources/qwen-runtime/bin/python")) {
+            return {
+              entitlements: resolve(repositoryRoot, "packaging/macos/python-entitlements.plist"),
+              hardenedRuntime: true,
+              signatureFlags: "runtime",
+            };
+          }
+          if (normalizedPath.endsWith("/Contents/MacOS/Koradio")) {
+            return {
+              entitlements: resolve(repositoryRoot, "packaging/macos/electron-entitlements.plist"),
+              hardenedRuntime: true,
+              signatureFlags: "runtime",
+            };
+          }
+          return {
+            entitlements: resolve(
+              repositoryRoot,
+              "packaging/macos/electron-entitlements-inherit.plist",
+            ),
+            hardenedRuntime: true,
+            signatureFlags: "runtime",
+          };
+        },
+      },
+    });
+    const application = resolve(packageDirectory, "Koradio.app");
     await run("codesign", ["--verify", "--deep", "--strict", application]);
     if (!noDmg) {
       await run("hdiutil", [

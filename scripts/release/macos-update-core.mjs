@@ -13,11 +13,22 @@ export function parseBuildMetadata(value) {
   ) {
     throw new Error("Invalid Koradio build metadata");
   }
+  if (
+    value.shell !== undefined &&
+    (value.shell !== "electron" ||
+      typeof value.electronVersion !== "string" ||
+      !/^\d+\.\d+\.\d+$/.test(value.electronVersion))
+  ) {
+    throw new Error("Invalid Koradio build metadata");
+  }
   return {
     schemaVersion: 1,
     sourceCommit: value.sourceCommit,
     sourceRemote: value.sourceRemote,
     version: value.version,
+    ...(value.shell === "electron"
+      ? { electronVersion: value.electronVersion, shell: value.shell }
+      : {}),
   };
 }
 

@@ -8,6 +8,8 @@ import { spawn } from "node:child_process";
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const applicationBundleIdentifier = "app.koradio.launcher";
 const applicationIconName = "KoradioAppIconPadded";
+const applicationIconFileName = `${applicationIconName}.icns`;
+const electronVersion = "43.2.0";
 const applicationIconRepresentations = [
   "icon_16x16.png",
   "icon_16x16@2x.png",
@@ -48,9 +50,43 @@ function run(executable, commandArguments, { input, ...options } = {}) {
   });
 }
 
+async function assertMissing(path) {
+  try {
+    await access(path);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return;
+    throw error;
+  }
+  throw new Error(`Unexpected packaged resource exists: ${path}`);
+}
+
+function parseSmokeResult(stdout) {
+  const line = stdout.trim().split("\n").at(-1);
+  if (line === undefined || line.length === 0) {
+    throw new Error("Electron smoke result is missing");
+  }
+  try {
+    return JSON.parse(line);
+  } catch {
+    throw new Error("Electron smoke result is not JSON");
+  }
+}
+
 async function verifyApplication(application) {
   const infoPlist = resolve(application, "Contents/Info.plist");
   const launcher = resolve(application, "Contents/MacOS/Koradio");
+  const electronFramework = resolve(
+    application,
+    "Contents/Frameworks/Electron Framework.framework",
+  );
+  const electronHelper = resolve(application, "Contents/Frameworks/Koradio Helper.app");
+  const desktopPackage = resolve(application, "Contents/Resources/app/package.json");
+  const desktopMain = resolve(application, "Contents/Resources/app/dist/main.js");
+  const serverEntrypoint = resolve(
+    application,
+    "Contents/Resources/app/apps/server/dist/bootstrap/main.js",
+  );
+  const webIndex = resolve(application, "Contents/Resources/app/apps/web/dist/index.html");
   const node = resolve(application, "Contents/Resources/runtime/bin/node");
   const corepack = resolve(
     application,
@@ -58,7 +94,7 @@ async function verifyApplication(application) {
   );
   const python = resolve(application, "Contents/Resources/qwen-runtime/bin/python");
   const helper = resolve(application, "Contents/Resources/qwen-tts-helper/main.py");
-  const icon = resolve(application, `Contents/Resources/${applicationIconName}.icns`);
+  const icon = resolve(application, `Contents/Resources/${applicationIconFileName}`);
   const updater = resolve(application, "Contents/Resources/updater/update-macos.mjs");
   const updaterCore = resolve(application, "Contents/Resources/updater/macos-update-core.mjs");
   const metadata = JSON.parse(
@@ -66,13 +102,35 @@ async function verifyApplication(application) {
   );
   if (
     metadata.schemaVersion !== 1 ||
+    metadata.shell !== "electron" ||
+    metadata.electronVersion !== electronVersion ||
     !/^[0-9a-f]{40}$/.test(metadata.sourceCommit) ||
     metadata.sourceRemote !== "https://github.com/komochi007/koradio.git"
   ) {
     throw new Error("Build metadata is invalid");
   }
-  await Promise.all([access(corepack), access(icon), access(updater), access(updaterCore)]);
+  const desktopPackageJson = JSON.parse(await readFile(desktopPackage, "utf8"));
+  if (
+    desktopPackageJson.name !== "@koradio/desktop" ||
+    desktopPackageJson.main !== "dist/main.js"
+  ) {
+    throw new Error("Electron desktop package metadata is invalid");
+  }
+  await Promise.all([
+    access(electronFramework),
+    access(electronHelper),
+    access(serverEntrypoint),
+    access(webIndex),
+    access(desktopMain),
+    access(corepack),
+    access(icon),
+    access(updater),
+    access(updaterCore),
+    assertMissing(resolve(application, "Contents/Resources/Google Chrome.app")),
+    assertMissing(resolve(application, "Contents/Resources/app.asar")),
+  ]);
   const dataDirectory = await mkdtemp(resolve(tmpdir(), "koradio-package-smoke-"));
+  const smokeUserDataDirectory = `${dataDirectory}-electron-user-data`;
   const pythonEnvironment = {
     ...process.env,
     PYTHONDONTWRITEBYTECODE: "1",
@@ -92,9 +150,11 @@ async function verifyApplication(application) {
       "raw",
       infoPlist,
     ]);
+    const info = await run("/usr/bin/plutil", ["-p", infoPlist]);
     if (
       bundleIdentifier.stdout.trim() !== applicationBundleIdentifier ||
-      iconName.stdout.trim() !== applicationIconName
+      iconName.stdout.trim() !== applicationIconFileName ||
+      /\bLSUIElement\b.*=>\s*(?:1|true)/.test(info.stdout)
     ) {
       throw new Error("Application identity metadata is invalid");
     }
@@ -129,12 +189,21 @@ async function verifyApplication(application) {
     const smoke = await run(launcher, ["--smoke"], {
       env: {
         ...process.env,
+        KORADIO_DESKTOP_SMOKE_USER_DATA_DIR: smokeUserDataDirectory,
         KORADIO_LAUNCHER_SMOKE_DATA_DIR: dataDirectory,
       },
     });
-    const smokeLines = smoke.stdout.trim().split("\n");
-    if (smokeLines.at(-1) !== '{"ok":true}') {
-      throw new Error("Launcher smoke result is invalid");
+    const smokeResult = parseSmokeResult(smoke.stdout);
+    if (
+      smokeResult.ok !== true ||
+      smokeResult.renderer !== true ||
+      typeof smokeResult.origin !== "string" ||
+      !/^http:\/\/127\.0\.0\.1:\d+$/.test(smokeResult.origin) ||
+      !Number.isInteger(smokeResult.port) ||
+      smokeResult.port < 49373 ||
+      smokeResult.port > 49383
+    ) {
+      throw new Error("Electron smoke result is invalid");
     }
     await run("codesign", ["--verify", "--deep", "--strict", application]);
     return {
@@ -145,6 +214,7 @@ async function verifyApplication(application) {
     };
   } finally {
     await rm(dataDirectory, { force: true, recursive: true });
+    await rm(smokeUserDataDirectory, { force: true, recursive: true });
   }
 }
 

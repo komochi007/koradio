@@ -19,12 +19,22 @@ const metadata = {
 describe("macOS Personal Local Preview updater", () => {
   it("accepts only pinned build provenance", () => {
     expect(parseBuildMetadata(metadata)).toEqual(metadata);
+    expect(
+      parseBuildMetadata({ ...metadata, electronVersion: "43.2.0", shell: "electron" }),
+    ).toEqual({
+      ...metadata,
+      electronVersion: "43.2.0",
+      shell: "electron",
+    });
     expect(() =>
       parseBuildMetadata({ ...metadata, sourceRemote: "https://example.com/koradio.git" }),
     ).toThrow("Invalid Koradio build metadata");
     expect(() => parseBuildMetadata({ ...metadata, sourceCommit: "main" })).toThrow(
       "Invalid Koradio build metadata",
     );
+    expect(() =>
+      parseBuildMetadata({ ...metadata, electronVersion: "43.2", shell: "electron" }),
+    ).toThrow("Invalid Koradio build metadata");
   });
 
   it("maps the trusted commit count to a monotonic numeric app version", () => {
