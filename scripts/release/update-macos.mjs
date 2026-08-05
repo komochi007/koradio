@@ -201,7 +201,7 @@ async function update() {
   });
   const version = versionFromCommitCount(Number(commitCountResult.stdout.trim()));
   const buildDirectory = await mkdtemp(join(tmpdir(), "koradio-auto-update-"));
-  const bundledNode = join(application, "Contents/Resources/runtime/bin/node");
+  const updaterNode = process.execPath;
   const pnpmEntry = join(
     application,
     "Contents/Resources/runtime/lib/node_modules/corepack/dist/pnpm.js",
@@ -210,7 +210,7 @@ async function update() {
   const verifyScript = join(sourceDirectory, "scripts/release/verify-macos-package.mjs");
   try {
     await run(
-      bundledNode,
+      updaterNode,
       [
         buildScript,
         "--arch",
@@ -235,7 +235,7 @@ async function update() {
       },
     );
     const candidate = join(buildDirectory, `Koradio-${version}-arm64.app`);
-    await run(bundledNode, [verifyScript, candidate], {
+    await run(updaterNode, [verifyScript, candidate], {
       cwd: sourceDirectory,
       env: process.env,
     });

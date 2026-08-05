@@ -30,6 +30,18 @@ describe("macOS Personal Local Preview updater", () => {
     ).toBeLessThan(buildScript.indexOf('await import("@electron/packager")'));
   });
 
+  it("uses the prepared updater Node for packaging and verification", async () => {
+    const updateScript = await readFile(
+      fileURLToPath(new URL("../../scripts/release/update-macos.mjs", import.meta.url)),
+      "utf8",
+    );
+    expect(updateScript).toContain("const updaterNode = process.execPath;");
+    expect(updateScript).toContain("await run(updaterNode, [verifyScript, candidate]");
+    expect(updateScript).not.toContain(
+      'const bundledNode = join(application, "Contents/Resources/runtime/bin/node");',
+    );
+  });
+
   it("accepts only pinned build provenance", () => {
     expect(parseBuildMetadata(metadata)).toEqual(metadata);
     expect(
