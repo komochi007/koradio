@@ -1,6 +1,6 @@
 # Koradio 唯一入口、自动更新与恢复
 
-> Scope: S7-02/S7-07 Personal Local Preview；不适用于外部分发、签名公证、Gatekeeper 或干净 Mac 验收。
+> Scope: S7-02/S7-07/S7-09 Personal Local Preview；不适用于外部分发、签名公证、Gatekeeper 或干净 Mac 验收。
 
 ## 前提
 
@@ -24,7 +24,7 @@
 
 ## 首次安装与手动恢复
 
-1. 首次安装时，仅把已经验证且带有效 `build-metadata.json` 的 `Koradio.app` 安装到 `/Applications/Koradio.app`。不要以管理员身份启动 Local Service。
+1. 首次安装时，仅把已经验证且带有效 `build-metadata.json` 的 `Koradio.app` 安装到 `/Applications/Koradio.app`。版本化 `Koradio-<semver>-arm64.app` 仅用于受控 package smoke 或本机预览，不得与固定入口并存。不要以管理员身份启动 Local Service。
 2. 安装前退出 Koradio，并确认其他 `Applications` 目录与 Dock 中不存在第二个 Koradio `.app` 或 PWA 入口。
 3. 自动替换失败时，updater 会把旧 app 恢复到固定路径；候选包不会作为第二个入口保留。
 4. 需要人工回滚时，退出 Koradio，把固定路径当前 app 移入新的非 `.app` 备份目录，再将目标 `*.backup` 恢复为 `/Applications/Koradio.app`。回滚后启动仍会先检查远端；只要远端仍是更新版本，旧版不会被打开。
@@ -40,7 +40,7 @@ node scripts/release/build-macos.mjs \
   --arch arm64 \
   --version "0.0.$COUNT" \
   --commit "$COMMIT" \
-  --output artifacts/macos/s7-07 \
+  --output artifacts/macos/s7-09 \
   --keep-app \
   --no-dmg
 ```
@@ -55,7 +55,7 @@ NEW_APP=/absolute/path/to/Koradio-0.0.2.app
 pnpm verify:lifecycle:macos --old "$OLD_APP" --new "$NEW_APP"
 ```
 
-验证器在新的系统临时目录中运行，保留该目录及被替换、失败和卸载的 app 副本，不删除任何用户文件。它验证：
+验证器在新的系统临时目录中运行，完成或失败后清理其自有临时目录及 app 副本，不删除任何用户文件。它验证：
 
 | 场景 | 预期结果 |
 |---|---|
@@ -69,4 +69,4 @@ pnpm verify:lifecycle:macos --old "$OLD_APP" --new "$NEW_APP"
 | 唯一入口 | 只有固定 `/Applications/Koradio.app` 使用 `.app` 后缀；第二个 PWA 入口和其他 Koradio `.app` 不存在。 |
 | 启动前更新 | 每次正常打开都读取可信 `origin/main`；更新失败不启动 Local Service 或 Electron 产品窗口。 |
 
-当前产品默认 Mock Provider，生命周期验证不创建或修改真实 Keychain item；手动 app 替换和移除均不调用 Keychain 操作。真实 Provider 凭据与外部分发环境的复验留给后续任务。
+生命周期验证使用 Mock Provider，不创建或修改真实 Keychain item；手动 app 替换和移除均不调用 Keychain 操作。常规 Electron 预览的 packaged runtime 使用 `live` 默认。真实 Provider 凭据与外部分发环境的复验留给后续任务。

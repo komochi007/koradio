@@ -13,6 +13,8 @@ Koradio 当前仍处于 Documentation-first 阶段，没有 `package.json`、产
 
 S1 脚手架需要稳定的 `dev` 合同，S2 session/Origin 安全实现需要明确 token 传递方式，S0-05 macOS 包装 PoC 也需要知道生产入口和端口选择边界。本 ADR 只裁决运行拓扑和安全边界，不声明这些配置已经实现。
 
+> 历史说明（2026-08-05）：以上两段记录 2026-07-15 作出决策时的背景，并非当前实现状态。S1～S6 已完成，macOS 桌面壳已由 [ADR 0006](0006-electron-desktop-shell.md) 决定为 Electron；本 ADR 的拓扑与安全决策仍有效，当前事实以 `README.md`、`context.md` 与 `architecture.md` 为准。
+
 ## 2. 决策范围
 
 ### 包含
@@ -75,7 +77,7 @@ S1 脚手架需要稳定的 `dev` 合同，S2 session/Origin 安全实现需要�
 ### 5.1 Development 拓扑
 
 ```text
-Browser PWA
+Web Renderer (React PWA)
   ├─ http://127.0.0.1:5173/              Vite dev server, Web/HMR only
   └─ http://127.0.0.1:49373/api/v1       Fastify Local Service
        └─ ws://127.0.0.1:49373/api/v1/events
@@ -91,7 +93,7 @@ Browser PWA
 ### 5.2 Production 拓扑
 
 ```text
-Browser PWA
+Web Renderer (React PWA)
   └─ http://127.0.0.1:<selected-port>/
        ├─ built PWA assets
        ├─ REST /api/v1
@@ -110,7 +112,7 @@ Browser PWA
 ```mermaid
 sequenceDiagram
     participant S as Local Service
-    participant B as Browser PWA
+    participant B as Web Renderer
     participant A as REST / WebSocket
     S->>S: Bind loopback, select port, generate in-memory session secret
     B->>S: GET app shell from allowed origin

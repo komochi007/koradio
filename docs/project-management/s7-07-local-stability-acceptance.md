@@ -3,16 +3,16 @@
 > Task：`S7-07`
 > 状态：进行中
 > 开始日期：2026-07-23
-> 范围：项目所有者 macOS arm64、Personal Local Preview、固定原生入口打开的 Chrome 独立窗口、显式 `live` Provider；不含外部分发、遥测、x64、独立干净 Mac 与 Developer ID 签名公证。
+> 范围：项目所有者 macOS arm64、Personal Local Preview、固定 Electron 桌面入口加载既有 Web Renderer、显式 `live` Provider；不含外部分发、遥测、x64、独立干净 Mac 与 Developer ID 签名公证。
 
 ## 1. 启动基线
 
-- 源码：`7d562df`，GitHub CI 的质量构建、浏览器、无障碍和视觉回归均通过。
-- 预览包：沿用 S7-06 已验收的 arm64 `0.0.5` 个人预览包；Finder 常规启动保持 Mock，试用时仅显式启用 `live`。
+- 当前安装基线：2026-08-05 已将 Electron arm64 `0.0.913`（源码 `5512915`）安装为固定 `/Applications/Koradio.app`；启动前更新检查、Electron 窗口、loopback Local Service 与 session bootstrap 已复验。
+- 运行模式：常规 Electron 预览使用 packaged runtime 的 `live` 默认；development、test、CI 与生命周期验证保持 Mock。
 - 数据保护：不删除用户数据目录、旧目录、迁移备份或 Keychain 凭据；本记录不保存原始场景、Provider 正文、播放 URL、token、用户名或绝对路径。
-- 试用开始前不计入启动/退出、真实生成或播放时长；首个有效样本必须在产品中完成并记录脱敏结果。
+- 本次 Electron 切换和启动仅作为安装基线与回归验证，不计入启动/退出、真实生成或播放时长；首个有效样本必须在产品中完成并记录脱敏结果。
 
-当前 `live` 预览会话已启动，Local Service 仅监听 `127.0.0.1:49373`。该会话尚未完成退出、真实生成或播放，不计入累计样本。
+当前没有已计入的稳定性试用会话；Local Service 仅监听 loopback 的 `49373-49383` 候选端口范围。
 
 ## 2. 累计样本
 
@@ -37,11 +37,12 @@
 | 2026-07-29 | 0 | 0 | 0 | 待记录 | 待记录 | 待记录 | 待开始 |
 | 2026-07-30 | 0 | 0 | 0 | 唯一 Launchpad 入口与启动前强制联网更新实现、安装和重开复验 | 未记录 | S7-07-011、S7-07-012 | `0.0.137` 修复版已作为自动更新终验基线；不计入稳定性样本 |
 | 2026-08-03 | 0 | 0 | 0 | 回退后 Launchpad 图标标准尺寸修复、自动更新安装与实机复验 | 未记录 | S7-07-014 | `0.0.139` 修复版恢复标准尺寸圆角矩形图标；不计入稳定性样本 |
+| 2026-08-05 | 0 | 0 | 0 | Electron `0.0.913` 安装、启动前 `origin/main` 更新检查、窗口与 session bootstrap 验证 | 无 | S7-09-001 | Electron 切换基线通过；不计入稳定性样本 |
 
 ## 4. 必测路径
 
 - 启动、退出与再次启动：确认 Local Service 仅在 loopback 工作，退出后没有残留端口。
-- 场景生成：显式 `live` 下完成真实 Codex、NetEase 和可选 Apple TTS；生成失败时旧节目保持不变且错误脱敏。
+- 场景生成：显式 `live` 下完成真实 Codex、NetEase 和可选 Qwen3-TTS（中文 Serena、英文 Ryan）；生成失败时旧节目保持不变且错误脱敏。
 - 连续播放：播放/暂停/seek、队列切换、歌词或可见降级、Detail Sheet 串讲与文字 DJ 降级。
 - 反馈与记忆：喜欢、撤销、跳过、节目收藏及 Taste 投影的可见结果。
 - Profile 与恢复：切换 Profile，重启后恢复可读历史和合法 playback checkpoint。
@@ -64,6 +65,7 @@
 | S7-07-011 | 2026-07-30 | High | Launchpad 同时存在原生 launcher 与 Chrome PWA，且已安装原生包可能落后于仓库最新提交；用户无法判断哪个入口是最新版。 | 固定圆角品牌图标应是唯一入口；每次打开必须联网确认并自动更新，旧版、普通网页标签和未来新增图标都不得成为入口。 | 固定 `/Applications/Koradio.app`，由包内 updater 在独立缓存 checkout 中对可信 `origin/main` 执行 frozen build、包验证与原位替换；失败关闭，备份使用非 `.app` 后缀，Chrome 仅以 `--app` 打开。Chrome PWA 已通过自身卸载界面移除，不删除站点数据。 | `macos-update.test.ts` 4 项、Swift typecheck、完整质量门（90 unit、60 contract、93 integration、35 component、278 coverage tests 与 production build）和依赖审计通过；`0.0.133` arm64 包连续验证后 strict codesign 有效，metadata 精确绑定 `61f6d03`。固定 app 在线检查返回 `current`，关闭独立窗口后重开会刷新 updater `FETCH_HEAD` 且仍只有 1 个 launcher；Chrome 窗口无地址栏或普通标签，PWA app id/shim、Dock、LaunchAgent 与后台登录项均不存在，Applications 和 Launch Services 只登记固定 app，旧 `0.0.16` 仅以非 `.app` 备份保留。 |
 | S7-07-012 | 2026-07-30 | High | 首次真实自动更新在候选构建和安装复制阶段分别被 Node 版本硬门与 strict codesign 拒绝；launcher 没有打开旧版，但无法完成原位替换。 | updater 应在 launcher 的最小环境中始终使用 bundled Node，并以保持 macOS bundle 封印的方式复制候选；失败 staging 不得留在 Applications。 | 构建 PATH 显式加入候选 `runtime/bin`；安装复制改用系统 `ditto`，复制或签名失败时清理 updater 自有 staging。此前失败 staging 已移动为非 `.app` 备份。 | 最小 `/usr/bin:/bin` PATH 下完整 arm64 构建使用 Node 24.18.0 并通过；完整质量门再次通过。`0.0.137` 修复包的 metadata 精确绑定 `87e9f33`，package verifier 与安装前后 strict codesign 通过；`0.0.133` 仅以非 `.app` 回滚副本保留。 |
 | S7-07-014 | 2026-08-03 | Medium | Git 回退将固定 `/Applications/Koradio.app` 和构建源恢复为旧单层 `Koradio.icns`，Launchpad 再次显示直角黑色方块，图标尺寸大于 macOS 标准应用图标。 | 唯一 Launchpad 入口应显示带标准光学留白的圆角矩形 Koradio 品牌图标，并在后续自动更新中保持一致。 | 恢复透明安全边距 SVG：内容区约占 81% 画布，四角为透明；由 16～1024 px 的完整 10 层 iconset 生成 `KoradioAppIconPadded.icns`，保留 bundle ID `app.koradio.launcher`，包验证器强制校验图标资源名、身份和全部图层。 | 回退前截图复现旧直角方块；修复后以 `0.0.139` 启动前联网更新原位安装，package verifier、strict codesign、唯一登记与 Launchpad 标准尺寸圆角矩形图标实机复验通过。 |
+| S7-09-001 | 2026-08-05 | High | 从版本化的 `Koradio-0.0.912-arm64.app` 直接启动时，更新前置检查只接受固定 `Koradio.app`，导致报错 `Updater application path is invalid`。 | 已验证的版本化个人预览包应能通过路径校验并执行更新前置检查；实际启动前即被拒绝。 | 更新 Electron `UpdatePreflight` 与 bundled updater，允许 `Koradio.app` 和 `Koradio-<semver>-arm64.app` 两种已验证 bundle 名称，同时保留固定安装路径作为唯一日常入口。 | Electron 桌面单元测试、`0.0.913` package/DMG verifier、strict codesign 与固定 `/Applications/Koradio.app` 正常启动、session bootstrap 均通过。 |
 
 ## 6. 完成前复核
 
