@@ -19,7 +19,6 @@ import { dirname, relative, resolve } from "node:path";
 import process from "node:process";
 import { URL, fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { packager } from "@electron/packager";
 
 const repositoryRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const nodeVersion = "24.18.0";
@@ -450,6 +449,7 @@ async function build() {
       PATH: `${buildToolDirectory}:${dirname(bundledNode)}:${process.env.PATH ?? ""}`,
     };
     await runPnpm(bundledNode, ["install", "--frozen-lockfile"], buildEnvironment);
+    const { packager } = await import("@electron/packager");
     await runPnpm(bundledNode, ["build"], buildEnvironment);
     await runPnpm(
       bundledNode,

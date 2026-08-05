@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   backupDirectoryName,
@@ -17,6 +19,17 @@ const metadata = {
 };
 
 describe("macOS Personal Local Preview updater", () => {
+  it("installs Electron packaging dependencies before resolving the packager", async () => {
+    const buildScript = await readFile(
+      fileURLToPath(new URL("../../scripts/release/build-macos.mjs", import.meta.url)),
+      "utf8",
+    );
+    expect(buildScript).not.toContain('import { packager } from "@electron/packager"');
+    expect(
+      buildScript.indexOf('await runPnpm(bundledNode, ["install", "--frozen-lockfile"]'),
+    ).toBeLessThan(buildScript.indexOf('await import("@electron/packager")'));
+  });
+
   it("accepts only pinned build provenance", () => {
     expect(parseBuildMetadata(metadata)).toEqual(metadata);
     expect(
