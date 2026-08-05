@@ -14,6 +14,7 @@ import {
 import {
   isSupportedApplicationBundleName,
   parseUpdateOutput,
+  updateNodeCodesignArguments,
 } from "../../apps/desktop/src/update-preflight.js";
 import {
   isAllowedNavigation,
@@ -82,6 +83,16 @@ describe("Electron desktop shell policy", () => {
     expect(isSupportedApplicationBundleName("Koradio-1.2.3-arm64.app")).toBe(true);
     expect(isSupportedApplicationBundleName("Koradio-0.0.912-x64.app")).toBe(false);
     expect(isSupportedApplicationBundleName("Other.app")).toBe(false);
+  });
+
+  it("removes Hardened Runtime before using Node for updater builds", () => {
+    expect(updateNodeCodesignArguments("/tmp/koradio-updater-node/node")).toEqual([
+      "--force",
+      "--sign",
+      "-",
+      "--timestamp=none",
+      "/tmp/koradio-updater-node/node",
+    ]);
   });
 
   it("injects service probing and process ownership for lifecycle tests", async () => {
