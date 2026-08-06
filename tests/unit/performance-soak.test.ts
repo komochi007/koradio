@@ -191,6 +191,7 @@ describe("S6-04 performance soak", () => {
       defaultTtlMs: 60_000,
       now: () => now,
     });
+    globalThis.gc?.();
     const heapBefore = process.memoryUsage().heapUsed;
     const startedAt = performance.now();
 
@@ -201,6 +202,7 @@ describe("S6-04 performance soak", () => {
     }
 
     const elapsedMs = performance.now() - startedAt;
+    globalThis.gc?.();
     const retainedHeapBytes = Math.max(0, process.memoryUsage().heapUsed - heapBefore);
     expect(cache.size).toBe(512);
     expect(elapsedMs).toBeLessThan(5_000);

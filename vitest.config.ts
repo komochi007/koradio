@@ -2,6 +2,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    execArgv: ["--expose-gc"],
     include: ["tests/{unit,contract,integration,component}/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
