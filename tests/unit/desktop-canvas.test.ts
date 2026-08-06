@@ -15,9 +15,18 @@ describe("DesktopCanvas", () => {
       fileURLToPath(new URL("../../apps/web/src/app/desktop-canvas.css", import.meta.url)),
       "utf8",
     );
-    expect(stylesheet).toContain(
-      'html[data-electron-canvas="true"] .desktop-canvas .topbar {\n  -webkit-app-region: drag;',
+    const component = await readFile(
+      fileURLToPath(new URL("../../apps/web/src/app/desktop-canvas.tsx", import.meta.url)),
+      "utf8",
     );
+    expect(stylesheet).toContain(
+      'html[data-electron-canvas="true"] .electron-window-drag-region {',
+    );
+    expect(stylesheet).toContain("left: 112px;");
+    expect(stylesheet).toContain("right: 116px;");
+    expect(stylesheet).toContain("height: 56px;");
+    expect(stylesheet).toContain("-webkit-app-region: drag;");
+    expect(component).toContain('className="electron-window-drag-region"');
     expect(stylesheet).toContain(".desktop-canvas .topbar button");
     expect(stylesheet).toContain("-webkit-app-region: no-drag;");
   });

@@ -133,6 +133,7 @@ export function DesktopCanvas({ children }: { children: ReactNode }): ReactNode 
 
   return (
     <div className="desktop-canvas-viewport desktop-canvas-viewport--standalone">
+      {state.isElectron ? <div aria-hidden="true" className="electron-window-drag-region" /> : null}
       <div
         className="desktop-canvas"
         style={{

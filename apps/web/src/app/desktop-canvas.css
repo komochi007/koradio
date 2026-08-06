@@ -1,4 +1,5 @@
 .desktop-canvas-viewport {
+  position: relative;
   display: grid;
   width: 100%;
   height: 100%;
@@ -23,7 +24,13 @@
   min-height: var(--desktop-canvas-logical-height, 1600px);
 }
 
-html[data-electron-canvas="true"] .desktop-canvas .topbar {
+html[data-electron-canvas="true"] .electron-window-drag-region {
+  position: absolute;
+  z-index: 100;
+  top: 0;
+  right: 116px;
+  left: 112px;
+  height: 56px;
   -webkit-app-region: drag;
 }
 
