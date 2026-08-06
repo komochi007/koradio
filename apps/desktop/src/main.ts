@@ -12,6 +12,8 @@ import {
   isAllowedNavigation,
   isLoopbackOrigin,
   loopbackOrigin,
+  minimumWindowHeight,
+  minimumWindowWidth,
   rendererContentSecurityPolicy,
 } from "./window-policy.js";
 
@@ -98,6 +100,8 @@ function createMainWindow(expectedOrigin: string): BrowserWindow {
     autoHideMenuBar: true,
     backgroundColor: "#090a0c",
     height: 1_600,
+    minHeight: minimumWindowHeight,
+    minWidth: minimumWindowWidth,
     show: false,
     titleBarStyle: "hiddenInset",
     useContentSize: true,

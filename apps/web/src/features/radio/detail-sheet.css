@@ -1,7 +1,25 @@
-.radio-detail-layer {
+.radio-detail-portal {
   position: fixed;
   z-index: 100;
   inset: 0;
+  overflow: hidden;
+  background: #090a0c;
+}
+
+.radio-detail-portal__canvas {
+  position: relative;
+  width: var(--desktop-window-logical-width, 100vw);
+  height: var(--desktop-window-logical-height, 100vh);
+  transform: scale(var(--desktop-canvas-scale, 1));
+  transform-origin: top left;
+}
+
+.radio-detail-layer {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: #090a0c;
   color: #f3f5f7;
@@ -119,6 +137,14 @@
     "SF Mono",
     monospace;
   letter-spacing: 0.12em;
+}
+
+html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
+  left: max(
+    var(--desktop-native-titlebar-window-leading),
+    var(--kr-detail-gutter),
+    calc((100% - var(--kr-detail-content-width)) / 2)
+  );
 }
 
 .detail-status > span {
@@ -322,6 +348,27 @@
   color: var(--kr-detail-text-secondary);
 }
 
+.detail-copy__units {
+  color: inherit;
+}
+
+.detail-copy__unit {
+  transition: color 120ms linear;
+}
+
+.detail-copy__unit--read {
+  color: var(--kr-detail-text-read);
+}
+
+.detail-copy__unit--current {
+  color: var(--kr-detail-text);
+  font-weight: 620;
+}
+
+.detail-copy__unit--upcoming {
+  color: #767a80;
+}
+
 .detail-copy--lyrics .detail-copy__line {
   font-size: clamp(24px, 3.75vw, 36px);
   line-height: 1.55;
@@ -487,6 +534,13 @@
 
   .detail-program-progress {
     gap: 2px;
+  }
+}
+
+@media (max-width: 520px) {
+  html[data-desktop-pwa-canvas="true"] .radio-detail-portal .radio-detail-sheet {
+    --kr-detail-content-width: calc(100% - 112px);
+    --kr-detail-gutter: 56px;
   }
 }
 

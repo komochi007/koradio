@@ -247,8 +247,8 @@ test("searches, previews, adds, paginates and imports Library music", async ({
   await page.getByRole("button", { name: "加入候选池" }).nth(1).click();
   await expect(page.getByText("已加入本地音乐库")).toBeVisible();
   await page.getByRole("button", { name: "清除搜索" }).click();
-  await page.getByRole("button", { name: "加载更多" }).click();
   await expect(page.getByText("Space Song", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "加载更多" })).toHaveCount(0);
 
   const playlist = page.getByRole("textbox", { name: "网易云歌单链接或 ID" });
   await playlist.fill("invalid");
@@ -306,17 +306,28 @@ test("keeps Library scrolling inside the standalone desktop canvas without a scr
   const metrics = await page.evaluate(() => {
     const region = document.querySelector<HTMLElement>(".library-main");
     const canvas = document.querySelector<HTMLElement>(".desktop-canvas");
-    if (region === null || canvas === null)
+    const trackList = document.querySelector<HTMLElement>(".library-track-list");
+    if (region === null || canvas === null || trackList === null)
       throw new Error("Standalone Library canvas is unavailable");
     const style = getComputedStyle(region);
+    const trackListStyle = getComputedStyle(trackList);
     region.scrollTop = region.scrollHeight;
+    trackList.scrollTop = trackList.scrollHeight;
     return {
       canvas: canvas.getBoundingClientRect(),
       clientHeight: region.clientHeight,
       documentHeight: document.documentElement.scrollHeight,
+      overflowY: style.overflowY,
       scrollHeight: region.scrollHeight,
       scrollTop: region.scrollTop,
       scrollbarWidth: style.scrollbarWidth,
+      trackList: {
+        clientHeight: trackList.clientHeight,
+        overflowY: trackListStyle.overflowY,
+        scrollHeight: trackList.scrollHeight,
+        scrollTop: trackList.scrollTop,
+        scrollbarWidth: trackListStyle.scrollbarWidth,
+      },
       viewportHeight: window.innerHeight,
       viewportWidth: window.innerWidth,
     };
@@ -325,8 +336,12 @@ test("keeps Library scrolling inside the standalone desktop canvas without a scr
   expect(metrics.canvas.height).toBeLessThanOrEqual(metrics.viewportHeight);
   expect(metrics.canvas.width).toBeLessThanOrEqual(metrics.viewportWidth);
   expect(metrics.documentHeight).toBeLessThanOrEqual(metrics.viewportHeight);
-  expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
-  expect(metrics.scrollTop).toBeGreaterThan(0);
+  expect(metrics.scrollHeight).toBeGreaterThanOrEqual(metrics.clientHeight);
+  expect(metrics.overflowY).toBe("auto");
   expect(metrics.scrollbarWidth).toBe("none");
+  expect(metrics.trackList.scrollHeight).toBeGreaterThan(metrics.trackList.clientHeight);
+  expect(metrics.trackList.scrollTop).toBeGreaterThan(0);
+  expect(metrics.trackList.overflowY).toBe("auto");
+  expect(metrics.trackList.scrollbarWidth).toBe("none");
   await expect(page.locator(".primary-nav")).toBeVisible();
 });

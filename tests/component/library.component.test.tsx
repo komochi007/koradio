@@ -305,7 +305,13 @@ describe("S5-01 Library experience", () => {
   it("paginates the candidate pool and reports partial playlist import", async () => {
     renderLibrary({ service: transport({ initialItems: [libraryItem(track)] }) });
     expect(await screen.findByText("Space Song")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "加载更多" }));
+    const list = screen.getByRole("list", { name: "音乐列表" });
+    Object.defineProperties(list, {
+      clientHeight: { configurable: true, value: 384 },
+      scrollHeight: { configurable: true, value: 480 },
+      scrollTop: { configurable: true, value: 96, writable: true },
+    });
+    fireEvent.scroll(list);
     expect(await screen.findByText("Midnight City")).toBeTruthy();
     expect(screen.getAllByText("已显示 2 / 总计 2").length).toBeGreaterThan(0);
 

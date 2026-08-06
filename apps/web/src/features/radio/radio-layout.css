@@ -19,8 +19,8 @@
 }
 
 .radio-page--queue-collapsed {
-  --radio-dialogue-growth: 232px;
-  --radio-layout-offset: 240px;
+  --radio-dialogue-growth: 172px;
+  --radio-layout-offset: 180px;
 }
 
 :root[data-theme="light"] .radio-page {
@@ -71,9 +71,14 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding-bottom: 24px;
-  scrollbar-color: var(--kr-border) transparent;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   transform: translateX(-50%);
+}
+
+.radio-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .radio-time,

@@ -734,7 +734,6 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
             <h1 ref={props.headingRef} tabIndex={-1}>
               节目
             </h1>
-            <p>回看历史、重播串讲，或带着同一个场景回到 Radio。</p>
           </div>
           <span className="programs-search-mark" aria-hidden="true">
             <Icon name="search" />

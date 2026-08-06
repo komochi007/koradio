@@ -6,6 +6,9 @@ export const applicationRoutes = new Set([
   "/settings",
 ]);
 
+export const minimumWindowWidth = 430;
+export const minimumWindowHeight = 652;
+
 export const rendererContentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'none'",

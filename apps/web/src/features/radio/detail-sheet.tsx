@@ -19,9 +19,10 @@ import { formatClockDuration } from "../../shared/format.js";
 import { getTrackLyrics } from "./detail-api.js";
 import {
   deriveTimedText,
+  deriveTimedTextUnits,
   estimateDjTiming,
+  estimateUntimedLyricsTiming,
   parseLrc,
-  parseUntimedLyrics,
   programProgress,
   type DisplayTimedTextLine,
 } from "./detail-timed-text.js";
@@ -128,7 +129,44 @@ function focusableElements(dialog: HTMLElement): HTMLElement[] {
   return Array.from(dialog.querySelectorAll<HTMLElement>("[data-detail-focus]:not(:disabled)"));
 }
 
-function TimedLines({ lines, speaking }: { lines: DisplayTimedTextLine[]; speaking: boolean }) {
+function TimedLineText({
+  line,
+  positionMs,
+}: {
+  line: DisplayTimedTextLine;
+  positionMs: number;
+}): ReactElement {
+  const units = deriveTimedTextUnits(line, positionMs);
+  return (
+    <span className="detail-copy__units">
+      <span
+        aria-current={line.state === "current" ? "true" : undefined}
+        className="visually-hidden"
+      >
+        {line.text}
+      </span>
+      {units.map((unit, index) => (
+        <span
+          aria-hidden="true"
+          className={`detail-copy__unit detail-copy__unit--${unit.state}`}
+          key={`${String(unit.startMs)}-${String(index)}-${unit.text}`}
+        >
+          {unit.text}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function TimedLines({
+  lines,
+  positionMs,
+  speaking,
+}: {
+  lines: DisplayTimedTextLine[];
+  positionMs: number;
+  speaking: boolean;
+}) {
   const currentRef = useRef<HTMLElement>(null);
   const currentIndex = lines.findIndex((line) => line.state === "current");
   useEffect(() => {
@@ -149,7 +187,9 @@ function TimedLines({ lines, speaking }: { lines: DisplayTimedTextLine[]; speaki
         ref={setCurrent}
       >
         <small>KORADIO · {formatClockDuration(line.startMs)}</small>
-        <p>{line.text}</p>
+        <p>
+          <TimedLineText line={line} positionMs={positionMs} />
+        </p>
       </div>
     ) : (
       <p
@@ -158,7 +198,7 @@ function TimedLines({ lines, speaking }: { lines: DisplayTimedTextLine[]; speaki
         key={`${String(line.startMs)}-${line.text}`}
         ref={setCurrent}
       >
-        {line.text}
+        <TimedLineText line={line} positionMs={positionMs} />
       </p>
     );
   });
@@ -206,13 +246,13 @@ export function DetailSheet({
         audio.positionMs,
       );
     }
-    if (lyrics.data?.status !== "available") return [];
-    return deriveTimedText(parseLrc(lyrics.data.content, audio.durationMs), audio.positionMs);
-  }, [audio.durationMs, audio.positionMs, lyrics.data, script, speaking]);
-  const untimedLines = useMemo(() => {
     if (lyrics.data === undefined || lyrics.data.status === "unavailable") return [];
-    return parseUntimedLyrics(lyrics.data.content);
-  }, [lyrics.data]);
+    const lines =
+      lyrics.data.status === "available"
+        ? parseLrc(lyrics.data.content, audio.durationMs)
+        : estimateUntimedLyricsTiming(lyrics.data.content, audio.durationMs);
+    return deriveTimedText(lines, audio.positionMs);
+  }, [audio.durationMs, audio.positionMs, lyrics.data, script, speaking]);
   const totalProgress = programProgress(program.timeline, audio.currentIndex, audio.positionMs);
   const trackProgress =
     audio.durationMs === 0 ? 0 : Math.min(1, Math.max(0, audio.positionMs / audio.durationMs));
@@ -371,7 +411,7 @@ export function DetailSheet({
               timedLines.length === 0 ? (
                 <p className="detail-copy__fallback">文字串讲暂时不可用，歌曲播放不受影响</p>
               ) : (
-                <TimedLines lines={timedLines} speaking />
+                <TimedLines lines={timedLines} positionMs={audio.positionMs} speaking />
               )
             ) : track?.lyricStatus === "unavailable" || lyrics.data?.status === "unavailable" ? (
               <p className="detail-copy__fallback">暂无歌词，正在播放 DJ 推荐曲目</p>
@@ -387,16 +427,7 @@ export function DetailSheet({
                 LOADING LYRICS...
               </p>
             ) : timedLines.length > 0 ? (
-              <TimedLines lines={timedLines} speaking={false} />
-            ) : untimedLines.length > 0 ? (
-              <>
-                <p className="detail-copy__notice">Lyrics available, live timing unavailable</p>
-                {untimedLines.map((line) => (
-                  <p className="detail-copy__line detail-copy__line--static" key={line}>
-                    {line}
-                  </p>
-                ))}
-              </>
+              <TimedLines lines={timedLines} positionMs={audio.positionMs} speaking={false} />
             ) : (
               <p className="detail-copy__fallback">暂无歌词，正在播放 DJ 推荐曲目</p>
             )}

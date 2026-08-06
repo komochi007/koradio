@@ -12,12 +12,96 @@ export interface DisplayTimedTextLine extends TimedTextLine {
   state: TimedTextState;
 }
 
+export interface DisplayTimedTextUnit {
+  endMs: number;
+  startMs: number;
+  state: TimedTextState;
+  text: string;
+}
+
+interface TextUnit {
+  text: string;
+  weight: number;
+}
+
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
 function readableLength(value: string): number {
   return Math.max(1, Array.from(value.replace(/\s/gu, "")).length);
+}
+
+function splitTextUnits(value: string): TextUnit[] {
+  const units: TextUnit[] = [];
+  let latin = "";
+  let prefix = "";
+  const flushLatin = (): void => {
+    if (latin.length === 0) return;
+    units.push({ text: `${prefix}${latin}`, weight: Array.from(latin).length });
+    latin = "";
+    prefix = "";
+  };
+  for (const character of Array.from(value)) {
+    if (/[\p{L}\p{N}'’_-]/u.test(character) && !/\p{Script=Han}/u.test(character)) {
+      latin += character;
+      continue;
+    }
+    flushLatin();
+    if (/\p{Script=Han}/u.test(character)) {
+      units.push({ text: `${prefix}${character}`, weight: 1 });
+      prefix = "";
+    } else if (/^[\s\p{P}\p{S}]$/u.test(character)) {
+      const previous = units.at(-1);
+      if (previous === undefined) prefix += character;
+      else previous.text += character;
+    } else {
+      units.push({ text: `${prefix}${character}`, weight: 1 });
+      prefix = "";
+    }
+  }
+  flushLatin();
+  if (prefix.length > 0) {
+    const previous = units.at(-1);
+    if (previous === undefined) units.push({ text: prefix, weight: 1 });
+    else previous.text += prefix;
+  }
+  return units;
+}
+
+export function splitHighlightUnits(value: string): string[] {
+  return splitTextUnits(value).map((unit) => unit.text);
+}
+
+export function deriveTimedTextUnits(
+  line: DisplayTimedTextLine,
+  positionMs: number,
+): DisplayTimedTextUnit[] {
+  const units = splitTextUnits(line.text);
+  if (units.length === 0) return [];
+  const durationMs = Math.max(1, line.endMs - line.startMs);
+  const totalWeight = units.reduce((total, unit) => total + unit.weight, 0);
+  let elapsed = line.startMs;
+  const timed = units.map((unit, index) => {
+    const startMs = elapsed;
+    elapsed =
+      index === units.length - 1
+        ? line.endMs
+        : Math.round(elapsed + (durationMs * unit.weight) / totalWeight);
+    return { endMs: Math.max(startMs + 1, elapsed), startMs, text: unit.text };
+  });
+  if (line.state !== "current") {
+    return timed.map((unit) => ({ ...unit, state: line.state }));
+  }
+  const safePosition = Math.max(line.startMs, Math.min(positionMs, line.endMs));
+  let currentIndex = timed.findIndex(
+    (unit) => safePosition >= unit.startMs && safePosition < unit.endMs,
+  );
+  if (currentIndex < 0) currentIndex = timed.length - 1;
+  return timed.map((unit, index) => ({
+    ...unit,
+    state: index < currentIndex ? "read" : index === currentIndex ? "current" : "upcoming",
+  }));
 }
 
 export function splitDjSentences(value: string): string[] {
@@ -72,6 +156,22 @@ export function parseUntimedLyrics(value: string): string[] {
     .split(/\r?\n/u)
     .map((line) => line.replace(/^\[[^\]]+\]\s*/u, "").trim())
     .filter((line) => line.length > 0);
+}
+
+export function estimateUntimedLyricsTiming(value: string, durationMs: number): TimedTextLine[] {
+  const lines = parseUntimedLyrics(value);
+  if (lines.length === 0) return [];
+  const safeDuration = Math.max(1, Math.round(durationMs));
+  const totalWeight = lines.reduce((total, line) => total + readableLength(line), 0);
+  let elapsed = 0;
+  return lines.map((text, index) => {
+    const startMs = elapsed;
+    elapsed =
+      index === lines.length - 1
+        ? safeDuration
+        : Math.round(elapsed + (safeDuration * readableLength(text)) / totalWeight);
+    return { endMs: Math.max(startMs + 1, elapsed), startMs, text };
+  });
 }
 
 export function deriveTimedText(

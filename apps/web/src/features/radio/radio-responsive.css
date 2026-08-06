@@ -216,8 +216,8 @@
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-page {
-  height: 1600px;
-  min-height: 1600px;
+  height: var(--desktop-canvas-logical-height, 1600px);
+  min-height: var(--desktop-canvas-logical-height, 1600px);
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-page__tools {
@@ -362,12 +362,14 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-queue__track small {
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-dj-status {
-  top: calc(980px - var(--radio-layout-offset));
+  top: calc(920px - var(--radio-layout-offset));
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-dialogue {
-  top: calc(1068px - var(--radio-layout-offset));
-  height: calc(var(--radio-dialogue-height) + var(--radio-dialogue-growth));
+  --radio-dialogue-copy-line-height: 32px;
+  --radio-dialogue-copy-size: 20px;
+  top: calc(1008px - var(--radio-layout-offset));
+  height: calc(348px + var(--desktop-canvas-extra-height, 0px) + var(--radio-dialogue-growth));
   min-height: 0;
   padding: 24px 28px;
 }
@@ -381,7 +383,7 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-dialogue__error > di
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-scene-input {
   --radio-scene-action-radius: 16px;
   --radio-scene-action-size: 64px;
-  top: 1372px;
+  top: calc(1372px + var(--desktop-canvas-extra-height, 0px));
   bottom: auto;
   width: 816px;
   height: 88px;
@@ -397,4 +399,22 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-scene-input input {
   height: 64px;
   font-size: 18px;
   line-height: 28px;
+}
+
+html[data-electron-canvas="true"] .desktop-canvas .radio-time,
+html[data-electron-canvas="true"] .desktop-canvas .radio-main,
+html[data-electron-canvas="true"] .desktop-canvas .radio-queue,
+html[data-electron-canvas="true"] .desktop-canvas .radio-dj-status,
+html[data-electron-canvas="true"] .desktop-canvas .radio-dialogue {
+  left: 32px;
+  width: 896px;
+}
+
+html[data-electron-canvas="true"] .desktop-canvas .radio-scene-input {
+  width: 896px;
+}
+
+html[data-electron-canvas="true"] .desktop-canvas .radio-page__topbar {
+  left: -24px;
+  width: 896px;
 }

@@ -13,14 +13,14 @@
 
 .desktop-canvas__content {
   width: 960px;
-  height: 1600px;
+  height: var(--desktop-canvas-logical-height, 1600px);
   transform-origin: top left;
 }
 
 .desktop-canvas .app-surface {
   width: 960px;
-  height: 1600px;
-  min-height: 1600px;
+  height: var(--desktop-canvas-logical-height, 1600px);
+  min-height: var(--desktop-canvas-logical-height, 1600px);
 }
 
 .desktop-canvas .library-main,
@@ -30,7 +30,7 @@
 .desktop-canvas .program-detail-main,
 .desktop-canvas .settings-main,
 .desktop-canvas .settings-diagnostics-main {
-  max-height: 1456px;
+  max-height: calc(1456px + var(--desktop-canvas-extra-height, 0px));
 }
 
 button {

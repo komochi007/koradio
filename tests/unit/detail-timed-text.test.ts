@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   deriveTimedText,
+  deriveTimedTextUnits,
   estimateDjTiming,
+  estimateUntimedLyricsTiming,
   parseLrc,
   parseUntimedLyrics,
   programProgress,
+  splitHighlightUnits,
   splitDjSentences,
 } from "../../apps/web/src/features/radio/detail-timed-text.js";
 
@@ -35,7 +38,40 @@ describe("Detail timed text", () => {
     ]);
   });
 
-  it("keeps untimed lyrics static and derives exactly one current timed line", () => {
+  it("segments Chinese by character, English by word and keeps punctuation with the previous unit", () => {
+    expect(splitHighlightUnits("今晚写 code, then rest! 好。 ")).toEqual([
+      "今",
+      "晚",
+      "写 ",
+      "code, ",
+      "then ",
+      "rest! ",
+      "好。 ",
+    ]);
+  });
+
+  it("estimates word progress inside the active line by readable length", () => {
+    const line = deriveTimedText(
+      [{ startMs: 1_000, endMs: 5_000, text: "听 music now!" }],
+      3_000,
+    )[0];
+    expect(line).toBeDefined();
+    if (line === undefined) throw new Error("Expected a current timed line");
+    expect(deriveTimedTextUnits(line, 3_000).map((unit) => [unit.text, unit.state])).toEqual([
+      ["听 ", "read"],
+      ["music ", "current"],
+      ["now!", "upcoming"],
+    ]);
+  });
+
+  it("distributes untimed lyric lines across the track before estimating words", () => {
+    expect(estimateUntimedLyricsTiming("短句\nThis is longer", 9_000)).toEqual([
+      { startMs: 0, endMs: 1_286, text: "短句" },
+      { startMs: 1_286, endMs: 9_000, text: "This is longer" },
+    ]);
+  });
+
+  it("parses untimed lyrics and derives exactly one current timed line", () => {
     expect(parseUntimedLyrics("[ar:Koradio]\nSoft light\n\nStay here")).toEqual([
       "Soft light",
       "Stay here",

@@ -19,10 +19,19 @@ import {
 import {
   isAllowedNavigation,
   isLoopbackOrigin,
+  minimumWindowHeight,
+  minimumWindowWidth,
   rendererContentSecurityPolicy,
 } from "../../apps/desktop/src/window-policy.js";
 
 describe("Electron desktop shell policy", () => {
+  it("enforces the accepted minimum desktop window", () => {
+    expect({ height: minimumWindowHeight, width: minimumWindowWidth }).toEqual({
+      height: 652,
+      width: 430,
+    });
+  });
+
   it("keeps the bounded production port range", () => {
     expect(createPortCandidates()).toEqual([
       49373, 49374, 49375, 49376, 49377, 49378, 49379, 49380, 49381, 49382, 49383,

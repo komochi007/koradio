@@ -268,8 +268,8 @@ html[data-desktop-pwa-canvas="true"] body {
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .app-surface {
   width: 960px;
-  height: 1600px;
-  min-height: 1600px;
+  height: var(--desktop-canvas-logical-height, 1600px);
+  min-height: var(--desktop-canvas-logical-height, 1600px);
   overflow: hidden;
 }
 
@@ -293,8 +293,8 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-page,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-page,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-page,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-page {
-  height: 1600px;
-  min-height: 1600px;
+  height: var(--desktop-canvas-logical-height, 1600px);
+  min-height: var(--desktop-canvas-logical-height, 1600px);
   overflow: hidden;
 }
 
@@ -313,7 +313,7 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-main {
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main {
-  height: 1316px;
+  height: calc(1316px + var(--desktop-canvas-extra-height, 0px));
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-main,
@@ -321,14 +321,14 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .taste-edit-main,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .programs-main,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .program-detail-main,
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .settings-page--diagnostics .settings-main {
-  height: 1332px;
+  height: calc(1332px + var(--desktop-canvas-extra-height, 0px));
 }
 
 html[data-desktop-pwa-canvas="true"]
   .desktop-canvas
   .settings-page:not(.settings-page--diagnostics)
   .settings-main {
-  height: 1180px;
+  height: calc(1180px + var(--desktop-canvas-extra-height, 0px));
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .library-main::-webkit-scrollbar,
@@ -354,4 +354,29 @@ html[data-desktop-pwa-canvas="true"]
 
 :root .primary-nav__item--active img {
   filter: brightness(0) saturate(100%);
+}
+
+@media (max-width: 520px) {
+  html[data-electron-canvas="true"] {
+    --kr-safe-top: 80px;
+  }
+
+  html[data-electron-canvas="true"] .desktop-canvas .library-main {
+    height: calc(1276px + var(--desktop-canvas-extra-height, 0px));
+  }
+
+  html[data-electron-canvas="true"] .desktop-canvas .taste-main,
+  html[data-electron-canvas="true"] .desktop-canvas .taste-edit-main,
+  html[data-electron-canvas="true"] .desktop-canvas .programs-main,
+  html[data-electron-canvas="true"] .desktop-canvas .program-detail-main,
+  html[data-electron-canvas="true"] .desktop-canvas .settings-page--diagnostics .settings-main {
+    height: calc(1292px + var(--desktop-canvas-extra-height, 0px));
+  }
+
+  html[data-electron-canvas="true"]
+    .desktop-canvas
+    .settings-page:not(.settings-page--diagnostics)
+    .settings-main {
+    height: calc(1140px + var(--desktop-canvas-extra-height, 0px));
+  }
 }

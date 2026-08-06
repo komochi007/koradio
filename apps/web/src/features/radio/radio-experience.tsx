@@ -16,6 +16,7 @@ import {
   type RefObject,
   type SyntheticEvent,
 } from "react";
+import { createPortal } from "react-dom";
 
 import {
   type AudioEngineFacade,
@@ -419,7 +420,7 @@ function RadioQueue({
       </header>
       {state === "generating" ? (
         <ol aria-label="正在生成队列" aria-busy="true">
-          {Array.from({ length: 4 }, (_, index) => (
+          {Array.from({ length: 3 }, (_, index) => (
             <li className="radio-queue__skeleton" key={index}>
               <i />
               <span>
@@ -490,12 +491,22 @@ function RadioDialogue({
   scenarioText: string | undefined;
   state: RadioViewState;
 }): ReactElement {
+  const dialogueRef = useRef<HTMLElement>(null);
   const error = failure === undefined ? undefined : failureCopy(failure.code);
   const intro = program?.djScripts.find((script) => script.type === "intro")?.text;
   const visibleScenario =
     scenarioText ?? (state === "playing" ? program?.program.scenarioText : undefined);
+  useEffect(() => {
+    const dialogue = dialogueRef.current;
+    if (dialogue === null) return;
+    dialogue.scrollTop = dialogue.scrollHeight;
+  }, [error?.message, initialError, intro, state, visibleScenario]);
   return (
-    <section className={`radio-dialogue radio-dialogue--${state}`} aria-label="DJ 对话">
+    <section
+      className={`radio-dialogue radio-dialogue--${state}`}
+      aria-label="DJ 对话"
+      ref={dialogueRef}
+    >
       {visibleScenario !== undefined && <p className="radio-user-bubble">{visibleScenario}</p>}
       {error !== undefined || initialError ? (
         <div className="radio-dialogue__error" role="alert">
@@ -651,236 +662,249 @@ export function RadioExperience({
   }
 
   return (
-    <div
-      className={`app-surface radio-page${queueExpanded ? "" : " radio-page--queue-collapsed"}`}
-      style={style}
-    >
-      <header className="topbar radio-page__topbar">
-        <Brand />
-        <div className="radio-page__tools">
-          <span className="radio-page__mode">{health.mode === "live" ? "LIVE" : "DEMO MODE"}</span>
-          <button
-            className="profile-tool"
-            type="button"
-            onClick={onOpenProfiles}
-            aria-label="切换档案"
-          >
-            {Array.from(current.profile.nickname).slice(0, 2).join("")}
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label={`切换为 ${nextTheme} 主题`}
-            disabled={themeMutation.isPending}
-            onClick={() => {
-              applyTheme(nextTheme);
-              themeMutation.mutate(nextTheme);
-            }}
-          >
-            <Icon name={nextTheme === "light" ? "sun" : "moon"} />
-          </button>
-        </div>
-      </header>
-      <main className="radio-scroll" aria-busy={radio.initialLoading || undefined}>
-        <RadioTime headingRef={headingRef} state={radio.viewState} />
-        <RadioMain
-          audio={audio}
-          audioEngine={audioEngine}
-          feedback={feedback}
-          program={radio.program}
-          stage={radio.stage}
-          state={radio.viewState}
-        />
-        <RadioQueue
-          currentTrackId={
-            audio.currentItem?.kind === "track" ? audio.currentItem.trackId : undefined
-          }
-          expanded={queueExpanded}
-          onExpandedChange={setQueueExpanded}
-          program={radio.program}
-          state={radio.viewState}
-        />
-        {audio.mediaError === "queue_exhausted" ? (
-          <div className="radio-blocking-error" role="alert">
-            <span>当前队列无法继续播放。</span>
+    <>
+      <div
+        className={`app-surface radio-page${queueExpanded ? "" : " radio-page--queue-collapsed"}`}
+        style={style}
+      >
+        <header className="topbar radio-page__topbar">
+          <Brand />
+          <div className="radio-page__tools">
+            <span className="radio-page__mode">
+              {health.mode === "live" ? "LIVE" : "DEMO MODE"}
+            </span>
             <button
+              className="profile-tool"
               type="button"
+              onClick={onOpenProfiles}
+              aria-label="切换档案"
+            >
+              {Array.from(current.profile.nickname).slice(0, 2).join("")}
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              aria-label={`切换为 ${nextTheme} 主题`}
+              disabled={themeMutation.isPending}
               onClick={() => {
-                radio.submitScenario(radio.program?.program.scenarioText);
+                applyTheme(nextTheme);
+                themeMutation.mutate(nextTheme);
               }}
             >
-              重新生成
+              <Icon name={nextTheme === "light" ? "sun" : "moon"} />
             </button>
           </div>
-        ) : null}
-        <button
-          className={`radio-dj-status radio-dj-status--${radio.viewState}`}
-          type="button"
-          aria-expanded={detailOpen}
-          aria-haspopup="dialog"
-          aria-label={radio.program === null ? "查看节目详情" : "打开当前节目详情"}
-          onClick={() => {
-            if (radio.program === null) {
-              setDetailUnavailable(true);
-              return;
-            }
-            setDetailError(false);
-            setDetailUnavailable(false);
-            setDetailOpen(true);
-          }}
-          ref={detailOpenerRef}
-        >
-          <span>
-            <i aria-hidden="true" />
-            <strong>DJ</strong>
-            <span>
-              {radio.viewState === "generating"
-                ? "THINKING"
-                : audio.currentItem?.kind === "dj"
-                  ? "SPEAKING"
-                  : radio.viewState === "playing"
-                    ? "PLAYING"
-                    : "LIVE"}
-            </span>
-          </span>
-          <b aria-hidden="true">⌃</b>
-        </button>
-        <RadioDialogue
-          failure={radio.failure}
-          initialError={radio.initialError}
-          navigate={navigate}
-          onRetry={(scenario) => {
-            if (scenario === undefined) {
-              radio.retryLatestProgram();
-            } else {
-              radio.submitScenario(scenario);
-            }
-          }}
-          program={radio.program}
-          scenarioText={radio.scenarioText}
-          state={radio.viewState}
-        />
-      </main>
-      <form
-        aria-label="DJ 场景输入"
-        className={`radio-scene-input${radio.viewState === "generating" ? " radio-scene-input--disabled" : ""}${radio.validationError !== undefined ? " radio-scene-input--error" : ""}`}
-        onSubmit={submit}
-      >
-        <label className="visually-hidden" htmlFor="radio-scene">
-          告诉 DJ 当前场景
-        </label>
-        <input
-          id="radio-scene"
-          ref={sceneInputRef}
-          value={radio.viewState === "generating" ? "" : radio.draft}
-          onChange={(event) => {
-            radio.setDraft(event.target.value);
-          }}
-          placeholder={
-            radio.viewState === "generating"
-              ? "Generating..."
-              : radio.viewState === "playing"
-                ? "Say something else to the DJ..."
-                : "Say something to the DJ..."
-          }
-          disabled={radio.viewState === "generating"}
-          aria-invalid={radio.validationError !== undefined || undefined}
-          aria-describedby={radio.validationError === undefined ? undefined : "radio-scene-error"}
-        />
-        <button
-          className="radio-scene-input__mic"
-          type="button"
-          aria-label="语音输入尚未接入"
-          disabled
-        >
-          <Icon name="mic" />
-        </button>
-        <button
-          className="radio-scene-input__send"
-          type="submit"
-          aria-label="发送给 DJ"
-          disabled={radio.viewState === "generating"}
-        >
-          <Icon name="send" />
-        </button>
-        {radio.validationError !== undefined && (
-          <span className="visually-hidden" id="radio-scene-error" role="alert">
-            {radio.validationError}
-          </span>
-        )}
-      </form>
-      {reconnecting && <TransientToast>EVENTS RECONNECTING · SNAPSHOT ACTIVE</TransientToast>}
-      {themeError && (
-        <TransientToast
-          error
-          onDismiss={() => {
-            setThemeError(false);
-          }}
-        >
-          主题保存失败，已恢复到之前的主题
-        </TransientToast>
-      )}
-      {reuseNotice && (
-        <TransientToast
-          onDismiss={() => {
-            setReuseNotice(false);
-          }}
-        >
-          已带着这个场景回到 Radio
-        </TransientToast>
-      )}
-      {audio.mediaError !== undefined && audio.mediaError !== "queue_exhausted" && (
-        <TransientToast error>
-          {audio.mediaError === "autoplay_blocked"
-            ? "浏览器阻止了自动播放，请按播放继续"
-            : "当前音频无法播放，正在尝试下一段"}
-        </TransientToast>
-      )}
-      {audio.checkpointError && <TransientToast error>播放继续，但历史记录暂未保存</TransientToast>}
-      {detailUnavailable && (
-        <TransientToast
-          error
-          onDismiss={() => {
-            setDetailUnavailable(false);
-          }}
-        >
-          先生成一段电台，再查看节目详情
-        </TransientToast>
-      )}
-      {detailError && (
-        <TransientToast
-          error
-          onDismiss={() => {
-            setDetailError(false);
-          }}
-        >
-          节目详情暂时不可用，播放继续
-        </TransientToast>
-      )}
-      <FeedbackNotice notice={feedback.notice} onDismiss={feedback.dismissNotice} />
-      <PrimaryNavigation active="radio" onNavigate={navigate} />
-      {detailOpen && radio.program !== null && (
-        <DetailSheetBoundary
-          key={radio.program.program.id}
-          onFailure={() => {
-            setDetailOpen(false);
-            setDetailError(true);
-            window.queueMicrotask(() => detailOpenerRef.current?.focus());
-          }}
-        >
-          <DetailSheet
+        </header>
+        <main className="radio-scroll" aria-busy={radio.initialLoading || undefined}>
+          <RadioTime headingRef={headingRef} state={radio.viewState} />
+          <RadioMain
             audio={audio}
             audioEngine={audioEngine}
-            onClosed={() => {
-              setDetailOpen(false);
-              window.queueMicrotask(() => detailOpenerRef.current?.focus());
-            }}
-            profileId={current.profile.id}
+            feedback={feedback}
             program={radio.program}
-            transport={transport}
+            stage={radio.stage}
+            state={radio.viewState}
           />
-        </DetailSheetBoundary>
-      )}
-    </div>
+          <RadioQueue
+            currentTrackId={
+              audio.currentItem?.kind === "track" ? audio.currentItem.trackId : undefined
+            }
+            expanded={queueExpanded}
+            onExpandedChange={setQueueExpanded}
+            program={radio.program}
+            state={radio.viewState}
+          />
+          {audio.mediaError === "queue_exhausted" ? (
+            <div className="radio-blocking-error" role="alert">
+              <span>当前队列无法继续播放。</span>
+              <button
+                type="button"
+                onClick={() => {
+                  radio.submitScenario(radio.program?.program.scenarioText);
+                }}
+              >
+                重新生成
+              </button>
+            </div>
+          ) : null}
+          <button
+            className={`radio-dj-status radio-dj-status--${radio.viewState}`}
+            type="button"
+            aria-expanded={detailOpen}
+            aria-haspopup="dialog"
+            aria-label={radio.program === null ? "查看节目详情" : "打开当前节目详情"}
+            onClick={() => {
+              if (radio.program === null) {
+                setDetailUnavailable(true);
+                return;
+              }
+              setDetailError(false);
+              setDetailUnavailable(false);
+              setDetailOpen(true);
+            }}
+            ref={detailOpenerRef}
+          >
+            <span>
+              <i aria-hidden="true" />
+              <strong>DJ</strong>
+              <span>
+                {radio.viewState === "generating"
+                  ? "THINKING"
+                  : audio.currentItem?.kind === "dj"
+                    ? "SPEAKING"
+                    : radio.viewState === "playing"
+                      ? "PLAYING"
+                      : "LIVE"}
+              </span>
+            </span>
+            <b aria-hidden="true">⌃</b>
+          </button>
+          <RadioDialogue
+            failure={radio.failure}
+            initialError={radio.initialError}
+            navigate={navigate}
+            onRetry={(scenario) => {
+              if (scenario === undefined) {
+                radio.retryLatestProgram();
+              } else {
+                radio.submitScenario(scenario);
+              }
+            }}
+            program={radio.program}
+            scenarioText={radio.scenarioText}
+            state={radio.viewState}
+          />
+        </main>
+        <form
+          aria-label="DJ 场景输入"
+          className={`radio-scene-input${radio.viewState === "generating" ? " radio-scene-input--disabled" : ""}${radio.validationError !== undefined ? " radio-scene-input--error" : ""}`}
+          onSubmit={submit}
+        >
+          <label className="visually-hidden" htmlFor="radio-scene">
+            告诉 DJ 当前场景
+          </label>
+          <input
+            id="radio-scene"
+            ref={sceneInputRef}
+            value={radio.viewState === "generating" ? "" : radio.draft}
+            onChange={(event) => {
+              radio.setDraft(event.target.value);
+            }}
+            placeholder={
+              radio.viewState === "generating"
+                ? "Generating..."
+                : radio.viewState === "playing"
+                  ? "Say something else to the DJ..."
+                  : "Say something to the DJ..."
+            }
+            disabled={radio.viewState === "generating"}
+            aria-invalid={radio.validationError !== undefined || undefined}
+            aria-describedby={radio.validationError === undefined ? undefined : "radio-scene-error"}
+          />
+          <button
+            className="radio-scene-input__mic"
+            type="button"
+            aria-label="语音输入尚未接入"
+            disabled
+          >
+            <Icon name="mic" />
+          </button>
+          <button
+            className="radio-scene-input__send"
+            type="submit"
+            aria-label="发送给 DJ"
+            disabled={radio.viewState === "generating"}
+          >
+            <Icon name="send" />
+          </button>
+          {radio.validationError !== undefined && (
+            <span className="visually-hidden" id="radio-scene-error" role="alert">
+              {radio.validationError}
+            </span>
+          )}
+        </form>
+        {reconnecting && <TransientToast>EVENTS RECONNECTING · SNAPSHOT ACTIVE</TransientToast>}
+        {themeError && (
+          <TransientToast
+            error
+            onDismiss={() => {
+              setThemeError(false);
+            }}
+          >
+            主题保存失败，已恢复到之前的主题
+          </TransientToast>
+        )}
+        {reuseNotice && (
+          <TransientToast
+            onDismiss={() => {
+              setReuseNotice(false);
+            }}
+          >
+            已带着这个场景回到 Radio
+          </TransientToast>
+        )}
+        {audio.mediaError !== undefined && audio.mediaError !== "queue_exhausted" && (
+          <TransientToast error>
+            {audio.mediaError === "autoplay_blocked"
+              ? "浏览器阻止了自动播放，请按播放继续"
+              : "当前音频无法播放，正在尝试下一段"}
+          </TransientToast>
+        )}
+        {audio.checkpointError && (
+          <TransientToast error>播放继续，但历史记录暂未保存</TransientToast>
+        )}
+        {detailUnavailable && (
+          <TransientToast
+            error
+            onDismiss={() => {
+              setDetailUnavailable(false);
+            }}
+          >
+            先生成一段电台，再查看节目详情
+          </TransientToast>
+        )}
+        {detailError && (
+          <TransientToast
+            error
+            onDismiss={() => {
+              setDetailError(false);
+            }}
+          >
+            节目详情暂时不可用，播放继续
+          </TransientToast>
+        )}
+        <FeedbackNotice notice={feedback.notice} onDismiss={feedback.dismissNotice} />
+        <PrimaryNavigation active="radio" onNavigate={navigate} />
+      </div>
+      {detailOpen &&
+        radio.program !== null &&
+        createPortal(
+          <div className="radio-detail-portal">
+            <div className="radio-detail-portal__canvas">
+              <DetailSheetBoundary
+                key={radio.program.program.id}
+                onFailure={() => {
+                  setDetailOpen(false);
+                  setDetailError(true);
+                  window.queueMicrotask(() => detailOpenerRef.current?.focus());
+                }}
+              >
+                <DetailSheet
+                  audio={audio}
+                  audioEngine={audioEngine}
+                  onClosed={() => {
+                    setDetailOpen(false);
+                    window.queueMicrotask(() => detailOpenerRef.current?.focus());
+                  }}
+                  profileId={current.profile.id}
+                  program={radio.program}
+                  transport={transport}
+                />
+              </DetailSheetBoundary>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

@@ -109,6 +109,7 @@ function TrackList({
   audioEngine,
   onAdd,
   onPreview,
+  onReachEnd,
   previewingTrackId,
   tracks,
 }: {
@@ -117,12 +118,36 @@ function TrackList({
   audioEngine: AudioEngineFacade;
   onAdd: (track: MusicTrack) => void;
   onPreview: (track: MusicTrack) => void;
+  onReachEnd?: () => void;
   previewingTrackId: string | undefined;
   tracks: MusicTrack[];
 }): ReactElement {
   const preview = useAudioSnapshot(audioEngine).preview;
+  const listRef = useRef<HTMLOListElement>(null);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (list === null || onReachEnd === undefined || tracks.length === 0) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (list.clientHeight > 0 && list.scrollHeight - list.clientHeight <= 48) onReachEnd();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [onReachEnd, tracks.length]);
+
   return (
-    <ol className="library-track-list">
+    <ol
+      ref={listRef}
+      aria-label="音乐列表"
+      className="library-track-list"
+      onScroll={(event) => {
+        if (onReachEnd === undefined) return;
+        const list = event.currentTarget;
+        if (list.scrollHeight - list.scrollTop - list.clientHeight <= 48) onReachEnd();
+      }}
+      tabIndex={tracks.length > 4 ? 0 : undefined}
+    >
       {tracks.map((track, index) => {
         const added = addedTrackIds.has(track.id);
         const previewing = previewingTrackId === track.id;
@@ -143,8 +168,8 @@ function TrackList({
               <i />
             </span>
             <span className="library-track__meta">
-              <strong>{track.title}</strong>
-              <small>
+              <strong title={track.title}>{track.title}</strong>
+              <small title={`${track.artist} · ${track.album}`}>
                 {track.artist} · {track.album}
                 {track.playable ? "" : " · 暂不可播放"}
               </small>
@@ -441,7 +466,6 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
             <h1 ref={props.headingRef} tabIndex={-1}>
               音乐库
             </h1>
-            <p>管理 Koradio 可以搜索、试听和用于节目策展的音乐来源。</p>
           </div>
           <p>{loadedCountLabel}</p>
         </header>
@@ -540,19 +564,19 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
               audioEngine={props.audioEngine}
               onAdd={() => undefined}
               onPreview={previewTrack}
+              onReachEnd={() => {
+                if (library.hasNextPage && !library.isFetchingNextPage) {
+                  void library.fetchNextPage();
+                }
+              }}
               previewingTrackId={previewingTrackId}
               tracks={localTracks}
             />
           )}
-          {!showingSearch && library.hasNextPage ? (
-            <button
-              className="button button--secondary library-load-more"
-              type="button"
-              disabled={library.isFetchingNextPage}
-              onClick={() => void library.fetchNextPage()}
-            >
-              {library.isFetchingNextPage ? "正在加载" : "加载更多"}
-            </button>
+          {!showingSearch && library.isFetchingNextPage ? (
+            <p className="library-list-status" role="status">
+              正在加载更多音乐
+            </p>
           ) : null}
         </section>
 

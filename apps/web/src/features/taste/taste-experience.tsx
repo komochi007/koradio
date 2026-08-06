@@ -759,7 +759,6 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
             <h1 ref={props.headingRef} tabIndex={-1}>
               你的音乐品味
             </h1>
-            <p>由播放、跳过、喜欢和人工规则逐步形成。</p>
           </div>
           <button
             className="button button--secondary taste-edit-button"
