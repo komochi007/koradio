@@ -23,6 +23,21 @@
   min-height: var(--desktop-canvas-logical-height, 1600px);
 }
 
+html[data-electron-canvas="true"] .desktop-canvas .topbar {
+  -webkit-app-region: drag;
+}
+
+html[data-electron-canvas="true"] .desktop-canvas .topbar .topbar-tools,
+html[data-electron-canvas="true"] .desktop-canvas .topbar .radio-page__tools,
+html[data-electron-canvas="true"] .desktop-canvas .topbar button,
+html[data-electron-canvas="true"] .desktop-canvas .topbar a,
+html[data-electron-canvas="true"] .desktop-canvas .topbar input,
+html[data-electron-canvas="true"] .desktop-canvas .topbar select,
+html[data-electron-canvas="true"] .desktop-canvas .topbar textarea,
+html[data-electron-canvas="true"] .desktop-canvas .topbar [role="button"] {
+  -webkit-app-region: no-drag;
+}
+
 .desktop-canvas .library-main,
 .desktop-canvas .taste-main,
 .desktop-canvas .taste-edit-main,

@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,6 +10,18 @@ import {
 } from "../../apps/web/src/app/desktop-canvas.js";
 
 describe("DesktopCanvas", () => {
+  it("defines an Electron drag region without disabling topbar controls", async () => {
+    const stylesheet = await readFile(
+      fileURLToPath(new URL("../../apps/web/src/app/desktop-canvas.css", import.meta.url)),
+      "utf8",
+    );
+    expect(stylesheet).toContain(
+      'html[data-electron-canvas="true"] .desktop-canvas .topbar {\n  -webkit-app-region: drag;',
+    );
+    expect(stylesheet).toContain(".desktop-canvas .topbar button");
+    expect(stylesheet).toContain("-webkit-app-region: no-drag;");
+  });
+
   it("scales a standalone desktop PWA down to the entire available viewport", () => {
     const state = resolveDesktopCanvasState({
       hasFinePointer: true,
