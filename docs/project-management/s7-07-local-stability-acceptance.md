@@ -38,7 +38,7 @@
 | 2026-07-30 | 0 | 0 | 0 | 唯一 Launchpad 入口与启动前强制联网更新实现、安装和重开复验 | 未记录 | S7-07-011、S7-07-012 | `0.0.137` 修复版已作为自动更新终验基线；不计入稳定性样本 |
 | 2026-08-03 | 0 | 0 | 0 | 回退后 Launchpad 图标标准尺寸修复、自动更新安装与实机复验 | 未记录 | S7-07-014 | `0.0.139` 修复版恢复标准尺寸圆角矩形图标；不计入稳定性样本 |
 | 2026-08-05 | 0 | 0 | 0 | Electron `0.0.913` 安装、启动前 `origin/main` 更新检查、窗口与 session bootstrap 验证；修复后在线更新至 `0.0.147` 并重新启动 | 无 | S7-09-001、S7-09-002 | Electron 切换与更新器修复基线通过；不计入稳定性样本 |
-| 2026-08-06 | 0 | 0 | 0 | Electron 顶部窗口拖拽区域修复与桌面包回归验证 | 无 | S7-09-003 | 待安装修复包后复验窗口移动；不计入稳定性样本 |
+| 2026-08-06 | 0 | 0 | 0 | Electron 顶部窗口拖拽区域修复与桌面包回归验证 | 无 | S7-09-003 | `0.0.151` 实机窗口移动与顶部栏控件交互通过；不计入稳定性样本 |
 
 ## 4. 必测路径
 
@@ -68,7 +68,7 @@
 | S7-07-014 | 2026-08-03 | Medium | Git 回退将固定 `/Applications/Koradio.app` 和构建源恢复为旧单层 `Koradio.icns`，Launchpad 再次显示直角黑色方块，图标尺寸大于 macOS 标准应用图标。 | 唯一 Launchpad 入口应显示带标准光学留白的圆角矩形 Koradio 品牌图标，并在后续自动更新中保持一致。 | 恢复透明安全边距 SVG：内容区约占 81% 画布，四角为透明；由 16～1024 px 的完整 10 层 iconset 生成 `KoradioAppIconPadded.icns`，保留 bundle ID `app.koradio.launcher`，包验证器强制校验图标资源名、身份和全部图层。 | 回退前截图复现旧直角方块；修复后以 `0.0.139` 启动前联网更新原位安装，package verifier、strict codesign、唯一登记与 Launchpad 标准尺寸圆角矩形图标实机复验通过。 |
 | S7-09-001 | 2026-08-05 | High | 从版本化的 `Koradio-0.0.912-arm64.app` 直接启动时，更新前置检查只接受固定 `Koradio.app`，导致报错 `Updater application path is invalid`。 | 已验证的版本化个人预览包应能通过路径校验并执行更新前置检查；实际启动前即被拒绝。 | 更新 Electron `UpdatePreflight` 与 bundled updater，允许 `Koradio.app` 和 `Koradio-<semver>-arm64.app` 两种已验证 bundle 名称，同时保留固定安装路径作为唯一日常入口。 | Electron 桌面单元测试、`0.0.913` package/DMG verifier、strict codesign 与固定 `/Applications/Koradio.app` 正常启动、session bootstrap 均通过。 |
 | S7-09-002 | 2026-08-05 | High | Electron 更新器在缓存 checkout 构建新包时，先静态解析 `@electron/packager`，依赖安装尚未执行；修复该问题后，已启用 Hardened Runtime 的包内 Node 又会拒绝加载缓存内原生 zip 模块。 | 更新器应先完成 frozen install，并用可加载缓存构建依赖的受控 Node 构建候选；实际依次以 `ERR_MODULE_NOT_FOUND` 和 Team ID 不一致终止且不打开产品。 | 打包器改在 frozen install 成功后动态加载；更新前置检查将包内 Node 复制到私有临时目录并以无 Hardened Runtime 的 ad-hoc 签名运行更新器，`update-macos.mjs` 继承该 `process.execPath` 执行构建与验证，产品运行时 Node 的签名策略不变。 | `macos-update.test.ts` 断言依赖安装顺序与 updater Node 传递；`desktop-shell.test.ts` 断言临时 Node 签名参数；真实更新器成功将 `/Applications/Koradio.app` 从 `0.0.913` 原位替换为 `0.0.147`（`97ec74b`），strict codesign、正常启动与 session bootstrap 均通过。 |
-| S7-09-003 | 2026-08-06 | Medium | Electron 使用 `hiddenInset` 标题栏时，Renderer 未声明 `-webkit-app-region: drag`，窗口内容可以正常交互但无法拖动窗口。 | 顶部栏空白区域应可移动窗口，档案和主题按钮仍可点击；实际没有可拖拽区域。 | Electron canvas 顶部栏增加 `drag` 区域，顶部栏内按钮、链接和表单控件明确设置 `no-drag`；浏览器/PWA 不受影响。 | `desktop-canvas.test.ts` 断言拖拽与控件排除规则；待安装修复包后完成 macOS 实际拖动复验。 |
+| S7-09-003 | 2026-08-06 | Medium | Electron 使用 `hiddenInset` 标题栏时，Renderer 未声明 `-webkit-app-region: drag`，窗口内容可以正常交互但无法拖动窗口。 | 顶部栏空白区域应可移动窗口，档案和主题按钮仍可点击；实际没有可拖拽区域。 | Electron canvas 顶部栏增加 `drag` 区域，顶部栏内按钮、链接和表单控件明确设置 `no-drag`；浏览器/PWA 不受影响。 | `desktop-canvas.test.ts` 7 项通过；`0.0.151` strict codesign、正常启动、session bootstrap 与 macOS 实机窗口拖动通过。 |
 
 ## 6. 完成前复核
 
