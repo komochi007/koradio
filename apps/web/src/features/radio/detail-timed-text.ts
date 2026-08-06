@@ -1,6 +1,7 @@
 import type { PlaybackTimelineItem } from "@koradio/contracts";
 
 export type TimedTextState = "read" | "current" | "upcoming";
+export type TimedTextUnitState = TimedTextState | "played";
 
 export interface TimedTextLine {
   endMs: number;
@@ -15,7 +16,7 @@ export interface DisplayTimedTextLine extends TimedTextLine {
 export interface DisplayTimedTextUnit {
   endMs: number;
   startMs: number;
-  state: TimedTextState;
+  state: TimedTextUnitState;
   text: string;
 }
 
@@ -100,7 +101,7 @@ export function deriveTimedTextUnits(
   if (currentIndex < 0) currentIndex = timed.length - 1;
   return timed.map((unit, index) => ({
     ...unit,
-    state: index < currentIndex ? "read" : index === currentIndex ? "current" : "upcoming",
+    state: index < currentIndex ? "played" : index === currentIndex ? "current" : "upcoming",
   }));
 }
 
@@ -184,7 +185,8 @@ export function deriveTimedText(
     (line) => safePosition >= line.startMs && safePosition < line.endMs,
   );
   if (currentIndex < 0) {
-    currentIndex = safePosition < (lines[0]?.startMs ?? 0) ? 0 : lines.length - 1;
+    currentIndex = lines.findIndex((line) => safePosition < line.startMs);
+    if (currentIndex < 0) currentIndex = lines.length;
   }
   return lines.map((line, index) => ({
     ...line,

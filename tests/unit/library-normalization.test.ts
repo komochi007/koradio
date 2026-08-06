@@ -69,6 +69,13 @@ describe("Library normalization and cache policy", () => {
     expect(normalized.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(normalized).toMatchObject({ artworkUrl: null, playable: true });
 
+    expect(
+      normalizeProviderTrack({
+        ...track,
+        artworkUrl: "http://p1.music.126.net/cover.jpg",
+      }).artworkUrl,
+    ).toBe("https://p1.music.126.net/cover.jpg");
+
     const response = parseProviderSearchResult({
       items: [track, { ...track, sourceTrackId: "track-002", playable: false }],
       nextCursor: "cursor-001",

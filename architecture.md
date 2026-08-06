@@ -60,10 +60,10 @@ flowchart LR
 
 ### Packaging and delivery
 
-- macOS 包装采用 Electron 主进程 + 现有 Web Renderer + bundled Node Local Service + bundled Python/MLX TTS runtime；Electron 主进程只负责进程生命周期、health ready、窗口和加载同源 origin，不成为播放或业务事实源。
+- macOS 包装采用 Electron 主进程 + 现有 Web Renderer + bundled Node Local Service + bundled Python/MLX TTS runtime；Electron 主进程只负责进程生命周期、health ready、窗口和加载同源 origin，不成为播放或业务事实源。`app.whenReady()` 后先显示仅包含本地静态内容的启动状态窗口，状态页只通过私有重试通道与主进程交互。
 - Personal Local Preview 只允许 `/Applications/Koradio.app` 作为 Launchpad 桌面入口，并使用同一品牌圆角图标；不安装第二个 PWA shim。Electron 窗口只加载 `http://127.0.0.1:<port>/radio`，不创建普通网页标签。
 - 每次正常桌面打开都先从固定 HTTPS 仓库检查 `origin/main`。更新器在应用拥有的缓存目录维护独立源码副本，不修改开发工作树；只有精确远端提交完成 frozen install、production build、ad-hoc strict codesign、Electron 包结构与 smoke 后，才原位替换固定应用路径并重新启动。
-- 更新行为是 fail-closed：远端检查、源码同步、构建、验证或替换任一步失败时保留已安装 app、用户数据与回滚副本，但不得启动已知旧版本或打开产品页面。旧 app 只允许以非 `.app` 目录保留在非应用位置，避免被 Launch Services、Launchpad 或 Dock 注册为入口。
+- 更新行为是 fail-closed：远端检查、源码同步、构建、验证或替换任一步失败时保留已安装 app、用户数据与回滚副本，但不得启动已知旧版本或打开产品页面；失败期间保留本地启动状态窗口并允许完整重试。旧 app 只允许以非 `.app` 目录保留在非应用位置，避免被 Launch Services、Launchpad 或 Dock 注册为入口。
 - 当前只生成 macOS 15+ arm64 app/DMG，捆绑 Node 24.18.0、可重定位 Python 3.12/MLX runtime、production Server 与 built PWA assets；Qwen 模型由用户首次下载到受控数据目录。
 - 当前交付渠道仅限项目所有者在受控本机从可信源码构建并个人使用。ad-hoc 签名只用于本地 bundle 结构和生命周期验证，不得作为公开下载或外部分发凭据。
 - 公开下载属于后续发布阶段；任何外部分发产物都必须先取得 Developer ID 签名、公证 ticket、Gatekeeper 与独立干净环境验收，不得通过关闭系统安全检查替代。

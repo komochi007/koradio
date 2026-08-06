@@ -17,6 +17,7 @@ import {
 import { z } from "zod";
 
 import { parseSqliteRows } from "../../platform/db/rows.js";
+import { normalizeArtworkUrl } from "./artwork-url.js";
 
 interface MusicTrackRow {
   id: string;
@@ -151,7 +152,7 @@ function mapTrack(row: MusicTrackRow): MusicTrack {
     title: row.title,
     artist: row.artist,
     album: row.album,
-    artworkUrl: row.artwork_url,
+    artworkUrl: normalizeArtworkUrl(row.artwork_url),
     durationMs: row.duration_ms,
     lyricStatus:
       row.lyric_status === "unavailable" && row.lyrics_queried === 0 ? "unknown" : row.lyric_status,

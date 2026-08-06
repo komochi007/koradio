@@ -153,6 +153,18 @@ function wait(milliseconds: number): Promise<void> {
   });
 }
 
+async function findReadyPort(
+  probe: (port: number) => Promise<boolean>,
+): Promise<number | undefined> {
+  const results = await Promise.all(
+    createPortCandidates().map(async (port) => ({
+      port,
+      ready: await probe(port).catch(() => false),
+    })),
+  );
+  return results.find((result) => result.ready)?.port;
+}
+
 function waitForExit(child: ChildProcess, timeout: number): Promise<boolean> {
   if (child.exitCode !== null || child.signalCode !== null) {
     return Promise.resolve(true);
@@ -185,11 +197,10 @@ export function createServiceController(options: ServiceControllerOptions): Serv
 
   return {
     async detectExisting() {
-      for (const port of createPortCandidates()) {
-        if (await probe(port)) {
-          currentHandle = { owned: false, port };
-          return currentHandle;
-        }
+      const port = await findReadyPort(probe);
+      if (port !== undefined) {
+        currentHandle = { owned: false, port };
+        return currentHandle;
       }
       return undefined;
     },
@@ -221,12 +232,11 @@ export function createServiceController(options: ServiceControllerOptions): Serv
         if (handle.process?.exitCode !== null && handle.process?.exitCode !== undefined) {
           throw new Error("Bundled Koradio service exited before becoming ready");
         }
-        for (const port of createPortCandidates()) {
-          if (await probe(port)) {
-            const readyHandle = { ...handle, port };
-            currentHandle = readyHandle;
-            return readyHandle;
-          }
+        const port = await findReadyPort(probe);
+        if (port !== undefined) {
+          const readyHandle = { ...handle, port };
+          currentHandle = readyHandle;
+          return readyHandle;
         }
         await wait(pollInterval);
       }

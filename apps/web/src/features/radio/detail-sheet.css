@@ -35,6 +35,9 @@
 
 .radio-detail-sheet {
   --kr-detail-card: #f5f3f6;
+  --kr-detail-control-gap: 16px;
+  --kr-detail-control-top: 40px;
+  --kr-detail-close-size: 56px;
   --kr-detail-content-width: min(calc(100% - (var(--kr-detail-gutter) * 2)), 848px);
   --kr-detail-gutter: clamp(20px, 5.84vw, 56px);
   --kr-detail-paper: #ffffff;
@@ -77,11 +80,11 @@
 .detail-close {
   position: absolute;
   z-index: 4;
-  top: 40px;
+  top: var(--kr-detail-control-top);
   right: var(--kr-detail-gutter);
   display: grid;
-  width: 64px;
-  height: 64px;
+  width: var(--kr-detail-close-size);
+  height: var(--kr-detail-close-size);
   padding: 0;
   place-items: center;
   border: 1px solid rgba(243, 245, 247, 0.12);
@@ -111,8 +114,8 @@
 
 .detail-close svg,
 .detail-play svg {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
@@ -123,11 +126,17 @@
 .detail-status {
   position: absolute;
   z-index: 3;
-  top: 76px;
+  top: var(--kr-detail-control-top);
   left: max(var(--kr-detail-gutter), calc((100% - var(--kr-detail-content-width)) / 2));
   display: flex;
-  width: min(calc(100% - (var(--kr-detail-gutter) * 2) - 80px), 720px);
-  min-height: 40px;
+  width: min(
+    calc(
+      100% - (var(--kr-detail-gutter) * 2) - var(--kr-detail-close-size) -
+        var(--kr-detail-control-gap)
+    ),
+    720px
+  );
+  min-height: var(--kr-detail-close-size);
   align-items: center;
   gap: 12px;
   margin: 0;
@@ -137,14 +146,6 @@
     "SF Mono",
     monospace;
   letter-spacing: 0.12em;
-}
-
-html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
-  left: max(
-    var(--desktop-native-titlebar-window-leading),
-    var(--kr-detail-gutter),
-    calc((100% - var(--kr-detail-content-width)) / 2)
-  );
 }
 
 .detail-status > span {
@@ -274,6 +275,7 @@ html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
 .detail-copy {
   position: relative;
   display: grid;
+  box-sizing: border-box;
   min-height: 0;
   align-content: center;
   gap: 5px;
@@ -283,6 +285,8 @@ html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
   background: var(--kr-detail-card);
   isolation: isolate;
   overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scroll-padding-block: clamp(24px, 4.2vw, 40px);
   scrollbar-width: none;
 }
 
@@ -360,6 +364,11 @@ html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
   color: var(--kr-detail-text-read);
 }
 
+.detail-copy__unit--played {
+  color: var(--kr-detail-text);
+  font-weight: 450;
+}
+
 .detail-copy__unit--current {
   color: var(--kr-detail-text);
   font-weight: 620;
@@ -411,8 +420,8 @@ html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
 
 .detail-bottom-control {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 56px;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 16px;
   align-items: center;
 }
 
@@ -439,8 +448,8 @@ html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
 
 .detail-play {
   display: grid;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   padding: 0;
   place-items: center;
   border: 0;
@@ -495,6 +504,8 @@ html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
 
 @media (max-width: 767px) {
   .radio-detail-sheet {
+    --kr-detail-close-size: 48px;
+    --kr-detail-control-top: 20px;
     --kr-detail-paper-top: 232px;
   }
 
@@ -508,15 +519,13 @@ html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
   }
 
   .detail-close {
-    top: 20px;
     width: 48px;
     height: 48px;
   }
 
   .detail-status {
-    top: 34px;
-    width: 240px;
-    min-height: 32px;
+    top: var(--kr-detail-control-top);
+    min-height: var(--kr-detail-close-size);
     font-size: 12px;
   }
 
@@ -550,12 +559,147 @@ html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
   }
 
   .detail-status {
-    top: 64px;
+    top: var(--kr-detail-control-top);
   }
 
   .detail-waveform {
     top: 120px;
     height: 220px;
+  }
+}
+
+html[data-electron-canvas="true"] .radio-detail-portal__canvas {
+  width: 100vw;
+  height: 100vh;
+  transform: none;
+}
+
+html[data-electron-canvas="true"] .radio-detail-portal .radio-detail-sheet {
+  --kr-detail-paper-top: 25dvh;
+}
+
+html[data-electron-canvas="true"] .radio-detail-portal .detail-waveform {
+  top: 0;
+  height: calc(25dvh + 24px);
+}
+
+@media (max-width: 520px) {
+  html[data-electron-canvas="true"] .radio-detail-portal .radio-detail-sheet {
+    --kr-detail-close-size: 44px;
+    --kr-detail-control-top: 20px;
+    --kr-detail-gutter: 20px;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-paper {
+    grid-template-rows: auto auto 22px minmax(0, 1fr) 40px;
+    gap: 10px;
+    padding: 24px 20px 20px;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-close {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: transparent;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-close svg,
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-play svg {
+    position: absolute;
+    top: 13px;
+    right: 7px;
+    z-index: 1;
+    width: 18px;
+    height: 18px;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-close::before,
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-play::before {
+    position: absolute;
+    top: 6px;
+    right: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    content: "";
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-close::before {
+    border: 1px solid rgba(243, 245, 247, 0.12);
+    background: rgba(243, 245, 247, 0.12);
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-close:hover {
+    background: transparent;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-close:hover::before {
+    background: rgba(243, 245, 247, 0.18);
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-play {
+    width: 44px;
+    height: 44px;
+    position: relative;
+    justify-self: end;
+    background: transparent;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-play::before {
+    background: var(--kr-detail-text);
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-status {
+    top: var(--kr-detail-control-top);
+    left: 20px;
+    min-height: var(--kr-detail-close-size);
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-waveform {
+    top: 80px;
+    height: calc(25dvh + 24px - 80px);
+    padding: 0;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-paper h1 {
+    font-size: clamp(30px, 7vw, 36px);
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-track {
+    font-size: 15px;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-copy {
+    gap: 4px;
+    padding: 24px 20px;
+    scroll-padding-block: 24px;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-copy--lyrics .detail-copy__line {
+    font-size: clamp(20px, 5vw, 24px);
+    line-height: 1.45;
+  }
+
+  html[data-electron-canvas="true"]
+    .radio-detail-portal
+    .detail-copy--lyrics
+    .detail-copy__line--current {
+    font-size: clamp(26px, 6vw, 30px);
+    line-height: 1.3;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-bottom-control {
+    grid-template-columns: minmax(0, 1fr) 40px;
+    gap: 0;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-program-progress {
+    height: 32px;
+  }
+
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-play {
+    width: 44px;
+    height: 44px;
   }
 }
 

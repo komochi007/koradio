@@ -17,6 +17,8 @@ import {
 } from "@koradio/contracts";
 import { z } from "zod";
 
+import { normalizeArtworkUrl } from "./artwork-url.js";
+
 export const providerTrackSchema = z.strictObject({
   source: musicSourceSchema,
   sourceTrackId: z.string().min(1).max(128),
@@ -112,7 +114,7 @@ export function normalizeProviderTrack(
     title: track.title,
     artist: track.artist,
     album: track.album,
-    artworkUrl: track.artworkUrl,
+    artworkUrl: normalizeArtworkUrl(track.artworkUrl),
     durationMs: track.durationMs,
     lyricStatus: track.lyricStatus,
     playable: track.playable,

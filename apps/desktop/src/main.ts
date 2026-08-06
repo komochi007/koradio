@@ -16,6 +16,7 @@ import {
   minimumWindowWidth,
   rendererContentSecurityPolicy,
 } from "./window-policy.js";
+import { startupPagePrefix, startupPageUrl, startupRetryUrl } from "./startup-page.js";
 
 const smokeMode = process.argv.includes("--smoke");
 const smokeUserDataDirectory = process.env.KORADIO_DESKTOP_SMOKE_USER_DATA_DIR;
@@ -27,7 +28,11 @@ let mainWindow: BrowserWindow | undefined;
 let serviceController: ServiceController | undefined;
 let serviceHandle: ServiceHandle | undefined;
 let quitting = false;
-let cleanupStarted = false;
+let rendererExpectedOrigin: string | undefined;
+let rendererSecurityInstalled = false;
+let startupAttempt: Promise<void> | undefined;
+let startupNavigationActive = true;
+let startupRetry: (() => void) | undefined;
 
 function applicationBundlePath(): string {
   return resolve(dirname(process.execPath), "../..");
@@ -45,6 +50,23 @@ function developmentOrigin(): string {
   return new URL(configured).origin;
 }
 
+async function updateStartupStatus(
+  stage: string,
+  detail: string,
+  retryable = false,
+): Promise<void> {
+  const window = mainWindow;
+  if (window === undefined || window.isDestroyed()) return;
+  try {
+    await window.webContents.executeJavaScript(
+      `window.__koradioSetStartupStatus(${JSON.stringify(stage)}, ${JSON.stringify(detail)}, ${String(retryable)})`,
+      true,
+    );
+  } catch {
+    return;
+  }
+}
+
 function showFailure(error: unknown): void {
   const message = error instanceof Error ? error.message : "Koradio failed to start";
   if (smokeMode) {
@@ -54,21 +76,27 @@ function showFailure(error: unknown): void {
     app.exit(1);
     return;
   }
-  dialog.showErrorBox("Koradio 无法启动", message);
-  app.exit(1);
+  if (mainWindow === undefined || mainWindow.isDestroyed()) {
+    dialog.showErrorBox("Koradio 无法启动", message);
+    app.exit(1);
+    return;
+  }
+  void updateStartupStatus("Koradio 启动失败", message, true);
 }
 
 async function stopOwnedService(): Promise<void> {
-  if (cleanupStarted) return;
-  cleanupStarted = true;
-  await serviceController?.stopOwned(serviceHandle);
+  const handle = serviceHandle;
   serviceHandle = undefined;
+  await serviceController?.stopOwned(handle);
 }
 
 function installRendererSecurity(window: BrowserWindow, expectedOrigin: string): void {
+  rendererExpectedOrigin = expectedOrigin;
+  if (rendererSecurityInstalled) return;
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event, url) => {
-    if (!isAllowedNavigation(url, expectedOrigin)) {
+    if (url.startsWith(startupPagePrefix) || url === startupRetryUrl) return;
+    if (!isAllowedNavigation(url, rendererExpectedOrigin ?? expectedOrigin)) {
       event.preventDefault();
     }
   });
@@ -93,9 +121,10 @@ function installRendererSecurity(window: BrowserWindow, expectedOrigin: string):
       callback({ responseHeaders: details.responseHeaders ?? {} });
     },
   );
+  rendererSecurityInstalled = true;
 }
 
-function createMainWindow(expectedOrigin: string): BrowserWindow {
+function createMainWindow(): BrowserWindow {
   const window = new BrowserWindow({
     autoHideMenuBar: true,
     backgroundColor: "#090a0c",
@@ -117,7 +146,19 @@ function createMainWindow(expectedOrigin: string): BrowserWindow {
     width: 960,
   });
   window.setMenuBarVisibility(false);
-  installRendererSecurity(window, expectedOrigin);
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  window.webContents.on("will-navigate", (event, url) => {
+    if (!startupNavigationActive) return;
+    if (url === startupRetryUrl) {
+      event.preventDefault();
+      startupRetry?.();
+      return;
+    }
+    if (!url.startsWith(startupPagePrefix)) event.preventDefault();
+  });
+  window.webContents.on("will-attach-webview", (event) => {
+    event.preventDefault();
+  });
   window.once("ready-to-show", () => {
     if (!smokeMode) window.show();
   });
@@ -127,6 +168,11 @@ function createMainWindow(expectedOrigin: string): BrowserWindow {
   });
   mainWindow = window;
   return window;
+}
+
+async function loadStartupPage(window: BrowserWindow): Promise<void> {
+  startupNavigationActive = true;
+  await window.loadURL(startupPageUrl);
 }
 
 async function loadRenderer(window: BrowserWindow, url: string): Promise<void> {
@@ -180,55 +226,92 @@ async function runRendererSmoke(window: BrowserWindow, expectedOrigin: string): 
   }
 }
 
+async function runStartupAttempt(window: BrowserWindow): Promise<void> {
+  if (startupAttempt !== undefined) return startupAttempt;
+  const attempt = (async () => {
+    try {
+      await updateStartupStatus("正在检查更新", "正在验证 Koradio 当前版本");
+      if (app.isPackaged && !smokeMode) {
+        const updateStatus = await runUpdatePreflight({
+          applicationPath: applicationBundlePath(),
+          resourcesPath: productionResourcesPath(),
+        });
+        if (updateStatus === "updated") {
+          app.relaunch();
+          app.exit(0);
+          return;
+        }
+      }
+
+      let expectedOrigin: string;
+      if (app.isPackaged) {
+        await updateStartupStatus("正在启动 Local Service", "正在检查本机服务状态");
+        serviceController = createServiceController({
+          environment: {
+            ...process.env,
+            ...(smokeMode && process.env.KORADIO_PROVIDER_MODE === undefined
+              ? { KORADIO_PROVIDER_MODE: "mock" }
+              : {}),
+          },
+          resourcesPath: productionResourcesPath(),
+        });
+        serviceHandle = await serviceController.detectExisting();
+        if (serviceHandle === undefined) {
+          const started = await serviceController.startBundled();
+          await updateStartupStatus("正在启动 Local Service", "正在等待服务健康检查");
+          serviceHandle = await serviceController.waitUntilReady(started);
+        }
+        expectedOrigin = loopbackOrigin(serviceHandle.port);
+      } else {
+        await updateStartupStatus("正在连接开发服务", "正在等待 Renderer 可用");
+        expectedOrigin = developmentOrigin();
+      }
+
+      const rendererUrl = app.isPackaged
+        ? `${expectedOrigin}/radio`
+        : `${process.env.KORADIO_DESKTOP_DEV_URL ?? "http://127.0.0.1:5173"}/radio`;
+      await updateStartupStatus("正在加载 Koradio", "正在打开产品界面");
+      startupNavigationActive = false;
+      installRendererSecurity(window, new URL(rendererUrl).origin);
+      await loadRenderer(window, rendererUrl);
+      startupRetry = undefined;
+      if (smokeMode) {
+        await runRendererSmoke(window, expectedOrigin);
+        const smokePort = serviceHandle?.port;
+        await stopOwnedService();
+        process.stdout.write(
+          `${JSON.stringify({ ok: true, origin: expectedOrigin, port: smokePort, renderer: true })}\n`,
+        );
+        app.exit(0);
+      }
+    } catch (error) {
+      await stopOwnedService();
+      if (smokeMode) {
+        showFailure(error);
+        return;
+      }
+      try {
+        await loadStartupPage(window);
+      } catch {
+        startupNavigationActive = true;
+      }
+      showFailure(error);
+    }
+  })().finally(() => {
+    startupAttempt = undefined;
+  });
+  startupAttempt = attempt;
+  return attempt;
+}
+
 async function startApplication(): Promise<void> {
   await app.whenReady();
-  if (app.isPackaged && !smokeMode) {
-    const updateStatus = await runUpdatePreflight({
-      applicationPath: applicationBundlePath(),
-      resourcesPath: productionResourcesPath(),
-    });
-    if (updateStatus === "updated") {
-      app.relaunch();
-      app.exit(0);
-      return;
-    }
-  }
-
-  let expectedOrigin: string;
-  if (app.isPackaged) {
-    serviceController = createServiceController({
-      environment: {
-        ...process.env,
-        ...(smokeMode && process.env.KORADIO_PROVIDER_MODE === undefined
-          ? { KORADIO_PROVIDER_MODE: "mock" }
-          : {}),
-      },
-      resourcesPath: productionResourcesPath(),
-    });
-    serviceHandle = await serviceController.detectExisting();
-    if (serviceHandle === undefined) {
-      const started = await serviceController.startBundled();
-      serviceHandle = await serviceController.waitUntilReady(started);
-    }
-    expectedOrigin = loopbackOrigin(serviceHandle.port);
-  } else {
-    expectedOrigin = developmentOrigin();
-  }
-
-  const rendererUrl = app.isPackaged
-    ? `${expectedOrigin}/radio`
-    : `${process.env.KORADIO_DESKTOP_DEV_URL ?? "http://127.0.0.1:5173"}/radio`;
-  const window = createMainWindow(new URL(rendererUrl).origin);
-  await loadRenderer(window, rendererUrl);
-  if (smokeMode) {
-    await runRendererSmoke(window, expectedOrigin);
-    const smokePort = serviceHandle?.port;
-    await stopOwnedService();
-    process.stdout.write(
-      `${JSON.stringify({ ok: true, origin: expectedOrigin, port: smokePort, renderer: true })}\n`,
-    );
-    app.exit(0);
-  }
+  const window = createMainWindow();
+  await loadStartupPage(window);
+  startupRetry = () => {
+    void runStartupAttempt(window);
+  };
+  await runStartupAttempt(window);
 }
 
 if (!singleInstance) {

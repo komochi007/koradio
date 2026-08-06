@@ -132,6 +132,76 @@ async function waitForImport(
 }
 
 describe("S3-02 Library backend", () => {
+  it("normalizes legacy NetEase artwork URLs when reading persisted tracks", async () => {
+    const provider: MusicProvider = {
+      source: "netease",
+      search() {
+        return Promise.resolve({
+          items: [
+            {
+              source: "netease",
+              sourceTrackId: "legacy-artwork-track",
+              title: "Legacy Cover",
+              artist: "Koradio",
+              album: "Migration Fixture",
+              artworkUrl: "https://p1.music.126.net/cover.jpg",
+              durationMs: 180_000,
+              lyricStatus: "available",
+              playable: true,
+            },
+          ],
+        });
+      },
+      importPlaylist() {
+        return Promise.resolve({
+          source: "netease",
+          sourcePlaylistId: "unused",
+          title: "Unused",
+          tracks: [],
+        });
+      },
+      getLyrics() {
+        return Promise.resolve({ status: "unavailable", content: null });
+      },
+      resolveAudio() {
+        return Promise.reject(new Error("unused"));
+      },
+    };
+    const context = await createTestApp(provider);
+    const session = await bootstrapSession(context.app);
+    const headers = authorizedHeaders(session);
+    const profile = await createProfile(context.app, headers, "legacy-artwork-profile");
+    const result = await search(context.app, headers, profile.id, "Legacy Cover");
+    const trackId = result.items[0]?.id;
+    if (trackId === undefined) throw new Error("Expected legacy artwork fixture");
+
+    const added = await context.app.inject({
+      method: "POST",
+      url: `/api/v1/profiles/${profile.id}/library-items`,
+      headers: { ...headers, "idempotency-key": "legacy-artwork-item" },
+      payload: { trackId },
+    });
+    expect(added.statusCode).toBe(201);
+
+    const database = new DatabaseSync(join(context.dataRoot, "koradio.sqlite"));
+    try {
+      database
+        .prepare("UPDATE music_track SET artwork_url = ? WHERE id = ?")
+        .run("http://p1.music.126.net/cover.jpg", trackId);
+    } finally {
+      database.close();
+    }
+
+    const library = await context.app.inject({
+      method: "GET",
+      url: `/api/v1/profiles/${profile.id}/library`,
+      headers,
+    });
+    expect(
+      libraryListResponseSchema.parse(library.json<unknown>()).items[0]?.track.artworkUrl,
+    ).toBe("https://p1.music.126.net/cover.jpg");
+  });
+
   it("searches normalized tracks, adds idempotently and keeps profile libraries isolated", async () => {
     const context = await createTestApp();
     const session = await bootstrapSession(context.app);

@@ -29,6 +29,7 @@ import { Brand, PrimaryNavigation } from "../../shared/ui.js";
 import type { AppEventBus } from "../../shared/events.js";
 import { formatClockDuration } from "../../shared/format.js";
 import { Icon as SharedIcon, type IconName } from "../../shared/icon.js";
+import { ArtworkImage } from "../../shared/artwork.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import { DetailSheet, DetailSheetBoundary } from "./detail-sheet.js";
 import { useRadioProgram, type RadioViewState } from "./use-radio-program.js";
@@ -236,9 +237,7 @@ function RadioMain({
       <article className="radio-player">
         <div className="radio-player__topline">
           <span className="radio-cover" aria-hidden="true">
-            {current?.artworkUrl === null || current?.artworkUrl === undefined ? null : (
-              <img src={current.artworkUrl} alt="" referrerPolicy="no-referrer" />
-            )}
+            <ArtworkImage src={current?.artworkUrl} />
           </span>
           <div className="radio-player__meta">
             <p className="radio-eyebrow">NOW PLAYING</p>

@@ -58,7 +58,7 @@ describe("Detail timed text", () => {
     expect(line).toBeDefined();
     if (line === undefined) throw new Error("Expected a current timed line");
     expect(deriveTimedTextUnits(line, 3_000).map((unit) => [unit.text, unit.state])).toEqual([
-      ["听 ", "read"],
+      ["听 ", "played"],
       ["music ", "current"],
       ["now!", "upcoming"],
     ]);
@@ -86,7 +86,11 @@ describe("Detail timed text", () => {
     );
     expect(displayed.map((line) => line.state)).toEqual(["read", "current", "upcoming"]);
     expect(deriveTimedText(displayed, 500)[0]?.state).toBe("current");
-    expect(deriveTimedText(displayed, 9_000)[2]?.state).toBe("current");
+    expect(deriveTimedText(displayed, 9_000).map((line) => line.state)).toEqual([
+      "read",
+      "read",
+      "read",
+    ]);
   });
 
   it("derives clamped whole-program progress from the canonical timeline", () => {

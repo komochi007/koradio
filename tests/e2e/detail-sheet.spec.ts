@@ -289,9 +289,11 @@ test("Detail keeps long lyrics scrollable, hides scrollbars and centers the curr
 }) => {
   await openDetail(page, { mode: "lyrics" });
   const copy = page.getByRole("article", { name: "跟随歌词" });
-  const first = page.getByText(lyricLines[0]);
-  const next = page.getByText(lyricLines[1]);
-  const last = page.getByText(lyricLines.at(-1) ?? "");
+  const lineByText = (text: string) =>
+    copy.locator(".detail-copy__line").filter({ hasText: text }).first();
+  const first = lineByText(lyricLines[0]);
+  const next = lineByText(lyricLines[1]);
+  const last = lineByText(lyricLines.at(-1) ?? "");
 
   const metrics = await copy.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -365,6 +367,152 @@ test("Detail passes axe and stops continuous motion when Reduce Motion is enable
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await expect(page.locator(".radio-detail-layer")).toHaveCSS("animation-name", "none");
   await expect(page.locator(".detail-waveform__bar").first()).toHaveCSS("animation-name", "none");
+});
+
+test("Detail keeps the Electron compact composition aligned and balanced", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "compact visual baseline is captured once in Chromium");
+  await page.setViewportSize({ width: 430, height: 652 });
+  await openDetail(page, { mode: "lyrics", playback: false });
+  await page.evaluate(() => {
+    document.documentElement.dataset.electronCanvas = "true";
+  });
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      }),
+  );
+
+  const metrics = await page.evaluate(() => {
+    const status = document.querySelector<HTMLElement>(".detail-status");
+    const title = document.querySelector<HTMLElement>(".detail-paper h1");
+    const waveform = document.querySelector<HTMLElement>(".detail-waveform");
+    const paper = document.querySelector<HTMLElement>(".detail-paper");
+    const copy = document.querySelector<HTMLElement>(".detail-copy");
+    const close = document.querySelector<HTMLElement>(".detail-close");
+    const play = document.querySelector<HTMLElement>(".detail-play");
+    const progress = document.querySelector<HTMLElement>(".detail-program-progress");
+    if (
+      status === null ||
+      title === null ||
+      waveform === null ||
+      paper === null ||
+      copy === null ||
+      close === null ||
+      play === null ||
+      progress === null
+    ) {
+      throw new Error("Detail compact metrics are unavailable");
+    }
+    const statusRect = status.getBoundingClientRect();
+    const titleRect = title.getBoundingClientRect();
+    const waveformRect = waveform.getBoundingClientRect();
+    const paperRect = paper.getBoundingClientRect();
+    const closeRect = close.getBoundingClientRect();
+    const playRect = play.getBoundingClientRect();
+    const firstBarRect = waveform.firstElementChild?.getBoundingClientRect();
+    const lastBarRect = waveform.lastElementChild?.getBoundingClientRect();
+    if (firstBarRect === undefined || lastBarRect === undefined) {
+      throw new Error("Detail compact waveform metrics are unavailable");
+    }
+    return {
+      closeBottom: closeRect.bottom,
+      closeHeight: closeRect.height,
+      closeTop: closeRect.top,
+      closeWidth: closeRect.width,
+      closeVisualSize: getComputedStyle(close, "::before").width,
+      copyHeight: copy.getBoundingClientRect().height,
+      firstBarBottom: firstBarRect.bottom,
+      lastBarBottom: lastBarRect.bottom,
+      paperTop: paperRect.top,
+      playHeight: playRect.height,
+      playWidth: playRect.width,
+      playVisualSize: getComputedStyle(play, "::before").width,
+      progressHeight: progress.getBoundingClientRect().height,
+      statusBottom: statusRect.bottom,
+      statusLeft: statusRect.left,
+      statusTop: statusRect.top,
+      titleLeft: titleRect.left,
+      waveformBottom: waveformRect.bottom,
+      waveformTop: waveformRect.top,
+    };
+  });
+  expect(metrics.statusLeft).toBeCloseTo(metrics.titleLeft, 0);
+  expect(metrics.statusTop).toBeCloseTo(metrics.closeTop, 0);
+  expect(metrics.statusBottom).toBeCloseTo(metrics.closeBottom, 0);
+  expect(metrics.statusBottom).toBeLessThan(metrics.waveformTop);
+  expect(metrics.waveformBottom).toBeGreaterThan(metrics.paperTop);
+  expect(metrics.firstBarBottom).toBeGreaterThan(metrics.paperTop);
+  expect(metrics.lastBarBottom).toBeGreaterThan(metrics.paperTop);
+  expect(metrics.closeWidth).toBe(44);
+  expect(metrics.closeHeight).toBe(44);
+  expect(metrics.closeVisualSize).toBe("32px");
+  expect(metrics.playWidth).toBe(44);
+  expect(metrics.playHeight).toBe(44);
+  expect(metrics.playVisualSize).toBe("32px");
+  expect(metrics.progressHeight).toBe(32);
+  expect(metrics.copyHeight).toBeGreaterThan(260);
+  await expect(page).toHaveScreenshot("detail-lyrics-electron-compact.png", {
+    animations: "disabled",
+    fullPage: false,
+  });
+});
+
+test("Detail keeps Electron top controls aligned at the reference viewport", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "Electron geometry is captured once in Chromium");
+  await page.setViewportSize({ width: 960, height: 1600 });
+  await openDetail(page, { mode: "lyrics", playback: false });
+  await page.evaluate(() => {
+    document.documentElement.dataset.electronCanvas = "true";
+  });
+  const metrics = await page.evaluate(() => {
+    const status = document.querySelector<HTMLElement>(".detail-status");
+    const title = document.querySelector<HTMLElement>(".detail-paper h1");
+    const close = document.querySelector<HTMLElement>(".detail-close");
+    const play = document.querySelector<HTMLElement>(".detail-play");
+    const progress = document.querySelector<HTMLElement>(".detail-program-progress");
+    if (status === null || title === null || close === null || play === null || progress === null) {
+      throw new Error("Detail reference metrics are unavailable");
+    }
+    const statusRect = status.getBoundingClientRect();
+    const titleRect = title.getBoundingClientRect();
+    const closeRect = close.getBoundingClientRect();
+    const playRect = play.getBoundingClientRect();
+    const progressRect = progress.getBoundingClientRect();
+    return {
+      closeBottom: closeRect.bottom,
+      closeHeight: closeRect.height,
+      closeTop: closeRect.top,
+      closeWidth: closeRect.width,
+      playHeight: playRect.height,
+      playLeft: playRect.left,
+      playWidth: playRect.width,
+      progressBottom: progressRect.bottom,
+      progressRight: progressRect.right,
+      progressWidth: progressRect.width,
+      statusBottom: statusRect.bottom,
+      statusLeft: statusRect.left,
+      statusTop: statusRect.top,
+      titleLeft: titleRect.left,
+    };
+  });
+  expect(metrics.statusLeft).toBeCloseTo(metrics.titleLeft, 0);
+  expect(metrics.statusTop).toBeCloseTo(metrics.closeTop, 0);
+  expect(metrics.statusBottom).toBeCloseTo(metrics.closeBottom, 0);
+  expect(metrics.closeWidth).toBe(56);
+  expect(metrics.closeHeight).toBe(56);
+  expect(metrics.playWidth).toBe(48);
+  expect(metrics.playHeight).toBe(48);
+  expect(metrics.playLeft - metrics.progressRight).toBe(16);
+  expect(metrics.progressWidth).toBeGreaterThan(760);
 });
 
 for (const mode of ["speaking", "lyrics"] as const) {

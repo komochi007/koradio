@@ -77,7 +77,8 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] S7-02 受控本机安装生命周期已通过：[S7-02 验收记录](docs/project-management/s7-02-install-lifecycle-acceptance.md) 记录 arm64 两版本安装、升级、失败回滚、卸载、数据保留与端口残留验证
 - [ ] S7-09 Electron 桌面外壳迁移进行中：主进程、服务生命周期、安全导航、启动前更新、Electron arm64 包装与包验证已接入；7 日稳定性试用仍是最终关闭门
 - [ ] S7-07 正在把本机入口收敛为唯一 `/Applications/Koradio.app`：每次从 Launchpad 打开先联网确认可信 `origin/main`，必要时本机构建、验证并原位替换；任何更新失败都不打开旧版；Electron 窗口不再依赖浏览器 PWA shim
-- [x] S7-09 Electron UI 紧凑窗口优化已验收：窗口策略限制为最小 `430 × 652px`；紧凑窗口固定内容比例并只收敛外侧留白，Radio 外层禁止滚动，队列、DJ 对话和 Library 本地音乐列表在卡片内独立滚动且隐藏滚动条；品牌与内容区左对齐并避让 macOS 原生按钮；Detail Sheet 无外侧边距覆盖完整窗口；验收记录见 [S7-09 Electron UI 优化验收](docs/project-management/s7-09-electron-ui-optimization-acceptance.md)
+- [x] S7-09 Electron UI 紧凑窗口基础优化已验收：窗口策略限制为最小 `430 × 652px`；Radio 外层禁止滚动，队列、DJ 对话和 Library 本地音乐列表在卡片内独立滚动且隐藏滚动条；品牌与内容区左对齐并避让 macOS 原生按钮；验收记录见 [S7-09 Electron UI 优化验收](docs/project-management/s7-09-electron-ui-optimization-acceptance.md)
+- [ ] S7-09-004 歌词、封面与启动体验优化进行中：Detail Sheet 紧凑布局、歌词累计高亮、NetEase 封面 HTTPS 规范化、图片失败占位和启动状态窗口已实现，等待完整质量门与项目所有者验收
 - [x] S7-06 个人本机真实 Provider 闭环已通过：[S7-06 验收记录](docs/project-management/s7-06-real-provider-acceptance.md) 保留当时 Codex/NetEase/Apple TTS 历史证据；Apple TTS 已被 UX-10 的 Qwen3-TTS 实现取代
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
 - [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证

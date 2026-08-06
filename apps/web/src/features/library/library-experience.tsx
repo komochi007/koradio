@@ -17,9 +17,10 @@ import {
 } from "react";
 
 import { type AudioEngineFacade, useAudioSnapshot } from "../../audio/index.js";
-import type { ServiceTransport } from "../../shared/transport.js";
+import { ArtworkImage } from "../../shared/artwork.js";
 import { apiErrorMessage } from "../../shared/error.js";
 import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
+import type { ServiceTransport } from "../../shared/transport.js";
 import {
   addLibraryItem,
   getLibraryPage,
@@ -162,9 +163,7 @@ function TrackList({
               className={`library-cover library-cover--${String(index % 5)}`}
               aria-hidden="true"
             >
-              {track.artworkUrl === null ? null : (
-                <img src={track.artworkUrl} alt="" referrerPolicy="no-referrer" />
-              )}
+              <ArtworkImage src={track.artworkUrl} />
               <i />
             </span>
             <span className="library-track__meta">

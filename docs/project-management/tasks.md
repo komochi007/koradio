@@ -57,7 +57,7 @@ AI 执行任务时按固定顺序操作：
 | S4 P0 核心产品体验 | 6 | 0 | 0 | 0 | 0 | 6 |
 | S5 P1 全量功能 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S6 集成、质量与安全加固 | 5 | 0 | 0 | 0 | 0 | 5 |
-| S7 macOS 本机运行与后置发布工程 | 4 | 3 | 2 | 0 | 0 | 9 |
+| S7 macOS 本机运行与后置发布工程 | 4 | 3 | 3 | 0 | 0 | 10 |
 | UX 个人本机使用体验优化 | 9 | 0 | 0 | 0 | 0 | 9 |
 | S8 全量外部测试与 Release Candidate | 0 | 4 | 0 | 0 | 0 | 4 |
 | S9 v1.0 发布与稳定期 | 0 | 4 | 0 | 0 | 0 | 4 |
@@ -168,6 +168,7 @@ AI 执行任务时按固定顺序操作：
 | `S7-08` 完成项目整体 Review 与维护性优化 | 已完成 | High | 清理可再生产物和旧分支，对齐事实源，并降低后端、前端与样式热点的维护成本。 | S6-05、UX-10 | 仓库与分支现状、历史任务摘要、权威文档、完整质量门和 macOS 包装流程。 | 保持 REST/WS v1、数据库 schema、用户数据、Provider 协议和产品流程不变；只删除已授权的仓库内可再生产物与等价旧分支，不触碰正式数据、用户模型或已安装应用。 | 审查、清理、文档、维护性优化、Node 24.18.0 质量门、依赖审计、独立视觉门与真实 DMG 验证完成；三浏览器门内 3 张字体渲染差异由项目所有者明确接受且不校准历史基线。 | [S7-08 维护审查报告](s7-08-maintenance-review.md)、工具链与包装脚本、权威文档、Server route plugins、共享前端工具和分层 CSS。 | `pnpm check`、依赖审计、三浏览器 E2E、Chromium 视觉、Markdown 链接与 arm64 DMG 验证已执行；详细证据和已接受差异见维护审查报告。 | 项目所有者 / [S7-08 维护审查报告](s7-08-maintenance-review.md) | 无；项目所有者于 2026-07-30 明确要求不校准历史截图并关闭 S7-08。 |
 
 | `S7-09` 迁移 Electron 桌面外壳 | 进行中 | Critical | 将 Native Launcher + 外部浏览器窗口替换为 Electron 主进程 + 现有 Web Renderer，同时保持 REST、WebSocket、数据库、Provider、AudioEngine、Session 与用户数据不变。 | S7-08 | ADR 0006、`README.md`、`AI_RULES.md`、`context.md`、`architecture.md`、`docs/prd.md`、`docs/user-flow.md`、S7-07 稳定性试用要求。 | 仅支持 macOS 15+ arm64；固定 Electron/Packager/Sign 版本；不支持 Windows/Linux，不引入全局快捷键、媒体键、托盘或通知；保留 Native Launcher 源码为 legacy，不删除文件，不修改 REST/WS v1 或业务数据协议。 | 单实例、启动前 fail-closed 更新、服务检测/启动/停止、窗口导航/权限/CSP 安全策略、`--smoke`、Electron arm64 app/DMG 包装、strict codesign、Electron/Node/Python/Qwen/Server 资源与生命周期验证通过；Electron 最小 `430 × 652px`、紧凑窗口固定内容比例、Radio/Library 内部滚动、品牌对齐、Detail 全窗口覆盖和估算逐字高亮已通过人工验收；S7-07 的 7 日、10 次启动/退出、20 次真实节目生成、8 小时播放仍需完成。 | `apps/desktop/`、Electron entitlements、ADR 0006、打包/验证脚本、桌面单元测试、[Electron UI 优化验收记录](s7-09-electron-ui-optimization-acceptance.md)与文档同步。 | UI 优化完成 `pnpm check`、专项 unit/component/E2E、最小窗口与紧凑参考窗口人工验收；完整任务继续执行 `pnpm audit:dependencies`、Electron `--smoke`、macOS 包验证/生命周期验证、`git diff --check` 与人工稳定性试用。 | Codex / 当前工作区 | 7 日稳定性门尚未完成；外部分发仍需独立授权、Developer ID、公证与干净环境验收。 |
+| `S7-09-004` 修复歌词、封面与启动体验 | 进行中 | High | 收口 Electron 最小窗口下的歌词布局、高亮、封面加载和启动反馈缺陷。 | S7-09 | `docs/prd.md`、`docs/user-flow.md`、`architecture.md`、`design/design.md`、项目所有者确认的 S7-09-004 方案。 | 只修改 Detail Sheet、歌词派生、artwork 归一化、图片失败兜底、启动状态窗口和服务探测；不修改 REST/WS v1、数据库 schema、用户数据、Provider 协议或 Electron CSP，不删除用户文件。 | 最小窗口无 Detail 底部空白或外层漂移；歌词已播放字符累计高亮、句末整句弱化；封面 HTTPS 与失败占位均通过；启动先显示本地状态页，校验通过后才加载产品，失败可重试且不打开旧版。 | `apps/web/src/features/radio/`、`apps/web/src/shared/artwork.tsx`、`apps/server/src/modules/library/artwork-url.ts`、`apps/desktop/src/startup-page.ts`、Electron 主进程与服务探测、回归测试、[S7-09-004 验收记录](s7-09-004-ux-acceptance.md)。 | 定向 unit/component/integration、`pnpm check`、Electron smoke、macOS 包验证、最小窗口和真实 NetEase 封面/启动人工验收、`git diff --check`。 | Codex / 当前工作区 | 实机更新依赖网络、bundled runtime、macOS arm64 包装条件；若任一条件不可用，保留代码与测试，不删除现有安装或用户数据。 |
 
 ### UX｜个人本机使用体验优化
 

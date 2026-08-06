@@ -3,12 +3,14 @@ import type { DjScriptSegment, MusicTrack, ProgramDetail } from "@koradio/contra
 import {
   Component,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  type RefObject,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -161,20 +163,24 @@ function TimedLineText({
 function TimedLines({
   lines,
   positionMs,
+  scrollContainerRef,
   speaking,
 }: {
   lines: DisplayTimedTextLine[];
   positionMs: number;
+  scrollContainerRef: RefObject<HTMLElement | null>;
   speaking: boolean;
 }) {
   const currentRef = useRef<HTMLElement>(null);
   const currentIndex = lines.findIndex((line) => line.state === "current");
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
     const current = currentRef.current;
-    if (current !== null && typeof current.scrollIntoView === "function") {
-      current.scrollIntoView({ block: "center" });
-    }
-  }, [currentIndex]);
+    if (container === null || current === null) return;
+    const targetTop = current.offsetTop - (container.clientHeight - current.offsetHeight) / 2;
+    const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+    container.scrollTop = Math.min(maxTop, Math.max(0, targetTop));
+  }, [currentIndex, scrollContainerRef]);
   return lines.map((line) => {
     const setCurrent = (element: HTMLElement | null): void => {
       if (line.state === "current") currentRef.current = element;
@@ -223,6 +229,7 @@ export function DetailSheet({
   const [closing, setClosing] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const copyRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<number | undefined>(undefined);
   const dragOffsetRef = useRef(0);
@@ -405,13 +412,19 @@ export function DetailSheet({
             aria-label={speaking ? "DJ 串讲词" : "跟随歌词"}
             className={`detail-copy detail-copy--${speaking ? "speaking" : "lyrics"}`}
             data-detail-focus
+            ref={copyRef}
             tabIndex={0}
           >
             {speaking ? (
               timedLines.length === 0 ? (
                 <p className="detail-copy__fallback">文字串讲暂时不可用，歌曲播放不受影响</p>
               ) : (
-                <TimedLines lines={timedLines} positionMs={audio.positionMs} speaking />
+                <TimedLines
+                  lines={timedLines}
+                  positionMs={audio.positionMs}
+                  scrollContainerRef={copyRef}
+                  speaking
+                />
               )
             ) : track?.lyricStatus === "unavailable" || lyrics.data?.status === "unavailable" ? (
               <p className="detail-copy__fallback">暂无歌词，正在播放 DJ 推荐曲目</p>
@@ -427,7 +440,12 @@ export function DetailSheet({
                 LOADING LYRICS...
               </p>
             ) : timedLines.length > 0 ? (
-              <TimedLines lines={timedLines} positionMs={audio.positionMs} speaking={false} />
+              <TimedLines
+                lines={timedLines}
+                positionMs={audio.positionMs}
+                scrollContainerRef={copyRef}
+                speaking={false}
+              />
             ) : (
               <p className="detail-copy__fallback">暂无歌词，正在播放 DJ 推荐曲目</p>
             )}

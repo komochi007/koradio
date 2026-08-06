@@ -175,15 +175,6 @@ describe("Detail Sheet", () => {
   });
 
   it("centers the current lyric whenever playback advances to another line", async () => {
-    const scrollIntoView = vi.fn();
-    const originalDescriptor = Object.getOwnPropertyDescriptor(
-      HTMLElement.prototype,
-      "scrollIntoView",
-    );
-    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-      configurable: true,
-      value: scrollIntoView,
-    });
     const queryClient = createAppQueryClient();
     const initialAudio = { ...snapshot(1), positionMs: 2_500 };
     const view = (audio: AudioEngineSnapshot) => (
@@ -207,17 +198,26 @@ describe("Detail Sheet", () => {
       (await screen.findByText("A small light stayed awake")).getAttribute("aria-current"),
     ).toBe("true");
 
+    const copy = document.querySelector<HTMLElement>(".detail-copy");
+    const nextLine = screen
+      .getByText("We let the hours move")
+      .closest<HTMLElement>(".detail-copy__line");
+    if (copy === null || nextLine === null) throw new Error("Expected lyric layout elements");
+    Object.defineProperties(copy, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 1_000 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+    Object.defineProperties(nextLine, {
+      offsetHeight: { configurable: true, value: 40 },
+      offsetTop: { configurable: true, value: 400 },
+    });
+
     rerender(view({ ...initialAudio, positionMs: 4_500 }));
     await waitFor(() => {
       expect(screen.getByText("We let the hours move").getAttribute("aria-current")).toBe("true");
-      expect(scrollIntoView).toHaveBeenLastCalledWith({ block: "center" });
+      expect(copy.scrollTop).toBe(370);
     });
-
-    if (originalDescriptor === undefined) {
-      Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
-    } else {
-      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", originalDescriptor);
-    }
   });
 
   it("estimates DJ sentence timing without requesting lyrics", () => {

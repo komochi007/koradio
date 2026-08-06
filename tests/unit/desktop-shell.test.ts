@@ -23,6 +23,11 @@ import {
   minimumWindowWidth,
   rendererContentSecurityPolicy,
 } from "../../apps/desktop/src/window-policy.js";
+import {
+  startupPagePrefix,
+  startupPageUrl,
+  startupRetryUrl,
+} from "../../apps/desktop/src/startup-page.js";
 
 describe("Electron desktop shell policy", () => {
   it("enforces the accepted minimum desktop window", () => {
@@ -36,6 +41,27 @@ describe("Electron desktop shell policy", () => {
     expect(createPortCandidates()).toEqual([
       49373, 49374, 49375, 49376, 49377, 49378, 49379, 49380, 49381, 49382, 49383,
     ]);
+  });
+
+  it("probes all service ports concurrently and keeps the lowest ready port", async () => {
+    let active = 0;
+    let maximumActive = 0;
+    const controller = createServiceController({
+      probe: async (port) => {
+        active += 1;
+        maximumActive = Math.max(maximumActive, active);
+        await new Promise<void>((resolveProbe) => setTimeout(resolveProbe, 5));
+        active -= 1;
+        return port === 49377 || port === 49379;
+      },
+      resourcesPath: "/unused",
+    });
+
+    await expect(controller.detectExisting()).resolves.toMatchObject({
+      owned: false,
+      port: 49377,
+    });
+    expect(maximumActive).toBe(createPortCandidates().length);
   });
 
   it("sanitizes the launcher environment and passes only runtime settings", () => {
@@ -78,6 +104,14 @@ describe("Electron desktop shell policy", () => {
   it("keeps the renderer CSP free of unsafe eval", () => {
     expect(rendererContentSecurityPolicy).toContain("script-src 'self'");
     expect(rendererContentSecurityPolicy).not.toContain("unsafe-eval");
+  });
+
+  it("keeps the startup page local and exposes only the retry navigation", () => {
+    expect(startupPageUrl.startsWith(startupPagePrefix)).toBe(true);
+    expect(decodeURIComponent(startupPageUrl.slice(startupPagePrefix.length))).toContain(
+      "重试启动",
+    );
+    expect(startupRetryUrl).toBe("koradio-startup://retry");
   });
 
   it("parses the updater status from bounded output", () => {
