@@ -152,6 +152,7 @@ function TimedLineText({
           aria-hidden="true"
           className={`detail-copy__unit detail-copy__unit--${unit.state}`}
           key={`${String(unit.startMs)}-${String(index)}-${unit.text}`}
+          style={{ "--detail-unit-progress": `${String(unit.progress * 100)}%` } as CSSProperties}
         >
           {unit.text}
         </span>

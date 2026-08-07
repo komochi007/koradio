@@ -415,18 +415,27 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
     const paperRect = paper.getBoundingClientRect();
     const closeRect = close.getBoundingClientRect();
     const playRect = play.getBoundingClientRect();
+    const closeIcon = close.querySelector<SVGElement>("svg");
     const firstBarRect = waveform.firstElementChild?.getBoundingClientRect();
     const lastBarRect = waveform.lastElementChild?.getBoundingClientRect();
-    if (firstBarRect === undefined || lastBarRect === undefined) {
+    if (closeIcon === null || firstBarRect === undefined || lastBarRect === undefined) {
       throw new Error("Detail compact waveform metrics are unavailable");
     }
+    const closeIconRect = closeIcon.getBoundingClientRect();
+    const copyStyle = getComputedStyle(copy);
     return {
       closeBottom: closeRect.bottom,
       closeHeight: closeRect.height,
+      closeIconCenterX: closeIconRect.left + closeIconRect.width / 2,
+      closeIconCenterY: closeIconRect.top + closeIconRect.height / 2,
       closeTop: closeRect.top,
       closeWidth: closeRect.width,
       closeVisualSize: getComputedStyle(close, "::before").width,
       copyHeight: copy.getBoundingClientRect().height,
+      copyPaddingBottom: Number.parseFloat(copyStyle.paddingBottom),
+      copyPaddingTop: Number.parseFloat(copyStyle.paddingTop),
+      copyScrollPaddingBottom: Number.parseFloat(copyStyle.scrollPaddingBottom),
+      copyScrollPaddingTop: Number.parseFloat(copyStyle.scrollPaddingTop),
       firstBarBottom: firstBarRect.bottom,
       lastBarBottom: lastBarRect.bottom,
       paperTop: paperRect.top,
@@ -449,6 +458,8 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
   expect(metrics.waveformBottom).toBeGreaterThan(metrics.paperTop);
   expect(metrics.firstBarBottom).toBeGreaterThan(metrics.paperTop);
   expect(metrics.lastBarBottom).toBeGreaterThan(metrics.paperTop);
+  expect(metrics.closeIconCenterX).toBeCloseTo(430 - 20 - 16, 0);
+  expect(metrics.closeIconCenterY).toBeCloseTo(metrics.closeTop + 22, 0);
   expect(metrics.closeWidth).toBe(44);
   expect(metrics.closeHeight).toBe(44);
   expect(metrics.closeVisualSize).toBe("32px");
@@ -456,6 +467,10 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
   expect(metrics.playHeight).toBe(44);
   expect(metrics.playVisualSize).toBe("32px");
   expect(metrics.progressHeight).toBe(32);
+  expect(metrics.copyPaddingTop).toBeGreaterThanOrEqual(32);
+  expect(metrics.copyPaddingBottom).toBeGreaterThanOrEqual(32);
+  expect(metrics.copyScrollPaddingTop).toBeGreaterThanOrEqual(32);
+  expect(metrics.copyScrollPaddingBottom).toBeGreaterThanOrEqual(32);
   expect(metrics.copyHeight).toBeGreaterThan(260);
   await expect(page).toHaveScreenshot("detail-lyrics-electron-compact.png", {
     animations: "disabled",

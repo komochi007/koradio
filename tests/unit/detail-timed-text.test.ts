@@ -62,6 +62,12 @@ describe("Detail timed text", () => {
       ["music ", "current"],
       ["now!", "upcoming"],
     ]);
+    const early = deriveTimedTextUnits(line, 2_000);
+    const late = deriveTimedTextUnits(line, 3_000);
+    expect(early[1]?.progress).toBeGreaterThan(0);
+    expect(late[1]?.progress).toBeGreaterThan(early[1]?.progress ?? 0);
+    expect(late[1]?.progress).toBeLessThan(1);
+    expect(late[0]?.progress).toBe(1);
   });
 
   it("distributes untimed lyric lines across the track before estimating words", () => {

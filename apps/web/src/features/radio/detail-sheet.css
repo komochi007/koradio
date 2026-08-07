@@ -280,7 +280,7 @@
   align-content: center;
   gap: 5px;
   overflow: auto;
-  padding: clamp(24px, 4.2vw, 40px);
+  padding: clamp(32px, 4.2vw, 40px);
   border-radius: clamp(24px, 3.34vw, 32px);
   background: var(--kr-detail-card);
   isolation: isolate;
@@ -356,26 +356,49 @@
   color: inherit;
 }
 
+@property --detail-unit-progress {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
 .detail-copy__unit {
-  transition: color 120ms linear;
+  --detail-unit-active: var(--kr-detail-text);
+  --detail-unit-rest: #767a80;
+  background: linear-gradient(
+    90deg,
+    var(--detail-unit-active) 0%,
+    var(--detail-unit-active) var(--detail-unit-progress),
+    var(--detail-unit-rest) calc(var(--detail-unit-progress) + 8%),
+    var(--detail-unit-rest) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: var(--detail-unit-rest);
+  -webkit-text-fill-color: transparent;
+  transition: --detail-unit-progress 120ms linear;
 }
 
 .detail-copy__unit--read {
-  color: var(--kr-detail-text-read);
+  --detail-unit-active: var(--kr-detail-text-read);
+  --detail-unit-rest: var(--kr-detail-text-read);
 }
 
 .detail-copy__unit--played {
-  color: var(--kr-detail-text);
+  --detail-unit-active: var(--kr-detail-text);
+  --detail-unit-rest: var(--kr-detail-text);
   font-weight: 450;
 }
 
 .detail-copy__unit--current {
-  color: var(--kr-detail-text);
+  --detail-unit-active: var(--kr-detail-text);
+  --detail-unit-rest: #767a80;
   font-weight: 620;
 }
 
 .detail-copy__unit--upcoming {
-  color: #767a80;
+  --detail-unit-active: #767a80;
+  --detail-unit-rest: #767a80;
 }
 
 .detail-copy--lyrics .detail-copy__line {
@@ -613,6 +636,13 @@ html[data-electron-canvas="true"] .radio-detail-portal .detail-waveform {
     height: 18px;
   }
 
+  html[data-electron-canvas="true"] .radio-detail-portal .detail-close svg {
+    position: relative;
+    top: auto;
+    right: auto;
+    transform: translateX(6px);
+  }
+
   html[data-electron-canvas="true"] .radio-detail-portal .detail-close::before,
   html[data-electron-canvas="true"] .radio-detail-portal .detail-play::before {
     position: absolute;
@@ -671,8 +701,8 @@ html[data-electron-canvas="true"] .radio-detail-portal .detail-waveform {
 
   html[data-electron-canvas="true"] .radio-detail-portal .detail-copy {
     gap: 4px;
-    padding: 24px 20px;
-    scroll-padding-block: 24px;
+    padding: 32px 20px;
+    scroll-padding-block: 32px;
   }
 
   html[data-electron-canvas="true"] .radio-detail-portal .detail-copy--lyrics .detail-copy__line {

@@ -15,6 +15,7 @@ export interface DisplayTimedTextLine extends TimedTextLine {
 
 export interface DisplayTimedTextUnit {
   endMs: number;
+  progress: number;
   startMs: number;
   state: TimedTextUnitState;
   text: string;
@@ -92,17 +93,27 @@ export function deriveTimedTextUnits(
     return { endMs: Math.max(startMs + 1, elapsed), startMs, text: unit.text };
   });
   if (line.state !== "current") {
-    return timed.map((unit) => ({ ...unit, state: line.state }));
+    return timed.map((unit) => ({
+      ...unit,
+      progress: line.state === "read" ? 1 : 0,
+      state: line.state,
+    }));
   }
   const safePosition = Math.max(line.startMs, Math.min(positionMs, line.endMs));
   let currentIndex = timed.findIndex(
     (unit) => safePosition >= unit.startMs && safePosition < unit.endMs,
   );
   if (currentIndex < 0) currentIndex = timed.length - 1;
-  return timed.map((unit, index) => ({
-    ...unit,
-    state: index < currentIndex ? "played" : index === currentIndex ? "current" : "upcoming",
-  }));
+  return timed.map((unit, index) => {
+    const state = index < currentIndex ? "played" : index === currentIndex ? "current" : "upcoming";
+    const progress =
+      state === "played"
+        ? 1
+        : state === "current"
+          ? clamp((safePosition - unit.startMs) / Math.max(1, unit.endMs - unit.startMs), 0, 1)
+          : 0;
+    return { ...unit, progress, state };
+  });
 }
 
 export function splitDjSentences(value: string): string[] {
