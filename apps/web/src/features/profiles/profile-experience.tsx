@@ -124,7 +124,6 @@ function ProfileSelect({
         <div className="profile-list" aria-busy={pendingId !== undefined}>
           {profiles.map((profile) => {
             const isCurrent = current?.profile.id === profile.id;
-            const isPending = pendingId === profile.id;
             return (
               <article className="profile-card" key={profile.id}>
                 <Avatar profile={profile} previewUrl={undefined} />
@@ -146,10 +145,7 @@ function ProfileSelect({
                         : profile.frequentGenres.join(" · ")}
                     </small>
                   </span>
-                  <span className="profile-card__rail">
-                    {isCurrent ? <em>CURRENT</em> : null}
-                    <b aria-hidden="true">{isPending ? "…" : "→"}</b>
-                  </span>
+                  <span className="profile-card__rail">{isCurrent ? <em>CURRENT</em> : null}</span>
                 </button>
                 <button
                   className="profile-card__edit"

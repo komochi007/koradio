@@ -393,6 +393,7 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
     const title = document.querySelector<HTMLElement>(".detail-paper h1");
     const waveform = document.querySelector<HTMLElement>(".detail-waveform");
     const paper = document.querySelector<HTMLElement>(".detail-paper");
+    const track = document.querySelector<HTMLElement>(".detail-track");
     const copy = document.querySelector<HTMLElement>(".detail-copy");
     const close = document.querySelector<HTMLElement>(".detail-close");
     const play = document.querySelector<HTMLElement>(".detail-play");
@@ -402,6 +403,7 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
       title === null ||
       waveform === null ||
       paper === null ||
+      track === null ||
       copy === null ||
       close === null ||
       play === null ||
@@ -415,22 +417,31 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
     const paperRect = paper.getBoundingClientRect();
     const closeRect = close.getBoundingClientRect();
     const playRect = play.getBoundingClientRect();
-    const closeIcon = close.querySelector<SVGElement>("svg");
+    const closeVisual = close.querySelector<HTMLElement>(".detail-close__visual");
     const firstBarRect = waveform.firstElementChild?.getBoundingClientRect();
     const lastBarRect = waveform.lastElementChild?.getBoundingClientRect();
-    if (closeIcon === null || firstBarRect === undefined || lastBarRect === undefined) {
+    if (closeVisual === null || firstBarRect === undefined || lastBarRect === undefined) {
       throw new Error("Detail compact waveform metrics are unavailable");
     }
+    const closeIcon = closeVisual.querySelector<SVGElement>("svg");
+    if (closeIcon === null) {
+      throw new Error("Detail compact close icon is unavailable");
+    }
+    const closeVisualRect = closeVisual.getBoundingClientRect();
     const closeIconRect = closeIcon.getBoundingClientRect();
+    const titleStyle = getComputedStyle(title);
+    const trackStyle = getComputedStyle(track);
     const copyStyle = getComputedStyle(copy);
     return {
       closeBottom: closeRect.bottom,
       closeHeight: closeRect.height,
       closeIconCenterX: closeIconRect.left + closeIconRect.width / 2,
       closeIconCenterY: closeIconRect.top + closeIconRect.height / 2,
+      closeVisualCenterX: closeVisualRect.left + closeVisualRect.width / 2,
+      closeVisualCenterY: closeVisualRect.top + closeVisualRect.height / 2,
       closeTop: closeRect.top,
       closeWidth: closeRect.width,
-      closeVisualSize: getComputedStyle(close, "::before").width,
+      closeVisualSize: closeVisualRect.width,
       copyHeight: copy.getBoundingClientRect().height,
       copyPaddingBottom: Number.parseFloat(copyStyle.paddingBottom),
       copyPaddingTop: Number.parseFloat(copyStyle.paddingTop),
@@ -443,6 +454,11 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
       playWidth: playRect.width,
       playVisualSize: getComputedStyle(play, "::before").width,
       progressHeight: progress.getBoundingClientRect().height,
+      titleFontSize: Number.parseFloat(titleStyle.fontSize),
+      trackFontSize: Number.parseFloat(trackStyle.fontSize),
+      trackProgressHeight: document
+        .querySelector<HTMLElement>(".detail-track-progress")
+        ?.getBoundingClientRect().height,
       statusBottom: statusRect.bottom,
       statusLeft: statusRect.left,
       statusTop: statusRect.top,
@@ -458,15 +474,18 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
   expect(metrics.waveformBottom).toBeGreaterThan(metrics.paperTop);
   expect(metrics.firstBarBottom).toBeGreaterThan(metrics.paperTop);
   expect(metrics.lastBarBottom).toBeGreaterThan(metrics.paperTop);
-  expect(metrics.closeIconCenterX).toBeCloseTo(430 - 20 - 16, 0);
-  expect(metrics.closeIconCenterY).toBeCloseTo(metrics.closeTop + 22, 0);
+  expect(metrics.closeIconCenterX).toBeCloseTo(metrics.closeVisualCenterX, 0);
+  expect(metrics.closeIconCenterY).toBeCloseTo(metrics.closeVisualCenterY, 0);
   expect(metrics.closeWidth).toBe(44);
   expect(metrics.closeHeight).toBe(44);
-  expect(metrics.closeVisualSize).toBe("32px");
+  expect(metrics.closeVisualSize).toBe(32);
   expect(metrics.playWidth).toBe(44);
   expect(metrics.playHeight).toBe(44);
   expect(metrics.playVisualSize).toBe("32px");
   expect(metrics.progressHeight).toBe(32);
+  expect(metrics.titleFontSize).toBeLessThanOrEqual(30);
+  expect(metrics.trackFontSize).toBe(13);
+  expect(metrics.trackProgressHeight).toBe(20);
   expect(metrics.copyPaddingTop).toBeGreaterThanOrEqual(32);
   expect(metrics.copyPaddingBottom).toBeGreaterThanOrEqual(32);
   expect(metrics.copyScrollPaddingTop).toBeGreaterThanOrEqual(32);
@@ -491,22 +510,38 @@ test("Detail keeps Electron top controls aligned at the reference viewport", asy
   const metrics = await page.evaluate(() => {
     const status = document.querySelector<HTMLElement>(".detail-status");
     const title = document.querySelector<HTMLElement>(".detail-paper h1");
+    const track = document.querySelector<HTMLElement>(".detail-track");
     const close = document.querySelector<HTMLElement>(".detail-close");
+    const copy = document.querySelector<HTMLElement>(".detail-copy");
+    const trackProgress = document.querySelector<HTMLElement>(".detail-track-progress");
     const play = document.querySelector<HTMLElement>(".detail-play");
     const progress = document.querySelector<HTMLElement>(".detail-program-progress");
-    if (status === null || title === null || close === null || play === null || progress === null) {
+    if (
+      status === null ||
+      title === null ||
+      track === null ||
+      close === null ||
+      copy === null ||
+      trackProgress === null ||
+      play === null ||
+      progress === null
+    ) {
       throw new Error("Detail reference metrics are unavailable");
     }
     const statusRect = status.getBoundingClientRect();
     const titleRect = title.getBoundingClientRect();
     const closeRect = close.getBoundingClientRect();
+    const copyRect = copy.getBoundingClientRect();
     const playRect = play.getBoundingClientRect();
     const progressRect = progress.getBoundingClientRect();
+    const titleStyle = getComputedStyle(title);
+    const trackStyle = getComputedStyle(track);
     return {
       closeBottom: closeRect.bottom,
       closeHeight: closeRect.height,
       closeTop: closeRect.top,
       closeWidth: closeRect.width,
+      copyHeight: copyRect.height,
       playHeight: playRect.height,
       playLeft: playRect.left,
       playWidth: playRect.width,
@@ -517,6 +552,9 @@ test("Detail keeps Electron top controls aligned at the reference viewport", asy
       statusLeft: statusRect.left,
       statusTop: statusRect.top,
       titleLeft: titleRect.left,
+      titleFontSize: Number.parseFloat(titleStyle.fontSize),
+      trackFontSize: Number.parseFloat(trackStyle.fontSize),
+      trackProgressHeight: trackProgress.getBoundingClientRect().height,
     };
   });
   expect(metrics.statusLeft).toBeCloseTo(metrics.titleLeft, 0);
@@ -528,6 +566,10 @@ test("Detail keeps Electron top controls aligned at the reference viewport", asy
   expect(metrics.playHeight).toBe(48);
   expect(metrics.playLeft - metrics.progressRight).toBe(16);
   expect(metrics.progressWidth).toBeGreaterThan(760);
+  expect(metrics.titleFontSize).toBeLessThanOrEqual(40);
+  expect(metrics.trackFontSize).toBeLessThanOrEqual(16);
+  expect(metrics.trackProgressHeight).toBe(20);
+  expect(metrics.copyHeight).toBeGreaterThan(800);
 });
 
 for (const mode of ["speaking", "lyrics"] as const) {

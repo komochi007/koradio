@@ -276,6 +276,108 @@ test("confirms DeepSeek privacy, saves a key through the controlled settings flo
   await expect(page.getByText("已配置")).toBeVisible();
 });
 
+test("keeps Settings selectors and profile controls aligned to their shared right edge", async ({
+  page,
+}) => {
+  await mockProfileWorkspace(page, { current: true });
+  await page.goto(`${appOrigin}/settings`);
+  await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeVisible();
+
+  const settingsMetrics = await page.evaluate(() => {
+    const selects = [
+      ...document.querySelectorAll<HTMLSelectElement>(
+        ".settings-field select, .preference-row select",
+      ),
+    ];
+    const available = document.querySelector<HTMLElement>(".service-status--success");
+    if (selects.length !== 4 || available === null) {
+      throw new Error("Settings alignment metrics are unavailable");
+    }
+    const availableRect = available.getBoundingClientRect();
+    return {
+      availableRight: availableRect.right,
+      selects: selects.map((select) => {
+        const style = getComputedStyle(select);
+        const rect = select.getBoundingClientRect();
+        return {
+          appearance: style.appearance,
+          backgroundImage: style.backgroundImage,
+          rightInset: rect.right - (rect.left + rect.width - Number.parseFloat(style.paddingRight)),
+          right: rect.right,
+        };
+      }),
+    };
+  });
+  for (const select of settingsMetrics.selects) {
+    expect(select.appearance).toBe("none");
+    expect(select.backgroundImage).not.toBe("none");
+    expect(select.rightInset).toBeGreaterThanOrEqual(16);
+  }
+
+  await page.setViewportSize({ width: 430, height: 652 });
+  await page.goto(`${appOrigin}/radio`);
+  await page.getByRole("button", { name: "切换档案" }).click();
+  await expect(page.getByRole("heading", { name: "选择你的电台档案" })).toBeVisible();
+  await expect(page.locator(".profile-card__rail b")).toHaveCount(0);
+  const profileMetrics = await page.evaluate(() => {
+    const card = document.querySelector<HTMLElement>(".profile-card");
+    const current = document.querySelector<HTMLElement>(".profile-card__rail em");
+    const edit = document.querySelector<HTMLElement>(".profile-card__edit");
+    if (card === null || current === null || edit === null) {
+      throw new Error("Profile alignment metrics are unavailable");
+    }
+    const cardStyle = getComputedStyle(card);
+    const cardRect = card.getBoundingClientRect();
+    const currentRect = current.getBoundingClientRect();
+    const editRect = edit.getBoundingClientRect();
+    return {
+      cardRightInset: cardRect.right - currentRect.right,
+      editCurrentDelta: Math.abs(editRect.right - currentRect.right),
+      editRightInset: cardRect.right - editRect.right,
+      borderRight: Number.parseFloat(cardStyle.borderRightWidth),
+      paddingRight: Number.parseFloat(cardStyle.paddingRight),
+      actionInset: Number.parseFloat(
+        getComputedStyle(card).getPropertyValue("--profile-card-action-inset"),
+      ),
+    };
+  });
+  expect(profileMetrics.editCurrentDelta).toBeLessThanOrEqual(2);
+  expect(profileMetrics.cardRightInset).toBeGreaterThanOrEqual(
+    profileMetrics.paddingRight + profileMetrics.borderRight + profileMetrics.actionInset - 2,
+  );
+  expect(profileMetrics.editRightInset).toBeCloseTo(
+    profileMetrics.paddingRight + profileMetrics.borderRight + profileMetrics.actionInset,
+    0,
+  );
+});
+
+test("keeps the profile avatar label separated from the avatar and controls", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockProfileWorkspace(page, { current: false });
+  await page.goto(`${appOrigin}/radio`);
+  const avatarField = page.locator(".avatar-field");
+  const metrics = await avatarField.evaluate((field) => {
+    const legend = field.querySelector<HTMLElement>("legend");
+    const avatar = field.querySelector<HTMLElement>(".profile-avatar");
+    const controls = field.querySelector<HTMLElement>(":scope > div");
+    if (legend === null || avatar === null || controls === null) {
+      throw new Error("Avatar field metrics are unavailable");
+    }
+    const legendRect = legend.getBoundingClientRect();
+    const avatarRect = avatar.getBoundingClientRect();
+    const controlsRect = controls.getBoundingClientRect();
+    return {
+      avatarWidth: avatarRect.width,
+      controlsLeft: controlsRect.left,
+      avatarRight: avatarRect.right,
+      legendGap: avatarRect.top - legendRect.bottom,
+    };
+  });
+  expect(metrics.legendGap).toBeGreaterThanOrEqual(8);
+  expect(metrics.avatarWidth).toBe(104);
+  expect(metrics.controlsLeft - metrics.avatarRight).toBe(20);
+});
+
 const responsiveViewports = [
   { name: "mobile", width: 390, height: 844 },
   { name: "tablet", width: 834, height: 1194 },

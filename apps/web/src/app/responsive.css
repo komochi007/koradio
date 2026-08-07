@@ -167,7 +167,7 @@
 
   .profile-card__select {
     min-height: 120px;
-    grid-template-columns: minmax(0, 1fr) 40px;
+    grid-template-columns: minmax(0, 1fr) 64px;
     gap: 10px;
   }
 
@@ -176,12 +176,14 @@
   }
 
   .profile-card__edit {
-    right: 62px;
+    right: calc(20px + var(--profile-card-action-inset));
     bottom: 16px;
   }
 
   .avatar-field {
+    grid-template-columns: 104px minmax(0, 1fr);
     align-items: flex-start;
+    gap: 20px;
   }
 
   .avatar-field .profile-avatar {

@@ -357,6 +357,7 @@
 }
 
 .profile-card {
+  --profile-card-action-inset: 8px;
   position: relative;
   display: grid;
   min-height: 256px;
@@ -434,6 +435,7 @@
 .profile-card__rail {
   display: grid;
   align-self: stretch;
+  padding-right: var(--profile-card-action-inset);
   justify-items: end;
   align-content: space-between;
 }
@@ -448,16 +450,12 @@
   letter-spacing: 0.08em;
 }
 
-.profile-card__rail b {
-  font-size: 28px;
-  font-weight: 400;
-}
-
 .profile-card__edit {
   position: absolute;
-  right: 120px;
+  right: calc(32px + var(--profile-card-action-inset));
   bottom: 28px;
   min-height: 44px;
+  padding: 0;
   border: 0;
   color: var(--kr-text-secondary);
   background: transparent;
@@ -536,7 +534,7 @@
 .avatar-field legend {
   position: static;
   grid-column: 1 / -1;
-  margin-bottom: -8px;
+  margin-bottom: 12px;
 }
 
 .avatar-field .profile-avatar {
@@ -570,6 +568,22 @@
   outline: 0;
   color: var(--kr-text);
   background: var(--kr-surface);
+}
+
+.settings-field select,
+.preference-row select {
+  appearance: none;
+  padding-right: 56px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--kr-text-secondary) 50%),
+    linear-gradient(135deg, var(--kr-text-secondary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 32px) 50%,
+    calc(100% - 26px) 50%;
+  background-repeat: no-repeat;
+  background-size:
+    6px 6px,
+    6px 6px;
 }
 
 .profile-form .input-wrap input {
@@ -945,7 +959,7 @@
 
 .preference-row select {
   min-height: 44px;
-  padding: 0 42px 0 14px;
+  padding: 0 56px 0 14px;
 }
 
 .data-card {

@@ -363,9 +363,11 @@ export function DetailSheet({
           ref={closeRef}
           type="button"
         >
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="m7 7 10 10M17 7 7 17" />
-          </svg>
+          <span aria-hidden="true" className="detail-close__visual">
+            <svg viewBox="0 0 24 24">
+              <path d="m7 7 10 10M17 7 7 17" />
+            </svg>
+          </span>
         </button>
         <p aria-live="polite" className="detail-status">
           <span aria-hidden="true" /> {statusLabel(audio, speaking)}
