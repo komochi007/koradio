@@ -54,11 +54,11 @@
 - **MUST** 将 Transport、Application、Domain、Ports、Adapters 与 Platform 职责分离。
 - **MUST** 让 Application 层负责用例、事务、取消、超时、重试和降级决策。
 - **MUST** 让 Domain 只表达稳定业务规则。
-- **MUST** 通过 Port 接口调用 Codex、Music、TTS、Repository、Secret Store 与 File Store。
+- **MUST** 通过 Port 接口调用 Planner（Codex/DeepSeek）、Music、TTS、Repository、Secret Store 与 File Store。
 - **MUST** 将 Provider response 归一化后再进入 Application 或公共 contract。
 - **MUST** 为异步生成任务提供 job ID、取消、超时、幂等和可恢复 snapshot。
 - **MUST** 在 TTS 不可用时保留文字 DJ，并继续可播放节目。
-- **MUST** 将 Codex 与网易云视为节目生成核心依赖，将 TTS 视为可选增强。
+- **MUST** 将活动 Planner（Codex 或 DeepSeek）与网易云视为节目生成核心依赖，将 TTS 视为可选增强；未选中的 Planner 不得影响活动健康状态。
 - **MUST** 在 v1 通过 bundled Python/MLX helper 调用固定 revision 的本地 `Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit`；模型只允许由用户在 Settings 明确触发首次下载，**MUST NOT** 使用云 TTS、上传 DJ 文本或请求 Personal Voice 权限。
 - **MUST** 用参数数组启动持久化 TTS helper，通过结构化 stdin 传递 DJ 文本并校验 stdout、完整音频和时长；**MUST NOT** 把 DJ 文本、voice payload 或输出路径拼接进 shell command。
 - **MUST** 固定中文 `Serena`、英文 `Ryan`，并确保试听与节目合成都使用可理解的完整句子；模型、helper 或音色不可用、输出非法、取消或超时时必须稳定降级为完整文字 DJ。
@@ -75,7 +75,7 @@
 - **MUST** 使用 Zod schema 作为 wire contract 的唯一运行时定义。
 - **MUST** 从 Zod schema 推导 TypeScript wire 类型。
 - **MUST** 将 Wire DTO 与 internal entity 分离。
-- **MUST** 在 REST、WebSocket、Codex output 和 Provider response 边界执行运行时校验。
+- **MUST** 在 REST、WebSocket、Codex/DeepSeek output 和 Provider response 边界执行运行时校验。
 - **MUST** 使用 `/api/v1` 承载资源查询、命令、snapshot 与 health check。
 - **MUST** 使用 `/api/v1/events` 推送领域变化和异步任务阶段。
 - **MUST** 让 Profile-owned route 显式携带 `profileId`。
@@ -124,13 +124,16 @@
 - **MUST** 让 WebSocket 先校验 Origin，再通过首条 `session.authenticate` 消息认证；认证前不得发送领域事件。
 - **MUST** 使用 OS Credential Store 保存 API key 与其他秘密。
 - **MUST** 对日志、错误、诊断和 API 响应执行秘密与敏感正文脱敏。
-- **MUST** 在 Codex 输出校验失败时只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
-- **MUST** 将 External JSON、Codex output、歌词、媒体 URL、文件名和 MIME 视为不可信输入。
+- **MUST** 在 Codex/DeepSeek 输出校验失败时只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
+- **MUST** 将 External JSON、Codex/DeepSeek output、DeepSeek `reasoning_content`、歌词、媒体 URL、文件名和 MIME 视为不可信输入。
 - **MUST** 让 File Store 拒绝路径越界、未允许扩展名、超限大小、非法 MIME 和不安全重定向。
-- **MUST** 通过参数数组启动 Codex，并验证可执行路径。
+- **MUST** 通过参数数组启动 Codex，并验证可执行路径；DeepSeek 只能由 Backend 使用固定官方 endpoint 和 Keychain 提供的 Bearer key 调用。
 - **MUST NOT** 将 token 或 key 写入 URL、日志、SQLite、LocalStorage、历史或错误报告。
 - **MUST NOT** 将 token 嵌入 HTML、query、fragment、redirect、cookie、SessionStorage、IndexedDB 或 WebSocket URL。
-- **MUST NOT** 保存、记录或回显无效 Codex 输出的原始正文。
+- **MUST NOT** 保存、记录或回显无效 Codex/DeepSeek 输出的原始正文、prompt 或 reasoning。
+- **MUST NOT** 将 DeepSeek API key 写入 SQLite、Browser storage、URL、argv、错误正文或日志；GET 只返回是否已配置。
+- **MUST NOT** 在 Planner 失败时自动切换另一个 Provider；一次 generation job 的 Provider 在启动时快照，Settings 切换只影响下一次生成。
+- **MUST** 对 DeepSeek 429、500、503 只做一次有界重试；401、402、422、取消、超时、配置缺失和 schema 错误不得自动重试或 fallback。
 - **MUST NOT** 拼接 shell command 启动 Provider 或本地进程。
 - **MUST NOT** 默认监听局域网或公网。
 - **NEVER** 向 Frontend 返回明文秘密。
@@ -203,9 +206,9 @@
 - **MUST** 为 Audio Engine 的 play、pause、seek、切段、checkpoint 和 media error 编写确定性测试。
 - **MUST** 为关键 UI 状态、键盘操作、Focus、aria 与 Reduce Motion 编写组件测试。
 - **MUST** 为档案创建、首次配置、节目生成、播放、反馈和失败恢复建立核心 E2E。
-- **MUST** 覆盖 Codex invalid output、搜歌为空、TTS 降级、歌词缺失、单曲失败、反馈回滚与事件重连。
+- **MUST** 覆盖 Codex/DeepSeek invalid output、DeepSeek key 缺失与隐私确认、Provider 切换生效时机、搜歌为空、TTS 降级、歌词缺失、单曲失败、反馈回滚与事件重连。
 - **MUST** 覆盖 OS 默认数据目录、迁移成功/回滚、播放中生成、Profile 切换、双标签接管、反馈撤销和 TasteProjection 重建不覆盖 overrides。
-- **MUST** 在 Unit 与 Integration 测试中替换真实 Provider，保持测试可重复且不消耗外部额度。
+- **MUST** 在 Unit 与 Integration 测试中替换真实 Provider，保持测试可重复且不消耗外部额度；真实 DeepSeek smoke 只能作为受控本机手动验证，不得进入 CI。
 - **MUST** 为每个 bug fix 添加能在修复前失败、修复后通过的 regression test。
 - **MUST** 在合并前通过 typecheck、lint、format check、相关测试与构建。
 - **MUST** 披露无法运行的质量门禁及其缺失条件。

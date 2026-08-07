@@ -8,6 +8,8 @@ import {
   currentProgramResponseSchema,
   currentProfileResponseSchema,
   dataRootMigrationSnapshotSchema,
+  deepseekCredentialStatusSchema,
+  deepseekModelSchema,
   deviceSettingsSchema,
   deleteProgramResponseSchema,
   djScriptSegmentSchema,
@@ -39,6 +41,7 @@ import {
   tasteProjectionSchema,
   tasteResponseSchema,
   trackLyricsSchema,
+  updateDeepseekApiKeyCommandSchema,
   updateDeviceSettingsCommandSchema,
   updateProfileCommandSchema,
   updateProfilePreferencesCommandSchema,
@@ -62,6 +65,36 @@ import {
 } from "./v1-contract-fixtures.js";
 
 describe("v1 resource and command contracts", () => {
+  it("accepts planner settings and keeps DeepSeek credentials out of device settings", () => {
+    const settings = {
+      dataRoot: "/Users/kleinblue/.koradio",
+      codexCommand: null,
+      plannerProvider: "deepseek",
+      deepseekModel: "deepseek-v4-pro",
+      deepseekPrivacyNoticeAccepted: true,
+      updatedAt: now,
+    } as const;
+    expect(deviceSettingsSchema.parse(settings)).toEqual(settings);
+    expect(deepseekModelSchema.parse("deepseek-v4-flash")).toBe("deepseek-v4-flash");
+    expect(
+      updateDeviceSettingsCommandSchema.parse({
+        plannerProvider: "deepseek",
+        deepseekModel: "deepseek-v4-pro",
+        deepseekPrivacyNoticeAccepted: true,
+      }),
+    ).toMatchObject({ plannerProvider: "deepseek" });
+    expect(deepseekCredentialStatusSchema.parse({ configured: false })).toEqual({
+      configured: false,
+    });
+    expect(updateDeepseekApiKeyCommandSchema.parse({ apiKey: "sk-test" })).toEqual({
+      apiKey: "sk-test",
+    });
+    expect(
+      updateDeepseekApiKeyCommandSchema.safeParse({ apiKey: "sk-test", configured: true }).success,
+    ).toBe(false);
+    expect(deviceSettingsSchema.safeParse({ ...settings, apiKey: "sk-test" }).success).toBe(false);
+  });
+
   it("accepts profile DTOs and create/update commands", () => {
     expect(profileSchema.parse(profile)).toEqual(profile);
     expect(profileListResponseSchema.parse({ items: [profile] }).items).toHaveLength(1);
@@ -459,6 +492,9 @@ describe("v1 resource and command contracts", () => {
       deviceSettingsSchema.parse({
         dataRoot: "/Users/example/Library/Application Support/Koradio",
         codexCommand: "/usr/local/bin/codex",
+        plannerProvider: "codex",
+        deepseekModel: "deepseek-v4-flash",
+        deepseekPrivacyNoticeAccepted: false,
         updatedAt: now,
       }),
     ).toMatchObject({ codexCommand: "/usr/local/bin/codex" });
@@ -466,6 +502,9 @@ describe("v1 resource and command contracts", () => {
       deviceSettingsSchema.parse({
         dataRoot: "/Users/example/Library/Application Support/Koradio",
         codexCommand: null,
+        plannerProvider: "deepseek",
+        deepseekModel: "deepseek-v4-pro",
+        deepseekPrivacyNoticeAccepted: true,
         updatedAt: now,
       }),
     ).toMatchObject({ codexCommand: null });

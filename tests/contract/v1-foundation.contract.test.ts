@@ -50,7 +50,7 @@ describe("v1 foundation contracts", () => {
       serviceHealthListResponseSchema.parse({
         items: [
           {
-            service: "codex",
+            service: "planner",
             status: "available",
             checkedAt: now,
             redactedSummary: "Codex executable is available",
@@ -97,7 +97,7 @@ describe("v1 foundation contracts", () => {
           redactedSummary: "Local Service is not connected",
         },
         {
-          service: "codex",
+          service: "planner",
           status: "unavailable",
           checkedAt: now,
           redactedSummary: "Last known status is unavailable",

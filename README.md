@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1–S6 stage gates complete · S7-01/02/06/08 complete · S7-09 Electron shell migration in progress · UX-10 Qwen3-TTS replacement complete · S7-07 stability trial in progress · external distribution deferred · production defaults to Live mode**
+> Status: **S1–S6 stage gates complete · S7-01/02/06/08 complete · S7-09 Electron shell migration in progress · UX-10 Qwen3-TTS replacement complete · DeepSeek planner integration implemented, real API smoke deferred · S7-07 stability trial in progress · external distribution deferred · production defaults to Live mode**
 > Audience: AI Coding Agents、开发者、维护者  
 > Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；Electron 主进程与 Production Server 默认使用真实 Provider，Development、Test、CI 与 `start:mock` 使用确定性 Mock Provider
 
@@ -14,8 +14,8 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ```text
 场景输入
-  → Programs 将当前 Profile 最多 500 首可播放库内曲目摘要与 EffectiveTaste 交给 Codex
-  → Codex 生成有序 library/discovery 选曲意图与 DJ 串讲
+  → Programs 将当前 Profile 最多 500 首可播放库内曲目摘要与 EffectiveTaste 交给活动 Planner（Codex 或 DeepSeek）
+  → 活动 Planner 生成有序 library/discovery 选曲意图与 DJ 串讲
   → Library 按意图顺序解析库内曲目或网易云探索结果、播放链接与歌词
   → Qwen3-TTS 8-bit 通过本机 Python/MLX helper 生成可选 DJ 语音
   → 本地服务原子提交节目与播放时间线
@@ -49,23 +49,23 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、完整根命令族与 GitHub Actions CI 已实装并由真实 run 验证
 - [x] Development 双进程、Production 同源静态托管、loopback 端口、精确 Origin、短期内存 Session、REST Bearer 与 WebSocket 首消息认证已实装；非法 Origin、过期/URL/持久化 token 和未认证连接均有负向验证
 - [x] macOS Native launcher + 外部浏览器 PWA 的历史包装已由 S7-01/S7-02 记录；[ADR 0006](docs/adr/0006-electron-desktop-shell.md) 已裁决由 Electron 主进程与现有 Web Renderer 替代，S7-09 正在完成迁移
-- [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭；其中 Apple TTS 仅为 S7-06 历史验收事实，已由 [ADR 0005](docs/adr/0005-qwen3-local-tts.md) 与 UX-10 的 bundled Qwen3-TTS helper 取代。Production Server 与 Electron 主进程默认 Live
+- [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭；其中 Apple TTS 仅为 S7-06 历史验收事实，已由 [ADR 0005](docs/adr/0005-qwen3-local-tts.md) 与 UX-10 的 bundled Qwen3-TTS helper 取代。DeepSeek 可切换规划 Provider 的边界由 [ADR 0007](docs/adr/0007-deepseek-planner-provider.md) 固定；Production Server 与 Electron 主进程默认 Live
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
 - [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Radio 三态、节目生成 command/Snapshot/有序事件与失败恢复、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
 - [x] Fastify Local Service health/session/events、Profiles、Library、Feedback、Taste、Programs、Playback、异步节目生成、DeviceSettings、ProfilePreferences 与数据目录迁移路由已实现；生成命令立即返回 `202 + jobId`，终态可通过 REST Snapshot 恢复
 - [x] 完整 v1 公共 Contracts 已用 Zod 固化：REST DTO/command、显式 `profileId`、`Idempotency-Key`、异步 job、WebSocket event 与安全 error envelope 均有正反向和兼容性测试
 - [x] SQLite/Drizzle 底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；Profile、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已落地
-- [x] Secret Store、File Store 与脱敏日志平台边界已实现：macOS Keychain 往返、headless 稳定错误、受控引用、扩展名/MIME/大小/重定向限制和敏感信息清除已验证；TTS Adapter 只向受控 File Store 写入校验后的音频，现有 Provider Adapters 不需要业务秘密
+- [x] Secret Store、File Store 与脱敏日志平台边界已实现：macOS Keychain 往返、headless 稳定错误、受控引用、扩展名/MIME/大小/重定向限制和敏感信息清除已验证；DeepSeek API key 只通过 Keychain 读写，TTS Adapter 只向受控 File Store 写入校验后的音频
 - [x] 本地 HTTP 安全边界已完成：每次 bootstrap 签发短期进程内 token，REST 与 WebSocket 共享校验，Web 只在内存持有 token，并支持 401 后重新 bootstrap 的重连基础
-- [x] DeviceSettings 与 ProfilePreferences owner 已实现：设备配置和 Profile 偏好分表、分路由持久化，内置网易云与 Qwen3-TTS 状态只读且 Health 不返回命令路径、凭据或 Provider 私有字段
+- [x] DeviceSettings 与 ProfilePreferences owner 已实现：设备配置和 Profile 偏好分表、分路由持久化；活动 Planner、DeepSeek 模型、隐私确认和密钥配置状态在设备级管理，Health 不返回命令路径、凭据或 Provider 私有字段
 - [x] Profiles 领域闭环已实现：幂等创建、列表/读取/更新、当前 Profile context、默认 TasteOverrides/ProfilePreferences、单文件 multipart 头像上传和切换协调顺序均已验证；v1 不提供 Profile 删除
 - [x] Library 后端已实现：Provider 输出严格归一化为稳定 source identity，支持搜索、幂等加入候选池、分页列表、异步歌单导入及快照、歌词和短期播放解析；搜索/歌词/播放缓存均有容量与 TTL，播放直链不持久化
 - [x] Feedback 与 Taste 记忆后端已实现：七类固定反馈按 Profile append-only 幂等写入，同事务按稳定 replay order 更新可重建 TasteProjection；人工 TasteOverrides 独立版本化并优先合并为只读 EffectiveTaste
 - [x] Programs 与 Playback 领域后端已实现：Program、ordered track refs、DJ segments 与判别式 timeline 单事务提交，文字 DJ 不伪造音频项；分页历史和详情按 Profile 隔离，checkpoint 校验 owner、位置、完成边界与 `leaseEpoch`
-- [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、最多 500 首库内摘要、默认五首 4/1 的库内/探索建议、有序 `trackIntents`、稳定去重、超时、内部取消、迟到结果隔离、TTS/歌词/曲目降级和重启中断收敛均已验证；Program 与 Job 成功终态同事务提交
+- [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、最多 500 首库内摘要、默认五首 4/1 的库内/探索建议、有序 `trackIntents`、稳定去重、活动 Planner 快照、超时、内部取消、迟到结果隔离、TTS/歌词/曲目降级和重启中断收敛均已验证；Program 与 Job 成功终态同事务提交
 - [x] Mock Provider 后端闭环已验收：合法场景通过 REST 异步受理后可原子提交至少一首可播放曲目、开场文字与判别式 timeline；4/1 库内/探索、空库探索、显式约束、非法或重复 intent、搜索/音频失败、单关键词至多一首、Codex 错误/非法计划、TTS/歌词/部分曲目降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
-- [x] Codex、NetEase 与 TTS Provider adapters 已实现：参数数组启动、stdin-only 敏感正文、运行时 schema、超时/取消、受限子进程环境、媒体 URL/DNS/redirect/Range/MIME 校验、受控音频写入和脱敏错误均有专项测试；Qwen TTS helper、显式 live composition、受控 TTS 媒体与真实播放已完成 arm64 本机验收；Production Server 与 Electron 主进程默认 Live，Development、Test 和 CI 默认 Mock
+- [x] Codex、DeepSeek、NetEase 与 TTS Provider adapters：Codex、NetEase、DeepSeek 和 Qwen TTS 的协议边界、Keychain、重试、响应校验与 Mock fixtures 已实现；真实 DeepSeek API smoke 仍需手动凭据，Production Server 与 Electron 主进程默认 Live，Development、Test 和 CI 默认 Mock
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
 - [x] S5 全量功能阶段门已通过：[S5-04 验收记录](docs/project-management/s5-04-full-function-acceptance.md) 将九项能力、15 个页面、异常恢复及 Profile/设备配置边界追踪到真实产品、contracts 与完整内部 E2E
 - [x] S6-01 跨层失败矩阵已通过：[S6-01 验收记录](docs/project-management/s6-01-failure-matrix-acceptance.md) 覆盖生成、播放、反馈和事件重连故障并保护旧节目
@@ -116,7 +116,7 @@ AI Agent **不得**：
 ### MVP 核心闭环
 
 1. 创建或选择本地电台档案。
-2. 配置本地 Codex，确认内置网易云 Provider 可用；需要语音串讲时在 Settings 首次下载约 1.84 GiB 的 Qwen3-TTS 模型。
+2. 在 Settings 配置本地 Codex，或确认 DeepSeek 隐私提示并保存 Keychain API key，确认内置网易云 Provider 可用；需要语音串讲时首次下载约 1.84 GiB 的 Qwen3-TTS 模型。
 3. 在 Radio 页面描述当前场景。
 4. 生成节目计划、DJ 开场和歌曲队列。
 5. 播放、暂停、切歌、seek 并查看歌词或串讲。
@@ -166,6 +166,7 @@ Fastify Local Service
   ├─ SQLite / Local File Store / Secret Store
   └─ Provider Ports
        ├─ Codex Adapter
+       ├─ DeepSeek Adapter
        ├─ NetEase Adapter
        └─ TTS Provider Adapter
 ```
@@ -179,7 +180,7 @@ Fastify Local Service
 | Local Service | 业务规则、任务编排、持久化、外部服务访问和事件发布 |
 | SQLite | Profile、Taste、Program、PlaybackTimeline、Feedback 等结构化事实 |
 | Local File Store | 音频缓存、头像、歌词缓存和受控文件引用 |
-| External Providers | Codex 与网易云；均视为不可信、可失败依赖 |
+| External Providers | Codex、DeepSeek 与网易云；均视为不可信、可失败依赖 |
 | Local TTS | bundled Python/MLX helper 调用固定 Qwen3-TTS 8-bit 模型；中文 Serena、英文 Ryan，本机能力仍可失败并必须完整文字降级 |
 
 ### 关键不变量
@@ -215,11 +216,11 @@ Fastify Local Service
 | Development topology | Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` | Implemented and verified |
 | Production topology | Same-origin PWA / REST / WebSocket on loopback, preferred port `49373` with bounded fallback `49373-49383` | S1 static serving and strict smoke verified |
 | Local session | `POST /api/v1/session/bootstrap`, memory-only short-lived token, exact Origin allowlist, REST Bearer, WebSocket first-message auth | S2 hardening implemented and verified |
-| Runtime validation | Zod 4.4.3 | v1 public REST/WS contracts 与 Codex/NetEase/TTS Provider 边界 schema 已验证 |
+| Runtime validation | Zod 4.4.3 | v1 public REST/WS contracts 与 Codex/DeepSeek/NetEase/TTS Provider 边界 schema 已验证 |
 | Database | Node 24 `node:sqlite` / SQLite 3.53.2 | 平台、Profiles、Library、Feedback/Taste、Programs/Playback 与生成 Job schema 已实现并验证 |
 | ORM / migrations | Drizzle ORM + Drizzle Kit 1.0.0-rc.4 | Runtime migration flow 与七个版本化 schema migrations 已验证 |
-| Secrets | macOS Keychain via `/usr/bin/security` interactive stdin | Platform adapter and real round-trip verified · business use planned |
-| AI orchestration | Local Codex process | Adapter、持久化 generation runner、恢复 Snapshot 与显式 live composition 已验证；Production 默认 Live，Development/Test/CI 默认 Mock |
+| Secrets | macOS Keychain via `/usr/bin/security` interactive stdin | Platform adapter、真实 round-trip 与 DeepSeek API key 业务接入已验证；真实 DeepSeek API smoke 待手动执行 |
+| AI orchestration | Local Codex process + DeepSeek Chat Completions | Codex/DeepSeek Adapter、持久化 generation runner、恢复 Snapshot、设备级切换与显式 live composition 已验证；Production 默认 Live，Development/Test/CI 默认 Mock |
 | Music provider | Backend TypeScript NetEase `linuxapi` Adapter；no official CLI or .NET runtime | Adapter implemented and controlled smoke verified for Personal Local Preview |
 | Voice provider | Qwen3-TTS 8-bit via bundled Python/MLX helper；Serena / Ryan | 固定模型清单、首次下载、持久化 helper、受控同源媒体与 arm64 本机合成已验证；Production 默认 Live，Development/Test/CI 默认 Mock |
 | Unit / integration test | Vitest 4.1.10 + V8 coverage | Configured and verified |
@@ -245,7 +246,7 @@ Fastify Local Service
 
 由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 决定；Backend Adapter 与 native helper 已实装，Production 默认 Live，Development、Test 和 CI 默认 Mock：
 
-- v1 使用 Codex CLI、Backend TypeScript NetEase `linuxapi` Adapter 与 bundled Qwen3-TTS Python/MLX helper。
+- v1 使用 Codex CLI、DeepSeek Chat Completions、Backend TypeScript NetEase `linuxapi` Adapter 与 bundled Qwen3-TTS Python/MLX helper。
 - NetEase Adapter 不调用官方 `ncm-cli`，不直接依赖 `wwh1004/NeteaseCloudMusicApi` C# 二进制，也不增加 .NET runtime。
 - 搜索、歌词、歌单、播放 URL、Range/MIME/CORS 与非法 ID 已完成脱敏 PoC；非官方协议只允许 Personal Local Preview，公开分发必须在 S7 重新验证。
 
@@ -504,7 +505,7 @@ pnpm verify:package:macos <path-to-Koradio.app>
 - 已有 macOS Keychain Secret Store、受控 File Store 和结构化脱敏 logger；DeviceSettings 只持久化非敏感配置，TTS Adapter 只向受控 File Store 写入已校验音频。
 - 已有 Profiles、Library、Feedback、Taste、Programs 与 Playback application/persistence/public API、持久节目生成 Job、有序事件、Provider orchestration、MusicProvider Port、确定性 Mock、真实 Programs/Library 反馈目标校验和可重建 projection；Mock Provider 后端闭环已通过固定 fixture 验收。
 - 已有完整 v1 wire contracts；health/session/events、Profiles、Library、Feedback、Taste、Programs 历史/详情、Playback snapshot/checkpoint、DeviceSettings、ProfilePreferences 和数据目录迁移已有 route/use case。
-- 已有 Codex、NetEase 与 TTS Adapter、Qwen Python/MLX helper 及确定性 Mock；Production composition 默认 `live`，Development、Test 和 CI 默认 `mock`，也可由 `KORADIO_PROVIDER_MODE` 显式覆盖；Qwen 8-bit 本机完整句子合成与受控 TTS 音频已验收。
+- 已有 Codex、DeepSeek、NetEase 与 TTS Adapter、Qwen Python/MLX helper 及确定性 Mock；Production composition 默认 `live`，Development、Test 和 CI 默认 `mock`，也可由 `KORADIO_PROVIDER_MODE` 显式覆盖；Qwen 8-bit 本机完整句子合成与受控 TTS 音频已验收，DeepSeek 真实 API smoke 仍需手动执行。
 - App Shell 提供五个一级 route、TanStack Query health snapshot、内存 Session、WebSocket 事件重连、完全离线异常页和只读 Settings；在线模式已提供 Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题/DJ 偏好、四服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、节目 generation command、Snapshot/有序事件恢复、原子节目替换、喜欢/不喜欢/跳过/节目收藏反馈、Library 搜索/试听/候选池/分页/缓存与网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看、字段约束和只写 overrides 的人工编辑，以及 Programs 分页历史、详情、Provider source identity 恢复、可用串讲重播、文字降级、场景草稿复用和收藏/撤销。
 - Session 只保护本地 HTTP 边界，不代表云账号或 Profile 身份；浏览器不会从 LocalStorage、SessionStorage、IndexedDB 或 Cookie 恢复 token。
 

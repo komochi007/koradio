@@ -14,7 +14,7 @@ const baseEvent = {
     status: "ready" as const,
     mode: "mock" as const,
     providers: {
-      codex: "available" as const,
+      planner: "available" as const,
       netease: "available" as const,
       tts: "available" as const,
     },

@@ -16,6 +16,7 @@ export interface CreateHealthServiceOptions {
   deviceSettings: DeviceSettingsService;
   mode: HealthResponse["mode"];
   now?: () => Date;
+  plannerConfigured: () => boolean;
   ttsEnabled: () => boolean;
 }
 
@@ -24,7 +25,7 @@ export function createHealthService(options: CreateHealthServiceOptions): Health
 
   function getServiceHealth(): ServiceHealthListResponse {
     const checkedAt = now().toISOString();
-    const codexConfigured = options.deviceSettings.get().codexCommand !== null;
+    const plannerConfigured = options.plannerConfigured();
     const mockMode = options.mode === "mock";
 
     return serviceHealthListResponseSchema.parse({
@@ -36,12 +37,12 @@ export function createHealthService(options: CreateHealthServiceOptions): Health
           redactedSummary: "Local Service is ready",
         },
         {
-          service: "codex",
-          status: codexConfigured ? "available" : "unavailable",
+          service: "planner",
+          status: plannerConfigured ? "available" : "unavailable",
           checkedAt,
-          redactedSummary: codexConfigured
-            ? "Codex command is configured"
-            : "Codex command is not configured",
+          redactedSummary: plannerConfigured
+            ? "Active AI planner is configured"
+            : "Active AI planner is not configured",
         },
         {
           service: "netease",
@@ -68,7 +69,7 @@ export function createHealthService(options: CreateHealthServiceOptions): Health
   return {
     getHealth() {
       const items = getServiceHealth().items;
-      const providerStatus = (service: "codex" | "netease" | "tts") => {
+      const providerStatus = (service: "planner" | "netease" | "tts") => {
         const snapshot = items.find((item) => item.service === service);
 
         if (snapshot === undefined) {
@@ -83,7 +84,7 @@ export function createHealthService(options: CreateHealthServiceOptions): Health
         status: "ready",
         mode: options.mode,
         providers: {
-          codex: providerStatus("codex"),
+          planner: providerStatus("planner"),
           netease: providerStatus("netease"),
           tts: providerStatus("tts"),
         },

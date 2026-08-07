@@ -7,13 +7,13 @@ export const healthResponseSchema = z.strictObject({
   status: z.literal("ready"),
   mode: runtimeModeSchema,
   providers: z.strictObject({
-    codex: providerAvailabilitySchema,
+    planner: providerAvailabilitySchema,
     netease: providerAvailabilitySchema,
     tts: providerAvailabilitySchema,
   }),
   checkedAt: z.iso.datetime(),
 });
-export const serviceHealthNameSchema = z.enum(["local-service", "codex", "netease", "tts"]);
+export const serviceHealthNameSchema = z.enum(["local-service", "planner", "netease", "tts"]);
 export const serviceHealthSchema = z.strictObject({
   service: serviceHealthNameSchema,
   status: providerAvailabilitySchema,

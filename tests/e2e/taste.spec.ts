@@ -171,7 +171,7 @@ async function mockTasteWorkspace(
         service: "koradio",
         status: "ready",
         mode: "mock",
-        providers: { codex: "available", netease: "available", tts: "degraded" },
+        providers: { planner: "available", netease: "available", tts: "degraded" },
         checkedAt: "2026-07-20T08:00:00.000Z",
       },
     }),

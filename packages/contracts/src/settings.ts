@@ -3,18 +3,39 @@ import { z } from "zod";
 import { jobIdSchema, occurredAtSchema } from "./common.js";
 import { errorCodeSchema } from "./errors.js";
 
+export const plannerProviderSchema = z.enum(["codex", "deepseek"]);
+export const deepseekModelSchema = z.enum(["deepseek-v4-flash", "deepseek-v4-pro"]);
 export const deviceSettingsSchema = z.strictObject({
   dataRoot: z.string().trim().min(1).max(300),
   codexCommand: z.string().trim().min(1).max(300).nullable(),
+  plannerProvider: plannerProviderSchema,
+  deepseekModel: deepseekModelSchema,
+  deepseekPrivacyNoticeAccepted: z.boolean(),
   updatedAt: occurredAtSchema,
 });
 export const updateDeviceSettingsCommandSchema = z
   .strictObject({
     codexCommand: z.string().trim().min(1).max(300).optional(),
+    plannerProvider: plannerProviderSchema.optional(),
+    deepseekModel: deepseekModelSchema.optional(),
+    deepseekPrivacyNoticeAccepted: z.literal(true).optional(),
   })
-  .refine((value) => value.codexCommand !== undefined, {
-    message: "At least one device setting is required",
-  });
+  .refine(
+    (value) =>
+      value.codexCommand !== undefined ||
+      value.plannerProvider !== undefined ||
+      value.deepseekModel !== undefined ||
+      value.deepseekPrivacyNoticeAccepted !== undefined,
+    {
+      message: "At least one device setting is required",
+    },
+  );
+export const deepseekCredentialStatusSchema = z.strictObject({
+  configured: z.boolean(),
+});
+export const updateDeepseekApiKeyCommandSchema = z.strictObject({
+  apiKey: z.string().trim().min(1).max(8192),
+});
 export const ttsModelStateSchema = z.enum([
   "unsupported",
   "not-installed",
@@ -70,6 +91,10 @@ export const dataRootMigrationSnapshotSchema = z.strictObject({
 
 export type DeviceSettings = z.infer<typeof deviceSettingsSchema>;
 export type UpdateDeviceSettingsCommand = z.infer<typeof updateDeviceSettingsCommandSchema>;
+export type PlannerProvider = z.infer<typeof plannerProviderSchema>;
+export type DeepseekModel = z.infer<typeof deepseekModelSchema>;
+export type DeepseekCredentialStatus = z.infer<typeof deepseekCredentialStatusSchema>;
+export type UpdateDeepseekApiKeyCommand = z.infer<typeof updateDeepseekApiKeyCommandSchema>;
 export type TtsModelState = z.infer<typeof ttsModelStateSchema>;
 export type TtsModelStatus = z.infer<typeof ttsModelStatusSchema>;
 export type CreateDataRootMigrationCommand = z.infer<typeof createDataRootMigrationCommandSchema>;

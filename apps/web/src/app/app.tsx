@@ -187,7 +187,7 @@ function AppComposition({
     setProfilesOpen(false);
     if (
       currentProfile.data.current === null &&
-      connection.health?.providers.codex === "unavailable"
+      connection.health?.providers.planner === "unavailable"
     ) {
       navigate("/settings");
     }

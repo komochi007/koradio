@@ -19,7 +19,7 @@ const health: HealthResponse = {
   status: "ready",
   mode: "mock",
   providers: {
-    codex: "available",
+    planner: "available",
     netease: "available",
     tts: "available",
   },
@@ -335,6 +335,9 @@ function createOnlineTransport(
         jsonResponse({
           dataRoot: "/tmp/koradio-test",
           codexCommand: "/usr/local/bin/codex",
+          plannerProvider: "codex",
+          deepseekModel: "deepseek-v4-flash",
+          deepseekPrivacyNoticeAccepted: false,
           updatedAt: "2026-07-17T08:00:00.000Z",
         }),
       );
@@ -347,7 +350,7 @@ function createOnlineTransport(
         jsonResponse({
           items: [
             ["local-service", "available", "Local Service is ready"],
-            ["codex", "available", "Codex command is configured"],
+            ["planner", "available", "Active AI planner is configured"],
             ["netease", "available", "Built-in provider is available"],
             ["tts", options.ttsStatus ?? "available", "Qwen3-TTS local model snapshot"],
           ].map(([service, status, redactedSummary]) => ({
@@ -368,6 +371,19 @@ function createOnlineTransport(
           downloadedBytes: 0,
           totalBytes: 1_973_573_869,
           progressPercent: 0,
+        }),
+      );
+    }
+    if (path === "/api/v1/device-settings/deepseek-credentials") {
+      return Promise.resolve(jsonResponse({ configured: false }));
+    }
+    if (path === "/api/v1/device-settings/planner-test" && method === "POST") {
+      return Promise.resolve(
+        jsonResponse({
+          service: "planner",
+          status: "available",
+          checkedAt: "2026-07-17T08:00:00.000Z",
+          redactedSummary: "Active AI planner test succeeded",
         }),
       );
     }
@@ -600,7 +616,7 @@ describe("App Shell", () => {
     expect(screen.getByRole("radio", { name: "Dark" }).getAttribute("aria-checked")).toBe("true");
   });
 
-  it("treats degraded TTS as optional and never exposes secret inputs", async () => {
+  it("treats degraded TTS as optional and keeps the DeepSeek key input controlled", async () => {
     window.history.replaceState(null, "", "/settings");
     render(
       <App
@@ -610,12 +626,37 @@ describe("App Shell", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
-    expect(screen.queryByLabelText(/API Key|Cookie|密钥/)).toBeNull();
-    fireEvent.click(await screen.findByRole("button", { name: "Test" }));
+    expect(screen.getByLabelText<HTMLInputElement>("DeepSeek API key").value).toBe("");
+    expect(screen.getByLabelText("DeepSeek API key").getAttribute("type")).toBe("password");
+    const testButtons = await screen.findAllByRole("button", { name: "Test" });
+    expect(testButtons).toHaveLength(2);
+    const ttsTestButton = testButtons.at(1);
+    if (ttsTestButton === undefined) {
+      throw new Error("Expected a TTS test button");
+    }
+    fireEvent.click(ttsTestButton);
 
     expect(await screen.findByText("3 OF 4 SERVICES AVAILABLE")).toBeTruthy();
     expect(screen.getByText(/你仍然可以生成和播放节目/)).toBeTruthy();
     expect(screen.queryByText("NOT CONFIGURED")).toBeNull();
+  });
+
+  it("requires the DeepSeek privacy confirmation before switching planner", async () => {
+    window.history.replaceState(null, "", "/settings");
+    render(<App audioEngine={createTestAudioEngine()} transport={createOnlineTransport()} />);
+
+    expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "AI 大脑" }), {
+      target: { value: "deepseek" },
+    });
+
+    expect(await screen.findByRole("heading", { name: "启用 DeepSeek 前请确认" })).toBeTruthy();
+    expect(screen.getByText(/EffectiveTaste/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "我已了解，启用 DeepSeek" }));
+
+    expect(screen.getByRole<HTMLSelectElement>("combobox", { name: "AI 大脑" }).value).toBe(
+      "deepseek",
+    );
   });
 
   it("starts data-root migration as an idempotent safe command", async () => {

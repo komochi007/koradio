@@ -146,7 +146,7 @@ function failureCopy(code: string): { message: string; settings: boolean; title:
   if (code.includes("UNAVAILABLE") || code.includes("CONFIG")) {
     return {
       title: "SERVICE CHECK NEEDED",
-      message: "核心服务暂时不可用，请前往 Settings 检查 Codex 与音乐服务。",
+      message: "核心服务暂时不可用，请前往 Settings 检查 AI 大脑与音乐服务。",
       settings: true,
     };
   }

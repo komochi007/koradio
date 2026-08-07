@@ -72,3 +72,4 @@ ADR 只有在决策人、验证证据和受影响权威文档均明确后才能�
 | [0004](0004-provider-feasibility.md) | 已接受 | 2026-07-16 | S0-06 | 接受 Codex CLI、TypeScript NetEase `linuxapi` Adapter 与 bundled Apple TTS helper；仅限 Personal Local Preview，公开分发保留 Provider 合规硬门 |
 | [0005](0005-qwen3-local-tts.md) | 已接受 | 2026-07-28 | UX-10 | 使用固定 revision 的 Qwen3-TTS 8-bit 本地模型替换 Apple TTS；中文 Serena、英文 Ryan，模型由用户首次下载 |
 | [0006](0006-electron-desktop-shell.md) | 已接受 | 2026-08-03 | S7-09 | 以 Electron 主进程替换 Native Launcher + 外部浏览器窗口；保持现有 Web Renderer、Local Service、协议与数据边界 |
+| [0007](0007-deepseek-planner-provider.md) | 已接受 | 2026-08-06 | AI 大脑可切换与 DeepSeek 接入 | 通过 Backend Planner Provider Port 接入固定 DeepSeek Chat Completions；Keychain 保存密钥，设备级显式切换，无自动 fallback |

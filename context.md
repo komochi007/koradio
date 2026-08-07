@@ -38,15 +38,15 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - 根 manifest、pnpm workspace、单一锁文件、Node 版本文件、四个目标边界源码入口、strict TypeScript project references 与质量配置已创建；frozen install、`check`、Playwright、axe、视觉、`dev` 与 `build` 可运行。
 - React/Vite App Shell 与 Fastify Local Service 默认以 Mock 模式启动，受控本机可显式启用 live；五个一级 route、短期进程内 session bootstrap、认证 REST/WS、事件断线重连、production 同源静态托管和仅静态 App Shell 的离线缓存已验证；Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题与 DJ 偏好、服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、场景命令、Snapshot/有序事件恢复、失败保留旧节目、原子节目替换、唯一 Browser Audio Engine、预加载、checkpoint、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/分页/缓存/网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看、字段约束和保存失败草稿保留，以及 Programs 分页历史/详情、Provider source identity 恢复、串讲重播与文字降级、场景草稿复用和收藏/撤销已实现。
 - Electron 桌面窗口最小尺寸为 `430 × 652px`；Radio、Library 等常规页面继续以 `0.425` 的固定内容比例保持已验收的组件与布局，Detail Sheet 在 Electron 下例外使用实际 viewport 并按约 `25% / 75%` 分配波形区与节目面。Radio 页面外层不滚动，队列与 DJ 对话框独立滚动且隐藏滚动条；品牌标记与内容区左边缘对齐并避让 macOS 原生窗口按钮。普通浏览器与手机仍保留响应式阅读布局。
-- Node 24 `node:sqlite`、Drizzle ORM/Kit 1.0 RC、OS 默认数据目录、版本化 migration、WAL、foreign keys、严格文件权限和失败迁移事务回滚已验证；Profile、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已实现。
+- Node 24 `node:sqlite`、Drizzle ORM/Kit 1.0 RC、OS 默认数据目录、版本化 migration、WAL、foreign keys、严格文件权限和失败迁移事务回滚已验证；Profile、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已实现，DeviceSettings 新增活动 Planner、DeepSeek 模型和隐私确认迁移。
 - macOS Keychain adapter 使用 `/usr/bin/security -i` 从 stdin 接收十六进制 secret，不把明文写入 argv；受控 File Store 只生成 data root 内相对引用并限制扩展名、MIME、大小、来源与重定向；日志移除 token、key、敏感正文、凭据 URL 和用户路径。
-- `packages/contracts/src/` 已包含完整 v1 REST DTO/command、显式 `profileId`、幂等 request、异步 job、事件与错误 Zod schemas；health/session/events、Profiles、Library、Programs/Playback、生成受理/Snapshot、DeviceSettings、ProfilePreferences 和数据目录迁移已有后端实现。
+- `packages/contracts/src/` 已包含完整 v1 REST DTO/command、显式 `profileId`、幂等 request、异步 job、事件与错误 Zod schemas；health/session/events、Profiles、Library、Programs/Playback、生成受理/Snapshot、DeviceSettings、DeepSeek credential status、ProfilePreferences 和数据目录迁移已有后端实现。
 - Profiles 创建在单事务内建立 Profile、默认 ProfilePreferences 与由 onboarding genres/default scenario 初始化的 TasteOverrides；current Profile ID 与 active data root 共用原子 bootstrap runtime config，切换失败不会更新当前 context。
 - Library 通过 MusicProvider Port 接收不可信输出并严格归一化为稳定 source identity；搜索、歌词和短期播放解析使用有界 TTL 缓存，播放直链不进入 SQLite，异步歌单导入按完整曲目 ID 清单补齐元数据并在短事务内写入全部可解析歌曲、封面 URL 与可播放状态。
 - Feedback 以 `(profileId, idempotencyKey)` 去重，在同一短事务内追加事实并按内部 replay order 重建 TasteProjection；skip 不自动推断为不喜欢。TasteOverrides 独立版本化，EffectiveTaste 在读取时保序合并且不单独持久化。
 - Programs 通过 Library 公开 API 解析曲目元数据、通过 Playback 公开事务写入 Port 原子提交 Program、ordered track refs、DJ segments 与 timeline；production Feedback composition 使用真实 Programs owner 校验节目目标。
-- Programs application 以持久 Job 元数据和内存 executor 编排 Codex、Music 与可选 TTS；规划上下文通过 Library application Port 获取当前 Profile 最多 500 首同运行模式、可播放的库内曲目摘要，并提供 `maximumTracks` 与约 70% 的建议库内数量。Codex 返回有序 `library` / `discovery` track intents；Library intent 只解析上下文内 ID，Discovery intent 每个关键词至多选择一首非库内结果，稳定去重且不随机跨 Profile 补位。
-- 固定 Provider fixtures 已验收从 REST 场景受理到 Program/segments/timeline 原子提交的成功流，以及默认五首 4/1、空音乐库探索、显式约束、非法/跨 Profile/重复 intent、搜索与库内音频失败、单关键词至多一首、Codex 错误/非法计划、TTS/歌词/部分曲目降级、旧节目保护和提交事务回滚；常规质量门不调用真实 Provider。
+- Programs application 以持久 Job 元数据和内存 executor 编排活动 Planner（Codex 或 DeepSeek）、Music 与可选 TTS；规划上下文通过 Library application Port 获取当前 Profile 最多 500 首同运行模式、可播放的库内曲目摘要，并提供 `maximumTracks` 与约 70% 的建议库内数量。活动 Planner 读取 `EffectiveTaste` 并返回有序 `library` / `discovery` track intents；Library intent 只解析上下文内 ID，Discovery intent 每个关键词至多选择一首非库内结果，稳定去重且不随机跨 Profile 补位。每个 generation job 在启动时快照 Provider/model，Settings 切换只影响下一次生成。
+- 固定 Provider fixtures 已验收从 REST 场景受理到 Program/segments/timeline 原子提交的成功流，以及默认五首 4/1、空音乐库探索、显式约束、非法/跨 Profile/重复 intent、搜索与库内音频失败、单关键词至多一首、Codex 错误/非法计划、TTS/歌词/部分曲目降级、旧节目保护和提交事务回滚；DeepSeek adapter 使用脱敏 HTTP fixtures 覆盖 JSON Output/Thinking、错误映射、一次重试和 reasoning 丢弃；常规质量门不调用真实 Provider。
 - S7-06 曾在 macOS 15.7.3 arm64 验证 Codex/NetEase/Apple TTS 闭环；该 TTS 实现已被 UX-10 取代，失败保护与 Mock/fixture 回归边界继续有效。
 - S6-01 使用固定故障 fixtures、数据库快照和 Chromium/Firefox 产品 E2E 证明生成阻断保留旧 Program/Audio、局部依赖失败确定降级、反馈失败回滚且不中断播放、媒体失败稳定收敛；生成状态同时丢弃低于当前 sequence 的迟到 REST Snapshot，避免覆盖较新 WebSocket 阶段或终态。
 - S6-02 使用固定 v6 production migration fixture 和临时数据根证明当前 schema 只执行待处理升级且保持 Profile、Taste、Library、Feedback、Program、Playback 与受控文件可读；数据根迁移在八个阶段失败、真实 SHA-256 不匹配或重启失败时均回到旧 bootstrap，旧目录、备份和部分目标不自动删除。
@@ -55,7 +55,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - Playback 每个 Profile 只保存最新 checkpoint；写入校验 Program/timeline ownership、item 时长、完成边界和 `leaseEpoch`，拒绝旧标签页用更低 epoch 覆盖新状态。
 - `POST /api/v1/profile-avatars` 使用固定版本 `@fastify/multipart` 接收单文件上传，校验 PNG/JPEG/WebP 文件签名、声明 MIME 与 5 MiB 上限后才写入受控 File Store。
 - [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 的运行版本、workspace、锁文件、完整根命令族和 Linux GitHub Actions CI 已实装并由真实 run 验证。[ADR 0002](docs/adr/0002-runtime-topology.md) 的完整 REST/WS session、Origin 与浏览器存储安全矩阵已由 S2-04 实装验证。
-- [ADR 0004](docs/adr/0004-provider-feasibility.md) 记录历史 Provider 可行性裁决；其中 Apple TTS 已由 [ADR 0005](docs/adr/0005-qwen3-local-tts.md) 与 UX-10 取代。当前组合为 Codex CLI、Backend TypeScript NetEase `linuxapi` Adapter 与 bundled Qwen3-TTS helper；production 默认 Live，development/test/CI 默认 Mock。
+- [ADR 0004](docs/adr/0004-provider-feasibility.md) 记录历史 Provider 可行性裁决；其中 Apple TTS 已由 [ADR 0005](docs/adr/0005-qwen3-local-tts.md) 与 UX-10 取代；[ADR 0007](docs/adr/0007-deepseek-planner-provider.md) 固定 DeepSeek Planner、Keychain 与显式切换边界。当前组合为 Codex CLI、DeepSeek Chat Completions、Backend TypeScript NetEase `linuxapi` Adapter 与 bundled Qwen3-TTS helper；production 默认 Live，development/test/CI 默认 Mock。
 - 设计预览可直接打开 `design/assets/prototype/index.html`，但这是零构建设计 fixture，不代表产品可运行。
 - `architecture.md` 中超出当前本机真实 Provider/Web Renderer 闭环的 x64 生命周期、Developer ID、签名公证、独立干净 Mac 和公开分发仍是目标设计；当前事实以本节与真实仓库为准。
 
@@ -67,7 +67,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - Browser Audio Engine 拥有唯一 `HTMLAudio` 实例。
 - REST 承载查询与命令，WebSocket 推送任务和领域事件。
 - SQLite 保存结构化事实，File Store 保存媒体与缓存。
-- Codex、网易云通过 Backend Adapter 接入；NetEase v1 Adapter 在 Backend 内用 TypeScript 实现最小 `linuxapi` 协议，不调用官方 CLI、不引入 .NET；可选 TTS 由 Backend TTS Port 调用 bundled Python/MLX helper 与固定 revision 的 Qwen3-TTS 8-bit 本地模型。
+- Codex、DeepSeek、网易云通过 Backend Adapter 接入；DeepSeek 使用固定官方 endpoint、Bearer key、JSON Output 与 Thinking Mode，key 只在 macOS Keychain；NetEase v1 Adapter 在 Backend 内用 TypeScript 实现最小 `linuxapi` 协议，不调用官方 CLI、不引入 .NET；可选 TTS 由 Backend TTS Port 调用 bundled Python/MLX helper 与固定 revision 的 Qwen3-TTS 8-bit 本地模型。
 - 服务默认只在 loopback 提供本地访问；目标 Development 为 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373`，目标 Production 为同源 Local Service 首选 `49373` 并仅允许 `49373-49383` 有界 fallback。
 
 ## 4. 产品范围
@@ -90,7 +90,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 | 生成任务 | Backend durable metadata + runtime executor | SQLite Job + ordered events + REST Snapshot |
 | 服务健康状态 | Backend runtime | Snapshot |
 | Sheet、draft、筛选、展开状态 | Frontend feature | In-memory |
-| dataRoot、Codex、NetEase、Secret Store 引用 | DeviceSettings | Device durable |
+| dataRoot、活动 Planner、Codex、DeepSeek 模型/隐私确认、Secret Store 引用 | DeviceSettings | Device durable |
 | Theme、DJ language、voice style | ProfilePreferences | Profile durable |
 
 关键边界：Profile 是数据分区而非身份认证；MVP 只有一个 active playback session，标签页通过 `2s` 续约、`5s` 过期的 TTL lease 选出主控；Browser 不直接调用 Provider；Domain 不依赖框架或 Provider SDK；Provider response 不得成为公共 contract；外部输入必须在边界校验。
@@ -116,8 +116,8 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 | `Profile` | 本地数据分区根，头像只保存受控 `avatarRef` |
 | `TasteProjection` | 可从反馈事实重建的自动投影 |
 | `TasteOverrides` | 人工规则，优先且不被重建覆盖 |
-| `EffectiveTaste` | 合并后的 Codex 只读上下文 |
-| `DeviceSettings` | 设备级 dataRoot、服务配置与 Secret Store 引用 |
+| `EffectiveTaste` | 合并后的活动 Planner 只读上下文 |
+| `DeviceSettings` | 设备级 dataRoot、Planner/模型/隐私配置与 Secret Store 引用 |
 | `ProfilePreferences` | Profile 级主题与 DJ 偏好 |
 | `MusicTrack` | 归一化曲目与 Provider source identity |
 | `Program` | 一次场景生成后的节目快照 |
@@ -140,16 +140,16 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 
 ### 反馈记忆
 
-`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Codex context`
+`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Planner context`
 
 ## 9. 失败与降级
 
 阻断当前任务：
 
-- Codex 失败、超时或结构化输出无效。
+- 活动 Planner 失败、超时或结构化输出无效。
 - 搜歌重试后没有可播放曲目。
 - 数据路径不可写或节目事务提交失败。
-- Codex 未配置，或内置网易云 Provider 运行时不可用。
+- 活动 Planner 未配置（Codex 命令缺失，或 DeepSeek 未确认隐私/未配置 key），或内置网易云 Provider 运行时不可用。
 
 阻断错误必须保留用户输入并提供重试、修改输入或 Settings 入口。
 
@@ -192,7 +192,7 @@ Agent 不得自行假定：
 - 数据库与其他业务依赖的具体包和精确版本。
 - 尚未创建的业务模块、macOS 平台/包装 CI 或产品行为测试覆盖已经可用。
 
-工具链实现必须遵循 ADR 0001；运行拓扑实现必须遵循 ADR 0002；macOS 包装与交付边界必须遵循 ADR 0003；Provider 实现与发布边界必须遵循 ADR 0004。
+工具链实现必须遵循 ADR 0001；运行拓扑实现必须遵循 ADR 0002；macOS 包装与交付边界必须遵循 ADR 0003；Provider 实现与发布边界必须遵循 ADR 0004、ADR 0007。
 
 ## 12. Context 路由
 

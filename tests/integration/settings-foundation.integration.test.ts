@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../../apps/server/src/bootstrap/app.js";
 import type { RuntimeConfig } from "../../apps/server/src/bootstrap/config.js";
 import { recordDataRootRestartFailure } from "../../apps/server/src/modules/device-settings/data-root-migration.js";
+import type { SecretStore } from "../../apps/server/src/platform/secrets/index.js";
 import {
   readActiveDataRoot,
   writeActiveDataRoot,
@@ -95,6 +96,29 @@ function authorizedHeaders(session: SessionBootstrapResponse): Record<string, st
   };
 }
 
+function createMemorySecretStore(): { store: SecretStore; values: Map<string, string> } {
+  const values = new Map<string, string>();
+  return {
+    values,
+    store: {
+      delete(identifier) {
+        values.delete(identifier);
+        return Promise.resolve();
+      },
+      get(identifier) {
+        return Promise.resolve(values.get(identifier));
+      },
+      has(identifier) {
+        return Promise.resolve(values.has(identifier));
+      },
+      set(identifier, secret) {
+        values.set(identifier, secret);
+        return Promise.resolve({ key: identifier, store: "os-credential-store" });
+      },
+    },
+  };
+}
+
 async function createProfile(
   app: Awaited<ReturnType<typeof createApp>>,
   headers: Record<string, string>,
@@ -154,6 +178,93 @@ async function waitForMigration(
 }
 
 describe("S2-05 settings, health and data root foundation", () => {
+  it("keeps DeepSeek API keys in the credential store and exposes only status", async () => {
+    const credentials = createMemorySecretStore();
+    const context = await createTestApp({ secretStore: credentials.store });
+    const session = await bootstrapSession(context.app);
+    const headers = authorizedHeaders(session);
+    const secret = "sk-deepseek-test-secret";
+
+    const initial = await context.app.inject({
+      method: "GET",
+      url: "/api/v1/device-settings/deepseek-credentials",
+      headers,
+    });
+    expect(initial.statusCode).toBe(200);
+    expect(initial.json()).toEqual({ configured: false });
+
+    const saved = await context.app.inject({
+      method: "PUT",
+      url: "/api/v1/device-settings/deepseek-credentials",
+      headers,
+      payload: { apiKey: secret },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toEqual({ configured: true });
+    expect(credentials.values.get("deepseek.api-key")).toBe(secret);
+    expect(saved.body).not.toContain(secret);
+
+    const status = await context.app.inject({
+      method: "GET",
+      url: "/api/v1/device-settings/deepseek-credentials",
+      headers,
+    });
+    expect(status.json()).toEqual({ configured: true });
+    expect(status.body).not.toContain(secret);
+
+    const settings = await context.app.inject({
+      method: "GET",
+      url: "/api/v1/device-settings",
+      headers,
+    });
+    const health = await context.app.inject({
+      method: "GET",
+      url: "/api/v1/health/services",
+      headers,
+    });
+    expect(settings.body).not.toContain(secret);
+    expect(health.body).not.toContain(secret);
+
+    const removed = await context.app.inject({
+      method: "DELETE",
+      url: "/api/v1/device-settings/deepseek-credentials",
+      headers,
+    });
+    expect(removed.statusCode).toBe(200);
+    expect(removed.json()).toEqual({ configured: false });
+    expect(credentials.values.has("deepseek.api-key")).toBe(false);
+  });
+
+  it("runs the active planner test through the backend provider boundary", async () => {
+    let testCalls = 0;
+    const plannerProvider = {
+      plan() {
+        return Promise.resolve({});
+      },
+      test() {
+        testCalls += 1;
+        return Promise.resolve();
+      },
+    };
+    const context = await createTestApp({
+      plannerProvider,
+    });
+    const session = await bootstrapSession(context.app);
+    const response = await context.app.inject({
+      method: "POST",
+      url: "/api/v1/device-settings/planner-test",
+      headers: authorizedHeaders(session),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      service: "planner",
+      status: "available",
+      redactedSummary: "Active AI planner test succeeded",
+    });
+    expect(testCalls).toBe(1);
+  });
+
   it("keeps device settings separate from profile preferences", async () => {
     const context = await createTestApp();
     const session = await bootstrapSession(context.app);
@@ -179,6 +290,9 @@ describe("S2-05 settings, health and data root foundation", () => {
     expect(deviceSettingsSchema.parse(initialDeviceResponse.json<unknown>())).toMatchObject({
       dataRoot: context.sourceDataRoot,
       codexCommand: null,
+      plannerProvider: "codex",
+      deepseekModel: "deepseek-v4-flash",
+      deepseekPrivacyNoticeAccepted: false,
     });
 
     const updateDeviceResponse = await context.app.inject({
@@ -189,6 +303,32 @@ describe("S2-05 settings, health and data root foundation", () => {
     });
     expect(deviceSettingsSchema.parse(updateDeviceResponse.json<unknown>())).toMatchObject({
       codexCommand: "/opt/koradio/bin/codex",
+    });
+
+    const privacyRequiredResponse = await context.app.inject({
+      method: "PATCH",
+      url: "/api/v1/device-settings",
+      headers,
+      payload: { plannerProvider: "deepseek" },
+    });
+    expect(privacyRequiredResponse.statusCode).toBe(400);
+    expect(privacyRequiredResponse.json()).toMatchObject({ code: "DEEPSEEK_PRIVACY_REQUIRED" });
+
+    const deepseekDeviceResponse = await context.app.inject({
+      method: "PATCH",
+      url: "/api/v1/device-settings",
+      headers,
+      payload: {
+        deepseekModel: "deepseek-v4-pro",
+        deepseekPrivacyNoticeAccepted: true,
+        plannerProvider: "deepseek",
+      },
+    });
+    expect(deepseekDeviceResponse.statusCode).toBe(200);
+    expect(deepseekDeviceResponse.json()).toMatchObject({
+      deepseekModel: "deepseek-v4-pro",
+      deepseekPrivacyNoticeAccepted: true,
+      plannerProvider: "deepseek",
     });
 
     const firstDefaults = await context.app.inject({
@@ -263,9 +403,9 @@ describe("S2-05 settings, health and data root foundation", () => {
     });
     const initialSnapshot = serviceHealthListResponseSchema.parse(initialHealth.json<unknown>());
     expect(initialSnapshot.items).toHaveLength(4);
-    expect(initialSnapshot.items.find((item) => item.service === "codex")).toMatchObject({
+    expect(initialSnapshot.items.find((item) => item.service === "planner")).toMatchObject({
       status: "unavailable",
-      redactedSummary: "Codex command is not configured",
+      redactedSummary: "Active AI planner is not configured",
     });
     expect(JSON.stringify(initialSnapshot)).not.toContain(context.sourceDataRoot);
     expect(JSON.stringify(initialSnapshot)).not.toContain("cookie");
@@ -284,9 +424,9 @@ describe("S2-05 settings, health and data root foundation", () => {
     const configuredSnapshot = serviceHealthListResponseSchema.parse(
       configuredHealth.json<unknown>(),
     );
-    expect(configuredSnapshot.items.find((item) => item.service === "codex")).toMatchObject({
+    expect(configuredSnapshot.items.find((item) => item.service === "planner")).toMatchObject({
       status: "available",
-      redactedSummary: "Codex command is configured",
+      redactedSummary: "Active AI planner is configured",
     });
     expect(JSON.stringify(configuredSnapshot)).not.toContain("/Users/private");
   });

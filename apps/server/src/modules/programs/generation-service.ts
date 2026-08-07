@@ -28,6 +28,7 @@ import {
   ttsSynthesisResultSchema,
   type CodexProgramPlan,
   type CodexProvider,
+  type ProgramPlannerProvider,
   type TtsProvider,
 } from "./providers.js";
 import type { ProgramGenerationRepository } from "./generation-persistence.js";
@@ -73,7 +74,7 @@ type GenerationPreferences = Pick<ProfilePreferencesService, "get">;
 type GenerationTaste = Pick<TasteService, "get">;
 
 export interface CreateProgramGenerationServiceOptions {
-  codex: CodexProvider;
+  codex?: CodexProvider;
   events: { publish(event: V1Event): void };
   library: GenerationLibrary;
   maximumTracks?: number;
@@ -81,6 +82,7 @@ export interface CreateProgramGenerationServiceOptions {
   originMode?: OriginMode;
   preferences: GenerationPreferences;
   programs: GenerationPrograms;
+  planner?: ProgramPlannerProvider | (() => ProgramPlannerProvider);
   randomId?: () => string;
   repository: ProgramGenerationRepository;
   taste: GenerationTaste;
@@ -111,6 +113,17 @@ function hasErrorCode(error: unknown, code: string): boolean {
     "code" in error &&
     (error as { code?: unknown }).code === code
   );
+}
+
+function resolvePlanner(options: CreateProgramGenerationServiceOptions): ProgramPlannerProvider {
+  const planner = typeof options.planner === "function" ? options.planner() : options.planner;
+  if (planner !== undefined) {
+    return planner;
+  }
+  if (options.codex !== undefined) {
+    return options.codex;
+  }
+  throw new Error("Program planner has not been configured");
 }
 
 function withAbort<Value>(operation: () => Promise<Value>, signal: AbortSignal): Promise<Value> {
@@ -205,6 +218,7 @@ export function createProgramGenerationService(
     setStage(snapshot.jobId, "resolving_tracks", signal);
     const libraryCandidates = new Map(libraryTracks.map((track) => [track.id, track]));
     const resolved: Array<{ audio: AudioResolution; track: MusicTrack }> = [];
+    const failedTrackIds = new Set<string>();
     const selectedTrackIds = new Set<string>();
     let trackDegraded = false;
 
@@ -213,6 +227,7 @@ export function createProgramGenerationService(
         return false;
       }
       if (!track.playable) {
+        failedTrackIds.add(track.id);
         trackDegraded = true;
         return false;
       }
@@ -226,9 +241,44 @@ export function createProgramGenerationService(
         if (signal.aborted || error instanceof GenerationAbortedError) {
           throw new GenerationAbortedError();
         }
+        failedTrackIds.add(track.id);
         trackDegraded = true;
         return false;
       }
+    };
+
+    const searchAndResolve = async (
+      keyword: string,
+      includeLibraryCandidates = false,
+    ): Promise<boolean> => {
+      const normalizedKeyword = keyword.trim().slice(0, 100).toLocaleLowerCase("en-US");
+      if (normalizedKeyword.length === 0) {
+        return false;
+      }
+      try {
+        const search = await withAbort(
+          () => options.library.search(keyword.trim().slice(0, 100), signal),
+          signal,
+        );
+        assertActive(snapshot.jobId, signal);
+        for (const track of search.items) {
+          if (
+            failedTrackIds.has(track.id) ||
+            (!includeLibraryCandidates && libraryCandidates.has(track.id))
+          ) {
+            continue;
+          }
+          if (await tryResolve(track)) {
+            return true;
+          }
+        }
+      } catch (error) {
+        if (signal.aborted || error instanceof GenerationAbortedError) {
+          throw new GenerationAbortedError();
+        }
+        trackDegraded = true;
+      }
+      return false;
     };
 
     for (const intent of plan.trackIntents) {
@@ -241,30 +291,12 @@ export function createProgramGenerationService(
           trackDegraded = true;
           continue;
         }
-        await tryResolve(track);
+        if (!(await tryResolve(track))) {
+          await searchAndResolve(track.artist, true);
+        }
         continue;
       }
-
-      try {
-        const search = await withAbort(
-          () => options.library.search(intent.keyword, signal),
-          signal,
-        );
-        assertActive(snapshot.jobId, signal);
-        for (const track of search.items) {
-          if (libraryCandidates.has(track.id)) {
-            continue;
-          }
-          if (await tryResolve(track)) {
-            break;
-          }
-        }
-      } catch (error) {
-        if (signal.aborted || error instanceof GenerationAbortedError) {
-          throw new GenerationAbortedError();
-        }
-        trackDegraded = true;
-      }
+      await searchAndResolve(intent.keyword);
     }
 
     if (trackDegraded) {
@@ -492,7 +524,7 @@ export function createProgramGenerationService(
       },
     });
     const rawPlan = await withAbort(
-      () => options.codex.plan(context, { correlationId: snapshot.jobId, signal }),
+      () => resolvePlanner(options).plan(context, { correlationId: snapshot.jobId, signal }),
       signal,
     );
     assertActive(snapshot.jobId, signal);

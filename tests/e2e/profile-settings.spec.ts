@@ -41,6 +41,9 @@ async function mockProfileWorkspace(
       json: {
         dataRoot: "/Users/listener/Library/Application Support/Koradio",
         codexCommand: "/opt/homebrew/bin/codex",
+        plannerProvider: "codex",
+        deepseekModel: "deepseek-v4-flash",
+        deepseekPrivacyNoticeAccepted: false,
         updatedAt: "2026-07-17T08:00:00.000Z",
       },
     }),
@@ -57,12 +60,22 @@ async function mockProfileWorkspace(
       },
     }),
   );
+  let deepseekConfigured = false;
+  await page.route(/\/api\/v1\/device-settings\/deepseek-credentials$/, async (route) => {
+    const method = route.request().method();
+    if (method === "PUT") {
+      deepseekConfigured = true;
+    } else if (method === "DELETE") {
+      deepseekConfigured = false;
+    }
+    await route.fulfill({ json: { configured: deepseekConfigured } });
+  });
   await page.route(/\/api\/v1\/health\/services$/, async (route) =>
     route.fulfill({
       json: {
         items: [
           ["local-service", "available", "Local Service is ready"],
-          ["codex", "available", "Codex command is configured"],
+          ["planner", "available", "Active AI planner is configured"],
           ["netease", "available", "Built-in NetEase provider is available"],
           ["tts", "degraded", "Qwen3-TTS local model is temporarily unavailable"],
         ].map(([service, status, redactedSummary]) => ({
@@ -206,7 +219,7 @@ for (const theme of ["dark", "light"] as const) {
 
     await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeFocused();
     await expect(page.getByText("3 SERVICES ONLINE")).toBeVisible();
-    await expect(page.getByLabel(/API Key|Cookie|密钥/)).toHaveCount(0);
+    await expect(page.getByLabel("DeepSeek API key")).toHaveValue("");
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await expect(page).toHaveScreenshot(`settings-${theme}.png`, {
       animations: "disabled",
@@ -243,6 +256,24 @@ test.describe("service diagnostics", () => {
     await page.getByRole("button", { name: "修改配置" }).click();
     await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeVisible();
   });
+});
+
+test("confirms DeepSeek privacy, saves a key through the controlled settings flow", async ({
+  page,
+}) => {
+  await mockProfileWorkspace(page, { current: true });
+  await page.goto(`${appOrigin}/settings`);
+
+  await page.getByLabel("AI 大脑").selectOption("deepseek");
+  await expect(page.getByRole("heading", { name: "启用 DeepSeek 前请确认" })).toBeVisible();
+  await expect(page.getByText(/EffectiveTaste/)).toBeVisible();
+  await page.getByRole("button", { name: "我已了解，启用 DeepSeek" }).click();
+
+  await page.getByLabel("DeepSeek API key").fill("sk-e2e-secret");
+  await page.getByRole("button", { name: "保存 key" }).click();
+  await expect(page.getByText("DeepSeek API key 已安全写入系统钥匙串。")).toBeVisible();
+  await expect(page.getByLabel("DeepSeek API key")).toHaveValue("");
+  await expect(page.getByText("已配置")).toBeVisible();
 });
 
 const responsiveViewports = [

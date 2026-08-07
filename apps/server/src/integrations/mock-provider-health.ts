@@ -6,7 +6,7 @@ export function createMockHealthSnapshot(now: Date = new Date()): HealthResponse
     status: "ready",
     mode: "mock",
     providers: {
-      codex: "available",
+      planner: "available",
       netease: "available",
       tts: "available",
     },

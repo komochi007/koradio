@@ -160,7 +160,7 @@ interface OnlineShellPageProps {
 }
 
 const providerLabels: Record<keyof HealthResponse["providers"], string> = {
-  codex: "CODEX",
+  planner: "AI PLANNER",
   netease: "NETEASE",
   tts: "QWEN3 TTS",
 };

@@ -6,15 +6,18 @@ import { describe, expect, it } from "vitest";
 
 import {
   CodexAdapterError,
+  DeepseekAdapterError,
   ProviderProcessError,
   TtsAdapterError,
   TtsHelperClientError,
   createCodexAdapter,
+  createDeepseekAdapter,
   createNetEaseAdapter,
   createTtsAdapter,
   runProviderProcess,
   type ProviderProcessInvocation,
   type ProviderProcessRunner,
+  type DeepseekFetcher,
   type TtsHelperClient,
   type TtsModelService,
 } from "../../apps/server/src/integrations/index.js";
@@ -281,6 +284,131 @@ describe("Codex adapter", () => {
     const serialized = JSON.stringify(entries);
     expect(serialized).not.toContain(codexPlanningContextFixture.scenarioText);
     expect(serialized).not.toContain("sensitive-provider-warning");
+    expect(serialized).toContain(providerCorrelationId);
+  });
+});
+
+describe("DeepSeek adapter", () => {
+  it("uses the fixed endpoint, bearer key, JSON output and thinking mode", async () => {
+    const invocations: Array<{
+      input: string;
+      init: { body: string; headers: Record<string, string> };
+    }> = [];
+    const fetcher: DeepseekFetcher = (input, init) => {
+      invocations.push({ input, init });
+      return Promise.resolve(
+        jsonResponse({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                content: JSON.stringify(codexProgramPlanFixture),
+                reasoning_content: "must not enter the plan",
+              },
+            },
+          ],
+        }),
+      );
+    };
+    const adapter = createDeepseekAdapter({
+      apiKey: "sk-test-secret",
+      fetcher,
+      model: "deepseek-v4-pro",
+    });
+
+    await expect(
+      adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
+    ).resolves.toEqual(codexProgramPlanFixture);
+    const invocation = invocations[0];
+    expect(invocation?.input).toBe("https://api.deepseek.com/chat/completions");
+    expect(invocation?.init.headers.Authorization).toBe("Bearer sk-test-secret");
+    const body = JSON.parse(invocation?.init.body ?? "{}") as {
+      messages?: Array<{ content: string }>;
+      max_tokens?: number;
+      model?: string;
+      response_format?: { type: string };
+      thinking?: { type: string };
+    };
+    expect(body.max_tokens).toBe(8_192);
+    expect(body.model).toBe("deepseek-v4-pro");
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.thinking).toEqual({ type: "enabled" });
+    expect(body.messages?.map((message) => message.content).join(" ")).toContain("EffectiveTaste");
+    expect(body.messages?.map((message) => message.content).join(" ")).not.toContain(
+      "sk-test-secret",
+    );
+  });
+
+  it("retries one transient response and never retries authentication failure", async () => {
+    const statuses = [429, 200];
+    const sleeps: number[] = [];
+    const fetcher: DeepseekFetcher = () => {
+      const status = statuses.shift();
+      if (status === undefined) {
+        throw new Error("Unexpected DeepSeek request");
+      }
+      return Promise.resolve(
+        status === 200
+          ? jsonResponse({
+              choices: [
+                {
+                  finish_reason: "stop",
+                  message: { content: JSON.stringify(codexProgramPlanFixture) },
+                },
+              ],
+            })
+          : jsonResponse({ error: { message: "rate limited" } }, status),
+      );
+    };
+    const adapter = createDeepseekAdapter({
+      apiKey: "sk-test",
+      fetcher,
+      model: "deepseek-v4-flash",
+      sleep: (milliseconds) => {
+        sleeps.push(milliseconds);
+        return Promise.resolve();
+      },
+    });
+    await expect(
+      adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
+    ).resolves.toEqual(codexProgramPlanFixture);
+    expect(sleeps).toEqual([250]);
+
+    const unauthorized = createDeepseekAdapter({
+      apiKey: "sk-test",
+      fetcher: () => Promise.resolve(jsonResponse({ error: { message: "unauthorized" } }, 401)),
+      sleep: () => Promise.reject(new Error("must not retry")),
+      model: "deepseek-v4-flash",
+    });
+    await expect(
+      unauthorized.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
+    ).rejects.toMatchObject({ code: "unauthorized" });
+  });
+
+  it("rejects empty or invalid JSON without exposing response content", async () => {
+    const entries: SafeLogEntry[] = [];
+    const logger = createSafeLogger({ sink: { write: (entry) => entries.push(entry) } });
+    const adapter = createDeepseekAdapter({
+      apiKey: "sk-test",
+      fetcher: () =>
+        Promise.resolve(
+          jsonResponse({
+            choices: [
+              {
+                finish_reason: "stop",
+                message: { content: "not-json-and-user-secret" },
+              },
+            ],
+          }),
+        ),
+      logger,
+      model: "deepseek-v4-flash",
+    });
+    await expect(
+      adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
+    ).rejects.toBeInstanceOf(DeepseekAdapterError);
+    const serialized = JSON.stringify(entries);
+    expect(serialized).not.toContain("not-json-and-user-secret");
     expect(serialized).toContain(providerCorrelationId);
   });
 });

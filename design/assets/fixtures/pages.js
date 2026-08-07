@@ -425,7 +425,7 @@
     settings: {
       services: [
         { name: "Local Service", status: "CONNECTED", tone: "success", action: "open" },
-        { name: "Codex", status: "CONNECTED", tone: "success", action: "open" },
+        { name: "AI Planner", status: "CONNECTED", tone: "success", action: "open" },
         { name: "NetEase Music API", status: "CONNECTED", tone: "success", action: "open" },
         { name: "Text to Speech", status: "DEGRADED", tone: "warning", action: "test" },
       ],
@@ -450,7 +450,7 @@
           description: "核心播放服务可用，语音串讲将暂时降级为文字。",
           services: [
             { name: "Local Service", status: "AVAILABLE", detail: "Responded in 18 ms", tone: "success" },
-            { name: "Codex", status: "AVAILABLE", detail: "Structured planning response received · 1.4 s", tone: "success" },
+            { name: "AI Planner", status: "AVAILABLE", detail: "Structured planning response received · 1.4 s", tone: "success" },
             { name: "NetEase Music API", status: "AVAILABLE", detail: "Search and playback endpoints responding · 326 ms", tone: "success" },
             { name: "Text to Speech", status: "DEGRADED", detail: "Authentication failed · HTTP 401", tone: "warning", expanded: true },
           ],
@@ -462,7 +462,7 @@
           description: "所有核心服务与语音串讲均可用，可以返回 Radio 开始节目。",
           services: [
             { name: "Local Service", status: "AVAILABLE", detail: "Responded in 18 ms", tone: "success" },
-            { name: "Codex", status: "AVAILABLE", detail: "Structured planning response received · 1.4 s", tone: "success" },
+            { name: "AI Planner", status: "AVAILABLE", detail: "Structured planning response received · 1.4 s", tone: "success" },
             { name: "NetEase Music API", status: "AVAILABLE", detail: "Search and playback endpoints responding · 326 ms", tone: "success" },
             { name: "Text to Speech", status: "AVAILABLE", detail: "Voice service authenticated · 842 ms", tone: "success" },
           ],
@@ -471,14 +471,14 @@
         },
         coreError: {
           summary: "2 OF 4 SERVICES AVAILABLE",
-          description: "节目生成暂不可用，修复 Codex 与音乐服务后重新检测。",
+          description: "节目生成暂不可用，修复 AI Planner 与音乐服务后重新检测。",
           services: [
             { name: "Local Service", status: "AVAILABLE", detail: "Responded in 18 ms", tone: "success" },
-            { name: "Codex", status: "UNAVAILABLE", detail: "Command not found", tone: "error", expanded: true },
+            { name: "AI Planner", status: "UNAVAILABLE", detail: "Provider unavailable", tone: "error", expanded: true },
             { name: "NetEase Music API", status: "UNAVAILABLE", detail: "Connection timed out · 15 s", tone: "error" },
             { name: "Text to Speech", status: "AVAILABLE", detail: "Voice service authenticated · 842 ms", tone: "success" },
           ],
-          guidance: ["检查 Codex 命令路径是否可执行", "确认本地服务可访问该命令", "保存配置后重新运行检测"],
+          guidance: ["检查活动 AI Planner 配置是否可用", "确认本地服务可访问活动 Provider", "保存配置后重新运行检测"],
           notice: "当前无法生成可播放节目。修改必要配置后重新检测，已有档案与历史不会受影响。",
         },
       },

@@ -22,6 +22,7 @@ import {
   createLibraryService,
   createMockMusicProvider,
   type MusicProvider,
+  type ProviderTrack,
 } from "../../apps/server/src/modules/library/index.js";
 import {
   createPlaybackRepository,
@@ -560,6 +561,91 @@ describe("S3-06 Program generation orchestration", () => {
           event.payload.code === "PROGRAM_TRACK_UNAVAILABLE",
       ),
     ).toBe(true);
+    await closeHarness(harness);
+  });
+
+  it("searches the same artist when a selected library track has no playable audio", async () => {
+    const baseMusic = createMockMusicProvider();
+    const fallbackTrack: ProviderTrack = {
+      source: "netease",
+      sourceTrackId: "mock-space-alternate",
+      title: "Space (Alternate)",
+      artist: "Beach House",
+      album: "Alternate Signals",
+      artworkUrl: null,
+      durationMs: 300_000,
+      lyricStatus: "available",
+      playable: true,
+    };
+    const music: MusicProvider = {
+      ...baseMusic,
+      search(keyword, options) {
+        if (keyword === "Beach House") {
+          return Promise.resolve({ items: [fallbackTrack] });
+        }
+        return baseMusic.search(keyword, options);
+      },
+      resolveAudio(sourceTrackId, options) {
+        if (sourceTrackId === "mock-space-song") {
+          return Promise.reject(new Error("fixture library audio unavailable"));
+        }
+        if (sourceTrackId === "mock-space-alternate") {
+          return Promise.resolve({
+            resolvedAudioRef: "https://media.example.test/mock-space-alternate.mp3",
+            expiresAt: "2099-01-01T00:00:00.000Z",
+          });
+        }
+        return baseMusic.resolveAudio(sourceTrackId, options);
+      },
+    };
+    const codex: CodexProvider = {
+      plan(context) {
+        const parsed = codexPlanningContextSchema.parse(context);
+        const libraryTrack = parsed.library.tracks.find((track) => track.title === "Space Song");
+        if (libraryTrack === undefined) {
+          throw new Error("Space Song fixture was not imported");
+        }
+        return Promise.resolve({
+          programTitle: "Library Search Recovery",
+          scenarioSummary: "库内音频失效后搜索同艺人补位",
+          djLanguage: parsed.preferences.djLanguage,
+          djPersona: parsed.preferences.djVoiceStyle,
+          djScripts: [
+            {
+              type: "intro",
+              language: parsed.preferences.djLanguage,
+              text: "音频失效后使用同艺人可播放版本。",
+              displayText: "音频失效后使用同艺人可播放版本。",
+              estimatedTiming: true,
+            },
+          ],
+          trackIntents: [
+            {
+              kind: "library",
+              trackId: libraryTrack.trackId,
+              reason: "验证库内音频失败后的同艺人恢复",
+            },
+          ],
+          playlistIntent: { energy: "mid", mood: "recovered", avoid: [] },
+        });
+      },
+    };
+    const harness = await createHarness(codex, 5_000, createMockTtsProvider(), music);
+    harness.library.importPlaylist(
+      harness.profile.id,
+      "mock-library-artist-recovery",
+      "library-artist-recovery-import",
+    );
+    await harness.library.close();
+    const started = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "验证同艺人音频恢复" },
+      "generation-library-artist-recovery-001",
+    );
+    await harness.generation.waitForIdle();
+    const snapshot = harness.generation.get(harness.profile.id, started.jobId);
+    const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
+    expect(detail.tracks.map((track) => track.title)).toEqual(["Space (Alternate)"]);
     await closeHarness(harness);
   });
 

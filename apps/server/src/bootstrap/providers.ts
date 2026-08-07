@@ -1,5 +1,6 @@
 import {
   createCodexAdapter,
+  createDeepseekAdapter,
   createMockCodexProvider,
   createMockTtsProvider,
   createNetEaseAdapter,
@@ -8,15 +9,16 @@ import {
   type ClosableTtsProvider,
   type TtsModelService,
 } from "../integrations/index.js";
+import type { DeepseekCredentialService } from "../modules/device-settings/deepseek-credentials.js";
 import type { DeviceSettingsService } from "../modules/device-settings/index.js";
 import { createMockMusicProvider, type MusicProvider } from "../modules/library/index.js";
-import type { CodexProvider } from "../modules/programs/index.js";
+import type { ProgramPlannerProvider } from "../modules/programs/index.js";
 import type { LocalFileStore } from "../platform/files/index.js";
 
 import type { RuntimeConfig } from "./config.js";
 
 export interface RuntimeProviders {
-  codex: CodexProvider;
+  planner: () => ProgramPlannerProvider;
   music: MusicProvider;
   tts: ClosableTtsProvider;
   close(): Promise<void>;
@@ -25,6 +27,7 @@ export interface RuntimeProviders {
 export interface CreateRuntimeProvidersOptions {
   config: RuntimeConfig;
   deviceSettings: Pick<DeviceSettingsService, "get">;
+  deepseekCredentials: Pick<DeepseekCredentialService, "get">;
   fileStore: LocalFileStore;
   modelService: TtsModelService;
 }
@@ -43,7 +46,7 @@ function createTextOnlyTtsProvider(): ClosableTtsProvider {
 export function createRuntimeProviders(options: CreateRuntimeProvidersOptions): RuntimeProviders {
   if (options.config.providerMode === "mock") {
     return {
-      codex: createMockCodexProvider(),
+      planner: () => createMockCodexProvider(),
       music: createMockMusicProvider(),
       tts: {
         ...createMockTtsProvider(),
@@ -63,11 +66,16 @@ export function createRuntimeProviders(options: CreateRuntimeProvidersOptions): 
           pythonPath: options.config.ttsPythonPath,
           runtimeDirectory: options.config.dataRoot,
         });
+  const codex = createCodexAdapter({
+    command: () => options.deviceSettings.get().codexCommand ?? "",
+    runtimeDirectory: options.config.dataRoot,
+  });
+  const deepseek = createDeepseekAdapter({
+    apiKey: () => options.deepseekCredentials.get(),
+    model: () => options.deviceSettings.get().deepseekModel,
+  });
   return {
-    codex: createCodexAdapter({
-      command: () => options.deviceSettings.get().codexCommand ?? "",
-      runtimeDirectory: options.config.dataRoot,
-    }),
+    planner: () => (options.deviceSettings.get().plannerProvider === "deepseek" ? deepseek : codex),
     music: createNetEaseAdapter(),
     tts,
     close: () => tts.close(),

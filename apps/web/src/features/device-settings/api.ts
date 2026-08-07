@@ -1,12 +1,16 @@
 import {
+  deepseekCredentialStatusSchema,
   deviceSettingsSchema,
   jobAcceptedResponseSchema,
+  serviceHealthSchema,
   serviceHealthListResponseSchema,
   ttsModelStatusSchema,
+  type DeepseekCredentialStatus,
   type DeviceSettings,
   type JobAcceptedResponse,
   type ServiceHealthListResponse,
   type TtsModelStatus,
+  type UpdateDeviceSettingsCommand,
 } from "@koradio/contracts";
 
 import { createIdempotencyKey, jsonRequest, requestJson } from "../../shared/api.js";
@@ -18,13 +22,55 @@ export function getDeviceSettings(transport: ServiceTransport): Promise<DeviceSe
 
 export function updateDeviceSettings(
   transport: ServiceTransport,
-  codexCommand: string,
+  command: UpdateDeviceSettingsCommand,
 ): Promise<DeviceSettings> {
   return requestJson(
     transport,
     "/api/v1/device-settings",
     deviceSettingsSchema,
-    jsonRequest("PATCH", { codexCommand }),
+    jsonRequest("PATCH", command),
+  );
+}
+
+export function getDeepseekCredentialStatus(
+  transport: ServiceTransport,
+): Promise<DeepseekCredentialStatus> {
+  return requestJson(
+    transport,
+    "/api/v1/device-settings/deepseek-credentials",
+    deepseekCredentialStatusSchema,
+  );
+}
+
+export function saveDeepseekApiKey(
+  transport: ServiceTransport,
+  apiKey: string,
+): Promise<DeepseekCredentialStatus> {
+  return requestJson(
+    transport,
+    "/api/v1/device-settings/deepseek-credentials",
+    deepseekCredentialStatusSchema,
+    jsonRequest("PUT", { apiKey }),
+  );
+}
+
+export function deleteDeepseekApiKey(
+  transport: ServiceTransport,
+): Promise<DeepseekCredentialStatus> {
+  return requestJson(
+    transport,
+    "/api/v1/device-settings/deepseek-credentials",
+    deepseekCredentialStatusSchema,
+    { method: "DELETE" },
+  );
+}
+
+export function testPlanner(transport: ServiceTransport) {
+  return requestJson(
+    transport,
+    "/api/v1/device-settings/planner-test",
+    serviceHealthSchema,
+    jsonRequest("POST", {}),
   );
 }
 

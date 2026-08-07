@@ -122,6 +122,7 @@ S3 的独立模块、S4 的视觉实现和 S6 的测试建设可以在依赖明�
 | S7-07 | 进行中 | `docs/project-management/s7-07-local-stability-acceptance.md` 与按实际缺陷新增的 regression tests | 连续本机试用、脱敏缺陷登记、修复/保留结论与最终质量门；不包含遥测、外部 Beta 或公开分发 |
 | S7-08 | 已完成 | `docs/project-management/s7-08-maintenance-review.md`、工具链、包装、文档与代码热点 | 生成物/旧分支收口、事实源对齐、维护性优化、依赖与真实 DMG 验证完成；3 张字体渲染差异经项目所有者接受且不校准历史基线 |
 | S7-09 | 进行中 | `apps/desktop/`、`scripts/release/`、`packaging/macos/`、ADR 0006 与 Electron 专项测试 | Electron 主进程、服务检测/启动/停止、启动前更新、窗口安全策略、Electron arm64 包装与严格包验证；保持 REST/WS/数据库/Provider/AudioEngine/Session/用户数据不变；S7-07 的 7 日稳定性试用仍为关闭门 |
+| AI-01 | 已完成 | `apps/server/src/integrations/deepseek.ts`、DeviceSettings/Keychain、Settings UI、ADR 0007 与专项测试 | 设备级选择 Codex/DeepSeek；DeepSeek 读取 `EffectiveTaste` 生成结构化节目计划和 DJ 串讲；无自动 fallback；真实 API smoke 留待受控本机手动执行 |
 | S7-03 | 计划 | `.github/workflows/release.yml` | 签名、公证、校验和和发布证据；秘密只进入受控 CI Secret |
 | S7-04 | 计划 | `docs/runbooks/`、`CHANGELOG.md`、`SECURITY.md`、`PRIVACY.md`、`THIRD_PARTY_NOTICES.md` | 安装、诊断、恢复、发布和热修复手册，以及对外发布所需说明；`LICENSE` 由授权决策决定是否创建 |
 | S7-05 | 计划 | macOS 发布工程验收记录和候选包校验信息 | 在独立干净 macOS 验收已签名、公证候选包，不开始外部 Beta |

@@ -12,11 +12,15 @@ import { applyTheme } from "../profile-preferences/theme.js";
 import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import {
+  deleteDeepseekApiKey,
+  getDeepseekCredentialStatus,
   getDeviceSettings,
   getServiceHealth,
   getTtsModelStatus,
   installTtsModel,
   migrateDataRoot,
+  saveDeepseekApiKey,
+  testPlanner,
   updateDeviceSettings,
 } from "./api.js";
 
@@ -32,7 +36,7 @@ interface SettingsExperienceProps {
 
 const serviceLabels: Record<ServiceHealth["service"], string> = {
   "local-service": "Local Service",
-  codex: "Codex",
+  planner: "AI Planner",
   netease: "NetEase Music API",
   tts: "Qwen3-TTS",
 };
@@ -100,7 +104,7 @@ function Diagnostics({
   const available = items.filter((item) => item.status === "available").length;
   const coreUnavailable = items.some(
     (item) =>
-      (item.service === "codex" || item.service === "netease") && item.status === "unavailable",
+      (item.service === "planner" || item.service === "netease") && item.status === "unavailable",
   );
   const ttsUnavailable = items.some(
     (item) => item.service === "tts" && item.status !== "available",
@@ -197,24 +201,40 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
     queryKey: ["service-health-list"],
     queryFn: () => getServiceHealth(props.transport),
   });
+  const credentials = useQuery({
+    queryKey: ["deepseek-credentials"],
+    queryFn: () => getDeepseekCredentialStatus(props.transport),
+  });
   const ttsModel = useQuery({
     queryKey: ["tts-model-status"],
     queryFn: () => getTtsModelStatus(props.transport),
     refetchInterval: (query) => (query.state.data?.state === "downloading" ? 1000 : false),
   });
   const [codexCommand, setCodexCommand] = useState("");
+  const [plannerProvider, setPlannerProvider] = useState<"codex" | "deepseek">("codex");
+  const [deepseekModel, setDeepseekModel] = useState<"deepseek-v4-flash" | "deepseek-v4-pro">(
+    "deepseek-v4-flash",
+  );
+  const [deepseekPrivacyAccepted, setDeepseekPrivacyAccepted] = useState(false);
+  const [deepseekApiKey, setDeepseekApiKey] = useState("");
   const [djLanguage, setDjLanguage] = useState(props.current.preferences.djLanguage);
   const [voiceStyle, setVoiceStyle] = useState(props.current.preferences.djVoiceStyle);
   const [themeMode, setThemeMode] = useState<ThemeMode>(props.current.preferences.themeMode);
   const [themeError, setThemeError] = useState<string>();
   const [saveMessage, setSaveMessage] = useState<string>();
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const [migrationOpen, setMigrationOpen] = useState(false);
   const [targetDataRoot, setTargetDataRoot] = useState("");
 
   useEffect(() => headingRef.current?.focus(), []);
   useEffect(() => {
-    if (settings.data !== undefined) setCodexCommand(settings.data.codexCommand ?? "");
+    if (settings.data !== undefined) {
+      setCodexCommand(settings.data.codexCommand ?? "");
+      setPlannerProvider(settings.data.plannerProvider);
+      setDeepseekModel(settings.data.deepseekModel);
+      setDeepseekPrivacyAccepted(settings.data.deepseekPrivacyNoticeAccepted);
+    }
   }, [settings.data]);
   useEffect(() => {
     applyTheme(props.current.preferences.themeMode);
@@ -228,9 +248,23 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
   const save = useMutation({
     mutationFn: async () => {
       const trimmedCommand = codexCommand.trim();
-      if (trimmedCommand.length === 0 || trimmedCommand.length > 300)
+      if (
+        plannerProvider === "codex" &&
+        (trimmedCommand.length === 0 || trimmedCommand.length > 300)
+      )
         throw new TypeError("CODEX_COMMAND_INVALID");
-      const device = await updateDeviceSettings(props.transport, trimmedCommand);
+      if (plannerProvider === "deepseek" && !deepseekPrivacyAccepted) {
+        throw new TypeError("DEEPSEEK_PRIVACY_REQUIRED");
+      }
+      if (plannerProvider === "deepseek" && !credentials.data?.configured) {
+        throw new TypeError("DEEPSEEK_API_KEY_REQUIRED");
+      }
+      const device = await updateDeviceSettings(props.transport, {
+        plannerProvider,
+        deepseekModel,
+        ...(deepseekPrivacyAccepted ? { deepseekPrivacyNoticeAccepted: true } : {}),
+        ...(trimmedCommand.length === 0 ? {} : { codexCommand: trimmedCommand }),
+      });
       const preferences = await updateProfilePreferences(
         props.transport,
         props.current.profile.id,
@@ -246,7 +280,11 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
     onError: (error) => {
       setSaveMessage(
         error instanceof TypeError
-          ? "Codex 命令路径为必填项，最多 300 个字符。"
+          ? error.message === "DEEPSEEK_PRIVACY_REQUIRED"
+            ? "请先阅读并确认 DeepSeek 隐私提示。"
+            : error.message === "DEEPSEEK_API_KEY_REQUIRED"
+              ? "启用 DeepSeek 前请先保存 API key。"
+              : "Codex 命令路径为必填项，最多 300 个字符。"
           : "配置保存失败，当前运行配置保持不变。",
       );
     },
@@ -291,6 +329,36 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
     },
     onError: () => {
       setSaveMessage("Qwen3-TTS 模型下载未能启动，现有节目和文字 DJ 不受影响。");
+    },
+  });
+  const credential = useMutation({
+    mutationFn: () => saveDeepseekApiKey(props.transport, deepseekApiKey.trim()),
+    onSuccess: (status) => {
+      queryClient.setQueryData(["deepseek-credentials"], status);
+      setDeepseekApiKey("");
+      setSaveMessage("DeepSeek API key 已安全写入系统钥匙串。");
+    },
+    onError: () => {
+      setSaveMessage("DeepSeek API key 未能写入系统钥匙串，当前密钥状态保持不变。");
+    },
+  });
+  const removeCredential = useMutation({
+    mutationFn: () => deleteDeepseekApiKey(props.transport),
+    onSuccess: (status) => {
+      queryClient.setQueryData(["deepseek-credentials"], status);
+      setSaveMessage("DeepSeek API key 已从系统钥匙串删除。");
+    },
+    onError: () => {
+      setSaveMessage("DeepSeek API key 未能删除，当前密钥状态保持不变。");
+    },
+  });
+  const plannerTest = useMutation({
+    mutationFn: () => testPlanner(props.transport),
+    onSuccess: () => {
+      setSaveMessage("活动 AI 大脑连接检测成功。");
+    },
+    onError: () => {
+      setSaveMessage("活动 AI 大脑检测失败；请检查配置、余额或稍后重试。");
     },
   });
 
@@ -339,6 +407,46 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
 
   return (
     <div className="app-surface settings-page">
+      {privacyOpen ? (
+        <div className="settings-modal-backdrop">
+          <section
+            className="settings-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="deepseek-privacy-title"
+          >
+            <p className="settings-modal__eyebrow">DEEPSEEK · PRIVACY</p>
+            <h2 id="deepseek-privacy-title">启用 DeepSeek 前请确认</h2>
+            <p>
+              为了编排节目，Koradio 会将当前场景、已有 EffectiveTaste、历史摘要、音乐库摘要和 DJ
+              偏好发送到 DeepSeek。DeepSeek API 可能产生费用；Koradio 不会把 API key
+              保存到数据库、浏览器或日志。
+            </p>
+            <div className="settings-modal__actions">
+              <button
+                className="button button--ghost"
+                type="button"
+                onClick={() => {
+                  setPrivacyOpen(false);
+                }}
+              >
+                暂不启用
+              </button>
+              <button
+                className="button button--primary"
+                type="button"
+                onClick={() => {
+                  setDeepseekPrivacyAccepted(true);
+                  setPlannerProvider("deepseek");
+                  setPrivacyOpen(false);
+                }}
+              >
+                我已了解，启用 DeepSeek
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       <SettingsTopbar
         current={props.current}
         health={props.health}
@@ -356,12 +464,12 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
             SERVICES ONLINE
           </p>
         </header>
-        {settings.isLoading || services.isLoading ? (
+        {settings.isLoading || services.isLoading || credentials.isLoading ? (
           <p className="settings-loading" aria-busy="true">
             正在读取本地配置与脱敏健康状态…
           </p>
         ) : null}
-        {settings.isError || services.isError ? (
+        {settings.isError || services.isError || credentials.isError ? (
           <p className="inline-error" role="alert">
             设置未能载入。请确认本地数据目录可读，然后重试。
           </p>
@@ -376,8 +484,18 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                   <i aria-hidden="true" />
                   {item.status.toUpperCase()}
                 </strong>
-                <button type="button" onClick={() => void openDiagnostics()}>
-                  {item.service === "tts" ? "Test" : "查看"}
+                <button
+                  type="button"
+                  disabled={plannerTest.isPending}
+                  onClick={() => {
+                    if (item.service === "planner") {
+                      plannerTest.mutate();
+                    } else {
+                      void openDiagnostics();
+                    }
+                  }}
+                >
+                  {item.service === "planner" || item.service === "tts" ? "Test" : "查看"}
                 </button>
               </li>
             ))}
@@ -387,26 +505,97 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
           <section className="settings-section" aria-labelledby="config-heading">
             <h2 id="config-heading">服务配置</h2>
             <label className="settings-field">
+              <span>AI 大脑</span>
+              <select
+                aria-label="AI 大脑"
+                value={plannerProvider}
+                onChange={(event) => {
+                  const next = event.target.value as typeof plannerProvider;
+                  if (next === "deepseek" && !deepseekPrivacyAccepted) {
+                    setPrivacyOpen(true);
+                    return;
+                  }
+                  setPlannerProvider(next);
+                }}
+              >
+                <option value="codex">Codex · 本机 CLI</option>
+                <option value="deepseek">DeepSeek · 远程 API</option>
+              </select>
+            </label>
+            <label className="settings-field">
               <span>Codex 命令路径</span>
               <input
                 value={codexCommand}
                 maxLength={300}
-                required
+                required={plannerProvider === "codex"}
                 onChange={(event) => {
                   setCodexCommand(event.target.value);
                 }}
                 placeholder="输入本机 Codex 可执行命令路径"
               />
             </label>
+            <label className="settings-field">
+              <span>DeepSeek 模型</span>
+              <select
+                value={deepseekModel}
+                disabled={plannerProvider !== "deepseek"}
+                onChange={(event) => {
+                  setDeepseekModel(event.target.value as typeof deepseekModel);
+                }}
+              >
+                <option value="deepseek-v4-flash">DeepSeek V4 Flash · 快速</option>
+                <option value="deepseek-v4-pro">DeepSeek V4 Pro · 品质</option>
+              </select>
+            </label>
+            <div className="provider-readonly deepseek-credentials-card">
+              <span>DeepSeek API key</span>
+              <strong>{credentials.data?.configured ? "已配置" : "未配置"}</strong>
+              <input
+                type="password"
+                value={deepseekApiKey}
+                autoComplete="new-password"
+                maxLength={8192}
+                onChange={(event) => {
+                  setDeepseekApiKey(event.target.value);
+                }}
+                placeholder="粘贴 DeepSeek API key"
+                aria-label="DeepSeek API key"
+              />
+              <div className="provider-actions">
+                <button
+                  type="button"
+                  disabled={deepseekApiKey.trim().length === 0 || credential.isPending}
+                  onClick={() => {
+                    credential.mutate();
+                  }}
+                >
+                  {credential.isPending
+                    ? "正在保存…"
+                    : credentials.data?.configured
+                      ? "替换 key"
+                      : "保存 key"}
+                </button>
+                <button
+                  className="button button--ghost"
+                  type="button"
+                  disabled={!credentials.data?.configured || removeCredential.isPending}
+                  onClick={() => {
+                    if (window.confirm("确认从系统钥匙串删除 DeepSeek API key？")) {
+                      removeCredential.mutate();
+                    }
+                  }}
+                >
+                  删除 key
+                </button>
+              </div>
+            </div>
             <div className="provider-readonly">
               <span>NetEase Music API</span>
               <strong>内置 · 本地模式</strong>
-              <small>不收集 API 地址、Cookie 或密钥</small>
             </div>
             <div className="provider-readonly tts-model-card">
               <span>Qwen3-TTS 8-bit</span>
               <strong>{modelStatusLabel(ttsModel.data)}</strong>
-              <small>中文使用 Serena，英文使用 Ryan；模型约 1.84 GiB，仅首次下载。</small>
               {ttsModel.data?.state === "downloading" ? (
                 <progress
                   aria-label="Qwen3-TTS 模型下载进度"
@@ -425,9 +614,7 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                   {installModel.isPending ? "正在启动…" : "下载本地语音模型"}
                 </button>
               ) : null}
-              <small>模型不可用时串讲自动降级为完整文字，不影响歌曲播放。</small>
             </div>
-            <p className="secret-note">敏感凭据由本地服务管理，不向浏览器返回、缓存或显示。</p>
           </section>
           <section className="settings-section" aria-labelledby="preferences-heading">
             <h2 id="preferences-heading">偏好设置</h2>
@@ -513,7 +700,6 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                     placeholder="输入空且可写的本地目录"
                   />
                 </label>
-                <p>迁移会先校验、checkpoint、备份和复制；失败时自动回滚，旧目录不会自动删除。</p>
                 <button
                   className="button button--secondary"
                   type="button"

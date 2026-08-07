@@ -12,6 +12,9 @@ import type { DatabaseSync } from "node:sqlite";
 interface DeviceSettingsRow {
   data_root: string;
   codex_command: string | null;
+  planner_provider: string;
+  deepseek_model: string;
+  deepseek_privacy_notice_accepted: number;
   updated_at: string;
 }
 
@@ -38,6 +41,13 @@ export interface CreateDeviceSettingsServiceOptions {
   client: DatabaseSync;
   dataRoot: string;
   now?: () => Date;
+}
+
+export class DeepseekPrivacyNoticeRequiredError extends Error {
+  constructor() {
+    super("DeepSeek privacy notice must be accepted before enabling the planner");
+    this.name = "DeepseekPrivacyNoticeRequiredError";
+  }
 }
 
 export interface CreateDataRootMigrationRecord {
@@ -71,6 +81,9 @@ function mapSettingsRow(row: DeviceSettingsRow): DeviceSettings {
   return deviceSettingsSchema.parse({
     dataRoot: row.data_root,
     codexCommand: row.codex_command,
+    plannerProvider: row.planner_provider,
+    deepseekModel: row.deepseek_model,
+    deepseekPrivacyNoticeAccepted: row.deepseek_privacy_notice_accepted === 1,
     updatedAt: row.updated_at,
   });
 }
@@ -103,13 +116,14 @@ export function createDeviceSettingsService(
     ON CONFLICT(id) DO NOTHING
   `);
   const selectSettings = options.client.prepare(`
-    SELECT data_root, codex_command, updated_at
+    SELECT
+      data_root,
+      codex_command,
+      planner_provider,
+      deepseek_model,
+      deepseek_privacy_notice_accepted,
+      updated_at
     FROM device_settings
-    WHERE id = 1
-  `);
-  const updateCodexCommand = options.client.prepare(`
-    UPDATE device_settings
-    SET codex_command = ?, updated_at = ?
     WHERE id = 1
   `);
   const updateDataRoot = options.client.prepare(`
@@ -235,11 +249,45 @@ export function createDeviceSettingsService(
     getMigrationByIdempotencyKey,
     initialize,
     update(command) {
-      if (command.codexCommand === undefined) {
-        throw new Error("Codex command is required");
+      const current = get();
+      const nextPlannerProvider = command.plannerProvider ?? current.plannerProvider;
+      if (
+        nextPlannerProvider === "deepseek" &&
+        !current.deepseekPrivacyNoticeAccepted &&
+        command.deepseekPrivacyNoticeAccepted !== true
+      ) {
+        throw new DeepseekPrivacyNoticeRequiredError();
       }
-
-      updateCodexCommand.run(command.codexCommand, now().toISOString());
+      const updates: string[] = [];
+      const values: Array<string | number> = [];
+      if (command.codexCommand !== undefined) {
+        updates.push("codex_command = ?");
+        values.push(command.codexCommand);
+      }
+      if (command.plannerProvider !== undefined) {
+        updates.push("planner_provider = ?");
+        values.push(command.plannerProvider);
+      }
+      if (command.deepseekModel !== undefined) {
+        updates.push("deepseek_model = ?");
+        values.push(command.deepseekModel);
+      }
+      if (command.deepseekPrivacyNoticeAccepted === true) {
+        updates.push("deepseek_privacy_notice_accepted = 1");
+      }
+      if (updates.length === 0) {
+        throw new Error("At least one device setting is required");
+      }
+      values.push(now().toISOString());
+      options.client
+        .prepare(
+          `
+            UPDATE device_settings
+            SET ${updates.join(", ")}, updated_at = ?
+            WHERE id = 1
+          `,
+        )
+        .run(...values);
       return get();
     },
     updateDataRoot(dataRoot) {

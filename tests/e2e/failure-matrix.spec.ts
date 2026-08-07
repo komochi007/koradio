@@ -334,7 +334,7 @@ test("out-of-order events stay fenced across reconnect until a newer commit arri
             service: "koradio",
             status: "ready",
             mode: "mock",
-            providers: { codex: "available", netease: "available", tts: "degraded" },
+            providers: { planner: "available", netease: "available", tts: "degraded" },
             checkedAt: "2026-07-20T12:00:00.000Z",
           },
         }),

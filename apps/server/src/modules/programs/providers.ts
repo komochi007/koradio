@@ -140,9 +140,11 @@ export const ttsSynthesisResultSchema = z.strictObject({
   estimatedTiming: z.boolean(),
 });
 
-export interface CodexProvider {
+export interface ProgramPlannerProvider {
   plan(context: unknown, options: ProviderCallOptions): Promise<unknown>;
 }
+
+export type CodexProvider = ProgramPlannerProvider;
 
 export interface TtsProvider {
   synthesize(command: unknown, options: ProviderCallOptions): Promise<unknown>;

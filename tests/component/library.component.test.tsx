@@ -62,7 +62,7 @@ function health(netease: "available" | "degraded" | "unavailable" = "available")
     service: "koradio",
     status: "ready",
     mode: "mock",
-    providers: { codex: "available", netease, tts: "degraded" },
+    providers: { planner: "available", netease, tts: "degraded" },
     checkedAt: "2026-07-19T08:00:00.000Z",
   };
 }

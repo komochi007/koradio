@@ -10,14 +10,14 @@
 ## 1. System Overview
 
 Koradio 是运行在单台设备上的私人 AI 音乐电台，由 Electron 桌面壳、现有 Web Renderer 与本地 Node.js 服务组成。
-系统读取当前档案的品味与历史，通过 Codex 规划节目，经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled Python/MLX helper 调用 Qwen3-TTS 8-bit 本地模型生成 DJ 语音。
+系统读取当前档案的 `EffectiveTaste` 与历史，通过设备级选择的 Codex 或 DeepSeek Planner 规划节目，经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled Python/MLX helper 调用 Qwen3-TTS 8-bit 本地模型生成 DJ 语音。
 ### System boundaries
 
 - **Client**：界面、HTMLAudio、实时播放进度和短生命周期交互状态。
 - **Desktop shell**：Electron 主进程负责单实例、启动前更新、Local Service 生命周期、窗口和 Renderer 安全策略；不拥有播放或业务事实。
 - **Local Service**：业务规则、任务编排、持久化、外部服务访问和事件发布。
 - **Device**：SQLite、音频缓存、头像与日志只保存在本机。
-- **External**：Codex 与网易云均为不可信、可失败依赖，只允许 Backend Adapter 访问。
+- **External**：Codex 本地进程、DeepSeek Chat Completions 与网易云均为不可信、可失败依赖，只允许 Backend Adapter 访问；DeepSeek endpoint 固定且 API key 来自 OS Credential Store。
 - **Local TTS**：Qwen3-TTS 8-bit 模型与 bundled Python/MLX helper 是可选本机能力；模型下载、helper 和音频输出均视为可失败 I/O，Local Service 只能通过 TTS Port 调用。
 - **Profile**：档案用于数据分区和上下文选择，不是身份认证或安全边界。
 | Concern | Authoritative owner | Persistence |
@@ -27,7 +27,8 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台，由 Electron 桌�
 | 生成任务 | Backend durable metadata + runtime executor | SQLite Job + ordered events + REST Snapshot |
 | 服务健康状态 | Backend runtime | Snapshot |
 | Sheet、draft、筛选等 UI 状态 | Frontend feature | None |
-| dataRoot、Codex 命令路径 | Backend DeviceSettings | Device durable |
+| dataRoot、活动 Planner、Codex 命令路径、DeepSeek 模型与隐私确认 | Backend DeviceSettings | Device durable |
+| DeepSeek API key | Backend Secret Store | OS Credential Store only |
 | NetEase、TTS 能力状态 | Backend runtime | Snapshot |
 | Theme、DJ language、voice style | Backend ProfilePreferences | Profile durable |
 
@@ -45,14 +46,17 @@ flowchart LR
     Modules --> Files["Local File Store<br/>audio · avatar · cache"]
     Modules --> Events["WebSocket Event Hub"]
     Events -->|"/api/v1/events"| Web
-    Modules --> Codex["Codex Adapter"]
+    Modules --> Planner["Planner Selector"]
     Modules --> Music["NetEase Adapter"]
     Modules --> TTS["TTSProvider Adapter"]
+    Planner --> Codex["Codex Adapter"]
+    Planner --> DeepSeek["DeepSeek Adapter"]
     Codex --> CodexExt["Local Codex Process"]
+    DeepSeek --> DeepSeekExt["DeepSeek Chat Completions"]
     Music --> MusicExt["NetEase linuxapi Service"]
     TTS --> TTSHelper["Persistent Python/MLX Helper"]
     TTSHelper --> QwenTTS["Qwen3-TTS 8-bit<br/>Serena · Ryan"]
-    Secrets["OS Credential Store"] --> Codex
+    Secrets["OS Credential Store"] --> DeepSeek
 ```
 
 - Production 同源托管 PWA、REST、WebSocket 并绑定 loopback；Development 使用 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373` 双进程拓扑，并使用精确 Origin allowlist。
@@ -108,16 +112,16 @@ flowchart LR
 |---|---|---|---|---|
 | Profiles | 档案 CRUD、profile context、受控 avatarRef | ProfilePreferences | Profile DTO | 登录身份、播放状态、任意头像路径/URL |
 | Radio | 场景入口、当前节目组合 | Programs、Playback | Generate command | Provider、持久化 |
-| Programs | 生成任务、节目、DJ 段、历史 | EffectiveTaste、Library application ports、Provider ports | Program、PlaybackTimeline、events | HTMLAudio 状态、Library owner 表 |
+| Programs | 生成任务、节目、DJ 段、历史 | EffectiveTaste、Library application ports、Planner/Music/TTS ports | Program、PlaybackTimeline、events | HTMLAudio 状态、Library owner 表 |
 | Playback | 时间线规则、低频 checkpoint | Program timeline | Playback snapshot | 实时进度、UI Sheet |
 | Library | 搜索、导入、候选池 | MusicProvider | NormalizedTrack | 推荐与播放控制 |
 | Taste | 自动 projection、人工 overrides、EffectiveTaste | Feedback | Taste context | Provider response、覆盖人工规则 |
 | Feedback | 显式喜欢/撤销、不喜欢/撤销、节目收藏/撤销、跳过事实 | Playback、Programs | Append-only FeedbackEvent | 重写历史事实 |
-| DeviceSettings | dataRoot、Codex 命令路径、迁移命令、Qwen 模型安装命令 | health ports | Safe device settings、migration/model job | Profile 偏好、NetEase/TTS 地址或密钥、明文密钥输出 |
+| DeviceSettings | dataRoot、活动 Planner、Codex 命令、DeepSeek 模型/隐私确认、迁移命令、Qwen 模型安装命令 | health ports、Secret Store Port | Safe device settings、credential status、migration/model job | Profile 偏好、NetEase/TTS 地址或密钥、明文密钥输出 |
 | ProfilePreferences | 主题、DJ 语言、声音风格 | Profiles | Profile preferences | 服务配置、密钥 |
 
 - 每个持久实体只有一个写入 owner；其他模块通过 use case/event 协作，Programs 只通过 Ports 调用 Provider。
-- Feedback 成功持久化后才更新 TasteProjection；TasteOverrides 独立持久化且合并时优先。v1 的 DeviceSettings 不接受或输出网易云地址、Cookie 或密钥。
+- Feedback 成功持久化后才更新 TasteProjection；TasteOverrides 独立持久化且合并时优先。DeviceSettings 不接受或输出任何 Provider API key；DeepSeek key 只由 Secret Store Port 读写。
 - Feedback 以 `(profileId, idempotencyKey)` 去重，并在 `BEGIN IMMEDIATE` 短事务中由 SQLite 分配内部 replay order、按该稳定追加顺序回放 Profile 全部事件、写入新的 TasteProjection；重复命令返回原事件且不推进 projection，内部 replay order 不进入公共 DTO。
 - v1 projection 是事实型映射：`track_liked` / removed、`track_disliked` / removed 和 `program_favorited` / removed 分别维护对应目标的最新有效状态；`track_skipped` 只保留事实和版本，不产生负向推断。自动 tags 暂为空，affinity/avoid signal 使用 `track:<targetId>` 或 `program:<targetId>` 稳定标识。
 - EffectiveTaste 在读取时合并，不单独持久化。人工列表保序优先，比较时 trim 并忽略大小写；人工 avoid rule 排除同文本自动 tag 或 affinity，自动 avoid signal 在人工规则之后去重并只填充 contract 剩余容量。
@@ -131,7 +135,8 @@ sequenceDiagram
     participant W as Radio Feature
     participant A as REST API
     participant P as Programs Module
-    participant C as Codex Adapter
+    participant S as Planner Selector
+    participant C as Active Planner Adapter
     participant M as Music Adapter
     participant T as TTS Adapter
     participant D as SQLite/FileStore
@@ -144,7 +149,8 @@ sequenceDiagram
     Note over W,X: Existing program keeps playing while generation runs
     P->>M: Read up to 500 playable Profile library summaries
     M-->>P: Bounded library context
-    P->>C: Plan with taste, history, time, preferences and library context
+    P->>S: Resolve Provider snapshot from DeviceSettings
+    S->>C: Plan with EffectiveTaste, history, time, preferences and library context
     C-->>P: Validated ordered library/discovery intents
     P-->>E: generation.planned
     P->>M: Resolve intents in order, at most one track per discovery keyword
@@ -170,7 +176,7 @@ sequenceDiagram
 ```
 | Failure | Boundary behavior | Result |
 |---|---|---|
-| Codex error / invalid JSON | End job, retain scenario, expose retry | Blocked |
+| Active Planner error / invalid JSON | End job, retain scenario, expose retry; never auto-switch Provider | Blocked |
 | Track intent unavailable | Skip invalid/foreign library IDs, duplicates, unplayable audio and failed discovery intents in order; never randomly fill from another Profile, and do not create an empty program if all intents fail | Blocked |
 | Data path / transaction error | Roll back creation | Blocked |
 | TTS failure | Persist text segment without audio | Continue |
@@ -180,9 +186,9 @@ sequenceDiagram
 
 阻断失败不得改变正在播放的旧节目。文字降级 DJ 只保留在 Program segment；只有取得真实音频引用的 `dj` segment 才进入 PlaybackTimeline。
 
-生成 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，场景草稿、完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Programs 不直接读取 Library 表：它通过 Library application Port 获取最多 500 首当前 Profile 可播放曲目摘要，并按 Codex 的有序 intent 调用 Library 解析；默认五首建议四首库内、一首探索，明确语言、地区、艺术家、只听库内或只探索新歌的场景约束优先。服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`；同一幂等键返回该终态，新幂等键才启动重试。DJ 音频按确定性位置进入时间线：全部 `intro` 位于首曲前、至多一个 `segue` 位于每首后续曲目前、全部 `outro` 位于末曲后，多余脚本只保留文字。
+生成 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，场景草稿、完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Programs 不直接读取 Library 表：它通过 Library application Port 获取最多 500 首当前 Profile 可播放曲目摘要，并按活动 Planner 的有序 intent 调用 Library 解析；默认五首建议四首库内、一首探索，明确语言、地区、艺术家、只听库内或只探索新歌的场景约束优先。generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`；同一幂等键返回该终态，新幂等键才启动重试。DJ 音频按确定性位置进入时间线：全部 `intro` 位于首曲前、至多一个 `segue` 位于每首后续曲目前、全部 `outro` 位于末曲后，多余脚本只保留文字。
 
-反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Codex context`。
+反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Planner context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。
 Feedback target 必须先通过 owner 提供的公开 Port 校验：歌曲目标由 Library 校验，节目目标由 Programs 校验；production composition 使用真实 Programs owner，只有模块测试可注入确定性 Programs target resolver。
 ## 7. State Management Strategy
@@ -236,7 +242,8 @@ stateDiagram-v2
 | Playback | `GET .../playback`、`PUT .../playback/checkpoints` | 最新低频 snapshot 与带 `leaseEpoch` 的 checkpoint |
 | Library | `.../library`, `.../music-searches` | 候选池与外部搜索 |
 | Taste / Feedback | `.../taste`, `.../feedback-events` | projection 与事实事件 |
-| Device settings | `/api/v1/device-settings` | 设备级非敏感配置与 Secret Store 引用 |
+| Device settings | `/api/v1/device-settings` | 设备级非敏感配置：活动 Planner、Codex 命令、DeepSeek 模型与隐私确认 |
+| DeepSeek credentials | `/api/v1/device-settings/deepseek-credentials` | 只返回配置状态；PUT/DELETE 通过 Secret Store 写入、替换或删除 key |
 | Profile preferences | `/api/v1/profiles/:profileId/preferences` | Profile 级主题与 DJ 偏好 |
 | Data root migrations | `/api/v1/device-settings/data-root-migrations` | 幂等异步命令，返回 `202 { jobId }` |
 | Health | `/api/v1/health` | 运行时脱敏健康快照，不持久化为配置事实 |
@@ -318,7 +325,7 @@ erDiagram
 | `profile_preferences` | ProfilePreferences | `profileId`；主题、DJ language、voice style |
 | `taste_projection` | Taste | `profileId`；可由反馈事实重建的自动投影 |
 | `taste_overrides` | Taste | `profileId`；人工规则，重建投影不得覆盖 |
-| `device_settings` | DeviceSettings | 单设备；dataRoot 与 Codex 命令路径 |
+| `device_settings` | DeviceSettings | 单设备；dataRoot、活动 Planner、DeepSeek 模型与隐私确认、Codex 命令路径 |
 | `data_root_migration` | DeviceSettings | `jobId` + idempotency key；迁移阶段与回滚状态 |
 | `music_track` | Library | `id` + source identity、专辑封面 URL、歌词状态与 `originMode` |
 | `playlist_source` | Library | `id` + `profileId` + source identity；导入统计与 `originMode` |
@@ -427,7 +434,7 @@ apps/
         │   ├── feedback/
         │   ├── device-settings/
         │   └── profile-preferences/
-        ├── integrations/           # Codex, NetEase, TTS adapters
+        ├── integrations/           # Codex, DeepSeek, NetEase, TTS adapters
         └── platform/               # DB, files, secrets, logs, events
 packages/
 ├── contracts/                      # versioned Zod wire schemas
@@ -470,16 +477,18 @@ scripts/
 ## 17. Security Considerations
 
 - Browser、local service、credential store、filesystem 和每个 Provider 都是独立 trust boundary。
-- External JSON、歌词、媒体 URL、文件名和 Codex 输出全部视为不可信输入。
+- External JSON、歌词、媒体 URL、文件名、Codex/DeepSeek 输出和 DeepSeek `reasoning_content` 全部视为不可信输入。
 - 强制 loopback、Origin allowlist、短期 session；REST 与 WebSocket 同等校验。
 - REST、event 和 Provider response 必须通过 Zod runtime validation。
-- SecretStore 使用 OS 凭据存储；API 仅返回脱敏状态，日志清除 token、key 和敏感正文。
+- SecretStore 使用 OS 凭据存储；API 仅返回 DeepSeek key 的布尔状态，日志清除 token、key、prompt、reasoning 和敏感正文。
 - v1 的网易云适配器不接收用户 Cookie、开放平台凭据或可配置上游地址；任何未来登录能力必须经新 ADR 与 SecretStore 安全设计。
 - 网易云返回的媒体 URL 必须经协议、域名、DNS/重定向、MIME、Range 和大小校验，Browser 只获得已验证的短期 `resolvedAudioRef`。
 - TTS 受控文件只通过同源 `/tts/{controlled-file}` 媒体入口提供给 Browser Audio Engine；请求必须由浏览器标记为 `same-origin`，响应使用 `no-store`、`Cross-Origin-Resource-Policy: same-origin` 与 `nosniff`，跨站、缺失来源或非法文件名均拒绝，不在 URL 传 session token。
-- Codex schema 校验失败不得记录原始正文；只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
+- Codex/DeepSeek schema 校验失败不得记录原始正文；只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据。
 - FileStore 拒绝路径越界和未允许扩展名；媒体下载限制超时、大小、MIME 与重定向。
 - Codex 通过参数数组启动，禁止拼接 shell command；命令路径需验证。
+- DeepSeek 只使用固定 `https://api.deepseek.com/chat/completions`、Bearer key、JSON Output 与 Thinking Mode；429/500/503 最多一次有界重试，其他认证、余额、配置和 schema 错误不自动 fallback。
+- Planner 选择在 generation 开始时快照；Settings 切换或模型变更不得中断运行中的 generation 或修改当前节目。
 - Qwen3-TTS 通过固定路径的 bundled Python/MLX helper 调用；参数使用数组，DJ 文本经结构化 stdin 传递而不得进入 argv，stdout 只允许脱敏 JSON 结果。
 - 固定 revision 模型由用户明确触发下载，逐文件校验大小与 SHA-256 后原子安装；下载与数据目录迁移互斥，退出时中止并清理应用拥有的 partial。
 - Python helper 继承受限环境且不拥有业务秘密；当前 ad-hoc 个人预览对 Electron 主进程、Electron helpers 和 Python 子进程分别使用最小化的 hardened-runtime entitlements，Qwen native extensions 所需的 library-validation 权限不向业务 Renderer 暴露。外部分发前必须以 Developer ID 同 Team 重签全部 Mach-O 并重新评估该权限。

@@ -20,7 +20,7 @@ export const health = {
   status: "ready",
   mode: "mock",
   providers: {
-    codex: "available",
+    planner: "available",
     netease: "available",
     tts: "degraded",
   },

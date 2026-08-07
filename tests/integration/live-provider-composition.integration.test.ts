@@ -101,7 +101,7 @@ describe("S7-06 live provider composition", () => {
 
     expect(health).toMatchObject({
       mode: "live",
-      providers: { codex: "unavailable", netease: "degraded", tts: "degraded" },
+      providers: { planner: "unavailable", netease: "degraded", tts: "degraded" },
     });
     expect(services.items.find((item) => item.service === "tts")).toMatchObject({
       status: "degraded",

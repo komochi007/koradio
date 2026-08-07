@@ -1,4 +1,5 @@
 export * from "./codex.js";
+export * from "./deepseek.js";
 export * from "./mocks.js";
 export * from "./netease.js";
 export * from "./process.js";

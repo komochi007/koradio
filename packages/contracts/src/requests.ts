@@ -23,6 +23,7 @@ import {
 import { generateProgramCommandSchema, savePlaybackCheckpointCommandSchema } from "./programs.js";
 import {
   createDataRootMigrationCommandSchema,
+  updateDeepseekApiKeyCommandSchema,
   updateDeviceSettingsCommandSchema,
 } from "./settings.js";
 import { updateTasteOverridesCommandSchema } from "./taste.js";
@@ -103,6 +104,9 @@ export const createFeedbackRequestSchema = z.strictObject({
 export const updateDeviceSettingsRequestSchema = z.strictObject({
   body: updateDeviceSettingsCommandSchema,
 });
+export const updateDeepseekApiKeyRequestSchema = z.strictObject({
+  body: updateDeepseekApiKeyCommandSchema,
+});
 export const createDataRootMigrationRequestSchema = z.strictObject({
   headers: idempotencyKeyHeadersSchema,
   body: createDataRootMigrationCommandSchema,
@@ -129,4 +133,5 @@ export type AudioResolutionRequest = z.infer<typeof audioResolutionRequestSchema
 export type UpdateTasteOverridesRequest = z.infer<typeof updateTasteOverridesRequestSchema>;
 export type CreateFeedbackRequest = z.infer<typeof createFeedbackRequestSchema>;
 export type UpdateDeviceSettingsRequest = z.infer<typeof updateDeviceSettingsRequestSchema>;
+export type UpdateDeepseekApiKeyRequest = z.infer<typeof updateDeepseekApiKeyRequestSchema>;
 export type CreateDataRootMigrationRequest = z.infer<typeof createDataRootMigrationRequestSchema>;

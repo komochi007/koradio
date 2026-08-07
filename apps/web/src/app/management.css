@@ -494,9 +494,7 @@
 .profile-create-card small,
 .profile-privacy,
 .avatar-field p,
-.genre-field > p,
-.secret-note,
-.migration-panel p {
+.genre-field > p {
   color: var(--kr-text-secondary);
   font-size: 14px;
   line-height: 1.55;
@@ -561,6 +559,7 @@
 .input-wrap textarea,
 .genre-add input,
 .settings-field input,
+.settings-field select,
 .preference-row select,
 .migration-panel input {
   width: 100%;
@@ -588,6 +587,7 @@
 .input-wrap textarea:focus,
 .genre-add input:focus,
 .settings-field input:focus,
+.settings-field select:focus,
 .preference-row select:focus,
 .migration-panel input:focus {
   border-color: var(--kr-accent);
@@ -707,19 +707,31 @@
 }
 
 .settings-section {
+  display: grid;
+  gap: 16px;
   margin-top: 24px;
 }
 
 .settings-section > h2 {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   font-size: 18px;
   font-weight: 600;
 }
 
-.service-list,
-.settings-form {
+.service-list {
   margin: 0;
   padding: 0;
+}
+
+.settings-form {
+  display: grid;
+  gap: 24px;
+  margin: 24px 0 0;
+  padding: 0;
+}
+
+.settings-form > .settings-section {
+  margin-top: 0;
 }
 
 .service-list {
@@ -777,7 +789,7 @@
 
 .settings-field {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .settings-field input {
@@ -789,9 +801,9 @@
   min-height: 64px;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px 20px;
-  margin-top: 12px;
-  padding: 10px 20px;
+  gap: 12px 20px;
+  margin: 0;
+  padding: 16px 20px;
   border: 1px solid var(--kr-border);
   border-radius: 14px;
   background: var(--kr-surface);
@@ -801,13 +813,101 @@
   font-size: 14px;
 }
 
-.provider-readonly small {
-  grid-column: 1 / -1;
-  color: var(--kr-text-tertiary);
+.deepseek-credentials-card {
+  align-items: center;
 }
 
-.secret-note {
+.deepseek-credentials-card > input {
+  width: 100%;
+  min-height: 52px;
+  grid-column: 1 / -1;
+  padding: 0 16px;
+  border: 1px solid var(--kr-border);
+  border-radius: 12px;
+  outline: 0;
+  color: var(--kr-text);
+  background: var(--kr-bg);
+}
+
+.deepseek-credentials-card > input:focus {
+  border-color: var(--kr-accent);
+  box-shadow: var(--kr-focus);
+}
+
+.provider-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.tts-model-card > progress,
+.tts-model-card > button {
+  grid-column: 1 / -1;
+}
+
+.provider-actions button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--kr-border);
+  border-radius: 10px;
+  color: var(--kr-text);
+  background: var(--kr-surface-elevated);
+  cursor: pointer;
+}
+
+.provider-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.settings-modal-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--kr-bg) 72%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.settings-modal {
+  width: min(560px, 100%);
+  padding: 32px;
+  border: 1px solid var(--kr-border);
+  border-radius: 24px;
+  background: var(--kr-surface-elevated);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 24%);
+}
+
+.settings-modal__eyebrow {
+  margin: 0;
+  color: var(--kr-text-tertiary);
+  font:
+    600 12px/18px "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  letter-spacing: 0.08em;
+}
+
+.settings-modal h2 {
   margin: 12px 0 0;
+  font-size: 24px;
+}
+
+.settings-modal > p:not(.settings-modal__eyebrow) {
+  margin: 18px 0 0;
+  color: var(--kr-text-secondary);
+  line-height: 1.65;
+}
+
+.settings-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 28px;
 }
 
 .preference-row {
@@ -875,8 +975,8 @@
 
 .migration-panel {
   display: grid;
-  gap: 14px;
-  margin-top: 12px;
+  gap: 16px;
+  margin-top: 0;
   padding: 20px;
   border: 1px solid var(--kr-border);
   border-radius: 20px;
@@ -885,7 +985,7 @@
 
 .migration-panel label {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .settings-actions {

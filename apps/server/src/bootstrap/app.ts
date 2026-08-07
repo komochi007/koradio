@@ -54,6 +54,7 @@ import {
   type DataRootMigrationRuntimeCoordinator,
   type DataRootRestartRequest,
 } from "../modules/device-settings/data-root-migration.js";
+import { createDeepseekCredentialService } from "../modules/device-settings/deepseek-credentials.js";
 import { createHealthService } from "../modules/device-settings/health.js";
 import { createDeviceSettingsService } from "../modules/device-settings/index.js";
 import {
@@ -101,6 +102,7 @@ import {
   createProgramRepository,
   createProgramService,
   type CodexProvider,
+  type ProgramPlannerProvider,
   type TtsProvider,
 } from "../modules/programs/index.js";
 import {
@@ -131,6 +133,7 @@ import {
 } from "../platform/db/data-root.js";
 import { createEventHub } from "../platform/events/index.js";
 import { FileStoreError, createLocalFileStore } from "../platform/files/index.js";
+import { createMacOsKeychainSecretStore, type SecretStore } from "../platform/secrets/index.js";
 import { createTtsModelService, type TtsModelService } from "../integrations/tts-model.js";
 import { createAllowedOrigins, type RuntimeConfig } from "./config.js";
 import { createRuntimeProviders } from "./providers.js";
@@ -151,9 +154,11 @@ export interface CreateAppOptions {
   profileSwitchRuntimeCoordinator?: ProfileSwitchRuntimeCoordinator;
   musicProvider?: MusicProvider;
   codexProvider?: CodexProvider;
+  plannerProvider?: ProgramPlannerProvider;
   generationTimeoutMs?: number;
   programFeedbackTargets?: Pick<FeedbackTargetResolver, "programExists">;
   requestRestart?: (request: DataRootRestartRequest) => Promise<void>;
+  secretStore?: SecretStore;
   session?: SessionState;
   ttsModelService?: TtsModelService;
   ttsProvider?: TtsProvider;
@@ -197,6 +202,10 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     dataRoot: options.config.dataRoot,
   });
   deviceSettings.initialize();
+  const deepseekCredentials = createDeepseekCredentialService({
+    secretStore: options.secretStore ?? createMacOsKeychainSecretStore(),
+  });
+  await deepseekCredentials.refresh();
   const profilePreferences = createProfilePreferencesService({ client: database.client });
   const tasteDefaults = createTasteDefaultsService(database.client);
   const tasteRepository = createTasteRepository(database.client);
@@ -241,6 +250,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   });
   const runtimeProviders = createRuntimeProviders({
     config: options.config,
+    deepseekCredentials,
     deviceSettings,
     fileStore,
     modelService: ttsModelService,
@@ -278,6 +288,12 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const health = createHealthService({
     deviceSettings,
     mode: options.config.providerMode,
+    plannerConfigured: () => {
+      const settings = deviceSettings.get();
+      return settings.plannerProvider === "codex"
+        ? settings.codexCommand !== null
+        : options.config.providerMode === "mock" || deepseekCredentials.isConfigured();
+    },
     ttsEnabled: () =>
       options.config.providerMode === "mock" ||
       options.ttsProvider !== undefined ||
@@ -294,13 +310,14 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   });
   await programDeletion.retryPendingCleanup();
   const programGeneration = createProgramGenerationService({
-    codex: options.codexProvider ?? runtimeProviders.codex,
+    ...(options.codexProvider === undefined ? {} : { codex: options.codexProvider }),
     events: eventHub,
     library,
     preferences: profilePreferences,
     programs,
     originMode: options.config.providerMode,
     repository: createProgramGenerationRepository(database.client),
+    planner: options.plannerProvider ?? options.codexProvider ?? runtimeProviders.planner,
     taste,
     ...(options.generationTimeoutMs === undefined
       ? options.config.providerMode === "live"
@@ -351,7 +368,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     origin(origin, callback) {
       callback(null, origin === undefined || isAllowedOrigin(origin, allowedOrigins));
     },
-    methods: ["GET", "PATCH", "POST", "PUT", "OPTIONS"],
+    methods: ["GET", "PATCH", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key"],
   });
   await app.register(multipart, {
@@ -1519,8 +1536,13 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   await app.register(
     createHealthSettingsRoutes({
       dataRootMigration,
+      deepseekCredentials,
       deviceSettings,
       health,
+      plannerProvider:
+        options.plannerProvider === undefined && options.codexProvider === undefined
+          ? runtimeProviders.planner
+          : () => (options.plannerProvider ?? options.codexProvider) as ProgramPlannerProvider,
       ttsModelService,
     }),
   );
