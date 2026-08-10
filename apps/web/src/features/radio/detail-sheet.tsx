@@ -114,6 +114,9 @@ function currentScript(
   program: ProgramDetail,
   audio: AudioEngineSnapshot,
 ): DjScriptSegment | undefined {
+  if (audio.voiceSegmentId !== undefined) {
+    return program.djScripts.find((script) => script.id === audio.voiceSegmentId);
+  }
   const item = audio.currentItem;
   if (item?.kind !== "dj") return undefined;
   return program.djScripts.find((script) => script.id === item.segmentId);
@@ -237,7 +240,11 @@ export function DetailSheet({
   const dragStart = useRef<number | undefined>(undefined);
   const track = contextTrack(program, audio);
   const script = currentScript(program, audio);
-  const speaking = audio.currentItem?.kind === "dj" && script !== undefined;
+  const speaking = (audio.voiceActive || audio.currentItem?.kind === "dj") && script !== undefined;
+  const scriptDurationMs = audio.voiceActive
+    ? (audio.voiceDurationMs ?? audio.durationMs)
+    : audio.durationMs;
+  const scriptPositionMs = audio.voiceActive ? (audio.voicePositionMs ?? 0) : audio.positionMs;
   const lyrics = useQuery({
     queryKey: ["track-lyrics", profileId, track?.id],
     queryFn: () => {
@@ -250,8 +257,8 @@ export function DetailSheet({
   const timedLines = useMemo(() => {
     if (speaking) {
       return deriveTimedText(
-        estimateDjTiming(script.text, Math.max(1, audio.durationMs)),
-        audio.positionMs,
+        estimateDjTiming(script.text, Math.max(1, scriptDurationMs)),
+        scriptPositionMs,
       );
     }
     if (lyrics.data === undefined || lyrics.data.status === "unavailable") return [];
@@ -260,7 +267,7 @@ export function DetailSheet({
         ? parseLrc(lyrics.data.content, audio.durationMs)
         : estimateUntimedLyricsTiming(lyrics.data.content, audio.durationMs);
     return deriveTimedText(lines, audio.positionMs);
-  }, [audio.durationMs, audio.positionMs, lyrics.data, script, speaking]);
+  }, [audio.durationMs, lyrics.data, script, scriptDurationMs, scriptPositionMs, speaking]);
   const totalProgress = programProgress(program.timeline, audio.currentIndex, audio.positionMs);
   const trackProgress =
     audio.durationMs === 0 ? 0 : Math.min(1, Math.max(0, audio.positionMs / audio.durationMs));

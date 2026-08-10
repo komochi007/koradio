@@ -355,7 +355,7 @@ describe("Audio Engine", () => {
     await engine.destroy();
   });
 
-  it("previews through the single audio element and restores the program paused", async () => {
+  it("previews through the single audio element and restores the prior playing state", async () => {
     const audio = new FakeAudio();
     const transport = createTransport();
     const engine = createAudioEngine({
@@ -397,8 +397,9 @@ describe("Audio Engine", () => {
       preview: { positionMs: 1_500 },
     });
     audio.emit("ended");
+    await flushAsync();
     expect(engine.getSnapshot()).toMatchObject({
-      state: "paused",
+      state: "playing",
       currentIndex: 0,
       positionMs: 4_000,
     });
@@ -413,8 +414,9 @@ describe("Audio Engine", () => {
       durationMs: 20_000,
     });
     await engine.stopPreview();
+    await flushAsync();
     expect(engine.getSnapshot().preview).toBeUndefined();
-    expect(engine.getSnapshot()).toMatchObject({ state: "paused", positionMs: 4_000 });
+    expect(engine.getSnapshot()).toMatchObject({ state: "playing", positionMs: 4_000 });
   });
 
   it("keeps preview failures recoverable and never advances the program", async () => {
@@ -493,6 +495,105 @@ describe("Audio Engine", () => {
     await pendingPreview;
     expect(audio.pause).toHaveBeenCalled();
     expect(engine.getSnapshot().preview).toBeUndefined();
+  });
+
+  it("plays a queued single-track preview after the final program track", async () => {
+    const audio = new FakeAudio();
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: false });
+    await engine.next();
+    await engine.next();
+    await engine.queuePreviewNext?.({
+      kind: "track",
+      previewId: "00000000-0000-4000-8000-000000000099",
+      resolvedAudioRef: "https://media.example.test/queued-preview.mp3",
+      durationMs: 12_000,
+    });
+    await engine.play();
+
+    audio.emit("ended");
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot()).toMatchObject({
+        state: "completed",
+        preview: { previewId: "00000000-0000-4000-8000-000000000099", state: "playing" },
+      });
+    });
+    audio.emit("ended");
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot()).toMatchObject({ state: "completed", preview: undefined });
+    });
+    await engine.destroy();
+  });
+
+  it("plays a queued single-track preview between program items and resumes the next item", async () => {
+    const audio = new FakeAudio();
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: true });
+    await engine.queuePreviewNext?.({
+      kind: "track",
+      previewId: "00000000-0000-4000-8000-000000000098",
+      resolvedAudioRef: "https://media.example.test/middle-preview.mp3",
+      durationMs: 12_000,
+    });
+
+    audio.emit("ended");
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot().preview?.previewId).toBe("00000000-0000-4000-8000-000000000098");
+    });
+    audio.emit("ended");
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot()).toMatchObject({ currentIndex: 1, state: "playing" });
+    });
+    await engine.destroy();
+  });
+
+  it("fences preview completions that arrive after the preview was stopped", async () => {
+    const audio = new FakeAudio();
+    let resolvePlay: (() => void) | undefined;
+    audio.playResult = () => new Promise<void>((resolve) => (resolvePlay = resolve));
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: false });
+    const pending = engine.previewAudio({
+      kind: "track",
+      previewId: "00000000-0000-4000-8000-000000000097",
+      resolvedAudioRef: "https://media.example.test/stale-preview.mp3",
+      durationMs: 12_000,
+    });
+    await flushAsync();
+    await engine.stopPreview();
+    resolvePlay?.();
+    await pending;
+    expect(engine.getSnapshot().preview).toBeUndefined();
+
+    let rejectPlay: ((error: Error) => void) | undefined;
+    audio.playResult = () => new Promise<void>((_resolve, reject) => (rejectPlay = reject));
+    const rejected = engine.previewAudio({
+      kind: "track",
+      previewId: "00000000-0000-4000-8000-000000000096",
+      resolvedAudioRef: "https://media.example.test/stale-rejected-preview.mp3",
+      durationMs: 12_000,
+    });
+    await flushAsync();
+    await engine.stopPreview();
+    rejectPlay?.(new Error("stale"));
+    await rejected;
+    expect(engine.getSnapshot().preview).toBeUndefined();
+    await engine.destroy();
   });
 
   it("autoplays a fresh program and advances through ended segments to completion", async () => {
@@ -693,6 +794,19 @@ describe("Audio Engine", () => {
     });
     vi.stubGlobal("BroadcastChannel", SilentChannel);
     vi.stubGlobal("crypto", { randomUUID: () => "browser-owner" });
+    const values = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      clear: () => {
+        values.clear();
+      },
+      getItem: (key: string) => values.get(key) ?? null,
+      removeItem: (key: string) => {
+        values.delete(key);
+      },
+      setItem: (key: string, value: string) => {
+        values.set(key, value);
+      },
+    });
     window.localStorage.clear();
     const engine = createAudioEngine({ transport: createTransport() });
 
@@ -706,6 +820,148 @@ describe("Audio Engine", () => {
     window.dispatchEvent(new Event("pagehide"));
     await flushAsync();
     expect(window.localStorage.getItem("koradio.playback.lease.v1")).toBeNull();
+    await engine.destroy();
+  });
+
+  it("overlays DJ voice on music and restores the listener volume after ducking", async () => {
+    const music = new FakeAudio();
+    const voice = new FakeAudio();
+    const lease = new FakeLease();
+    const intro = program.timeline[1];
+    const firstTrack = program.timeline[0];
+    const secondTrack = program.timeline[2];
+    if (
+      intro === undefined ||
+      intro.kind !== "dj" ||
+      firstTrack === undefined ||
+      secondTrack === undefined
+    ) {
+      throw new Error("Audio fixture is incomplete");
+    }
+    const overlayProgram: ProgramDetail = {
+      ...program,
+      program: { ...program.program, playbackMode: "voice-overlay" },
+      timeline: [
+        intro,
+        firstTrack,
+        {
+          ...intro,
+          id: "00000000-0000-4000-8000-000000000091",
+          position: 2,
+        },
+        secondTrack,
+      ],
+    };
+    const engine = createAudioEngine({
+      audio: music,
+      lease,
+      transport: createTransport(),
+      voiceAudio: voice,
+    });
+
+    await engine.loadProgram(overlayProgram, { autoplay: true });
+    await flushAsync();
+    expect(engine.getSnapshot()).toMatchObject({
+      currentItem: { kind: "track", trackId: program.program.trackIds[0] },
+      itemCount: 2,
+      voiceActive: true,
+      voiceSegmentId: intro.segmentId,
+    });
+    vi.advanceTimersByTime(350);
+    expect(music.volume).toBeCloseTo(0.28, 2);
+    await engine.pause();
+    expect(voice.paused).toBe(true);
+    await engine.play();
+    expect(voice.play).toHaveBeenCalledTimes(2);
+    voice.emit("ended");
+    vi.advanceTimersByTime(650);
+    expect(music.volume).toBeCloseTo(1, 2);
+    expect(engine.getSnapshot()).toMatchObject({
+      voiceActive: false,
+      voiceSegmentId: undefined,
+    });
+    await engine.destroy();
+  });
+
+  it("contains overlay voice failures and cues the outro over the final track", async () => {
+    const music = new FakeAudio();
+    const voice = new FakeAudio();
+    const lease = new FakeLease();
+    const intro = program.timeline[1];
+    const firstTrack = program.timeline[0];
+    const secondTrack = program.timeline[2];
+    if (intro === undefined || firstTrack === undefined || secondTrack === undefined) {
+      throw new Error("Audio fixture is incomplete");
+    }
+    const outro = {
+      ...intro,
+      id: "00000000-0000-4000-8000-000000000095",
+      position: 3,
+    };
+    const overlayProgram: ProgramDetail = {
+      ...program,
+      program: { ...program.program, playbackMode: "voice-overlay" },
+      timeline: [intro, firstTrack, secondTrack, outro],
+    };
+    voice.playResult = () => Promise.reject(new Error("voice unavailable"));
+    const engine = createAudioEngine({
+      audio: music,
+      lease,
+      transport: createTransport(),
+      voiceAudio: voice,
+    });
+
+    await engine.loadProgram(overlayProgram, { autoplay: true });
+    await flushAsync();
+    expect(engine.getSnapshot().voiceActive).toBe(false);
+    voice.emit("ended");
+    voice.emit("error");
+    music.emit("ended");
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot().currentIndex).toBe(1);
+    });
+    voice.playResult = () => {
+      voice.paused = false;
+      return Promise.resolve();
+    };
+    music.currentTime = 19;
+    music.emit("timeupdate");
+    await flushAsync();
+    expect(engine.getSnapshot().voiceActive).toBe(true);
+    voice.fail();
+    vi.advanceTimersByTime(650);
+    expect(engine.getSnapshot().voiceActive).toBe(false);
+    lease.setState({ ownership: "passive", profileId });
+    await engine.pause();
+    await engine.destroy();
+  });
+
+  it("recovers music when resuming a paused overlay voice fails", async () => {
+    const music = new FakeAudio();
+    const voice = new FakeAudio();
+    const intro = program.timeline[1];
+    const firstTrack = program.timeline[0];
+    if (intro === undefined || firstTrack === undefined) throw new Error("Fixture is incomplete");
+    const engine = createAudioEngine({
+      audio: music,
+      lease: new FakeLease(),
+      transport: createTransport(),
+      voiceAudio: voice,
+    });
+    await engine.loadProgram(
+      {
+        ...program,
+        program: { ...program.program, playbackMode: "voice-overlay" },
+        timeline: [intro, firstTrack],
+      },
+      { autoplay: true },
+    );
+    await engine.pause();
+    voice.playResult = () => Promise.reject(new Error("resume failed"));
+    await engine.play();
+    vi.advanceTimersByTime(650);
+    expect(engine.getSnapshot()).toMatchObject({ state: "playing", voiceActive: false });
+    expect(music.volume).toBeCloseTo(1, 2);
     await engine.destroy();
   });
 

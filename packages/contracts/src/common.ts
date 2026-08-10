@@ -8,6 +8,9 @@ export const jobIdSchema = identifierSchema;
 export const trackIdSchema = identifierSchema;
 export const playlistSourceIdSchema = identifierSchema;
 export const timelineItemIdSchema = identifierSchema;
+export const radioTurnIdSchema = identifierSchema;
+export const radioMessageIdSchema = identifierSchema;
+export const radioSpeechGenerationIdSchema = identifierSchema;
 export const correlationIdSchema = identifierSchema;
 export const occurredAtSchema = z.iso.datetime();
 export const idempotencyKeySchema = z
@@ -49,6 +52,14 @@ export const profileTrackIdParamsSchema = z.strictObject({
   profileId: profileIdSchema,
   trackId: trackIdSchema,
 });
+export const profileRadioTurnIdParamsSchema = z.strictObject({
+  profileId: profileIdSchema,
+  turnId: radioTurnIdSchema,
+});
+export const profileRadioMessageIdParamsSchema = z.strictObject({
+  profileId: profileIdSchema,
+  messageId: radioMessageIdSchema,
+});
 export const idempotencyKeyHeadersSchema = z.strictObject({
   "idempotency-key": idempotencyKeySchema,
 });
@@ -58,4 +69,6 @@ export type ProfileIdParams = z.infer<typeof profileIdParamsSchema>;
 export type ProfileProgramIdParams = z.infer<typeof profileProgramIdParamsSchema>;
 export type ProfileJobIdParams = z.infer<typeof profileJobIdParamsSchema>;
 export type ProfileTrackIdParams = z.infer<typeof profileTrackIdParamsSchema>;
+export type ProfileRadioTurnIdParams = z.infer<typeof profileRadioTurnIdParamsSchema>;
+export type ProfileRadioMessageIdParams = z.infer<typeof profileRadioMessageIdParamsSchema>;
 export type IdempotencyKeyHeaders = z.infer<typeof idempotencyKeyHeadersSchema>;

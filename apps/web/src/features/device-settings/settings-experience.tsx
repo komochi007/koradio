@@ -418,9 +418,10 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
             <p className="settings-modal__eyebrow">DEEPSEEK · PRIVACY</p>
             <h2 id="deepseek-privacy-title">启用 DeepSeek 前请确认</h2>
             <p>
-              为了编排节目，Koradio 会将当前场景、已有 EffectiveTaste、历史摘要、音乐库摘要和 DJ
-              偏好发送到 DeepSeek。DeepSeek API 可能产生费用；Koradio 不会把 API key
-              保存到数据库、浏览器或日志。
+              为了持续对话与编排节目，Koradio 会将当前消息、当前 Profile 最近对话、已有
+              EffectiveTaste、近 10 期节目摘要、音乐库摘要和 DJ 偏好发送到 DeepSeek。歌曲播放链接、
+              本地文件、完整歌词和其他 Profile 数据不会发送。DeepSeek API 可能产生费用；Koradio
+              不会把 API key 保存到数据库、浏览器或日志。
             </p>
             <div className="settings-modal__actions">
               <button

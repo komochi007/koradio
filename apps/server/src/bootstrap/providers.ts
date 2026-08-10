@@ -13,12 +13,15 @@ import type { DeepseekCredentialService } from "../modules/device-settings/deeps
 import type { DeviceSettingsService } from "../modules/device-settings/index.js";
 import { createMockMusicProvider, type MusicProvider } from "../modules/library/index.js";
 import type { ProgramPlannerProvider } from "../modules/programs/index.js";
+import type { RadioAssistantProvider } from "../modules/radio/index.js";
 import type { LocalFileStore } from "../platform/files/index.js";
+import type { SafeLogger } from "../platform/logging/index.js";
 
 import type { RuntimeConfig } from "./config.js";
 
 export interface RuntimeProviders {
   planner: () => ProgramPlannerProvider;
+  radioAssistant: () => RadioAssistantProvider;
   music: MusicProvider;
   tts: ClosableTtsProvider;
   close(): Promise<void>;
@@ -30,6 +33,7 @@ export interface CreateRuntimeProvidersOptions {
   deepseekCredentials: Pick<DeepseekCredentialService, "get">;
   fileStore: LocalFileStore;
   modelService: TtsModelService;
+  logger?: Pick<SafeLogger, "warn">;
 }
 
 function createTextOnlyTtsProvider(): ClosableTtsProvider {
@@ -45,8 +49,10 @@ function createTextOnlyTtsProvider(): ClosableTtsProvider {
 
 export function createRuntimeProviders(options: CreateRuntimeProvidersOptions): RuntimeProviders {
   if (options.config.providerMode === "mock") {
+    const assistant = createMockCodexProvider();
     return {
-      planner: () => createMockCodexProvider(),
+      planner: () => assistant,
+      radioAssistant: () => assistant,
       music: createMockMusicProvider(),
       tts: {
         ...createMockTtsProvider(),
@@ -68,14 +74,18 @@ export function createRuntimeProviders(options: CreateRuntimeProvidersOptions): 
         });
   const codex = createCodexAdapter({
     command: () => options.deviceSettings.get().codexCommand ?? "",
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
     runtimeDirectory: options.config.dataRoot,
   });
   const deepseek = createDeepseekAdapter({
     apiKey: () => options.deepseekCredentials.get(),
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
     model: () => options.deviceSettings.get().deepseekModel,
   });
   return {
     planner: () => (options.deviceSettings.get().plannerProvider === "deepseek" ? deepseek : codex),
+    radioAssistant: () =>
+      options.deviceSettings.get().plannerProvider === "deepseek" ? deepseek : codex,
     music: createNetEaseAdapter(),
     tts,
     close: () => tts.close(),

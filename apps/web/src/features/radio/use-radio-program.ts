@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ProgramGenerationStage } from "@koradio/contracts";
+import type { ProgramGenerationStage, RadioTurn } from "@koradio/contracts";
 import { useEffect, useReducer, useRef, useState } from "react";
 
 import {
-  generateProgram,
   getLatestProgram,
   getProgram,
   getProgramGeneration,
   initialProgramGenerationState,
   reduceProgramGeneration,
 } from "../programs/index.js";
+import { createRadioTurn, getRadioConversation } from "./api.js";
 import { ApiRequestError } from "../../shared/api.js";
 import type { AppEventBus } from "../../shared/events.js";
 import type { ServiceTransport } from "../../shared/transport.js";
@@ -35,6 +35,7 @@ export function useRadioProgram({
   const [pendingScenario, setPendingScenario] = useState<string>();
   const [autoplayProgramId, setAutoplayProgramId] = useState<string>();
   const [validationError, setValidationError] = useState<string>();
+  const [turnError, setTurnError] = useState<string>();
   const activeRef = useRef(generation.active);
   const resolvingProgramRef = useRef<string | undefined>(undefined);
   activeRef.current = generation.active;
@@ -42,6 +43,10 @@ export function useRadioProgram({
   const latestProgram = useQuery({
     queryKey: ["programs", "latest", profileId],
     queryFn: () => getLatestProgram(transport, profileId),
+  });
+  const conversation = useQuery({
+    queryKey: ["radio-conversation", profileId],
+    queryFn: () => getRadioConversation(transport, profileId),
   });
 
   useEffect(() => {
@@ -155,58 +160,66 @@ export function useRadioProgram({
     });
   }, [generation.active, generationSnapshot.isError]);
 
-  const generationMutation = useMutation({
-    mutationFn: (scenarioText: string) => generateProgram(transport, profileId, scenarioText),
-    onSuccess(accepted, scenarioText) {
-      setPendingScenario(undefined);
-      dispatch({ type: "generation.accepted", jobId: accepted.jobId, scenarioText });
+  const turnMutation = useMutation({
+    mutationFn: (content: string) => createRadioTurn(transport, profileId, content),
+    onSuccess(turn, content) {
+      setDraft("");
+      setTurnError(undefined);
+      queryClient.setQueryData<{ turns: RadioTurn[] }>(
+        ["radio-conversation", profileId],
+        (current) => ({ turns: [...(current?.turns ?? []), turn].slice(-50) }),
+      );
+      if (turn.decision === "program" && turn.programJobId !== null) {
+        setPendingScenario(content);
+        dispatch({ type: "generation.accepted", jobId: turn.programJobId, scenarioText: content });
+      }
     },
-    onError(error, scenarioText) {
-      setDraft(scenarioText);
+    onError(error, content) {
+      setDraft(content);
       setPendingScenario(undefined);
-      dispatch({
-        type: "generation.failed",
-        code:
-          error instanceof ApiRequestError
-            ? (error.envelope?.code ?? "PROGRAM_GENERATION_UNAVAILABLE")
-            : "PROGRAM_GENERATION_UNAVAILABLE",
-        scenarioText,
-      });
+      setTurnError(
+        error instanceof ApiRequestError &&
+          error.envelope?.code === "PROGRAM_GENERATION_ALREADY_RUNNING"
+          ? "已有一档节目正在生成，请等待完成后再发起新的节目。"
+          : "DJ 暂时没有完成这次回应，请重试。",
+      );
     },
   });
 
   function submitScenario(candidate = draft): void {
     const scenarioText = candidate.trim();
     if (scenarioText.length === 0) {
-      setValidationError("告诉 DJ 你现在想听什么");
+      setValidationError("和 DJ 说点什么");
       return;
     }
     if (scenarioText.length > 500) {
-      setValidationError("场景描述不能超过 500 个字符");
+      setValidationError("消息不能超过 500 个字符");
       return;
     }
     setValidationError(undefined);
-    dispatch({ type: "generation.cleared" });
-    setPendingScenario(scenarioText);
-    generationMutation.mutate(scenarioText);
+    setTurnError(undefined);
+    turnMutation.mutate(scenarioText);
   }
 
   const scenarioText = pendingScenario ?? generation.active?.scenarioText;
   const generating = scenarioText !== undefined;
-  const viewState: RadioViewState = generating
-    ? "generating"
-    : generation.program === null
-      ? "empty"
-      : "playing";
+  const viewState: RadioViewState =
+    generation.program !== null ? "playing" : generating ? "generating" : "empty";
 
   return {
     autoplayProgramId,
+    conversation: conversation.data?.turns ?? [],
+    clearConversation() {
+      queryClient.setQueryData(["radio-conversation", profileId], { turns: [] });
+    },
     draft,
     failure: generation.failure,
     initialError: latestProgram.isError,
     initialLoading: latestProgram.isPending,
     program: generation.program,
     scenarioText,
+    turnError,
+    turnPending: turnMutation.isPending,
     setDraft(value: string) {
       setDraft(value);
       if (validationError !== undefined) {
@@ -223,6 +236,8 @@ export function useRadioProgram({
     viewState,
   } satisfies {
     autoplayProgramId: string | undefined;
+    conversation: RadioTurn[];
+    clearConversation: () => void;
     draft: string;
     failure: typeof generation.failure;
     initialError: boolean;
@@ -234,6 +249,8 @@ export function useRadioProgram({
     stage: ProgramGenerationStage | undefined;
     submitScenario: (candidate?: string) => void;
     validationError: string | undefined;
+    turnError: string | undefined;
+    turnPending: boolean;
     viewState: RadioViewState;
   };
 }

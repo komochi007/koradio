@@ -523,6 +523,7 @@ export function createNetEaseAdapter(options: CreateNetEaseAdapterOptions = {}):
       return {
         status: /\[\d{1,3}:\d{2}(?:\.\d{1,3})?\]/u.test(original) ? "available" : "untimed",
         content,
+        originalContent: original,
       };
     },
     async resolveAudio(sourceTrackId, callOptions) {

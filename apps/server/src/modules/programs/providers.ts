@@ -21,6 +21,7 @@ export const programHistoryContextSchema = z.strictObject({
   title: z.string().trim().min(1).max(200),
   scenarioText: z.string().trim().min(1).max(500),
   createdAt: occurredAtSchema,
+  trackIds: z.array(trackIdSchema).max(12).default([]),
 });
 
 export const libraryTrackContextSchema = z.strictObject({
@@ -38,8 +39,8 @@ export const codexPlanningContextSchema = z
     history: z.array(programHistoryContextSchema).max(20),
     library: z.strictObject({
       tracks: z.array(libraryTrackContextSchema).max(500),
-      maximumTracks: z.number().int().min(1).max(5),
-      preferredLibraryTrackCount: z.number().int().min(0).max(5),
+      maximumTracks: z.number().int().min(1).max(12),
+      preferredLibraryTrackCount: z.number().int().min(0).max(12),
     }),
     currentTime: occurredAtSchema,
     preferences: z.strictObject({
@@ -87,7 +88,7 @@ export const codexProgramPlanOutputSchema = z.strictObject({
   djLanguage: djLanguageSchema,
   djPersona: djVoiceStyleSchema,
   djScripts: z.array(codexDjScriptSchema).min(1).max(20),
-  trackIntents: z.array(codexTrackIntentSchema).min(1).max(5),
+  trackIntents: z.array(codexTrackIntentSchema).min(1).max(16),
   playlistIntent: z.strictObject({
     energy: z.string().trim().min(1).max(100),
     mood: z.string().trim().min(1).max(100),

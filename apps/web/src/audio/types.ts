@@ -35,6 +35,10 @@ export interface AudioEngineSnapshot {
   mediaError: "autoplay_blocked" | "media_failed" | "queue_exhausted" | undefined;
   checkpointError: boolean;
   preview?: AudioPreviewSnapshot | undefined;
+  voiceActive?: boolean | undefined;
+  voiceSegmentId?: string | undefined;
+  voicePositionMs?: number | undefined;
+  voiceDurationMs?: number | undefined;
 }
 
 export interface LoadProgramOptions {
@@ -55,6 +59,7 @@ export interface AudioEngineFacade {
   seek(positionMs: number): Promise<void>;
   setVolume(volume: number): void;
   previewAudio(options: PreviewAudioOptions): Promise<void>;
+  queuePreviewNext?(options: PreviewAudioOptions): Promise<void>;
   stopPreview(): Promise<void>;
   subscribe(listener: () => void): () => void;
 }

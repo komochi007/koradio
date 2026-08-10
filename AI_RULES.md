@@ -36,14 +36,15 @@
 - **MUST** 使用 Server State 层管理远端查询、mutation、失效和重连。
 - **MUST** 仅让跨组件、非持久 UI 状态进入轻量 UI Store。
 - **MUST** 让局部表单、Sheet、筛选和折叠状态保留在 Feature 或 Component 内。
-- **MUST** 通过单一 Audio Engine facade 暴露播放快照和控制命令。
+- **MUST** 通过单一 Audio Engine facade 暴露播放快照和控制命令；facade 最多拥有一个 music channel 与一个 voice channel。
 - **MUST** 让 Browser Audio Engine 成为 `positionMs`、pause、seek、buffering 与 media error 的实时事实源。
 - **MUST** 让 Radio 与 Detail Sheet 订阅同一播放时间线。
 - **MUST** 对播放 checkpoint 进行节流，并在暂停、切歌和关闭等边界触发保存。
 - **MUST** 使用 `BroadcastChannel + localStorage TTL lease` 保证唯一主控标签；主控每 `2s` 续约，租约 `5s` 过期，被动标签只读。
 - **MUST** 在标签接管前由原主控保存 checkpoint 并停止播放；使用 lease epoch 丢弃旧主控的迟到命令。
 - **MUST** 在 Profile 切换时取消旧生成任务、丢弃迟到事件、保存并停止旧播放，再加载新 Profile。
-- **MUST NOT** 创建多个竞争的 `HTMLAudio` 实例或页面级播放事实源。
+- **MUST** 让 voice channel 只承担 DJ 叠加语音或用户明确触发的消息朗读；叠加期间由 facade 统一 duck music channel，结束、失败、取消或切段时恢复原音量。
+- **MUST NOT** 创建多个竞争的 Audio Engine facade、同用途 `HTMLAudio` 实例或页面级播放事实源；同一 facade 内职责互斥的 music/voice 双通道不属于竞争实例。
 - **MUST NOT** 通过 WebSocket 发送逐帧播放进度。
 - **MUST NOT** 让 Frontend 导入 Server、Drizzle、Node API 或秘密配置。
 
@@ -63,6 +64,10 @@
 - **MUST** 用参数数组启动持久化 TTS helper，通过结构化 stdin 传递 DJ 文本并校验 stdout、完整音频和时长；**MUST NOT** 把 DJ 文本、voice payload 或输出路径拼接进 shell command。
 - **MUST** 固定中文 `Serena`、英文 `Ryan`，并确保试听与节目合成都使用可理解的完整句子；模型、helper 或音色不可用、输出非法、取消或超时时必须稳定降级为完整文字 DJ。
 - **MUST** 在新节目完整提交前继续播放旧节目；失败保持旧节目不变，成功后保存旧 checkpoint、停止旧时间线并原子切换。
+- **MUST** 先将 Radio 输入路由为 `chat`、`clarify`、`single_track` 或 `program`；只有明确的单曲或节目需求才能触发音乐解析或节目生成。
+- **MUST** 让完整节目目标严格处于 8～12 首，默认 8 首；解析与补选后少于目标数量时必须失败并保持旧节目。
+- **MUST** 对显式语言约束、近 10 期精确曲目去重与单期同艺人最多 1 首执行确定性校验；只有用户明确点名歌曲或艺人时才能覆盖相应去重规则。
+- **MUST** 让外部音乐事实增强非阻断、可归因且不在事务内执行；无法取得可信来源时只能输出音乐性、歌词主题或场景分析，不得编造背景事实。
 - **MUST** 在单曲不可播放时标记运行时失败并尝试下一首。
 - **MUST NOT** 让 Domain 导入 React、Fastify、Drizzle、WebSocket 或 Provider SDK。
 - **MUST NOT** 让 Adapter 决定业务降级、修改领域规则或泄露供应商结构。
@@ -94,6 +99,7 @@
 > [RULE-DATA]
 
 - **MUST** 使用版本化 migration 修改 SQLite schema。
+- **MUST** 以 Profile 为 owner 持久化 Radio 对话，最多保留最近 50 个 turn（100 条 message）；清空对话必须经过显式确认。
 - **MUST** 启用 SQLite foreign keys 与 WAL。
 - **MUST** 在单一事务中提交 Program、DJ segments 与 PlaybackTimeline items。
 - **MUST** 使用 `dj` / `track` discriminated union 表达 PlaybackTimelineItem；文字 DJ 只保留在 Program segment，不创建伪音频 item。

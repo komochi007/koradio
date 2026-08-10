@@ -190,6 +190,7 @@ function readProgramSnapshot(client: DatabaseSync) {
 
 interface HarnessOptions {
   codex?: CodexProvider;
+  maximumTracks?: number;
   music?: MusicProvider;
   tts?: TtsProvider | null;
 }
@@ -227,6 +228,7 @@ async function createHarness(options: HarnessOptions = {}) {
     codex: options.codex ?? createFixtureCodexProvider(),
     events: { publish: (event) => events.push(event) },
     library,
+    maximumTracks: options.maximumTracks ?? 1,
     now: () => new Date("2026-07-17T12:00:00.000Z"),
     preferences,
     programs,
@@ -257,6 +259,7 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
       codexProvider: createFixtureCodexProvider(),
       config,
       musicProvider: createFixtureMusicProvider({ searchInvocations }),
+      programMaximumTracks: 1,
       selectedPort: config.port,
       ttsProvider: createFixtureTtsProvider(),
     });
@@ -543,6 +546,7 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
           { kind: "discovery", keyword: "S3 playable", reason: "验证第二首音频失败降级" },
         ],
       }),
+      maximumTracks: 2,
       music: createFixtureMusicProvider({
         audioUnavailable: [s3SecondaryTrackFixture.sourceTrackId],
         lyricsUnavailable: [s3PrimaryTrackFixture.sourceTrackId],

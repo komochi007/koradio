@@ -7,6 +7,7 @@ export * from "./jobs.js";
 export * from "./music.js";
 export * from "./preferences.js";
 export * from "./profiles.js";
+export * from "./radio.js";
 export * from "./programs.js";
 export * from "./requests.js";
 export * from "./session.js";

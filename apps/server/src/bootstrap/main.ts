@@ -21,6 +21,7 @@ async function startService(
   for (const port of createPortCandidates(config)) {
     const app = await createApp({
       config,
+      logger,
       selectedPort: port,
       requestRestart: (request) => {
         onRestartRequested(request);

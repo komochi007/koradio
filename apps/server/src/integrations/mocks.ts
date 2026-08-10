@@ -7,11 +7,17 @@ import {
   type CodexProvider,
   type TtsProvider,
 } from "../modules/programs/index.js";
+import {
+  createMockRadioAssistantProvider,
+  type RadioAssistantProvider,
+} from "../modules/radio/index.js";
 
 const mockTtsAudioRef = "tts/00000000-0000-4000-8000-000000000001.wav";
 
-export function createMockCodexProvider(): CodexProvider {
+export function createMockCodexProvider(): CodexProvider & RadioAssistantProvider {
+  const radio = createMockRadioAssistantProvider();
   return {
+    respond: (context, options) => radio.respond(context, options),
     plan(context, options) {
       const parsedContext = codexPlanningContextSchema.parse(context);
       providerCallOptionsSchema.parse(options);
@@ -26,16 +32,33 @@ export function createMockCodexProvider(): CodexProvider {
           trackId: track.trackId,
           reason: "A deterministic library fixture",
         }));
-      const discoveryIntents =
-        libraryIntents.length < parsedContext.library.maximumTracks
-          ? [
-              {
-                kind: "discovery" as const,
-                keyword: "Space Song Beach House",
-                reason: "A deterministic low-stimulation fixture",
-              },
-            ]
-          : [];
+      const fixtureQueries = [
+        "Space Song Beach House",
+        "Midnight City M83",
+        "Quiet Signal Artist Three",
+        "Soft Current Artist Four",
+        "Night Window Artist Five",
+        "Slow Orbit Artist Six",
+        "Paper Moon Artist Seven",
+        "After Rain Artist Eight",
+        "Green Room Artist Nine",
+        "Last Light Artist Ten",
+        "Small Hours Artist Eleven",
+        "Open Road Artist Twelve",
+      ];
+      const selectedLibrarySongs = new Set(
+        parsedContext.library.tracks
+          .slice(0, parsedContext.library.preferredLibraryTrackCount)
+          .map((track) => `${track.title} ${track.artist}`.toLocaleLowerCase("en-US")),
+      );
+      const discoveryIntents = fixtureQueries
+        .filter((keyword) => !selectedLibrarySongs.has(keyword.toLocaleLowerCase("en-US")))
+        .slice(0, parsedContext.library.maximumTracks + 4 - libraryIntents.length)
+        .map((keyword) => ({
+          kind: "discovery" as const,
+          keyword,
+          reason: "A deterministic low-stimulation fixture",
+        }));
       return Promise.resolve(
         codexProgramPlanSchema.parse({
           programTitle: "Koradio Mock Session",

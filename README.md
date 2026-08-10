@@ -2,9 +2,9 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1–S6 stage gates complete · S7-01/02/06/08 complete · S7-09 Electron shell migration in progress · UX-10 Qwen3-TTS replacement complete · DeepSeek planner integration implemented, real API smoke deferred · S7-07 stability trial in progress · external distribution deferred · production defaults to Live mode**
+> Status: **S1–S6 stage gates complete · S7-01/02/06/08 complete · S7-09 Electron shell migration in progress · UX-11 DJ conversation/curation/radio optimization accepted · DeepSeek planner integration implemented, real API smoke deferred · S7-07 stability trial in progress · external distribution deferred · production defaults to Live mode**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Radio 三态与节目生成交互、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；Electron 主进程与 Production Server 默认使用真实 Provider，Development、Test、CI 与 `start:mock` 使用确定性 Mock Provider
+> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Profile 级持久 DJ 对话与意图分流、单曲卡片、8～12 首节目生成、双声道 Radio 播放、按需 Qwen 朗读、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；Electron 主进程与 Production Server 默认使用真实 Provider，Development、Test、CI 与 `start:mock` 使用确定性 Mock Provider
 
 ## 1. 项目入口
 
@@ -13,13 +13,14 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 用户描述当前场景后，目标系统将：
 
 ```text
-场景输入
-  → Programs 将当前 Profile 最多 500 首可播放库内曲目摘要与 EffectiveTaste 交给活动 Planner（Codex 或 DeepSeek）
+对话输入
+  → Radio 先路由为闲聊、澄清、单曲或完整节目；普通聊天不生成节目
+  → 完整节目将当前 Profile 最多 500 首可播放库内曲目摘要、EffectiveTaste 与近 10 期历史交给活动 Planner（Codex 或 DeepSeek）
   → 活动 Planner 生成有序 library/discovery 选曲意图与 DJ 串讲
-  → Library 按意图顺序解析库内曲目或网易云探索结果、播放链接与歌词
+  → Library 按意图顺序解析并最多补选两轮，严格满足 8～12 首目标、语言、近期去重与艺人约束
   → Qwen3-TTS 8-bit 通过本机 Python/MLX helper 生成可选 DJ 语音
   → 本地服务原子提交节目与播放时间线
-  → 浏览器 Audio Engine 播放并收集反馈
+  → 浏览器 Audio Engine 以音乐/语音双通道叠播、ducking 并收集反馈
   → 反馈写入本地品味档案，影响后续节目
 ```
 
@@ -51,10 +52,10 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] macOS Native launcher + 外部浏览器 PWA 的历史包装已由 S7-01/S7-02 记录；[ADR 0006](docs/adr/0006-electron-desktop-shell.md) 已裁决由 Electron 主进程与现有 Web Renderer 替代，S7-09 正在完成迁移
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭；其中 Apple TTS 仅为 S7-06 历史验收事实，已由 [ADR 0005](docs/adr/0005-qwen3-local-tts.md) 与 UX-10 的 bundled Qwen3-TTS helper 取代。DeepSeek 可切换规划 Provider 的边界由 [ADR 0007](docs/adr/0007-deepseek-planner-provider.md) 固定；Production Server 与 Electron 主进程默认 Live
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
-- [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Radio 三态、节目生成 command/Snapshot/有序事件与失败恢复、唯一 Browser Audio Engine、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
-- [x] Fastify Local Service health/session/events、Profiles、Library、Feedback、Taste、Programs、Playback、异步节目生成、DeviceSettings、ProfilePreferences 与数据目录迁移路由已实现；生成命令立即返回 `202 + jobId`，终态可通过 REST Snapshot 恢复
+- [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Profile 级 DJ transcript、闲聊/澄清/单曲/节目分流、单曲立即/下一首播放、对话清空、按需朗读、旧节目生成中继续播放、双声道 overlay/ducking、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
+- [x] Fastify Local Service health/session/events、Profiles、Library、Feedback、Taste、Programs、Playback、Radio conversation/speech、异步节目生成、DeviceSettings、ProfilePreferences 与数据目录迁移路由已实现；节目与朗读命令使用持久 Job 和 REST Snapshot 恢复
 - [x] 完整 v1 公共 Contracts 已用 Zod 固化：REST DTO/command、显式 `profileId`、`Idempotency-Key`、异步 job、WebSocket event 与安全 error envelope 均有正反向和兼容性测试
-- [x] SQLite/Drizzle 底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；Profile、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已落地
+- [x] SQLite/Drizzle 底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；Profile、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、RadioMessage/Turn/SpeechGeneration、DjCitation、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已落地
 - [x] Secret Store、File Store 与脱敏日志平台边界已实现：macOS Keychain 往返、headless 稳定错误、受控引用、扩展名/MIME/大小/重定向限制和敏感信息清除已验证；DeepSeek API key 只通过 Keychain 读写，TTS Adapter 只向受控 File Store 写入校验后的音频
 - [x] 本地 HTTP 安全边界已完成：每次 bootstrap 签发短期进程内 token，REST 与 WebSocket 共享校验，Web 只在内存持有 token，并支持 401 后重新 bootstrap 的重连基础
 - [x] DeviceSettings 与 ProfilePreferences owner 已实现：设备配置和 Profile 偏好分表、分路由持久化；活动 Planner、DeepSeek 模型、隐私确认和密钥配置状态在设备级管理，Health 不返回命令路径、凭据或 Provider 私有字段
@@ -62,8 +63,8 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] Library 后端已实现：Provider 输出严格归一化为稳定 source identity，支持搜索、幂等加入候选池、分页列表、异步歌单导入及快照、歌词和短期播放解析；搜索/歌词/播放缓存均有容量与 TTL，播放直链不持久化
 - [x] Feedback 与 Taste 记忆后端已实现：七类固定反馈按 Profile append-only 幂等写入，同事务按稳定 replay order 更新可重建 TasteProjection；人工 TasteOverrides 独立版本化并优先合并为只读 EffectiveTaste
 - [x] Programs 与 Playback 领域后端已实现：Program、ordered track refs、DJ segments 与判别式 timeline 单事务提交，文字 DJ 不伪造音频项；分页历史和详情按 Profile 隔离，checkpoint 校验 owner、位置、完成边界与 `leaseEpoch`
-- [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、最多 500 首库内摘要、默认五首 4/1 的库内/探索建议、有序 `trackIntents`、稳定去重、活动 Planner 快照、超时、内部取消、迟到结果隔离、TTS/歌词/曲目降级和重启中断收敛均已验证；Program 与 Job 成功终态同事务提交
-- [x] Mock Provider 后端闭环已验收：合法场景通过 REST 异步受理后可原子提交至少一首可播放曲目、开场文字与判别式 timeline；4/1 库内/探索、空库探索、显式约束、非法或重复 intent、搜索/音频失败、单关键词至多一首、Codex 错误/非法计划、TTS/歌词/部分曲目降级和提交事务回滚均有固定 fixture 与数据库快照断言
+- [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、最多 500 首库内摘要、默认 8 首且可指定 8～12 首、约 70/30 库内/探索建议、最多两轮补选、近 10 期精确曲目去重、默认同艺人一首、显式点名覆盖、中文原始歌词 60% 汉字校验、活动 Planner 快照、超时、迟到结果隔离、来源增强与重启中断收敛均已验证；不足目标时失败并保留旧节目，Program 与 Job 成功终态同事务提交
+- [x] Mock Provider 后端闭环已验收：Radio 闲聊不触发节目，歧义追问，单曲卡片和 8～12 首节目分别执行；空库探索、两轮补选、近 10 期去重、同艺人与点名覆盖、中文歌词硬约束、MusicBrainz/Wikimedia 引用、搜索/音频失败、Codex 错误/非法计划、TTS/歌词降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
 - [x] Codex、DeepSeek、NetEase 与 TTS Provider adapters：Codex、NetEase、DeepSeek 和 Qwen TTS 的协议边界、Keychain、重试、响应校验与 Mock fixtures 已实现；真实 DeepSeek API smoke 仍需手动凭据，Production Server 与 Electron 主进程默认 Live，Development、Test 和 CI 默认 Mock
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
@@ -458,7 +459,7 @@ packages/
 
 ### 当前可执行状态
 
-**当前可以安装 workspace、启动开发双进程并构建/启动同源生产应用；Web 已提供路由、内存 Session、事件重连、离线异常页、Profile/Settings、Radio 三态/节目生成交互、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑，以及由单一 facade 驱动的 Browser Audio Engine、多标签接管和 checkpoint；Local Service 已提供领域与平台后端能力。**
+**当前可以安装 workspace、启动开发双进程并构建/启动同源生产应用；Web 已提供路由、内存 Session、事件重连、离线异常页、Profile/Settings、持久 DJ 对话与意图分流、单曲卡片、8～12 首节目、双声道 Radio、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑，以及多标签接管和 checkpoint；Local Service 已提供对应领域与平台后端能力。**
 
 `design/assets/prototype/index.html` 是可直接在浏览器打开的零构建设计预览骨架，不是 Koradio 产品运行入口。
 

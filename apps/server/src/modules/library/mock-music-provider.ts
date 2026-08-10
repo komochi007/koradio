@@ -3,6 +3,14 @@ import type { MusicProvider, ProviderTrack } from "./music-provider.js";
 const mockAudioRefs = new Map([
   ["mock-space-song", "media/00000000-0000-4000-8000-000000000001.wav"],
   ["mock-midnight-city", "media/00000000-0000-4000-8000-000000000002.wav"],
+  ...Array.from(
+    { length: 10 },
+    (_, index) =>
+      [
+        `mock-fixture-${String(index + 3)}`,
+        `media/00000000-0000-4000-8000-${String(index + 3).padStart(12, "0")}.wav`,
+      ] as const,
+  ),
 ]);
 
 const tracks: ProviderTrack[] = [
@@ -39,6 +47,28 @@ const tracks: ProviderTrack[] = [
     lyricStatus: "unavailable",
     playable: false,
   },
+  ...[
+    ["Quiet Signal", "Artist Three"],
+    ["Soft Current", "Artist Four"],
+    ["Night Window", "Artist Five"],
+    ["Slow Orbit", "Artist Six"],
+    ["Paper Moon", "Artist Seven"],
+    ["After Rain", "Artist Eight"],
+    ["Green Room", "Artist Nine"],
+    ["Last Light", "Artist Ten"],
+    ["Small Hours", "Artist Eleven"],
+    ["Open Road", "Artist Twelve"],
+  ].map(([title, artist], index): ProviderTrack => ({
+    source: "netease",
+    sourceTrackId: `mock-fixture-${String(index + 3)}`,
+    title: title ?? "Fixture",
+    artist: artist ?? "Fixture Artist",
+    album: "Koradio Sessions",
+    artworkUrl: null,
+    durationMs: 180_000 + index * 1_000,
+    lyricStatus: "untimed",
+    playable: true,
+  })),
 ];
 
 export function createMockMusicProvider(): MusicProvider {
@@ -58,7 +88,7 @@ export function createMockMusicProvider(): MusicProvider {
         source: "netease",
         sourcePlaylistId: playlistRef,
         title: "Koradio Mock Playlist",
-        tracks,
+        tracks: tracks.slice(0, 3),
       });
     },
     getLyrics(sourceTrackId) {
@@ -66,12 +96,21 @@ export function createMockMusicProvider(): MusicProvider {
         return Promise.resolve({
           status: "available",
           content: "[00:00.00]It was late at night",
+          originalContent: "[00:00.00]It was late at night",
         });
       }
       if (sourceTrackId === "mock-midnight-city") {
         return Promise.resolve({
           status: "untimed",
           content: "Waiting in a car",
+          originalContent: "Waiting in a car",
+        });
+      }
+      if (sourceTrackId.startsWith("mock-fixture-")) {
+        return Promise.resolve({
+          status: "untimed",
+          content: "A quiet line for deterministic tests",
+          originalContent: "A quiet line for deterministic tests",
         });
       }
       return Promise.resolve({ status: "unavailable", content: null });

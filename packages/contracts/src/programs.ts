@@ -14,6 +14,13 @@ import { musicTrackSchema, originModeSchema } from "./music.js";
 import { djLanguageSchema } from "./preferences.js";
 
 export const programStatusSchema = z.enum(["ready", "completed"]);
+export const programPlaybackModeSchema = z.enum(["sequential", "voice-overlay"]);
+export const djCitationSchema = z.strictObject({
+  id: z.uuid(),
+  title: z.string().trim().min(1).max(300),
+  url: z.url(),
+  provider: z.enum(["musicbrainz", "wikimedia"]),
+});
 export const djScriptTypeSchema = z.enum(["intro", "segue", "outro"]);
 export const djScriptSegmentSchema = z.strictObject({
   id: z.uuid(),
@@ -24,6 +31,7 @@ export const djScriptSegmentSchema = z.strictObject({
   displayText: z.string().trim().min(1).max(5000),
   estimatedTiming: z.boolean(),
   ttsAudioRef: controlledFileRefSchema.nullable(),
+  citations: z.array(djCitationSchema).max(5).optional(),
 });
 export const djTimelineItemSchema = z.strictObject({
   id: timelineItemIdSchema,
@@ -53,6 +61,7 @@ export const programSchema = z.strictObject({
   status: programStatusSchema,
   trackIds: z.array(trackIdSchema).min(1),
   originMode: originModeSchema.default("mock"),
+  playbackMode: programPlaybackModeSchema.optional(),
   createdAt: occurredAtSchema,
 });
 export const programDetailSchema = z.strictObject({

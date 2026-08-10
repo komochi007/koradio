@@ -67,11 +67,13 @@ export const trackLyricsSchema = z.discriminatedUnion("status", [
     trackId: trackIdSchema,
     status: z.enum(["available", "untimed"]),
     content: z.string().min(1).max(1_000_000),
+    originalContent: z.string().min(1).max(1_000_000).optional(),
   }),
   z.strictObject({
     trackId: trackIdSchema,
     status: z.literal("unavailable"),
     content: z.null(),
+    originalContent: z.null().optional(),
   }),
 ]);
 export const audioResolutionSchema = z.strictObject({

@@ -5,6 +5,7 @@ import {
   type ProfileContext,
   type ProgramDetail,
   type ProgramGenerationStage,
+  type RadioTurn,
 } from "@koradio/contracts";
 import { radioTokens } from "@koradio/design-tokens";
 import {
@@ -24,6 +25,7 @@ import {
   useAudioSnapshot,
 } from "../../audio/index.js";
 import { applyTheme, updateProfilePreferences } from "../profile-preferences/index.js";
+import { resolveTrackAudio } from "../library/index.js";
 import { FeedbackNotice, useFeedback } from "../feedback/index.js";
 import { Brand, PrimaryNavigation } from "../../shared/ui.js";
 import type { AppEventBus } from "../../shared/events.js";
@@ -32,6 +34,7 @@ import { Icon as SharedIcon, type IconName } from "../../shared/icon.js";
 import { ArtworkImage } from "../../shared/artwork.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import { DetailSheet, DetailSheetBoundary } from "./detail-sheet.js";
+import { clearRadioConversation, createRadioSpeech, getRadioSpeech } from "./api.js";
 import { useRadioProgram, type RadioViewState } from "./use-radio-program.js";
 import "./radio.css";
 
@@ -474,39 +477,249 @@ function RadioQueue({
 }
 
 function RadioDialogue({
+  audio,
+  audioEngine,
+  conversation,
   failure,
   initialError,
   navigate,
+  onConversationCleared,
   onRetry,
+  profileId,
   program,
   scenarioText,
   state,
+  transport,
+  turnError,
+  turnPending,
 }: {
+  audio: AudioEngineSnapshot;
+  audioEngine: AudioEngineFacade;
+  conversation: RadioTurn[];
   failure: { code: string; scenarioText: string } | undefined;
   initialError: boolean;
   navigate: (path: string) => void;
+  onConversationCleared: () => void;
   onRetry: (scenario?: string) => void;
+  profileId: string;
   program: ProgramDetail | null;
   scenarioText: string | undefined;
   state: RadioViewState;
+  transport: ServiceTransport;
+  turnError: string | undefined;
+  turnPending: boolean;
 }): ReactElement {
   const dialogueRef = useRef<HTMLElement>(null);
+  const [clearConfirmation, setClearConfirmation] = useState(false);
   const error = failure === undefined ? undefined : failureCopy(failure.code);
   const intro = program?.djScripts.find((script) => script.type === "intro")?.text;
+  const activeProgramScript =
+    audio.voiceActive && audio.voiceSegmentId !== undefined
+      ? program?.djScripts.find((script) => script.id === audio.voiceSegmentId)
+      : undefined;
   const visibleScenario =
-    scenarioText ?? (state === "playing" ? program?.program.scenarioText : undefined);
+    conversation.length === 0
+      ? (scenarioText ?? (state === "playing" ? program?.program.scenarioText : undefined))
+      : undefined;
+  const playTrack = useMutation({
+    mutationFn: async ({ mode, turn }: { mode: "now" | "next"; turn: RadioTurn }) => {
+      if (turn.track === null) return;
+      const resolution = await resolveTrackAudio(transport, profileId, turn.track.id);
+      await audioEngine.activateProfile(profileId);
+      const preview = {
+        kind: "track",
+        previewId: turn.track.id,
+        resolvedAudioRef: resolution.resolvedAudioRef,
+        durationMs: turn.track.durationMs,
+      } as const;
+      if (mode === "now") await audioEngine.previewAudio(preview);
+      else await audioEngine.queuePreviewNext?.(preview);
+    },
+  });
+  const readMessage = useMutation({
+    mutationFn: async (turn: RadioTurn) => {
+      let speech = await createRadioSpeech(transport, profileId, turn.assistantMessage.id);
+      for (let attempt = 0; attempt < 240 && speech.status !== "succeeded"; attempt += 1) {
+        if (speech.status === "failed") throw new Error("speech_failed");
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 500));
+        speech = await getRadioSpeech(transport, profileId, speech.jobId);
+      }
+      if (speech.audioRef === null || speech.durationMs === null) throw new Error("speech_timeout");
+      await audioEngine.previewAudio({
+        kind: "dj",
+        previewId: turn.assistantMessage.id,
+        resolvedAudioRef: speech.audioRef,
+        durationMs: speech.durationMs,
+      });
+    },
+  });
+  const clearConversationMutation = useMutation({
+    mutationFn: () => clearRadioConversation(transport, profileId),
+    onSuccess() {
+      setClearConfirmation(false);
+      onConversationCleared();
+    },
+  });
   useEffect(() => {
     const dialogue = dialogueRef.current;
     if (dialogue === null) return;
     dialogue.scrollTop = dialogue.scrollHeight;
-  }, [error?.message, initialError, intro, state, visibleScenario]);
+  }, [
+    activeProgramScript?.id,
+    conversation,
+    error?.message,
+    initialError,
+    intro,
+    state,
+    turnError,
+    turnPending,
+    visibleScenario,
+  ]);
   return (
     <section
-      className={`radio-dialogue radio-dialogue--${state}`}
+      className={`radio-dialogue radio-dialogue--${state}${conversation.length > 0 ? " radio-dialogue--has-conversation" : ""}`}
       aria-label="DJ 对话"
       ref={dialogueRef}
     >
+      {conversation.length > 0 && (
+        <header className="radio-dialogue__header">
+          <span>CONVERSATION · {conversation.length}/50</span>
+          <button
+            type="button"
+            disabled={clearConversationMutation.isPending}
+            onClick={() => {
+              if (clearConfirmation) clearConversationMutation.mutate();
+              else setClearConfirmation(true);
+            }}
+            onBlur={() => {
+              if (!clearConversationMutation.isPending) setClearConfirmation(false);
+            }}
+          >
+            {clearConversationMutation.isPending
+              ? "CLEARING..."
+              : clearConfirmation
+                ? "CONFIRM CLEAR"
+                : "CLEAR CHAT"}
+          </button>
+        </header>
+      )}
       {visibleScenario !== undefined && <p className="radio-user-bubble">{visibleScenario}</p>}
+      {conversation.map((turn) => (
+        <div className="radio-turn" key={turn.id}>
+          <p className="radio-user-bubble">{turn.userMessage.content}</p>
+          <div className="radio-dj-copy">
+            <p className="radio-dj-label">DJ</p>
+            <div>
+              <p>{turn.assistantMessage.content}</p>
+              {turn.track !== null && (
+                <article className="radio-track-card">
+                  <strong>{turn.track.title}</strong>
+                  <span>
+                    {turn.track.artist} · {turn.track.album}
+                  </span>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playTrack.mutate({ mode: "now", turn });
+                      }}
+                    >
+                      PLAY NOW
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playTrack.mutate({ mode: "next", turn });
+                      }}
+                    >
+                      PLAY NEXT
+                    </button>
+                  </div>
+                </article>
+              )}
+              <small>
+                {new Date(turn.createdAt).toLocaleTimeString("zh-CN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </small>
+              <button
+                className="radio-read-aloud"
+                type="button"
+                aria-label={`朗读 DJ 回复：${turn.assistantMessage.content.slice(0, 30)}`}
+                disabled={readMessage.isPending}
+                onClick={() => {
+                  readMessage.mutate(turn);
+                }}
+              >
+                {readMessage.isPending && readMessage.variables.id === turn.id
+                  ? "PREPARING VOICE..."
+                  : "READ ALOUD"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+      {activeProgramScript !== undefined && (
+        <div className="radio-dj-copy" key={activeProgramScript.id}>
+          <p className="radio-dj-label">DJ</p>
+          <div>
+            <p>{activeProgramScript.text}</p>
+            {(activeProgramScript.citations ?? []).map((citation) => (
+              <a
+                className="radio-dj-source"
+                href={citation.url}
+                key={citation.id}
+                rel="noreferrer"
+                target="_blank"
+              >
+                SOURCE · {citation.title}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+      {turnPending && (
+        <div className="radio-dj-copy" role="status">
+          <p className="radio-dj-label">DJ</p>
+          <div>
+            <p>Thinking...</p>
+            <span className="radio-tuning-dots" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+          </div>
+        </div>
+      )}
+      {scenarioText !== undefined && !turnPending && (
+        <div className="radio-dj-copy" role="status">
+          <p className="radio-dj-label">DJ</p>
+          <div>
+            <p>Tuning your station...</p>
+            <span className="radio-tuning-dots" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+          </div>
+        </div>
+      )}
+      {turnError !== undefined && (
+        <p className="radio-dialogue__turn-error" role="alert">
+          {turnError}
+        </p>
+      )}
+      {readMessage.isError && (
+        <p className="radio-dialogue__turn-error" role="alert">
+          这条回复暂时无法朗读，文字内容仍可正常查看。
+        </p>
+      )}
+      {clearConversationMutation.isError && (
+        <p className="radio-dialogue__turn-error" role="alert">
+          对话记录未能清空，请重试。
+        </p>
+      )}
       {error !== undefined || initialError ? (
         <div className="radio-dialogue__error" role="alert">
           <p className="radio-dj-label">DJ</p>
@@ -535,7 +748,7 @@ function RadioDialogue({
             </span>
           </div>
         </div>
-      ) : (
+      ) : conversation.length === 0 && !turnPending ? (
         <div className="radio-dj-copy">
           <p className="radio-dj-label">DJ</p>
           <div>
@@ -555,7 +768,7 @@ function RadioDialogue({
             {state === "playing" && <small>JUST NOW · TEXT SESSION</small>}
           </div>
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -749,7 +962,7 @@ export function RadioExperience({
               <span>
                 {radio.viewState === "generating"
                   ? "THINKING"
-                  : audio.currentItem?.kind === "dj"
+                  : audio.voiceActive || audio.currentItem?.kind === "dj"
                     ? "SPEAKING"
                     : radio.viewState === "playing"
                       ? "PLAYING"
@@ -759,9 +972,15 @@ export function RadioExperience({
             <b aria-hidden="true">⌃</b>
           </button>
           <RadioDialogue
+            audio={audio}
+            audioEngine={audioEngine}
+            conversation={radio.conversation}
             failure={radio.failure}
             initialError={radio.initialError}
             navigate={navigate}
+            onConversationCleared={() => {
+              radio.clearConversation();
+            }}
             onRetry={(scenario) => {
               if (scenario === undefined) {
                 radio.retryLatestProgram();
@@ -769,14 +988,18 @@ export function RadioExperience({
                 radio.submitScenario(scenario);
               }
             }}
+            profileId={current.profile.id}
             program={radio.program}
             scenarioText={radio.scenarioText}
             state={radio.viewState}
+            transport={transport}
+            turnError={radio.turnError}
+            turnPending={radio.turnPending}
           />
         </main>
         <form
           aria-label="DJ 场景输入"
-          className={`radio-scene-input${radio.viewState === "generating" ? " radio-scene-input--disabled" : ""}${radio.validationError !== undefined ? " radio-scene-input--error" : ""}`}
+          className={`radio-scene-input${radio.turnPending ? " radio-scene-input--disabled" : ""}${radio.validationError !== undefined ? " radio-scene-input--error" : ""}`}
           onSubmit={submit}
         >
           <label className="visually-hidden" htmlFor="radio-scene">
@@ -785,18 +1008,18 @@ export function RadioExperience({
           <input
             id="radio-scene"
             ref={sceneInputRef}
-            value={radio.viewState === "generating" ? "" : radio.draft}
+            value={radio.draft}
             onChange={(event) => {
               radio.setDraft(event.target.value);
             }}
             placeholder={
-              radio.viewState === "generating"
-                ? "Generating..."
+              radio.turnPending
+                ? "Thinking..."
                 : radio.viewState === "playing"
                   ? "Say something else to the DJ..."
                   : "Say something to the DJ..."
             }
-            disabled={radio.viewState === "generating"}
+            disabled={radio.turnPending}
             aria-invalid={radio.validationError !== undefined || undefined}
             aria-describedby={radio.validationError === undefined ? undefined : "radio-scene-error"}
           />
@@ -812,7 +1035,7 @@ export function RadioExperience({
             className="radio-scene-input__send"
             type="submit"
             aria-label="发送给 DJ"
-            disabled={radio.viewState === "generating"}
+            disabled={radio.turnPending}
           >
             <Icon name="send" />
           </button>

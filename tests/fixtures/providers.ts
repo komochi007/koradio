@@ -18,6 +18,7 @@ export const codexPlanningContextFixture = {
       title: "Quiet Signals",
       scenarioText: "深夜阅读",
       createdAt: "2026-07-16T20:00:00.000Z",
+      trackIds: [],
     },
   ],
   library: {

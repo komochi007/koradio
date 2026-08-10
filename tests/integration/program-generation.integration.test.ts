@@ -70,6 +70,7 @@ async function createHarness(
   timeoutMs = 5_000,
   tts: TtsProvider = createMockTtsProvider(),
   music: MusicProvider = createMockMusicProvider(),
+  maximumTracks: number | null = 5,
 ) {
   const dataRoot = await mkdtemp(join(tmpdir(), "koradio-generation-"));
   const database = await bootstrapDatabase({ dataRoot });
@@ -104,6 +105,7 @@ async function createHarness(
     codex,
     events: { publish: (event) => events.push(event) },
     library,
+    ...(maximumTracks === null ? {} : { maximumTracks }),
     preferences,
     programs,
     repository,
@@ -177,7 +179,14 @@ describe("S3-06 Program generation orchestration", () => {
 
     const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
     expect(detail.program.scenarioText).toBe(command.scenarioText);
-    expect(detail.timeline.map((item) => item.kind)).toEqual(["dj", "track"]);
+    expect(detail.timeline.map((item) => item.kind)).toEqual([
+      "dj",
+      "track",
+      "track",
+      "track",
+      "track",
+      "track",
+    ]);
     const trackItem = detail.timeline.find((item) => item.kind === "track");
     expect(trackItem?.kind).toBe("track");
     if (trackItem?.kind !== "track") {
@@ -964,5 +973,148 @@ describe("S3-06 Program generation REST and reconnect snapshot", () => {
     expect(programGenerationSnapshotSchema.parse(snapshotResponse.json<unknown>()).status).toBe(
       "canceled",
     );
+  });
+
+  it("uses both repair rounds while enforcing Chinese lyrics, unique artists and recent history", async () => {
+    const providerTracks: ProviderTrack[] = [
+      {
+        source: "netease",
+        sourceTrackId: "english-track",
+        title: "English Track",
+        artist: "English Artist",
+        album: "Fixture",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "available",
+        playable: true,
+      },
+      ...Array.from({ length: 9 }, (_, index): ProviderTrack => ({
+        source: "netease",
+        sourceTrackId: `chinese-track-${String(index + 1)}`,
+        title: `中文曲目 ${String(index + 1)}`,
+        artist: index < 2 ? "同一歌手" : `歌手 ${String(index)}`,
+        album: "中文测试",
+        artworkUrl: null,
+        durationMs: 180_000 + index * 1_000,
+        lyricStatus: "available",
+        playable: true,
+      })),
+    ];
+    const music: MusicProvider = {
+      source: "netease",
+      search(keyword) {
+        return Promise.resolve({ items: keyword === "missing" ? [] : providerTracks });
+      },
+      importPlaylist() {
+        return Promise.resolve({
+          source: "netease",
+          sourcePlaylistId: "fixture",
+          title: "Fixture",
+          tracks: providerTracks,
+        });
+      },
+      getLyrics(sourceTrackId) {
+        return Promise.resolve(
+          sourceTrackId === "english-track"
+            ? {
+                status: "available" as const,
+                content: "Only English words are present here",
+                originalContent: "Only English words are present here",
+              }
+            : {
+                status: "available" as const,
+                content: "山河之间的风吹过夜晚我们继续向前走",
+                originalContent: "山河之间的风吹过夜晚我们继续向前走",
+              },
+        );
+      },
+      resolveAudio(sourceTrackId) {
+        const index = Math.max(
+          1,
+          providerTracks.findIndex((track) => track.sourceTrackId === sourceTrackId) + 1,
+        );
+        return Promise.resolve({
+          resolvedAudioRef: `media/00000000-0000-4000-8000-${String(index).padStart(12, "0")}.wav`,
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        });
+      },
+    };
+    const codex: CodexProvider = {
+      plan(context) {
+        const parsed = codexPlanningContextSchema.parse(context);
+        return Promise.resolve({
+          programTitle: "中文补选测试",
+          scenarioSummary: parsed.scenarioText,
+          djLanguage: parsed.preferences.djLanguage,
+          djPersona: parsed.preferences.djVoiceStyle,
+          djScripts: [
+            {
+              type: "intro",
+              language: parsed.preferences.djLanguage,
+              text: "开始这段中文节目。",
+              displayText: "开始这段中文节目。",
+              estimatedTiming: true,
+            },
+          ],
+          trackIntents: Array.from({ length: 12 }, (_, index) => ({
+            kind: "discovery" as const,
+            keyword: index < 4 ? "missing" : "good",
+            reason: "验证首轮与两轮补选",
+          })),
+          playlistIntent: { energy: "中", mood: "安静", avoid: [] },
+        });
+      },
+    };
+    const harness = await createHarness(codex, 5_000, createMockTtsProvider(), music, null);
+
+    const first = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "只要中文歌，做 8 首节目" },
+      "ux11-strict-first",
+    );
+    await harness.generation.waitForIdle();
+    const firstSnapshot = harness.generation.get(harness.profile.id, first.jobId);
+    expect(firstSnapshot.status).toBe("succeeded");
+    const detail = harness.programs.get(harness.profile.id, firstSnapshot.programId ?? "");
+    expect(detail.tracks).toHaveLength(8);
+    expect(detail.tracks.every((track) => track.title.startsWith("中文曲目"))).toBe(true);
+    expect(new Set(detail.tracks.map((track) => track.artist)).size).toBe(8);
+    const deepCommentary = detail.djScripts
+      .filter((segment) => segment.type === "segue")
+      .slice(0, 2);
+    expect(deepCommentary).toHaveLength(2);
+    expect(deepCommentary.every((segment) => Array.from(segment.text).length <= 340)).toBe(true);
+    expect(deepCommentary.every((segment) => segment.ttsAudioRef !== null)).toBe(true);
+
+    const second = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "再做 8 首中文歌节目" },
+      "ux11-strict-second",
+    );
+    await harness.generation.waitForIdle();
+    expect(harness.generation.get(harness.profile.id, second.jobId)).toMatchObject({
+      status: "failed",
+      errorCode: "PROGRAM_GENERATION_INSUFFICIENT_TRACKS",
+    });
+    await closeHarness(harness);
+
+    const explicitHarness = await createHarness(codex, 5_000, createMockTtsProvider(), music, null);
+    const explicit = explicitHarness.generation.start(
+      explicitHarness.profile.id,
+      { scenarioText: "只要中文歌，加入同一歌手的作品，做 8 首节目" },
+      "ux11-explicit-artist",
+    );
+    await explicitHarness.generation.waitForIdle();
+    const explicitSnapshot = explicitHarness.generation.get(
+      explicitHarness.profile.id,
+      explicit.jobId,
+    );
+    expect(explicitSnapshot.status).toBe("succeeded");
+    const explicitDetail = explicitHarness.programs.get(
+      explicitHarness.profile.id,
+      explicitSnapshot.programId ?? "",
+    );
+    expect(explicitDetail.tracks.filter((track) => track.artist === "同一歌手")).toHaveLength(2);
+    await closeHarness(explicitHarness);
   });
 });

@@ -45,10 +45,12 @@ export const providerLyricsResultSchema = z.discriminatedUnion("status", [
   z.strictObject({
     status: z.enum(["available", "untimed"]),
     content: z.string().min(1).max(1_000_000),
+    originalContent: z.string().min(1).max(1_000_000).optional(),
   }),
   z.strictObject({
     status: z.literal("unavailable"),
     content: z.null(),
+    originalContent: z.null().optional(),
   }),
 ]);
 export const providerAudioResultSchema = z.strictObject({

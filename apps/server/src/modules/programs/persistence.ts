@@ -31,6 +31,7 @@ interface ProgramRow {
   created_at: string;
   id: string;
   origin_mode: "live" | "mock";
+  playback_mode: "sequential" | "voice-overlay";
   profile_id: string;
   scenario_text: string;
   status: "ready" | "completed";
@@ -56,6 +57,7 @@ const programRowSchema: z.ZodType<ProgramRow> = z.object({
   created_at: z.string(),
   id: z.string(),
   origin_mode: z.enum(["live", "mock"]),
+  playback_mode: z.enum(["sequential", "voice-overlay"]),
   profile_id: z.string(),
   scenario_text: z.string(),
   status: z.enum(["ready", "completed"]),
@@ -76,6 +78,12 @@ const djScriptSegmentRowSchema: z.ZodType<DjScriptSegmentRow> = z.object({
 });
 const ttsReferenceRowSchema = z.object({ tts_audio_ref: z.string() });
 const countRowSchema = z.object({ count: z.number() });
+const citationRowSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  url: z.string(),
+  provider: z.enum(["musicbrainz", "wikimedia"]),
+});
 
 export interface ProgramRecord {
   djScripts: DjScriptSegment[];
@@ -106,7 +114,10 @@ export interface PendingCleanupRecord {
   stagedName: string;
 }
 
-function mapSegment(row: DjScriptSegmentRow): DjScriptSegment {
+function mapSegment(
+  row: DjScriptSegmentRow,
+  citations: Array<z.infer<typeof citationRowSchema>>,
+): DjScriptSegment {
   const parsed = djScriptSegmentSchema.safeParse({
     id: row.id,
     programId: row.program_id,
@@ -116,6 +127,7 @@ function mapSegment(row: DjScriptSegmentRow): DjScriptSegment {
     displayText: row.display_text,
     estimatedTiming: row.estimated_timing === 1,
     ttsAudioRef: row.tts_audio_ref,
+    ...(citations.length === 0 ? {} : { citations }),
   });
   if (!parsed.success) {
     throw new ProgramDataError();
@@ -132,6 +144,7 @@ function mapProgram(row: ProgramRow, trackIds: string[]): Program {
     status: row.status,
     trackIds,
     originMode: row.origin_mode,
+    ...(row.playback_mode === "sequential" ? {} : { playbackMode: row.playback_mode }),
     createdAt: row.created_at,
   });
   if (!parsed.success) {
@@ -170,8 +183,9 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
     SELECT * FROM dj_script_segment WHERE program_id = ? ORDER BY position ASC
   `);
   const insertProgram = client.prepare(`
-    INSERT INTO program (id, profile_id, scenario_text, title, status, origin_mode, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO program (
+      id, profile_id, scenario_text, title, status, origin_mode, playback_mode, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertTrack = client.prepare(`
     INSERT INTO program_track (program_id, position, track_id) VALUES (?, ?, ?)
@@ -182,6 +196,13 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
       estimated_timing, tts_audio_ref
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const findCitations = client.prepare(
+    "SELECT id, title, url, provider FROM dj_citation WHERE segment_id = ? ORDER BY position ASC",
+  );
+  const insertCitation = client.prepare(`
+    INSERT INTO dj_citation (id, segment_id, position, title, url, provider)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
   const listPrograms = client.prepare(`
     SELECT * FROM program
@@ -212,6 +233,11 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
   const deleteTimeline = client.prepare("DELETE FROM playback_timeline_item WHERE program_id = ?");
   const deleteTracks = client.prepare("DELETE FROM program_track WHERE program_id = ?");
   const deleteSegments = client.prepare("DELETE FROM dj_script_segment WHERE program_id = ?");
+  const deleteCitations = client.prepare(`
+    DELETE FROM dj_citation WHERE segment_id IN (
+      SELECT id FROM dj_script_segment WHERE program_id = ?
+    )
+  `);
   const deleteGeneration = client.prepare(`
     DELETE FROM program_generation_job WHERE profile_id = ? AND program_id = ? AND status = 'succeeded'
   `);
@@ -232,7 +258,9 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
     const djScripts = parseSqliteRows(
       djScriptSegmentRowSchema,
       findProgramSegments.all(row.id),
-    ).map(mapSegment);
+    ).map((segment) =>
+      mapSegment(segment, parseSqliteRows(citationRowSchema, findCitations.all(segment.id))),
+    );
     return {
       program: readProgram(row),
       djScripts,
@@ -250,6 +278,7 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
       const cleared = deleteCurrent.run(profileId, programId).changes > 0;
       deleteTimeline.run(programId);
       deleteTracks.run(programId);
+      deleteCitations.run(programId);
       deleteSegments.run(programId);
       deleteGeneration.run(profileId, programId);
       const result = deleteProgram.run(profileId, programId);
@@ -274,6 +303,7 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
         record.program.title,
         record.program.status,
         record.program.originMode,
+        record.program.playbackMode ?? "sequential",
         record.program.createdAt,
       );
       for (const [position, trackId] of record.program.trackIds.entries()) {
@@ -291,6 +321,16 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
           segment.estimatedTiming ? 1 : 0,
           segment.ttsAudioRef,
         );
+        for (const [citationPosition, citation] of (segment.citations ?? []).entries()) {
+          insertCitation.run(
+            citation.id,
+            segment.id,
+            citationPosition,
+            citation.title,
+            citation.url,
+            citation.provider,
+          );
+        }
       }
     },
     list(profileId, cursor, limit = 20) {

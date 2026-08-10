@@ -6,6 +6,8 @@ import {
   profileIdParamsSchema,
   profileJobIdParamsSchema,
   profileProgramIdParamsSchema,
+  profileRadioMessageIdParamsSchema,
+  profileRadioTurnIdParamsSchema,
   profileTrackIdParamsSchema,
 } from "./common.js";
 import { createFeedbackCommandSchema } from "./feedback.js";
@@ -15,6 +17,7 @@ import {
   musicSearchCommandSchema,
 } from "./music.js";
 import { updateProfilePreferencesCommandSchema } from "./preferences.js";
+import { clearRadioConversationCommandSchema, createRadioTurnCommandSchema } from "./radio.js";
 import {
   createProfileCommandSchema,
   selectCurrentProfileCommandSchema,
@@ -47,6 +50,28 @@ export const generateProgramRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
   headers: idempotencyKeyHeadersSchema,
   body: generateProgramCommandSchema,
+});
+export const createRadioTurnRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+  headers: idempotencyKeyHeadersSchema,
+  body: createRadioTurnCommandSchema,
+});
+export const radioTurnSnapshotRequestSchema = z.strictObject({
+  params: profileRadioTurnIdParamsSchema,
+});
+export const radioConversationRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+});
+export const clearRadioConversationRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+  body: clearRadioConversationCommandSchema,
+});
+export const createRadioSpeechGenerationRequestSchema = z.strictObject({
+  params: profileRadioMessageIdParamsSchema,
+  headers: idempotencyKeyHeadersSchema,
+});
+export const radioSpeechGenerationSnapshotRequestSchema = z.strictObject({
+  params: profileJobIdParamsSchema,
 });
 export const programDetailRequestSchema = z.strictObject({
   params: profileProgramIdParamsSchema,
@@ -117,6 +142,10 @@ export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
 export type SelectCurrentProfileRequest = z.infer<typeof selectCurrentProfileRequestSchema>;
 export type UpdateProfilePreferencesRequest = z.infer<typeof updateProfilePreferencesRequestSchema>;
 export type GenerateProgramRequest = z.infer<typeof generateProgramRequestSchema>;
+export type CreateRadioTurnRequest = z.infer<typeof createRadioTurnRequestSchema>;
+export type CreateRadioSpeechGenerationRequest = z.infer<
+  typeof createRadioSpeechGenerationRequestSchema
+>;
 export type ProgramGenerationSnapshotRequest = z.infer<
   typeof programGenerationSnapshotRequestSchema
 >;

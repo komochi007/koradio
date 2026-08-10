@@ -257,9 +257,49 @@
   height: 0;
 }
 
-.radio-dialogue--empty {
+.radio-dialogue--empty:not(.radio-dialogue--has-conversation) {
   display: flex;
   align-items: flex-end;
+}
+
+.radio-dialogue__header {
+  position: sticky;
+  z-index: 1;
+  top: -24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -24px -28px 24px;
+  padding: 12px 28px;
+  border-bottom: 1px solid var(--kr-border-subtle);
+  background: color-mix(in srgb, var(--kr-surface) 94%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.radio-dialogue__header span,
+.radio-dialogue__header button,
+.radio-read-aloud {
+  color: var(--kr-text-tertiary);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+}
+
+.radio-dialogue__header button,
+.radio-read-aloud {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.radio-dialogue__header button:hover,
+.radio-dialogue__header button:focus-visible,
+.radio-read-aloud:hover,
+.radio-read-aloud:focus-visible {
+  color: var(--kr-accent);
 }
 
 .radio-user-bubble {
@@ -305,6 +345,59 @@
   color: var(--kr-text-tertiary);
   font-size: 14px;
   letter-spacing: 0.06em;
+}
+
+.radio-read-aloud {
+  margin-top: 2px;
+  margin-left: -8px;
+}
+
+.radio-turn + .radio-turn,
+.radio-turn + .radio-dj-copy,
+.radio-dj-copy + .radio-turn {
+  margin-top: 24px;
+}
+
+.radio-track-card {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 16px;
+  background: var(--kr-surface-elevated);
+}
+
+.radio-track-card strong {
+  color: var(--kr-text);
+  font-size: 18px;
+}
+
+.radio-track-card > span {
+  color: var(--kr-text-secondary);
+  font-size: 15px;
+}
+
+.radio-track-card > div {
+  display: flex;
+  gap: 18px;
+  margin-top: 8px;
+}
+
+.radio-track-card button,
+.radio-dj-source {
+  border: 0;
+  color: var(--kr-accent);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.radio-dialogue__turn-error {
+  margin: 16px 0 0;
+  color: var(--kr-error);
+  font-size: 15px;
 }
 
 .radio-tuning-dots {

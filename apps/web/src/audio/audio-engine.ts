@@ -38,6 +38,7 @@ interface AudioPreloader {
 
 interface CreateAudioEngineOptions {
   audio?: AudioElementLike;
+  voiceAudio?: AudioElementLike;
   checkpointIntervalMs?: number;
   lease?: PlaybackLeaseCoordinator;
   now?: () => number;
@@ -51,6 +52,7 @@ interface PreviewContext {
   durationMs: number;
   returnIndex: number | undefined;
   returnPositionMs: number;
+  returnWasPlaying: boolean;
 }
 
 const initialSnapshot: AudioEngineSnapshot = {
@@ -71,6 +73,23 @@ const initialSnapshot: AudioEngineSnapshot = {
 
 function createAudioElement(): AudioElementLike {
   return new Audio();
+}
+
+function createSilentAudioElement(): AudioElementLike {
+  return {
+    currentTime: 0,
+    duration: 0,
+    error: null,
+    paused: true,
+    preload: "none",
+    src: "",
+    volume: 1,
+    addEventListener() {},
+    load() {},
+    pause() {},
+    play: () => Promise.resolve(),
+    removeAttribute() {},
+  };
 }
 
 function createPreloader(): AudioPreloader {
@@ -105,18 +124,27 @@ function clamp(value: number, minimum: number, maximum: number): number {
 
 export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngineFacade {
   const audio = options.audio ?? createAudioElement();
+  const voiceAudio =
+    options.voiceAudio ??
+    (options.audio === undefined ? createAudioElement() : createSilentAudioElement());
   const preloader = options.preloader ?? createPreloader();
   const now = options.now ?? Date.now;
   const checkpointIntervalMs = options.checkpointIntervalMs ?? 15_000;
   const listeners = new Set<() => void>();
   let snapshot = initialSnapshot;
   let program: ProgramDetail | undefined;
+  let timeline: PlaybackTimelineItem[] = [];
   let profileId: string | undefined;
   let currentIndex = 0;
   let lastCheckpointAt = 0;
   let loadVersion = 0;
   let expectedSource: string | undefined;
   let previewContext: PreviewContext | undefined;
+  let queuedPreview: PreviewAudioOptions | undefined;
+  let voiceActive = false;
+  let voiceRamp: ReturnType<typeof setInterval> | undefined;
+  let userVolume = 1;
+  const triggeredVoiceCues = new Set<string>();
   let destroyed = false;
 
   async function yieldPlayback(): Promise<void> {
@@ -133,7 +161,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     });
 
   function currentItem(): PlaybackTimelineItem | undefined {
-    return program?.timeline[currentIndex];
+    return timeline[currentIndex];
   }
 
   function activePreviewId(): string | undefined {
@@ -149,7 +177,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   }
 
   function remoteSnapshot(value: LeasePlaybackSnapshot): AudioEngineSnapshot {
-    const item = program?.timeline.find((candidate) => candidate.id === value.timelineItemId);
+    const item = timeline.find((candidate) => candidate.id === value.timelineItemId);
     return {
       ownership: "passive",
       state: value.state,
@@ -198,17 +226,107 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     publish();
   }
 
+  function rampMusic(target: number, durationMs: number): void {
+    if (voiceRamp !== undefined) clearInterval(voiceRamp);
+    const start = audio.volume;
+    const startedAt = now();
+    voiceRamp = setInterval(() => {
+      const progress = clamp((now() - startedAt) / durationMs, 0, 1);
+      audio.volume = start + (target - start) * progress;
+      if (progress >= 1 && voiceRamp !== undefined) {
+        clearInterval(voiceRamp);
+        voiceRamp = undefined;
+      }
+    }, 25);
+  }
+
+  function originalTrackPosition(trackId: string): number {
+    return (
+      program?.timeline.findIndex((item) => item.kind === "track" && item.trackId === trackId) ?? -1
+    );
+  }
+
+  function cueBeforeTrack(trackIndex: number): PlaybackTimelineItem | undefined {
+    const track = timeline[trackIndex];
+    if (program === undefined || track?.kind !== "track") return undefined;
+    const position = originalTrackPosition(track.trackId);
+    const previousTrack =
+      trackIndex === 0
+        ? -1
+        : originalTrackPosition(
+            (timeline[trackIndex - 1] as Extract<PlaybackTimelineItem, { kind: "track" }>).trackId,
+          );
+    return program.timeline.slice(previousTrack + 1, position).find((item) => item.kind === "dj");
+  }
+
+  function outroCue(): PlaybackTimelineItem | undefined {
+    const last = timeline.at(-1);
+    if (program === undefined || last?.kind !== "track") return undefined;
+    return program.timeline
+      .slice(originalTrackPosition(last.trackId) + 1)
+      .find((item) => item.kind === "dj");
+  }
+
+  async function startVoice(item: PlaybackTimelineItem | undefined): Promise<void> {
+    if (item?.kind !== "dj" || triggeredVoiceCues.has(item.id)) return;
+    triggeredVoiceCues.add(item.id);
+    voiceActive = true;
+    voiceAudio.pause();
+    voiceAudio.src = sourceFor(item);
+    voiceAudio.preload = "auto";
+    voiceAudio.load();
+    voiceAudio.currentTime = 0;
+    voiceAudio.volume = 1;
+    rampMusic(userVolume * 0.28, 350);
+    update({
+      voiceActive: true,
+      voiceDurationMs: item.durationMs,
+      voicePositionMs: 0,
+      voiceSegmentId: item.segmentId,
+    });
+    try {
+      await voiceAudio.play();
+    } catch {
+      voiceActive = false;
+      rampMusic(userVolume, 650);
+      update({
+        voiceActive: false,
+        voiceDurationMs: undefined,
+        voicePositionMs: undefined,
+        voiceSegmentId: undefined,
+      });
+    }
+  }
+
+  function maybeStartOverlay(positionMs: number): void {
+    if (program?.program.playbackMode !== "voice-overlay") return;
+    const item = currentItem();
+    if (item?.kind !== "track") return;
+    if (currentIndex === 0 && positionMs < 1_500) void startVoice(cueBeforeTrack(0));
+    const nextCue =
+      currentIndex < timeline.length - 1 ? cueBeforeTrack(currentIndex + 1) : outroCue();
+    if (nextCue?.kind !== "dj") return;
+    const lead = clamp(Math.round(nextCue.durationMs * 0.35), 8_000, 18_000);
+    if (positionMs >= item.durationMs - lead) void startVoice(nextCue);
+  }
+
   function stopMedia(): void {
     loadVersion += 1;
     expectedSource = undefined;
     audio.pause();
     audio.removeAttribute("src");
     audio.load();
+    voiceAudio.pause();
+    voiceAudio.removeAttribute("src");
+    voiceAudio.load();
+    voiceActive = false;
+    if (voiceRamp !== undefined) clearInterval(voiceRamp);
+    audio.volume = userVolume;
     preloader.clear();
   }
 
   function preloadNext(): void {
-    const next = program?.timeline[currentIndex + 1];
+    const next = timeline[currentIndex + 1];
     if (next === undefined) preloader.clear();
     else preloader.preload(sourceFor(next));
   }
@@ -219,8 +337,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     state: AudioPlaybackState = "ready",
   ): void {
     if (program === undefined) return;
-    currentIndex = clamp(index, 0, program.timeline.length - 1);
-    const item = program.timeline[currentIndex];
+    currentIndex = clamp(index, 0, timeline.length - 1);
+    const item = timeline[currentIndex];
     if (item === undefined) return;
     const source = sourceFor(item);
     loadVersion += 1;
@@ -234,10 +352,10 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       state,
       currentItem: item,
       currentIndex,
-      itemCount: program.timeline.length,
+      itemCount: timeline.length,
       positionMs: clamp(positionMs, 0, item.durationMs),
       durationMs: item.durationMs,
-      volume: audio.volume,
+      volume: userVolume,
       mediaError: undefined,
       preview: undefined,
     });
@@ -252,6 +370,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     update({ preview: undefined });
     if (program !== undefined && returning.returnIndex !== undefined) {
       setCurrentItem(returning.returnIndex, returning.returnPositionMs, "paused");
+      if (returning.returnWasPlaying) void playCurrent(false);
     }
     if (failedPreview !== undefined) {
       update({ preview: failedPreview });
@@ -269,6 +388,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     if (lease.getState().ownership !== "active") return;
     if (previewContext === undefined) {
       const item = currentItem();
+      const returnWasPlaying = snapshot.state === "playing" || snapshot.state === "buffering";
       if (item !== undefined) {
         audio.pause();
         update({ state: "paused" });
@@ -280,6 +400,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         durationMs: preview.durationMs,
         returnIndex: item === undefined ? undefined : currentIndex,
         returnPositionMs: item === undefined ? 0 : snapshot.positionMs,
+        returnWasPlaying,
       };
     } else {
       previewContext = {
@@ -381,7 +502,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         programId: program.program.id,
         timelineItemId: item.id,
         positionMs,
-        volume: audio.volume,
+        volume: userVolume,
         status: resolvedStatus,
         leaseEpoch: epoch,
       });
@@ -404,7 +525,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     await checkpoint(
       reason === "error" ? "failed" : snapshot.state === "playing" ? "playing" : "paused",
     );
-    if (currentIndex >= program.timeline.length - 1) {
+    if (currentIndex >= timeline.length - 1) {
       audio.pause();
       const state = reason === "error" ? "failed" : "completed";
       update({
@@ -413,6 +534,15 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         mediaError: reason === "error" ? "queue_exhausted" : undefined,
       });
       await checkpoint(reason === "error" ? "failed" : "completed");
+      if (reason === "ended" && queuedPreview !== undefined) {
+        const queued = queuedPreview;
+        queuedPreview = undefined;
+        await previewAudio(queued);
+        if (previewContext !== undefined) {
+          previewContext = { ...previewContext, returnIndex: undefined, returnWasPlaying: false };
+        }
+        update({ state: "completed" });
+      }
       return;
     }
     const shouldPlay =
@@ -422,6 +552,12 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       reason === "error";
     const nextIndex = currentIndex + 1;
     setCurrentItem(nextIndex, 0, shouldPlay ? "buffering" : "paused");
+    if (reason === "ended" && queuedPreview !== undefined) {
+      const queued = queuedPreview;
+      queuedPreview = undefined;
+      await previewAudio(queued);
+      return;
+    }
     if (shouldPlay) await playCurrent(false);
     if (
       currentIndex === nextIndex &&
@@ -454,7 +590,20 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         return;
       }
       update({ state: "playing" });
+      if (voiceActive && voiceAudio.paused) {
+        await voiceAudio.play().catch(() => {
+          voiceActive = false;
+          rampMusic(userVolume, 650);
+          update({
+            voiceActive: false,
+            voiceDurationMs: undefined,
+            voicePositionMs: undefined,
+            voiceSegmentId: undefined,
+          });
+        });
+      }
       preloadNext();
+      maybeStartOverlay(snapshot.positionMs);
     } catch (error) {
       const name = error instanceof DOMException ? error.name : "";
       if (name === "NotAllowedError") {
@@ -477,23 +626,24 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     if (destroyed || version !== loadVersion || program !== programDetail) return;
     const savedIndex =
       saved?.programId === programDetail.program.id
-        ? programDetail.timeline.findIndex((item) => item.id === saved.timelineItemId)
+        ? timeline.findIndex((item) => item.id === saved.timelineItemId)
         : -1;
     const index = savedIndex >= 0 ? savedIndex : 0;
     const positionMs = savedIndex >= 0 ? (saved?.positionMs ?? 0) : 0;
     if (lease.getState().ownership === "active") {
-      audio.volume = saved?.volume ?? audio.volume;
+      userVolume = saved?.volume ?? userVolume;
+      audio.volume = userVolume;
       setCurrentItem(index, positionMs, saved?.status === "completed" ? "completed" : "paused");
       if (autoplay && saved?.status !== "completed") await playCurrent(false);
     } else {
       currentIndex = index;
-      const item = programDetail.timeline[index];
+      const item = timeline[index];
       update({
         ownership: "passive",
         state: saved?.status === "completed" ? "completed" : "paused",
         currentItem: item,
         currentIndex: index,
-        itemCount: programDetail.timeline.length,
+        itemCount: timeline.length,
         positionMs,
         durationMs: item?.durationMs ?? 0,
         volume: saved?.volume ?? snapshot.volume,
@@ -520,6 +670,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       return;
     const positionMs = clamp(Math.round(audio.currentTime * 1000), 0, item.durationMs);
     update({ positionMs });
+    maybeStartOverlay(positionMs);
     if (snapshot.state === "playing" && now() - lastCheckpointAt >= checkpointIntervalMs) {
       void checkpoint("playing");
     }
@@ -569,6 +720,38 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       void advance("error");
     }
   });
+  voiceAudio.addEventListener("ended", () => {
+    if (!voiceActive) return;
+    voiceActive = false;
+    rampMusic(userVolume, 650);
+    update({
+      voiceActive: false,
+      voiceDurationMs: undefined,
+      voicePositionMs: undefined,
+      voiceSegmentId: undefined,
+    });
+  });
+  voiceAudio.addEventListener("error", () => {
+    if (!voiceActive || voiceAudio.error === null) return;
+    voiceActive = false;
+    rampMusic(userVolume, 650);
+    update({
+      voiceActive: false,
+      voiceDurationMs: undefined,
+      voicePositionMs: undefined,
+      voiceSegmentId: undefined,
+    });
+  });
+  voiceAudio.addEventListener("timeupdate", () => {
+    if (!voiceActive || snapshot.voiceDurationMs === undefined) return;
+    update({
+      voicePositionMs: clamp(
+        Math.round(voiceAudio.currentTime * 1000),
+        0,
+        snapshot.voiceDurationMs,
+      ),
+    });
+  });
 
   lease.subscribe((leaseState) => {
     if (leaseState.ownership === "passive") {
@@ -616,6 +799,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       lease.release();
       stopMedia();
       program = undefined;
+      timeline = [];
       profileId = undefined;
       snapshot = initialSnapshot;
       publish();
@@ -636,6 +820,11 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       if (program?.program.id === nextProgram.program.id) return;
       if (program !== undefined && lease.getState().ownership === "active") await yieldPlayback();
       program = nextProgram;
+      timeline =
+        nextProgram.program.playbackMode === "voice-overlay"
+          ? nextProgram.timeline.filter((item) => item.kind === "track")
+          : nextProgram.timeline;
+      triggeredVoiceCues.clear();
       profileId = nextProgram.program.profileId;
       currentIndex = 0;
       update({
@@ -643,9 +832,9 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         programId: nextProgram.program.id,
         state: "ready",
         currentIndex: 0,
-        itemCount: nextProgram.timeline.length,
+        itemCount: timeline.length,
         positionMs: 0,
-        durationMs: nextProgram.timeline[0]?.durationMs ?? 0,
+        durationMs: timeline[0]?.durationMs ?? 0,
         checkpointError: false,
         mediaError: undefined,
       });
@@ -655,15 +844,21 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     async pause() {
       if (lease.getState().ownership !== "active") return;
       audio.pause();
+      voiceAudio.pause();
       update({ state: "paused" });
       await checkpoint("paused");
     },
     play: () => playCurrent(true),
     previewAudio,
+    queuePreviewNext(preview) {
+      queuedPreview = preview;
+      return Promise.resolve();
+    },
     async prepareForProfileSwitch() {
       await yieldPlayback();
       lease.release();
       program = undefined;
+      timeline = [];
       profileId = undefined;
       snapshot = initialSnapshot;
       publish();
@@ -689,7 +884,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     },
     setVolume(volume) {
       const next = clamp(volume, 0, 1);
-      audio.volume = next;
+      userVolume = next;
+      audio.volume = voiceActive ? next * 0.28 : next;
       update({ volume: next });
     },
     stopPreview,

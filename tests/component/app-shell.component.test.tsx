@@ -256,6 +256,41 @@ function createOnlineTransport(
         }),
       );
     }
+    if (path.endsWith("/radio-conversation") && method === "GET") {
+      return Promise.resolve(jsonResponse({ turns: [] }));
+    }
+    if (path.endsWith("/radio-turns") && method === "POST") {
+      const command = parseRequestBody(init) as { content: string };
+      return Promise.resolve(
+        jsonResponse(
+          {
+            id: "00000000-0000-4000-8000-000000000075",
+            profileId: primaryProfile.id,
+            decision: "program",
+            userMessage: {
+              id: "00000000-0000-4000-8000-000000000076",
+              profileId: primaryProfile.id,
+              role: "user",
+              content: command.content,
+              trackId: null,
+              createdAt: "2026-07-17T08:00:00.000Z",
+            },
+            assistantMessage: {
+              id: "00000000-0000-4000-8000-000000000077",
+              profileId: primaryProfile.id,
+              role: "assistant",
+              content: "我来按这个场景准备一档节目。",
+              trackId: null,
+              createdAt: "2026-07-17T08:00:00.000Z",
+            },
+            track: null,
+            programJobId: "00000000-0000-4000-8000-000000000074",
+            createdAt: "2026-07-17T08:00:00.000Z",
+          },
+          201,
+        ),
+      );
+    }
     if (path.endsWith(`/programs/${generatedProgram.program.id}`) && method === "GET") {
       return Promise.resolve(jsonResponse(options.latestProgram ?? generatedProgram));
     }
@@ -709,7 +744,7 @@ describe("App Shell", () => {
     );
     expect(radioPage?.classList.contains("radio-page--queue-collapsed")).toBe(false);
     const generationCall = transport.request.mock.calls.find(([path]) =>
-      path.endsWith("/program-generations"),
+      path.endsWith("/radio-turns"),
     );
     expect(generationCall?.[1]?.method).toBe("POST");
     expect(new Headers(generationCall?.[1]?.headers).has("Idempotency-Key")).toBe(true);

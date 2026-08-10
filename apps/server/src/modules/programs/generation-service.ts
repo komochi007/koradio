@@ -33,6 +33,7 @@ import {
 } from "./providers.js";
 import type { ProgramGenerationRepository } from "./generation-persistence.js";
 import type { ProgramService } from "./service.js";
+import type { MusicFact, MusicFactProvider } from "./music-facts.js";
 
 export class ProgramGenerationNotFoundError extends Error {
   constructor() {
@@ -77,6 +78,7 @@ export interface CreateProgramGenerationServiceOptions {
   codex?: CodexProvider;
   events: { publish(event: V1Event): void };
   library: GenerationLibrary;
+  facts?: MusicFactProvider;
   maximumTracks?: number;
   now?: () => Date;
   originMode?: OriginMode;
@@ -100,6 +102,45 @@ export interface ProgramGenerationService {
     idempotencyKey: string,
   ): ProgramGenerationSnapshot;
   waitForIdle(): Promise<void>;
+}
+
+const chineseTrackCounts = new Map([
+  ["八", 8],
+  ["九", 9],
+  ["十", 10],
+  ["十一", 11],
+  ["十二", 12],
+]);
+
+const maximumDeepCommentaryCharacters = 340;
+
+function trimCommentary(value: string): string {
+  const characters = Array.from(value.trim());
+  if (characters.length <= maximumDeepCommentaryCharacters) return value.trim();
+  return `${characters.slice(0, maximumDeepCommentaryCharacters - 1).join("")}…`;
+}
+
+function deepCommentaryFor(
+  track: MusicTrack,
+  language: "zh-CN" | "en-GB",
+  facts: MusicFact[],
+): string {
+  const factText = trimCommentary(facts.map((fact) => fact.fact).join(" "));
+  if (language === "zh-CN") {
+    return trimCommentary(
+      `${track.title} 先把旋律向上推开，再在句尾收住；节奏不急着给出答案，留白让呼吸停在拍点之间。${track.artist} 的声音与伴奏没有争抢中心，情绪藏在音色、力度和距离感里。${factText.length === 0 ? "没有可靠来源时，我们不补写幕后传闻，只谈这段录音里真正听得见的细节。" : factText} 在这一刻听它，可以留意一次换气、鼓点的轻重或重复旋律里细小的变化；那正是它能把当前情绪带向下一首歌的原因。`,
+    );
+  }
+  return trimCommentary(
+    `${track.title} lets the melody rise, then draws it back at the end of each phrase. The rhythm leaves space rather than rushing to resolve, while ${track.artist}'s voice and the arrangement share the centre. ${factText || "There is no reliable source for a backstage story here, so we stay with what the recording itself reveals."} Listen for one breath, a change in drum weight, or a small shift inside a repeated phrase; those details let this track carry the room into the next one.`,
+  );
+}
+
+export function requestedProgramTrackCount(scenarioText: string): number | null {
+  const numeric = scenarioText.match(/(?:^|\D)(\d{1,2})\s*(?:首|支|曲)/u)?.[1];
+  if (numeric !== undefined) return Number.parseInt(numeric, 10);
+  const chinese = scenarioText.match(/(十二|十一|十|九|八)\s*(?:首|支|曲)/u)?.[1];
+  return chinese === undefined ? null : (chineseTrackCounts.get(chinese) ?? null);
 }
 
 function isActive(snapshot: ProgramGenerationSnapshot | null): boolean {
@@ -151,7 +192,9 @@ export function createProgramGenerationService(
   const now = options.now ?? (() => new Date());
   const originMode = options.originMode ?? "mock";
   const randomId = options.randomId ?? randomUUID;
-  const maximumTracks = Math.max(1, Math.min(options.maximumTracks ?? 5, 5));
+  const configuredTrackCount =
+    options.maximumTracks === undefined ? 8 : Math.max(1, Math.min(options.maximumTracks, 12));
+  const strictTrackCount = options.maximumTracks === undefined;
   const timeoutMs = options.timeoutMs ?? 120_000;
   const activeRuns = new Map<string, ActiveRun>();
 
@@ -213,6 +256,8 @@ export function createProgramGenerationService(
     snapshot: ProgramGenerationSnapshot,
     plan: CodexProgramPlan,
     libraryTracks: MusicTrack[],
+    targetTrackCount: number,
+    scenarioText: string,
     signal: AbortSignal,
   ): Promise<Array<{ audio: AudioResolution; track: MusicTrack }>> {
     setStage(snapshot.jobId, "resolving_tracks", signal);
@@ -220,10 +265,48 @@ export function createProgramGenerationService(
     const resolved: Array<{ audio: AudioResolution; track: MusicTrack }> = [];
     const failedTrackIds = new Set<string>();
     const selectedTrackIds = new Set<string>();
+    const selectedArtists = new Set<string>();
+    const recentTrackIds = new Set(
+      options.programs
+        .list(snapshot.profileId, undefined, 10)
+        .items.flatMap((program) => program.trackIds),
+    );
+    const chineseOnly = /中文歌|华语歌|国语歌|粤语歌/u.test(scenarioText);
+    const normalizedScenario = scenarioText.toLocaleLowerCase("en-US");
     let trackDegraded = false;
+
+    const isChineseVocal = async (track: MusicTrack): Promise<boolean> => {
+      if (!chineseOnly) return true;
+      try {
+        const lyrics = await withAbort(() => options.library.getLyrics(track.id, signal), signal);
+        if (lyrics.content === null) return false;
+        const original = lyrics.originalContent ?? lyrics.content;
+        const normalized = original.replace(/\[[^\]]+\]/gu, "").replace(/[\s\p{P}\p{S}\d]/gu, "");
+        if (normalized.length === 0) return false;
+        const han = normalized.match(/\p{Script=Han}/gu)?.length ?? 0;
+        return han / Array.from(normalized).length >= 0.6;
+      } catch {
+        return false;
+      }
+    };
 
     const tryResolve = async (track: MusicTrack): Promise<boolean> => {
       if (selectedTrackIds.has(track.id)) {
+        return false;
+      }
+      const artistKey = track.artist.trim().toLocaleLowerCase("en-US");
+      const explicitArtist = artistKey.length > 0 && normalizedScenario.includes(artistKey);
+      const titleKey = track.title.trim().toLocaleLowerCase("en-US");
+      const explicitTrack = titleKey.length >= 2 && normalizedScenario.includes(titleKey);
+      if (
+        (!explicitTrack && recentTrackIds.has(track.id)) ||
+        (!explicitArtist && selectedArtists.has(artistKey))
+      ) {
+        trackDegraded = true;
+        return false;
+      }
+      if (!(await isChineseVocal(track))) {
+        trackDegraded = true;
         return false;
       }
       if (!track.playable) {
@@ -236,6 +319,7 @@ export function createProgramGenerationService(
         assertActive(snapshot.jobId, signal);
         resolved.push({ audio, track });
         selectedTrackIds.add(track.id);
+        selectedArtists.add(artistKey);
         return true;
       } catch (error) {
         if (signal.aborted || error instanceof GenerationAbortedError) {
@@ -281,22 +365,30 @@ export function createProgramGenerationService(
       return false;
     };
 
-    for (const intent of plan.trackIntents) {
-      if (resolved.length === maximumTracks) {
-        break;
-      }
-      if (intent.kind === "library") {
-        const track = libraryCandidates.get(intent.trackId);
-        if (track === undefined) {
-          trackDegraded = true;
+    const intentRounds = strictTrackCount
+      ? [
+          plan.trackIntents.slice(0, targetTrackCount),
+          plan.trackIntents.slice(targetTrackCount, targetTrackCount + 2),
+          plan.trackIntents.slice(targetTrackCount + 2, targetTrackCount + 4),
+        ]
+      : [plan.trackIntents];
+    for (const intents of intentRounds) {
+      for (const intent of intents) {
+        if (resolved.length === targetTrackCount) break;
+        if (intent.kind === "library") {
+          const track = libraryCandidates.get(intent.trackId);
+          if (track === undefined) {
+            trackDegraded = true;
+            continue;
+          }
+          if (!(await tryResolve(track))) {
+            await searchAndResolve(track.artist, true);
+          }
           continue;
         }
-        if (!(await tryResolve(track))) {
-          await searchAndResolve(track.artist, true);
-        }
-        continue;
+        await searchAndResolve(intent.keyword);
       }
-      await searchAndResolve(intent.keyword);
+      if (resolved.length === targetTrackCount) break;
     }
 
     if (trackDegraded) {
@@ -304,6 +396,9 @@ export function createProgramGenerationService(
     }
     if (resolved.length === 0) {
       throw new GenerationPipelineError("PROGRAM_GENERATION_NO_PLAYABLE_TRACKS");
+    }
+    if (strictTrackCount && resolved.length !== targetTrackCount) {
+      throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_TRACKS");
     }
     publish(snapshot.jobId, (sequence, occurredAt) =>
       generationTracksResolvedEventSchema.parse({
@@ -352,14 +447,35 @@ export function createProgramGenerationService(
     command: GenerateProgramCommand,
     plan: CodexProgramPlan,
     resolvedTracks: Array<{ audio: AudioResolution; track: MusicTrack }>,
+    featuredFacts: Map<string, MusicFact[]>,
     signal: AbortSignal,
   ): Promise<ProgramDetail> {
     setStage(snapshot.jobId, "synthesizing_dj", signal);
     const programId = randomId();
     const maximumSegues = Math.max(0, resolvedTracks.length - 1);
     let segueCount = 0;
+    const deepScripts: Array<CodexProgramPlan["djScripts"][number] & { citations?: MusicFact[] }> =
+      [];
+    for (const { track } of strictTrackCount ? resolvedTracks.slice(0, 2) : []) {
+      const facts = featuredFacts.get(track.id) ?? [];
+      const text = deepCommentaryFor(track, plan.djLanguage, facts);
+      deepScripts.push({
+        type: "segue",
+        language: plan.djLanguage,
+        text,
+        displayText: text,
+        estimatedTiming: true,
+        citations: facts,
+      });
+    }
+    const scripts: Array<CodexProgramPlan["djScripts"][number] & { citations?: MusicFact[] }> = [
+      ...plan.djScripts.filter((script) => script.type === "intro"),
+      ...deepScripts,
+      ...plan.djScripts.filter((script) => script.type === "segue"),
+      ...plan.djScripts.filter((script) => script.type === "outro"),
+    ];
     const playableScriptIndexes = new Set<number>();
-    for (const [index, script] of plan.djScripts.entries()) {
+    for (const [index, script] of scripts.entries()) {
       if (script.type === "intro" || script.type === "outro") {
         playableScriptIndexes.add(index);
       } else if (segueCount < maximumSegues) {
@@ -370,7 +486,7 @@ export function createProgramGenerationService(
 
     let ttsDegraded = false;
     const djScripts: Array<DjScriptSegment & { durationMs: number | null }> = [];
-    for (const [index, script] of plan.djScripts.entries()) {
+    for (const [index, script] of scripts.entries()) {
       let ttsAudioRef: string | null = null;
       let estimatedTiming = script.estimatedTiming;
       let durationMs: number | null = null;
@@ -412,6 +528,12 @@ export function createProgramGenerationService(
         displayText: script.text,
         estimatedTiming,
         ttsAudioRef,
+        citations: (script.citations ?? []).map((citation) => ({
+          id: randomId(),
+          title: citation.title,
+          url: citation.url,
+          provider: citation.provider,
+        })),
         durationMs,
       });
     }
@@ -465,6 +587,7 @@ export function createProgramGenerationService(
         status: "ready",
         trackIds: resolvedTracks.map(({ track }) => track.id),
         originMode,
+        playbackMode: "voice-overlay",
         createdAt: now().toISOString(),
       },
       djScripts: djScripts.map((segment) => ({
@@ -476,6 +599,7 @@ export function createProgramGenerationService(
         displayText: segment.text,
         estimatedTiming: segment.estimatedTiming,
         ttsAudioRef: segment.ttsAudioRef,
+        citations: segment.citations,
       })),
       tracks: resolvedTracks.map(({ track }) => track),
       timeline,
@@ -488,12 +612,23 @@ export function createProgramGenerationService(
     signal: AbortSignal,
   ): Promise<void> {
     options.repository.markRunning(snapshot.jobId, now().toISOString());
+    const requestedTrackCount = requestedProgramTrackCount(command.scenarioText);
+    if (
+      strictTrackCount &&
+      requestedTrackCount !== null &&
+      (requestedTrackCount < 8 || requestedTrackCount > 12)
+    ) {
+      throw new GenerationPipelineError("PROGRAM_GENERATION_TRACK_COUNT_OUT_OF_RANGE");
+    }
+    const targetTrackCount = strictTrackCount
+      ? (requestedTrackCount ?? configuredTrackCount)
+      : configuredTrackCount;
     const preferences = options.preferences.get(snapshot.profileId);
     const effectiveTaste = options.taste.get(snapshot.profileId).effective;
-    const libraryTracks = options.library.candidateTracks(snapshot.profileId, 500);
+    const libraryTracks = options.library.candidateTracks(snapshot.profileId, 120);
     const preferredLibraryTrackCount = Math.min(
       libraryTracks.length,
-      Math.round(maximumTracks * 0.7),
+      Math.round(targetTrackCount * 0.7),
     );
     const history = options.programs
       .list(snapshot.profileId, undefined, 20)
@@ -501,6 +636,7 @@ export function createProgramGenerationService(
         title: program.title,
         scenarioText: program.scenarioText,
         createdAt: program.createdAt,
+        trackIds: program.trackIds,
       }));
     const context = codexPlanningContextSchema.parse({
       scenarioText: command.scenarioText,
@@ -514,7 +650,7 @@ export function createProgramGenerationService(
           album: track.album,
           durationMs: track.durationMs,
         })),
-        maximumTracks,
+        maximumTracks: targetTrackCount,
         preferredLibraryTrackCount,
       },
       currentTime: now().toISOString(),
@@ -533,6 +669,9 @@ export function createProgramGenerationService(
       throw new GenerationPipelineError("PROGRAM_GENERATION_PLAN_INVALID");
     }
     const plan = parsedPlan.data;
+    if (strictTrackCount && plan.trackIntents.length < targetTrackCount) {
+      throw new GenerationPipelineError("PROGRAM_GENERATION_PLAN_INSUFFICIENT");
+    }
     publish(snapshot.jobId, (sequence, occurredAt) =>
       generationPlannedEventSchema.parse({
         eventId: randomId(),
@@ -546,9 +685,39 @@ export function createProgramGenerationService(
       }),
     );
 
-    const resolvedTracks = await resolveTracks(snapshot, plan, libraryTracks, signal);
+    const resolvedTracks = await resolveTracks(
+      snapshot,
+      plan,
+      libraryTracks,
+      targetTrackCount,
+      command.scenarioText,
+      signal,
+    );
     await enrichLyrics(snapshot, resolvedTracks, signal);
-    const detail = await buildProgram(snapshot, command, plan, resolvedTracks, signal);
+    const featuredFacts = new Map<string, MusicFact[]>();
+    if (options.facts !== undefined) {
+      for (const { track } of resolvedTracks.slice(0, 2)) {
+        try {
+          featuredFacts.set(
+            track.id,
+            await withAbort(
+              () => options.facts?.lookup(track, signal) ?? Promise.resolve([]),
+              signal,
+            ),
+          );
+        } catch {
+          featuredFacts.set(track.id, []);
+        }
+      }
+    }
+    const detail = await buildProgram(
+      snapshot,
+      command,
+      plan,
+      resolvedTracks,
+      featuredFacts,
+      signal,
+    );
     setStage(snapshot.jobId, "committing", signal);
     assertActive(snapshot.jobId, signal);
     try {

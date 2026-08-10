@@ -111,8 +111,8 @@ flowchart LR
 | Feature | Owns | Consumes | Produces | Must not own |
 |---|---|---|---|---|
 | Profiles | 档案 CRUD、profile context、受控 avatarRef | ProfilePreferences | Profile DTO | 登录身份、播放状态、任意头像路径/URL |
-| Radio | 场景入口、当前节目组合 | Programs、Playback | Generate command | Provider、持久化 |
-| Programs | 生成任务、节目、DJ 段、历史 | EffectiveTaste、Library application ports、Planner/Music/TTS ports | Program、PlaybackTimeline、events | HTMLAudio 状态、Library owner 表 |
+| Radio | Profile 级对话、意图路由、澄清与单曲推荐 | Programs、Library/Planner/TTS ports、Playback | Radio turn snapshot、Generate command | Provider 协议、HTMLAudio、Program 持久化 |
+| Programs | 生成任务、节目、DJ 段、引用、历史 | EffectiveTaste、Library application ports、Planner/Music/TTS/Fact ports | Program、PlaybackTimeline、events | HTMLAudio 状态、Library owner 表、Radio 对话 |
 | Playback | 时间线规则、低频 checkpoint | Program timeline | Playback snapshot | 实时进度、UI Sheet |
 | Library | 搜索、导入、候选池 | MusicProvider | NormalizedTrack | 推荐与播放控制 |
 | Taste | 自动 projection、人工 overrides、EffectiveTaste | Feedback | Taste context | Provider response、覆盖人工规则 |
@@ -142,8 +142,11 @@ sequenceDiagram
     participant D as SQLite/FileStore
     participant E as WebSocket
     participant X as Audio Engine
-    U->>W: Submit scenario
-    W->>A: POST program generation
+    U->>W: Submit a Radio message
+    W->>A: POST radio turn
+    A->>P: Route with recent Profile conversation
+    P-->>W: chat / clarify / single-track snapshot or program intent
+    W->>A: POST program generation only for program intent
     A->>P: Validate context and start job
     P-->>W: 202 + jobId
     Note over W,X: Existing program keeps playing while generation runs
@@ -153,9 +156,10 @@ sequenceDiagram
     S->>C: Plan with EffectiveTaste, history, time, preferences and library context
     C-->>P: Validated ordered library/discovery intents
     P-->>E: generation.planned
-    P->>M: Resolve intents in order, at most one track per discovery keyword
+    P->>M: Resolve and repair 8-12 tracks with language/history/artist constraints
     M-->>P: Normalized playable tracks
     P-->>E: generation.tracks-resolved
+    P->>P: Enrich 1-2 featured tracks with non-blocking cited facts
     alt Qwen local TTS ready
         P->>T: Synthesize DJ segments
         alt Synthesis succeeds
@@ -172,7 +176,7 @@ sequenceDiagram
     E-->>W: Validated events
     W->>X: Checkpoint and stop previous timeline
     W->>X: Atomically load committed timeline
-    X-->>U: Play DJ audio or first track
+    X-->>U: Play music with voice overlays and ducking
 ```
 | Failure | Boundary behavior | Result |
 |---|---|---|
@@ -186,7 +190,7 @@ sequenceDiagram
 
 阻断失败不得改变正在播放的旧节目。文字降级 DJ 只保留在 Program segment；只有取得真实音频引用的 `dj` segment 才进入 PlaybackTimeline。
 
-生成 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，场景草稿、完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Programs 不直接读取 Library 表：它通过 Library application Port 获取最多 500 首当前 Profile 可播放曲目摘要，并按活动 Planner 的有序 intent 调用 Library 解析；默认五首建议四首库内、一首探索，明确语言、地区、艺术家、只听库内或只探索新歌的场景约束优先。generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`；同一幂等键返回该终态，新幂等键才启动重试。DJ 音频按确定性位置进入时间线：全部 `intro` 位于首曲前、至多一个 `segue` 位于每首后续曲目前、全部 `outro` 位于末曲后，多余脚本只保留文字。
+Radio turn 持久化用户消息、路由决策、助手消息和可选单曲引用；每个 Profile 只保留最近 50 个 turn。普通消息不会创建 generation job。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Programs 不直接读取 Library 表：它通过 Library application Port 获取最多 500 首当前 Profile 可播放曲目摘要与近 10 期歌曲身份，按活动 Planner 的有序 intent 解析并最多补选两轮；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败。generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。`voice-overlay` Program 的 `intro` 覆盖首曲开头、`segue` 跨前曲尾部与后曲开头、`outro` 覆盖末曲尾部；旧 Program 缺少该字段时保持 `sequential` 兼容语义。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
 
 反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Planner context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。

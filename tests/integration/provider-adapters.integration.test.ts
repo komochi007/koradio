@@ -176,6 +176,8 @@ describe("Codex adapter", () => {
     };
     expect(providerInput.instruction).toContain("trackIntents");
     expect(providerInput.instruction).toContain("preferredLibraryTrackCount");
+    expect(providerInput.instruction).toContain("different primary artist");
+    expect(providerInput.instruction).toContain("exact song title and primary artist");
     expect(providerInput.context).toEqual(codexPlanningContextFixture);
     const schemaPath = invocation?.args.at(invocation.args.indexOf("--output-schema") + 1);
     expect(schemaPath).toBeDefined();
@@ -213,6 +215,54 @@ describe("Codex adapter", () => {
     await expect(
       adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
     ).rejects.toMatchObject({ code: "response_invalid" });
+  });
+
+  it("replans once after an invalid structured response", async () => {
+    const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-replan-"));
+    const invocations: ProviderProcessInvocation[] = [];
+    const outputs = [codexJsonl({ invalid: true }), codexJsonl()];
+    const adapter = createCodexAdapter({
+      command: "codex",
+      resolveExecutable: () => Promise.resolve("/trusted/codex"),
+      runner: (invocation) => {
+        invocations.push(invocation);
+        return Promise.resolve({
+          exitCode: 0,
+          stderr: "",
+          stdout: outputs.shift() ?? "",
+        });
+      },
+      runtimeDirectory,
+    });
+
+    await expect(
+      adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
+    ).resolves.toEqual(codexProgramPlanFixture);
+    expect(invocations).toHaveLength(2);
+    expect(invocations[1]?.input).toContain("The previous response was invalid");
+  });
+
+  it("replans once after a transient unavailable response", async () => {
+    const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-unavailable-replan-"));
+    let invocationCount = 0;
+    const adapter = createCodexAdapter({
+      command: "codex",
+      resolveExecutable: () => Promise.resolve("/trusted/codex"),
+      runner: () => {
+        invocationCount += 1;
+        return Promise.resolve(
+          invocationCount === 1
+            ? { exitCode: 1, stderr: "temporary failure", stdout: "" }
+            : { exitCode: 0, stderr: "", stdout: codexJsonl() },
+        );
+      },
+      runtimeDirectory,
+    });
+
+    await expect(
+      adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
+    ).resolves.toEqual(codexProgramPlanFixture);
+    expect(invocationCount).toBe(2);
   });
 
   it("resolves the latest configured command for each plan without changing process arguments", async () => {
@@ -333,10 +383,11 @@ describe("DeepSeek adapter", () => {
     expect(body.model).toBe("deepseek-v4-pro");
     expect(body.response_format).toEqual({ type: "json_object" });
     expect(body.thinking).toEqual({ type: "enabled" });
-    expect(body.messages?.map((message) => message.content).join(" ")).toContain("EffectiveTaste");
-    expect(body.messages?.map((message) => message.content).join(" ")).not.toContain(
-      "sk-test-secret",
-    );
+    const prompt = body.messages?.map((message) => message.content).join(" ") ?? "";
+    expect(prompt).toContain("EffectiveTaste");
+    expect(prompt).toContain("different primary artist");
+    expect(prompt).toContain("exact song title and primary artist");
+    expect(prompt).not.toContain("sk-test-secret");
   });
 
   it("retries one transient response and never retries authentication failure", async () => {
@@ -383,6 +434,34 @@ describe("DeepSeek adapter", () => {
     await expect(
       unauthorized.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
     ).rejects.toMatchObject({ code: "unauthorized" });
+  });
+
+  it("replans once after an invalid structured response", async () => {
+    const invocations: Array<{ input: string; init?: RequestInit }> = [];
+    const responses = [
+      jsonResponse({
+        choices: [{ finish_reason: "stop", message: { content: "not-json" } }],
+      }),
+      jsonResponse({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: { content: JSON.stringify(codexProgramPlanFixture) },
+          },
+        ],
+      }),
+    ];
+    const adapter = createDeepseekAdapter({
+      apiKey: "sk-test",
+      fetcher: createFetchQueue(responses, invocations),
+      model: "deepseek-v4-flash",
+    });
+
+    await expect(
+      adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
+    ).resolves.toEqual(codexProgramPlanFixture);
+    expect(invocations).toHaveLength(2);
+    expect(invocations[1]?.init?.body).toContain("previous planning attempt failed");
   });
 
   it("rejects empty or invalid JSON without exposing response content", async () => {

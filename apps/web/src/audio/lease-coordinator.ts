@@ -88,11 +88,29 @@ function createChannel(): BroadcastChannelLike {
   return new BroadcastChannel(playbackLeaseChannel);
 }
 
+function resolveStorage(candidate: StorageLike | undefined): StorageLike {
+  if (candidate !== undefined) return candidate;
+  try {
+    const browserStorage = Reflect.get(window, "localStorage") as StorageLike | undefined;
+    if (browserStorage !== undefined) return browserStorage;
+  } catch {}
+  const values = new Map<string, string>();
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    removeItem: (key) => {
+      values.delete(key);
+    },
+    setItem: (key, value) => {
+      values.set(key, value);
+    },
+  };
+}
+
 export function createPlaybackLeaseCoordinator(
   options: CreatePlaybackLeaseCoordinatorOptions,
 ): PlaybackLeaseCoordinator {
   const channel = options.channel ?? createChannel();
-  const storage = options.storage ?? window.localStorage;
+  const storage = resolveStorage(options.storage);
   const now = options.now ?? Date.now;
   const ownerId = options.ownerId ?? crypto.randomUUID();
   const listeners = new Set<(state: PlaybackLeaseState) => void>();

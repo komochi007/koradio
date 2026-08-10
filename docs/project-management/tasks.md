@@ -13,7 +13,7 @@
 |---|---|
 | 当前工程阶段 | S7 Personal Local Preview 核心闭环已完成；S7-09 Electron 外壳迁移与个人本机稳定性试用进行中，公开分发工程等待项目所有者重新授权 |
 | 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06`、`S5-01`～`S5-04`、`S6-01`～`S6-05`、`S7-01`、`S7-02`、`S7-06`、`S7-08`、`AI-01` |
-| 当前活动任务 | `S7-07`、`S7-09` |
+| 当前活动任务 | `S7-07`、`S7-09`、`UX-11` |
 | 初始下一任务 | `S7-07` 个人本机稳定性试用；`S7-03`～`S7-05` 仅在授权外部分发后启动 |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
@@ -58,7 +58,7 @@ AI 执行任务时按固定顺序操作：
 | S5 P1 全量功能 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S6 集成、质量与安全加固 | 5 | 0 | 0 | 0 | 0 | 5 |
 | S7 macOS 本机运行与后置发布工程 | 4 | 3 | 3 | 0 | 0 | 10 |
-| UX 个人本机使用体验优化 | 9 | 0 | 0 | 0 | 0 | 9 |
+| UX 个人本机使用体验优化 | 10 | 0 | 0 | 1 | 0 | 11 |
 | S8 全量外部测试与 Release Candidate | 0 | 4 | 0 | 0 | 0 | 4 |
 | S9 v1.0 发布与稳定期 | 0 | 4 | 0 | 0 | 0 | 4 |
 
@@ -185,6 +185,7 @@ AI 执行任务时按固定顺序操作：
 | `UX-08` 重建当前 Profile Taste | 已完成 | High | 将已确认的音乐库画像写入人工 Taste，立即改善后续规划上下文。 | UX-05 | 当前 Profile、已确认的 22 个标签、6 条避雷与 8 条场景规则。 | 只通过认证 Taste API 更新 overrides；不直接写 SQLite，不修改 projection、反馈、音乐库或历史节目；不把原始用户数据提交到仓库。 | override version 递增；新规则完整保序进入 EffectiveTaste；projection version 不变。 | 已通过本机认证 Taste API 重建当前 Profile overrides；旧 payload 在进程内保留为失败回滚输入，仓库仅记录脱敏结果。 | PATCH 前后均通过 contract schema；override version 单次递增，22/6/8 条规则及 EffectiveTaste 完整保序；projection version、反馈、音乐库和历史节目计数不变。 | Codex / 当前工作区 | 无。 |
 | `UX-09` 实现音乐库感知规划与有序选曲 | 已完成 | Critical | 让 Codex 看到有界音乐库，并按有序 library/discovery intent 生成约 70/30 的节目。 | UX-08 | 已确认的库内优先策略、Taste、Programs/Library/Provider 边界。 | 修改内部规划 contract 与候选解析；不改变公共 REST/WS、数据库 schema、Provider 安全边界或旧节目失败保护。 | 五首默认目标为四首库内、一首探索；显式场景约束优先；每个 discovery query 最多入选一首；非法/跨 Profile/重复/不可播放候选安全降级。 | 已更新权威文档与当前事实；planning context 通过 Library Port 提供最多 500 首摘要和建议数量，Codex 输出有序 `trackIntents`，Backend 按 owner/可播放性逐 intent 解析并稳定去重。 | Programs/Mock/Adapter/Library 专项 41 项、真实 Codex 新 schema、三浏览器 Radio 生成闭环通过；覆盖 4/1、空库、显式约束、非法/跨 Profile/重复 intent、搜索与库内音频失败、单关键词至多一首、TTS/歌词降级和旧节目保护。 | Codex / 当前工作区 | 无。 |
 | `UX-10` 用 Qwen3-TTS 替换系统语音 | 已完成 | Critical | 用更自然、零 API 调用费的本地 TTS 完整替换 Apple System TTS。 | UX-09 | 已确认中文 Serena、英文 Ryan，完整句子试听通过。 | macOS 15+ arm64；模型由用户首次下载，不进入 DMG；不改变文字降级和受控媒体边界。 | 固定 8-bit revision、校验与原子安装、持久化 helper、完整句子合成、Serena/Ryan 路由、下载 UI、失败降级与 arm64 包装通过。 | ADR 0005、模型安装器、Python/MLX helper、Settings 模型状态、macOS 包装与专项测试。 | `pnpm check` 274 项、Chromium Settings 12 项、真实双语合成、包内 Python/MLX 导入、strict codesign、launcher smoke 与 app/DMG 验收通过。 | Codex / 当前工作区 | 无。 |
+| `UX-11` 重塑 DJ 对话、策展与电台串讲体验 | 已完成 | Critical | 让 DJ 先理解用户意图，再以准确、不重复且具有真实电台感的方式聊天、推荐单曲或生成完整节目。 | UX-10 | 已确认的 UX-11 产品方案、现有 Radio/Programs/Library/Provider/Audio Engine 实现与真实个人数据验收边界。 | 新增 Profile 级持久对话、三态意图分流、单曲卡片、8～12 首完整节目、近 10 期去重、语言硬约束、可信来源深讲、双通道语音叠加与 ducking；保持旧节目原子切换、现有视觉骨架、Provider/Secret 安全边界和公共 WS 事件不变。 | 闲聊不触发节目；歧义会追问；明确单曲/节目请求分别正确执行；完整节目严格为 8～12 首且默认 8 首，中文歌约束与近 10 期去重成立；1～2 首精选曲有可信深讲和可见来源；语音与音乐自然重叠并按 28%/350ms/650ms ducking；生成失败保留旧节目；隔离数据副本与项目所有者验收通过。 | 权威文档、v14 migration、Contracts、Radio turn/application/provider/persistence、Web Radio transcript/cards、双通道 Audio Engine、专项测试与隔离验收记录。 | 分工作包专项测试、`pnpm check`、三浏览器 Radio/Detail/axe、Chromium 视觉、真实 Provider 与 APFS CoW 数据副本验收。 | Codex / 当前工作区 | 无。 |
 
 ### S8｜全量外部测试与 Release Candidate
 

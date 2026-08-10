@@ -8,6 +8,9 @@ import {
   audioResolutionRequestSchema,
   audioResolutionSchema,
   createFeedbackRequestSchema,
+  clearRadioConversationRequestSchema,
+  createRadioTurnRequestSchema,
+  createRadioSpeechGenerationRequestSchema,
   createLibraryItemRequestSchema,
   createProfileRequestSchema,
   currentProgramResponseSchema,
@@ -34,6 +37,12 @@ import {
   programListResponseSchema,
   profileAvatarUploadResponseSchema,
   profileIdParamsSchema,
+  radioConversationRequestSchema,
+  radioConversationSchema,
+  radioSpeechGenerationSchema,
+  radioSpeechGenerationSnapshotRequestSchema,
+  radioTurnSchema,
+  radioTurnSnapshotRequestSchema,
   profileListResponseSchema,
   profileSchema,
   selectCurrentProfileRequestSchema,
@@ -98,6 +107,7 @@ import {
   ProgramNotFoundError,
   createProgramGenerationRepository,
   createProgramGenerationService,
+  createMusicBrainzFactProvider,
   createProgramDeletionService,
   createProgramRepository,
   createProgramService,
@@ -105,6 +115,17 @@ import {
   type ProgramPlannerProvider,
   type TtsProvider,
 } from "../modules/programs/index.js";
+import {
+  RadioTurnNotFoundError,
+  RadioTurnUnavailableError,
+  RadioSpeechGenerationNotFoundError,
+  RadioSpeechMessageNotFoundError,
+  createRadioService,
+  createRadioSpeechRepository,
+  createRadioSpeechService,
+  createRadioTurnRepository,
+  type RadioAssistantProvider,
+} from "../modules/radio/index.js";
 import {
   AvatarUploadError,
   AvatarReferenceError,
@@ -144,6 +165,7 @@ import { createSessionEventRoutes } from "./routes/session-events.js";
 import { createStaticPageRoutes } from "./routes/static-pages.js";
 import { enforceApiSecurity, isAllowedOrigin } from "./security.js";
 import { createSessionState, type SessionState } from "./session.js";
+import type { SafeLogger } from "../platform/logging/index.js";
 
 const liveProviderGenerationTimeoutMs = 6 * 60_000;
 
@@ -155,7 +177,10 @@ export interface CreateAppOptions {
   musicProvider?: MusicProvider;
   codexProvider?: CodexProvider;
   plannerProvider?: ProgramPlannerProvider;
+  programMaximumTracks?: number;
+  radioAssistantProvider?: RadioAssistantProvider;
   generationTimeoutMs?: number;
+  logger?: Pick<SafeLogger, "warn">;
   programFeedbackTargets?: Pick<FeedbackTargetResolver, "programExists">;
   requestRestart?: (request: DataRootRestartRequest) => Promise<void>;
   secretStore?: SecretStore;
@@ -253,6 +278,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     deepseekCredentials,
     deviceSettings,
     fileStore,
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
     modelService: ttsModelService,
   });
   const library = createLibraryService({
@@ -312,7 +338,11 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const programGeneration = createProgramGenerationService({
     ...(options.codexProvider === undefined ? {} : { codex: options.codexProvider }),
     events: eventHub,
+    ...(options.config.providerMode === "live" ? { facts: createMusicBrainzFactProvider() } : {}),
     library,
+    ...(options.programMaximumTracks === undefined
+      ? {}
+      : { maximumTracks: options.programMaximumTracks }),
     preferences: profilePreferences,
     programs,
     originMode: options.config.providerMode,
@@ -324,6 +354,17 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
         ? { timeoutMs: liveProviderGenerationTimeoutMs }
         : {}
       : { timeoutMs: options.generationTimeoutMs }),
+    tts: options.ttsProvider ?? runtimeProviders.tts,
+  });
+  const radio = createRadioService({
+    assistant: options.radioAssistantProvider ?? runtimeProviders.radioAssistant,
+    library,
+    programs: programGeneration,
+    repository: createRadioTurnRepository(database.client),
+  });
+  const radioSpeech = createRadioSpeechService({
+    preferences: profilePreferences,
+    repository: createRadioSpeechRepository(database.client),
     tts: options.ttsProvider ?? runtimeProviders.tts,
   });
   cancelProgramGeneration = (profileId) => programGeneration.cancelProfile(profileId);
@@ -358,6 +399,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
 
   app.addHook("onClose", async () => {
     await programGeneration.close();
+    await radioSpeech.close();
     await library.close();
     await runtimeProviders.close();
     await ttsModelService.close();
@@ -688,6 +730,204 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   });
 
   await app.register(async (app) => {
+    app.post("/api/v1/profiles/:profileId/radio-turns", async (request, reply) => {
+      const parsed = createRadioTurnRequestSchema.safeParse({
+        params: request.params,
+        headers: { "idempotency-key": request.headers["idempotency-key"] },
+        body: request.body,
+      });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "RADIO_TURN_VALIDATION_FAILED",
+          "Radio message is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        const turn = await radio.create(
+          parsed.data.params.profileId,
+          parsed.data.body,
+          parsed.data.headers["idempotency-key"],
+        );
+        return await reply.status(201).send(radioTurnSchema.parse(turn));
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof ProgramGenerationConflictError) {
+          return sendApiError(
+            reply,
+            409,
+            "PROGRAM_GENERATION_ALREADY_RUNNING",
+            "Another program generation is already running",
+            true,
+          );
+        }
+        if (error instanceof RadioTurnUnavailableError) {
+          return sendApiError(reply, 503, "RADIO_TURN_UNAVAILABLE", "DJ could not respond", true);
+        }
+        throw error;
+      }
+    });
+
+    app.get("/api/v1/profiles/:profileId/radio-turns/:turnId", (request, reply) => {
+      const parsed = radioTurnSnapshotRequestSchema.safeParse({ params: request.params });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "RADIO_TURN_VALIDATION_FAILED",
+          "Radio turn is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        return radioTurnSchema.parse(
+          radio.get(parsed.data.params.profileId, parsed.data.params.turnId),
+        );
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError || error instanceof RadioTurnNotFoundError) {
+          return sendApiError(
+            reply,
+            404,
+            "RADIO_TURN_NOT_FOUND",
+            "Radio turn was not found",
+            false,
+          );
+        }
+        throw error;
+      }
+    });
+
+    app.post(
+      "/api/v1/profiles/:profileId/radio-messages/:messageId/speech-generations",
+      (request, reply) => {
+        const parsed = createRadioSpeechGenerationRequestSchema.safeParse({
+          params: request.params,
+          headers: { "idempotency-key": request.headers["idempotency-key"] },
+        });
+        if (!parsed.success) {
+          return sendApiError(
+            reply,
+            400,
+            "RADIO_SPEECH_VALIDATION_FAILED",
+            "Speech request is invalid",
+            false,
+          );
+        }
+        try {
+          profiles.get(parsed.data.params.profileId);
+          const snapshot = radioSpeech.start(
+            parsed.data.params.profileId,
+            parsed.data.params.messageId,
+            parsed.data.headers["idempotency-key"],
+          );
+          return reply.status(202).send(jobAcceptedResponseSchema.parse({ jobId: snapshot.jobId }));
+        } catch (error) {
+          if (error instanceof ProfileNotFoundError) {
+            return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+          }
+          if (error instanceof RadioSpeechMessageNotFoundError) {
+            return sendApiError(
+              reply,
+              404,
+              "RADIO_MESSAGE_NOT_FOUND",
+              "Radio message was not found",
+              false,
+            );
+          }
+          throw error;
+        }
+      },
+    );
+
+    app.get("/api/v1/profiles/:profileId/radio-speech-generations/:jobId", (request, reply) => {
+      const parsed = radioSpeechGenerationSnapshotRequestSchema.safeParse({
+        params: request.params,
+      });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "RADIO_SPEECH_VALIDATION_FAILED",
+          "Speech request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        return radioSpeechGenerationSchema.parse(
+          radioSpeech.get(parsed.data.params.profileId, parsed.data.params.jobId),
+        );
+      } catch (error) {
+        if (
+          error instanceof ProfileNotFoundError ||
+          error instanceof RadioSpeechGenerationNotFoundError
+        ) {
+          return sendApiError(
+            reply,
+            404,
+            "RADIO_SPEECH_NOT_FOUND",
+            "Speech generation was not found",
+            false,
+          );
+        }
+        throw error;
+      }
+    });
+
+    app.get("/api/v1/profiles/:profileId/radio-conversation", (request, reply) => {
+      const parsed = radioConversationRequestSchema.safeParse({ params: request.params });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "RADIO_CONVERSATION_VALIDATION_FAILED",
+          "Profile is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        return radioConversationSchema.parse(radio.list(parsed.data.params.profileId));
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        throw error;
+      }
+    });
+
+    app.delete("/api/v1/profiles/:profileId/radio-conversation", (request, reply) => {
+      const parsed = clearRadioConversationRequestSchema.safeParse({
+        params: request.params,
+        body: request.body,
+      });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "RADIO_CONVERSATION_CONFIRMATION_REQUIRED",
+          "Confirmation is required",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        radio.clear(parsed.data.params.profileId);
+        return reply.status(204).send();
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        throw error;
+      }
+    });
+
     app.post("/api/v1/profiles/:profileId/program-generations", (request, reply) => {
       const parsed = generateProgramRequestSchema.safeParse({
         params: request.params,
