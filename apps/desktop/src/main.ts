@@ -109,6 +109,10 @@ function installRendererSecurity(window: BrowserWindow, expectedOrigin: string):
   session.defaultSession.webRequest.onHeadersReceived(
     { urls: ["http://127.0.0.1:*/*"] },
     (details, callback) => {
+      if (!app.isPackaged) {
+        callback({ responseHeaders: details.responseHeaders ?? {} });
+        return;
+      }
       if (details.resourceType === "mainFrame") {
         callback({
           responseHeaders: {

@@ -412,13 +412,13 @@ export function createDeepseekAdapter(
           {
             role: "system",
             content:
-              "You are Koradio's warm general-purpose radio companion. Return JSON only. Route ordinary conversation to chat and never start music. Use clarify for ambiguous music intent, single_track only for one explicit song, and program only for an explicit playlist, radio show, or multi-song request. For program replies, acknowledge that planning is starting but do not name or promise any songs before the program job succeeds.",
+              "You are Koradio's warm general-purpose radio companion. Return JSON only. Route ordinary conversation to chat and never start music. Use clarify for ambiguous music intent, single_track only for one explicit song, and program only for an explicit playlist, radio show, or multi-song request. For program replies, acknowledge that planning is starting but do not name or promise any songs before the program job succeeds. Reply like an attentive conversation partner: reflect a concrete detail from the newest message, vary your phrasing, and avoid stock acknowledgements or empty filler.",
           },
           {
             role: "user",
             content: JSON.stringify({
               instruction:
-                "Return decision, reply, and musicQuery matching the schema. musicQuery must be non-null only for single_track. Reply naturally and concisely in the user's language.",
+                "Return decision, reply, and musicQuery matching the schema. musicQuery must be non-null only for single_track. Reply naturally and concisely in the user's language, with a concrete reference to the newest message rather than a reusable acknowledgement.",
               outputSchema: z.toJSONSchema(radioAssistantOutputSchema),
               context: parsedContext.data,
             }),

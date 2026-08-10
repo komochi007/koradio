@@ -268,13 +268,20 @@ export function App({ audioEngine, transport }: AppProps): ReactElement {
   const [serviceAudioEngine] = useState(
     () => audioEngine ?? createAudioEngine({ transport: serviceTransport }),
   );
+  const destroyTimer = useRef<number | undefined>(undefined);
 
-  useEffect(
-    () => () => {
-      void serviceAudioEngine.destroy();
-    },
-    [serviceAudioEngine],
-  );
+  useEffect(() => {
+    if (destroyTimer.current !== undefined) {
+      window.clearTimeout(destroyTimer.current);
+      destroyTimer.current = undefined;
+    }
+    return () => {
+      destroyTimer.current = window.setTimeout(() => {
+        destroyTimer.current = undefined;
+        void serviceAudioEngine.destroy();
+      }, 0);
+    };
+  }, [serviceAudioEngine]);
 
   return (
     <AppErrorBoundary>

@@ -16,6 +16,8 @@ function readPort(value: string | undefined, fallback: number): number {
 
 export default defineConfig(({ mode }) => {
   const environment = loadEnv(mode, process.cwd(), "");
+  const apiPort = readPort(environment.KORADIO_PORT, 49373);
+  const apiOrigin = environment.VITE_KORADIO_API_ORIGIN ?? `http://127.0.0.1:${String(apiPort)}`;
 
   return {
     plugins: [react()],
@@ -23,6 +25,10 @@ export default defineConfig(({ mode }) => {
       host: "127.0.0.1",
       port: readPort(environment.KORADIO_WEB_PORT, 5173),
       strictPort: true,
+      proxy: {
+        "/media": { target: apiOrigin },
+        "/tts": { target: apiOrigin },
+      },
     },
     build: {
       target: "es2024",

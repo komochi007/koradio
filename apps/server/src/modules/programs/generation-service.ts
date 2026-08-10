@@ -186,6 +186,28 @@ function withAbort<Value>(operation: () => Promise<Value>, signal: AbortSignal):
   });
 }
 
+async function mapWithConcurrency<Value, Result>(
+  values: Value[],
+  maximumConcurrency: number,
+  mapper: (value: Value) => Promise<Result>,
+): Promise<Result[]> {
+  const results = new Array<Result>(values.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(Math.max(1, maximumConcurrency), values.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (nextIndex < values.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        const value = values.at(index);
+        if (value === undefined) return;
+        results[index] = await mapper(value);
+      }
+    }),
+  );
+  return results;
+}
+
 export function createProgramGenerationService(
   options: CreateProgramGenerationServiceOptions,
 ): ProgramGenerationService {
@@ -258,6 +280,7 @@ export function createProgramGenerationService(
     libraryTracks: MusicTrack[],
     targetTrackCount: number,
     scenarioText: string,
+    lyricsCache: Map<string, TrackLyrics>,
     signal: AbortSignal,
   ): Promise<Array<{ audio: AudioResolution; track: MusicTrack }>> {
     setStage(snapshot.jobId, "resolving_tracks", signal);
@@ -278,7 +301,10 @@ export function createProgramGenerationService(
     const isChineseVocal = async (track: MusicTrack): Promise<boolean> => {
       if (!chineseOnly) return true;
       try {
-        const lyrics = await withAbort(() => options.library.getLyrics(track.id, signal), signal);
+        const cached = lyricsCache.get(track.id);
+        const lyrics =
+          cached ?? (await withAbort(() => options.library.getLyrics(track.id, signal), signal));
+        lyricsCache.set(track.id, lyrics);
         if (lyrics.content === null) return false;
         const original = lyrics.originalContent ?? lyrics.content;
         const normalized = original.replace(/\[[^\]]+\]/gu, "").replace(/[\s\p{P}\p{S}\d]/gu, "");
@@ -418,25 +444,26 @@ export function createProgramGenerationService(
   async function enrichLyrics(
     snapshot: ProgramGenerationSnapshot,
     tracks: Array<{ audio: AudioResolution; track: MusicTrack }>,
+    lyricsCache: Map<string, TrackLyrics>,
     signal: AbortSignal,
   ): Promise<void> {
     setStage(snapshot.jobId, "enriching_tracks", signal);
-    let degraded = false;
-    for (const { track } of tracks) {
+    const degradedFlags = await mapWithConcurrency(tracks, 4, async ({ track }) => {
       try {
-        const lyrics: TrackLyrics = await withAbort(
-          () => options.library.getLyrics(track.id, signal),
-          signal,
-        );
+        const cached = lyricsCache.get(track.id);
+        const lyrics: TrackLyrics =
+          cached ?? (await withAbort(() => options.library.getLyrics(track.id, signal), signal));
+        lyricsCache.set(track.id, lyrics);
         assertActive(snapshot.jobId, signal);
-        degraded ||= lyrics.status === "unavailable";
+        return lyrics.status === "unavailable";
       } catch (error) {
         if (signal.aborted || error instanceof GenerationAbortedError) {
           throw new GenerationAbortedError();
         }
-        degraded = true;
+        return true;
       }
-    }
+    });
+    const degraded = degradedFlags.some(Boolean);
     if (degraded) {
       publishDegraded(snapshot, "lyrics", "PROGRAM_LYRICS_UNAVAILABLE");
     }
@@ -685,29 +712,39 @@ export function createProgramGenerationService(
       }),
     );
 
+    const lyricsCache = new Map<string, TrackLyrics>();
     const resolvedTracks = await resolveTracks(
       snapshot,
       plan,
       libraryTracks,
       targetTrackCount,
       command.scenarioText,
+      lyricsCache,
       signal,
     );
-    await enrichLyrics(snapshot, resolvedTracks, signal);
+    await enrichLyrics(snapshot, resolvedTracks, lyricsCache, signal);
     const featuredFacts = new Map<string, MusicFact[]>();
     if (options.facts !== undefined) {
-      for (const { track } of resolvedTracks.slice(0, 2)) {
-        try {
-          featuredFacts.set(
-            track.id,
-            await withAbort(
-              () => options.facts?.lookup(track, signal) ?? Promise.resolve([]),
-              signal,
-            ),
-          );
-        } catch {
-          featuredFacts.set(track.id, []);
-        }
+      const factResults = await Promise.all(
+        resolvedTracks.slice(0, 2).map(async ({ track }) => {
+          try {
+            return [
+              track.id,
+              await withAbort(
+                () => options.facts?.lookup(track, signal) ?? Promise.resolve([]),
+                signal,
+              ),
+            ] as const;
+          } catch (error) {
+            if (signal.aborted || error instanceof GenerationAbortedError) {
+              throw new GenerationAbortedError();
+            }
+            return [track.id, [] as MusicFact[]] as const;
+          }
+        }),
+      );
+      for (const [trackId, facts] of factResults) {
+        featuredFacts.set(trackId, facts);
       }
     }
     const detail = await buildProgram(

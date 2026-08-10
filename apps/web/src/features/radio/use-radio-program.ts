@@ -16,6 +16,11 @@ import type { ServiceTransport } from "../../shared/transport.js";
 
 export type RadioViewState = "empty" | "generating" | "playing";
 
+export interface PendingRadioTurn {
+  content: string;
+  status: "pending" | "failed";
+}
+
 interface UseRadioProgramOptions {
   eventBus: AppEventBus;
   initialDraft: string | undefined;
@@ -33,6 +38,7 @@ export function useRadioProgram({
   const [generation, dispatch] = useReducer(reduceProgramGeneration, initialProgramGenerationState);
   const [draft, setDraft] = useState(initialDraft ?? "");
   const [pendingScenario, setPendingScenario] = useState<string>();
+  const [pendingTurn, setPendingTurn] = useState<PendingRadioTurn>();
   const [autoplayProgramId, setAutoplayProgramId] = useState<string>();
   const [validationError, setValidationError] = useState<string>();
   const [turnError, setTurnError] = useState<string>();
@@ -164,6 +170,7 @@ export function useRadioProgram({
     mutationFn: (content: string) => createRadioTurn(transport, profileId, content),
     onSuccess(turn, content) {
       setDraft("");
+      setPendingTurn(undefined);
       setTurnError(undefined);
       queryClient.setQueryData<{ turns: RadioTurn[] }>(
         ["radio-conversation", profileId],
@@ -176,6 +183,7 @@ export function useRadioProgram({
     },
     onError(error, content) {
       setDraft(content);
+      setPendingTurn({ content, status: "failed" });
       setPendingScenario(undefined);
       setTurnError(
         error instanceof ApiRequestError &&
@@ -198,6 +206,7 @@ export function useRadioProgram({
     }
     setValidationError(undefined);
     setTurnError(undefined);
+    setPendingTurn({ content: scenarioText, status: "pending" });
     turnMutation.mutate(scenarioText);
   }
 
@@ -217,11 +226,15 @@ export function useRadioProgram({
     initialError: latestProgram.isError,
     initialLoading: latestProgram.isPending,
     program: generation.program,
+    pendingTurn,
     scenarioText,
     turnError,
     turnPending: turnMutation.isPending,
     setDraft(value: string) {
       setDraft(value);
+      if (pendingTurn?.status === "failed" && value !== pendingTurn.content) {
+        setPendingTurn(undefined);
+      }
       if (validationError !== undefined) {
         setValidationError(undefined);
       }
@@ -243,6 +256,7 @@ export function useRadioProgram({
     initialError: boolean;
     initialLoading: boolean;
     program: typeof generation.program;
+    pendingTurn: PendingRadioTurn | undefined;
     retryLatestProgram: () => void;
     scenarioText: string | undefined;
     setDraft: (value: string) => void;

@@ -4,7 +4,7 @@ const mockAudioRefs = new Map([
   ["mock-space-song", "media/00000000-0000-4000-8000-000000000001.wav"],
   ["mock-midnight-city", "media/00000000-0000-4000-8000-000000000002.wav"],
   ...Array.from(
-    { length: 10 },
+    { length: 22 },
     (_, index) =>
       [
         `mock-fixture-${String(index + 3)}`,
@@ -58,6 +58,18 @@ const tracks: ProviderTrack[] = [
     ["Last Light", "Artist Ten"],
     ["Small Hours", "Artist Eleven"],
     ["Open Road", "Artist Twelve"],
+    ["Blue Hour", "Artist Thirteen"],
+    ["Window Seat", "Artist Fourteen"],
+    ["Low Tide", "Artist Fifteen"],
+    ["Silver Lines", "Artist Sixteen"],
+    ["Common Ground", "Artist Seventeen"],
+    ["Northbound", "Artist Eighteen"],
+    ["Velvet Sky", "Artist Nineteen"],
+    ["Slow Bloom", "Artist Twenty"],
+    ["Warm Static", "Artist Twenty-One"],
+    ["Corner Light", "Artist Twenty-Two"],
+    ["Soft Focus", "Artist Twenty-Three"],
+    ["First Train", "Artist Twenty-Four"],
   ].map(([title, artist], index): ProviderTrack => ({
     source: "netease",
     sourceTrackId: `mock-fixture-${String(index + 3)}`,

@@ -8,10 +8,12 @@ import { sendApiError } from "./api-error.js";
 
 const ttsFileNamePattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:aiff|caf|m4a|wav)$/u;
-const mockMediaFileNames = new Set([
-  "00000000-0000-4000-8000-000000000001.wav",
-  "00000000-0000-4000-8000-000000000002.wav",
-]);
+const mockMediaFileNames = new Set(
+  Array.from(
+    { length: 24 },
+    (_, index) => `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}.wav`,
+  ),
+);
 
 function createMockWave(): Buffer {
   const sampleRate = 8_000;

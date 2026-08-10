@@ -35,7 +35,11 @@ import { ArtworkImage } from "../../shared/artwork.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import { DetailSheet, DetailSheetBoundary } from "./detail-sheet.js";
 import { clearRadioConversation, createRadioSpeech, getRadioSpeech } from "./api.js";
-import { useRadioProgram, type RadioViewState } from "./use-radio-program.js";
+import {
+  useRadioProgram,
+  type PendingRadioTurn,
+  type RadioViewState,
+} from "./use-radio-program.js";
 import "./radio.css";
 
 interface RadioExperienceProps {
@@ -487,7 +491,9 @@ function RadioDialogue({
   onRetry,
   profileId,
   program,
+  pendingTurn,
   scenarioText,
+  stage,
   state,
   transport,
   turnError,
@@ -503,7 +509,9 @@ function RadioDialogue({
   onRetry: (scenario?: string) => void;
   profileId: string;
   program: ProgramDetail | null;
+  pendingTurn: PendingRadioTurn | undefined;
   scenarioText: string | undefined;
+  stage: ProgramGenerationStage | undefined;
   state: RadioViewState;
   transport: ServiceTransport;
   turnError: string | undefined;
@@ -570,6 +578,8 @@ function RadioDialogue({
     error?.message,
     initialError,
     intro,
+    pendingTurn?.content,
+    pendingTurn?.status,
     state,
     turnError,
     turnPending,
@@ -577,7 +587,7 @@ function RadioDialogue({
   ]);
   return (
     <section
-      className={`radio-dialogue radio-dialogue--${state}${conversation.length > 0 ? " radio-dialogue--has-conversation" : ""}`}
+      className={`radio-dialogue radio-dialogue--${state}${conversation.length > 0 || pendingTurn !== undefined ? " radio-dialogue--has-conversation" : ""}`}
       aria-label="DJ 对话"
       ref={dialogueRef}
     >
@@ -660,6 +670,28 @@ function RadioDialogue({
           </div>
         </div>
       ))}
+      {pendingTurn !== undefined && (
+        <div className="radio-turn radio-turn--pending" aria-live="polite">
+          <p className="radio-user-bubble">{pendingTurn.content}</p>
+          <div className="radio-dj-copy">
+            <p className="radio-dj-label">DJ</p>
+            <div>
+              <p>
+                {pendingTurn.status === "pending"
+                  ? "Thinking..."
+                  : (turnError ?? "DJ 暂时没有完成这次回应，请修改后重试。")}
+              </p>
+              {pendingTurn.status === "pending" && (
+                <span className="radio-tuning-dots" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {activeProgramScript !== undefined && (
         <div className="radio-dj-copy" key={activeProgramScript.id}>
           <p className="radio-dj-label">DJ</p>
@@ -679,24 +711,11 @@ function RadioDialogue({
           </div>
         </div>
       )}
-      {turnPending && (
-        <div className="radio-dj-copy" role="status">
-          <p className="radio-dj-label">DJ</p>
-          <div>
-            <p>Thinking...</p>
-            <span className="radio-tuning-dots" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
-          </div>
-        </div>
-      )}
       {scenarioText !== undefined && !turnPending && (
         <div className="radio-dj-copy" role="status">
           <p className="radio-dj-label">DJ</p>
           <div>
-            <p>Tuning your station...</p>
+            <p>{generationCopy(stage)}</p>
             <span className="radio-tuning-dots" aria-hidden="true">
               <i />
               <i />
@@ -705,7 +724,7 @@ function RadioDialogue({
           </div>
         </div>
       )}
-      {turnError !== undefined && (
+      {turnError !== undefined && pendingTurn === undefined && (
         <p className="radio-dialogue__turn-error" role="alert">
           {turnError}
         </p>
@@ -748,13 +767,13 @@ function RadioDialogue({
             </span>
           </div>
         </div>
-      ) : conversation.length === 0 && !turnPending ? (
+      ) : conversation.length === 0 && !turnPending && pendingTurn === undefined ? (
         <div className="radio-dj-copy">
           <p className="radio-dj-label">DJ</p>
           <div>
             <p>
               {state === "generating"
-                ? "Tuning your station..."
+                ? generationCopy(stage)
                 : (intro ??
                   "I’m here when you’re ready. Give me a mood, a task, or a little context.")}
             </p>
@@ -990,7 +1009,9 @@ export function RadioExperience({
             }}
             profileId={current.profile.id}
             program={radio.program}
+            pendingTurn={radio.pendingTurn}
             scenarioText={radio.scenarioText}
+            stage={radio.stage}
             state={radio.viewState}
             transport={transport}
             turnError={radio.turnError}

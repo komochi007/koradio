@@ -25,6 +25,7 @@ export interface ServiceControllerOptions {
   environment?: NodeJS.ProcessEnv;
   pollIntervalMs?: number;
   probe?: (port: number) => Promise<boolean>;
+  providerMode?: "mock" | "live";
   readyTimeoutMs?: number;
   resourcesPath: string;
   spawnProcess?: typeof spawn;
@@ -125,7 +126,10 @@ async function readJson(
   }
 }
 
-export async function probeKoradioService(port: number): Promise<boolean> {
+export async function probeKoradioService(
+  port: number,
+  expectedMode?: "mock" | "live",
+): Promise<boolean> {
   const origin = `http://127.0.0.1:${String(port)}`;
   const bootstrap = await readJson(`${origin}/api/v1/session/bootstrap`, {
     headers: {
@@ -144,7 +148,9 @@ export async function probeKoradioService(port: number): Promise<boolean> {
       Origin: origin,
     },
   });
-  return health?.service === "koradio";
+  return (
+    health?.service === "koradio" && (expectedMode === undefined || health.mode === expectedMode)
+  );
 }
 
 function wait(milliseconds: number): Promise<void> {
@@ -187,7 +193,11 @@ function waitForExit(child: ChildProcess, timeout: number): Promise<boolean> {
 }
 
 export function createServiceController(options: ServiceControllerOptions): ServiceController {
-  const probe = options.probe ?? probeKoradioService;
+  const expectedProviderMode =
+    options.providerMode ??
+    (options.environment?.KORADIO_PROVIDER_MODE === "mock" ? "mock" : "live");
+  const probe =
+    options.probe ?? ((port: number) => probeKoradioService(port, expectedProviderMode));
   const pollInterval = options.pollIntervalMs ?? 250;
   const startupTimeout = options.readyTimeoutMs ?? readyTimeoutMs;
   const spawnProcess = options.spawnProcess ?? spawn;

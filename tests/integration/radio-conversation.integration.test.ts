@@ -143,6 +143,15 @@ describe("UX-11 Radio conversation", () => {
     );
     expect(detail.tracks).toHaveLength(10);
 
+    const naturalProgram = radioTurnSchema.parse(
+      (
+        await send("前几天刚过立秋，有没有什么适合秋日晴天听的音乐", "program-natural-scene")
+      ).json<unknown>(),
+    );
+    expect(naturalProgram.decision).toBe("program");
+    expect(naturalProgram.assistantMessage.content).toContain("策划一档完整节目");
+    expect(naturalProgram.programJobId).not.toBeNull();
+
     const speechAccepted = jobAcceptedResponseSchema.parse(
       (
         await app.inject({
@@ -186,6 +195,7 @@ describe("UX-11 Radio conversation", () => {
       "chat",
       "single_track",
       "clarify",
+      "program",
       "program",
     ]);
     expect(conversation.turns[1]?.track?.title).toBe("Space Song");

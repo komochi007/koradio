@@ -14,6 +14,25 @@ import {
 
 const mockTtsAudioRef = "tts/00000000-0000-4000-8000-000000000001.wav";
 
+function scenarioSeed(value: string): number {
+  return Array.from(value).reduce(
+    (seed, character, index) => (seed + (character.codePointAt(0) ?? 0) * (index + 1)) % 997,
+    0,
+  );
+}
+
+function rotate<T>(items: readonly T[], seed: number): T[] {
+  if (items.length === 0) return [];
+  const offset = seed % items.length;
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
+function topicFor(value: string): string {
+  const normalized = value.trim().replace(/[。！？!?]+$/u, "");
+  if (Array.from(normalized).length <= 24) return normalized;
+  return `${Array.from(normalized).slice(0, 23).join("")}…`;
+}
+
 export function createMockCodexProvider(): CodexProvider & RadioAssistantProvider {
   const radio = createMockRadioAssistantProvider();
   return {
@@ -21,16 +40,27 @@ export function createMockCodexProvider(): CodexProvider & RadioAssistantProvide
     plan(context, options) {
       const parsedContext = codexPlanningContextSchema.parse(context);
       providerCallOptionsSchema.parse(options);
+      const seed = scenarioSeed(
+        `${parsedContext.scenarioText}|${parsedContext.history.map((item) => item.trackIds.join(",")).join(";")}`,
+      );
+      const topic = topicFor(parsedContext.scenarioText);
+      const recentTrackIds = new Set(parsedContext.history.flatMap((item) => item.trackIds));
+      const recentLibrarySongs = new Set(
+        parsedContext.library.tracks
+          .filter((track) => recentTrackIds.has(track.trackId))
+          .map((track) => `${track.title} ${track.artist}`.toLocaleLowerCase("en-US")),
+      );
       const text =
         parsedContext.preferences.djLanguage === "zh-CN"
-          ? "今晚慢一点，但别让思绪停下来。"
-          : "Let us slow the room down without losing the thread.";
-      const libraryIntents = parsedContext.library.tracks
+          ? `今晚从“${topic}”开始，先让旋律把空间慢慢铺开。`
+          : `We’ll begin with “${topic}” and let the room open up one song at a time.`;
+      const libraryIntents = rotate(parsedContext.library.tracks, seed)
+        .filter((track) => !recentTrackIds.has(track.trackId))
         .slice(0, parsedContext.library.preferredLibraryTrackCount)
         .map((track) => ({
           kind: "library" as const,
           trackId: track.trackId,
-          reason: "A deterministic library fixture",
+          reason: `Fits the requested scene: ${topic}`,
         }));
       const fixtureQueries = [
         "Space Song Beach House",
@@ -45,23 +75,56 @@ export function createMockCodexProvider(): CodexProvider & RadioAssistantProvide
         "Last Light Artist Ten",
         "Small Hours Artist Eleven",
         "Open Road Artist Twelve",
+        "Blue Hour Artist Thirteen",
+        "Window Seat Artist Fourteen",
+        "Low Tide Artist Fifteen",
+        "Silver Lines Artist Sixteen",
+        "Common Ground Artist Seventeen",
+        "Northbound Artist Eighteen",
+        "Velvet Sky Artist Nineteen",
+        "Slow Bloom Artist Twenty",
+        "Warm Static Artist Twenty-One",
+        "Corner Light Artist Twenty-Two",
+        "Soft Focus Artist Twenty-Three",
+        "First Train Artist Twenty-Four",
       ];
       const selectedLibrarySongs = new Set(
-        parsedContext.library.tracks
-          .slice(0, parsedContext.library.preferredLibraryTrackCount)
-          .map((track) => `${track.title} ${track.artist}`.toLocaleLowerCase("en-US")),
+        libraryIntents.flatMap((intent) => {
+          const track = parsedContext.library.tracks.find(
+            (candidate) => candidate.trackId === intent.trackId,
+          );
+          return track === undefined
+            ? []
+            : [`${track.title} ${track.artist}`.toLocaleLowerCase("en-US")];
+        }),
       );
-      const discoveryIntents = fixtureQueries
-        .filter((keyword) => !selectedLibrarySongs.has(keyword.toLocaleLowerCase("en-US")))
+      const discoveryIntents = rotate(
+        fixtureQueries,
+        seed + parsedContext.history.length * parsedContext.library.maximumTracks,
+      )
+        .filter((keyword) => {
+          const normalized = keyword.toLocaleLowerCase("en-US");
+          return !selectedLibrarySongs.has(normalized) && !recentLibrarySongs.has(normalized);
+        })
         .slice(0, parsedContext.library.maximumTracks + 4 - libraryIntents.length)
         .map((keyword) => ({
           kind: "discovery" as const,
           keyword,
-          reason: "A deterministic low-stimulation fixture",
+          reason: `Adds contrast without losing the ${topic} mood`,
         }));
+      const titles =
+        parsedContext.preferences.djLanguage === "zh-CN"
+          ? ["把这一刻放慢", "给今天留一段声音", "夜色里的小节目", "沿着心情走一会儿"]
+          : [
+              "A Little Room for Today",
+              "Follow the Feeling",
+              "After the Noise",
+              "One More Quiet Hour",
+            ];
+      const programTitle = titles[seed % titles.length] ?? titles[0];
       return Promise.resolve(
         codexProgramPlanSchema.parse({
-          programTitle: "Koradio Mock Session",
+          programTitle,
           scenarioSummary: parsedContext.scenarioText,
           djLanguage: parsedContext.preferences.djLanguage,
           djPersona: parsedContext.preferences.djVoiceStyle,
