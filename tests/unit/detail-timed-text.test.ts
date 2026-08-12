@@ -7,6 +7,7 @@ import {
   estimateDjTiming,
   estimateUntimedLyricsTiming,
   parseLrc,
+  parseTimedLyrics,
   parseUntimedLyrics,
   programProgress,
   splitHighlightUnits,
@@ -48,6 +49,40 @@ describe("Detail timed text", () => {
       "rest! ",
       "好。 ",
     ]);
+  });
+
+  it("uses NetEase YRC word timestamps without estimating a word progression", () => {
+    const [line] = parseTimedLyrics(
+      "[1000,2800](1000,900,0)Someway (1900,700,0)baby(2600,1200,0)!",
+      10_000,
+    );
+    expect(line).toMatchObject({ startMs: 1_000, endMs: 3_800, text: "Someway baby!" });
+    if (line === undefined) throw new Error("Expected a YRC line");
+    const units = deriveTimedTextUnits({ ...line, state: "current" }, 2_200);
+    expect(units.map(({ text, state }) => ({ state, text }))).toEqual([
+      { state: "played", text: "Someway " },
+      { state: "current", text: "baby" },
+      { state: "upcoming", text: "!" },
+    ]);
+    expect(units[1]?.progress).toBeGreaterThan(0);
+    expect(units[1]?.progress).toBeLessThan(1);
+  });
+
+  it("keeps the provider's absolute word timestamps for a real NetEase YRC line", () => {
+    const [line] = parseTimedLyrics(
+      "[40570,2220](40570,570,0)Apart (41140,240,0)from (41380,1230,0)me(42610,150,0).",
+      50_000,
+    );
+    if (line === undefined) throw new Error("Expected a YRC line");
+    const units = deriveTimedTextUnits({ ...line, state: "current" }, 42_000);
+    expect(units.map(({ text, state }) => ({ state, text }))).toEqual([
+      { state: "played", text: "Apart " },
+      { state: "played", text: "from " },
+      { state: "current", text: "me" },
+      { state: "upcoming", text: "." },
+    ]);
+    expect(units[2]?.progress).toBeGreaterThan(0);
+    expect(units[2]?.progress).toBeLessThan(1);
   });
 
   it("estimates word progress inside the active line by readable length", () => {

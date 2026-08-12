@@ -110,7 +110,7 @@ flowchart LR
 
 | Feature | Owns | Consumes | Produces | Must not own |
 |---|---|---|---|---|
-| Profiles | 档案 CRUD、profile context、受控 avatarRef | ProfilePreferences | Profile DTO | 登录身份、播放状态、任意头像路径/URL |
+| Profiles | 档案 CRUD、profile context、受控 `avatarRef` 与 `djAvatarRef` | ProfilePreferences | Profile DTO | 登录身份、播放状态、任意头像路径/URL |
 | Radio | Profile 级对话、意图路由、澄清与单曲推荐 | Programs、Library/Planner/TTS ports、Playback | Radio turn snapshot、Generate command | Provider 协议、HTMLAudio、Program 持久化 |
 | Programs | 生成任务、节目、DJ 段、引用、历史 | EffectiveTaste、Library application ports、Planner/Music/TTS/Fact ports | Program、PlaybackTimeline、events | HTMLAudio 状态、Library owner 表、Radio 对话 |
 | Playback | 时间线规则、低频 checkpoint | Program timeline | Playback snapshot | 实时进度、UI Sheet |
@@ -260,6 +260,7 @@ stateDiagram-v2
 - v1 Event types：`generation.planned`、`generation.tracks-resolved`、`generation.degraded`、`generation.completed`、`program.committed`、`playback.snapshot`、`feedback.persisted`、`service.health.changed`、`data_root_migration.stage_changed`。WebSocket 不发布高频 position progress。
 - 创建命令接受 `Idempotency-Key`；重复请求返回原结果或当前 job。
 - `POST /api/v1/profile-avatars` 只接受单个头像文件，先校验图片文件签名、MIME、大小与扩展策略，再由 File Store 生成受控 `avatars/` 引用。
+- `GET /avatars/:fileName` 仅接受受控 UUID 文件名和 same-origin 请求，按白名单 MIME 返回头像并设置 `nosniff`；不接受任意路径或 URL。
 - `PUT /api/v1/profiles/current` 的 body 显式携带 `profileId`；切换成功前依次取消旧 generation、丢弃旧 correlation 的迟到事件、保存旧 checkpoint、停止旧时间线，最后原子更新本机 bootstrap runtime config。
 - v1 Profiles 公共 API 提供创建、列表、读取、更新与选择，不提供删除；删除语义必须另行取得产品决策。
 - Error envelope 包含 `code`、安全 `message`、`retryable`、`correlationId` 和可选字段错误。
@@ -477,7 +478,7 @@ scripts/
 - Program 列表分页；歌词、DJ 文本与历史详情按需加载。
 - TTS 按标准 voice identifier、OS build 与合成参数缓存，歌词和搜索按 provider identity 缓存，并设置容量与清理策略。
 - Codex、搜索、TTS 均为异步任务；HTTP 只受理，不等待完整管线。
-- Profile 切换取消旧请求并丢弃迟到结果；模拟波形不得持续高 CPU。
+- Profile 切换取消旧请求并丢弃迟到结果；Audio Engine 仅在可分析的真实媒体播放时采样 Web Audio 时域数据，暂停和 Reduce Motion 下停止刷新，分析不可用时明确降级。
 ## 17. Security Considerations
 
 - Browser、local service、credential store、filesystem 和每个 Provider 都是独立 trust boundary。

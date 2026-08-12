@@ -289,13 +289,14 @@ test("Detail keeps long lyrics scrollable, hides scrollbars and centers the curr
 }) => {
   await openDetail(page, { mode: "lyrics" });
   const copy = page.getByRole("article", { name: "跟随歌词" });
+  const scroller = copy.locator(".detail-copy__scroller");
   const lineByText = (text: string) =>
     copy.locator(".detail-copy__line").filter({ hasText: text }).first();
   const first = lineByText(lyricLines[0]);
   const next = lineByText(lyricLines[1]);
   const last = lineByText(lyricLines.at(-1) ?? "");
 
-  const metrics = await copy.evaluate((element) => {
+  const metrics = await scroller.evaluate((element) => {
     const style = getComputedStyle(element);
     const webkitScrollbar = getComputedStyle(element, "::-webkit-scrollbar");
     return {
@@ -310,6 +311,7 @@ test("Detail keeps long lyrics scrollable, hides scrollbars and centers the curr
   expect(metrics.overflowY).toBe("auto");
   expect(metrics.scrollbarWidth).toBe("none");
   if (browserName !== "firefox") expect(metrics.webkitDisplay).toBe("none");
+  await expect(scroller).not.toHaveCSS("mask-image", "none");
 
   const [currentSize, normalSize] = await Promise.all([
     first.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
@@ -317,14 +319,25 @@ test("Detail keeps long lyrics scrollable, hides scrollbars and centers the curr
   ]);
   expect(currentSize).toBeGreaterThan(normalSize);
 
-  await copy.evaluate((element) => {
+  await scroller.evaluate((element) => {
+    element.style.scrollBehavior = "auto";
     element.scrollTop = 0;
   });
   await expect(first).toBeInViewport();
-  await copy.evaluate((element) => {
+  const [firstRect, copyRect] = await Promise.all([
+    first.evaluate((element) => element.getBoundingClientRect()),
+    copy.evaluate((element) => element.getBoundingClientRect()),
+  ]);
+  expect(firstRect.top).toBeGreaterThanOrEqual(copyRect.top);
+  expect(firstRect.bottom).toBeLessThanOrEqual(copyRect.bottom);
+  await scroller.evaluate((element) => {
+    element.style.scrollBehavior = "auto";
     element.scrollTop = element.scrollHeight;
   });
   await expect(last).toBeInViewport();
+  const lastRect = await last.evaluate((element) => element.getBoundingClientRect());
+  expect(lastRect.top).toBeGreaterThanOrEqual(copyRect.top);
+  expect(lastRect.bottom).toBeLessThanOrEqual(copyRect.bottom);
 });
 
 test("Detail degrades clearly when lyrics are unavailable", async ({ browserName, page }) => {
@@ -366,7 +379,12 @@ test("Detail passes axe and stops continuous motion when Reduce Motion is enable
   await openDetail(page, { mode: "lyrics", playback: false });
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await expect(page.locator(".radio-detail-layer")).toHaveCSS("animation-name", "none");
-  await expect(page.locator(".detail-waveform__bar").first()).toHaveCSS("animation-name", "none");
+  const waveformCurve = page.locator(".detail-waveform__curve");
+  if ((await waveformCurve.count()) > 0) {
+    await expect(waveformCurve).toHaveCSS("animation-name", "none");
+  } else {
+    await expect(page.getByText("WAVEFORM UNAVAILABLE")).toBeVisible();
+  }
 });
 
 test("Detail keeps the Electron compact composition aligned and balanced", async ({
@@ -395,6 +413,7 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
     const paper = document.querySelector<HTMLElement>(".detail-paper");
     const track = document.querySelector<HTMLElement>(".detail-track");
     const copy = document.querySelector<HTMLElement>(".detail-copy");
+    const copyScroller = document.querySelector<HTMLElement>(".detail-copy__scroller");
     const close = document.querySelector<HTMLElement>(".detail-close");
     const play = document.querySelector<HTMLElement>(".detail-play");
     const progress = document.querySelector<HTMLElement>(".detail-program-progress");
@@ -405,6 +424,7 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
       paper === null ||
       track === null ||
       copy === null ||
+      copyScroller === null ||
       close === null ||
       play === null ||
       progress === null
@@ -418,11 +438,9 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
     const closeRect = close.getBoundingClientRect();
     const playRect = play.getBoundingClientRect();
     const closeVisual = close.querySelector<HTMLElement>(".detail-close__visual");
-    const firstBarRect = waveform.firstElementChild?.getBoundingClientRect();
-    const lastBarRect = waveform.lastElementChild?.getBoundingClientRect();
-    if (closeVisual === null || firstBarRect === undefined || lastBarRect === undefined) {
-      throw new Error("Detail compact waveform metrics are unavailable");
-    }
+    const waveformCurve = waveform.querySelector<SVGPathElement>(".detail-waveform__curve");
+    const waveformCurveRect = waveformCurve?.getBoundingClientRect() ?? null;
+    if (closeVisual === null) throw new Error("Detail compact close metrics are unavailable");
     const closeIcon = closeVisual.querySelector<SVGElement>("svg");
     if (closeIcon === null) {
       throw new Error("Detail compact close icon is unavailable");
@@ -431,7 +449,7 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
     const closeIconRect = closeIcon.getBoundingClientRect();
     const titleStyle = getComputedStyle(title);
     const trackStyle = getComputedStyle(track);
-    const copyStyle = getComputedStyle(copy);
+    const copyStyle = getComputedStyle(copyScroller);
     return {
       closeBottom: closeRect.bottom,
       closeHeight: closeRect.height,
@@ -447,8 +465,7 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
       copyPaddingTop: Number.parseFloat(copyStyle.paddingTop),
       copyScrollPaddingBottom: Number.parseFloat(copyStyle.scrollPaddingBottom),
       copyScrollPaddingTop: Number.parseFloat(copyStyle.scrollPaddingTop),
-      firstBarBottom: firstBarRect.bottom,
-      lastBarBottom: lastBarRect.bottom,
+      waveformCurveBottom: waveformCurveRect === null ? null : waveformCurveRect.bottom,
       paperTop: paperRect.top,
       playHeight: playRect.height,
       playWidth: playRect.width,
@@ -472,8 +489,11 @@ test("Detail keeps the Electron compact composition aligned and balanced", async
   expect(metrics.statusBottom).toBeCloseTo(metrics.closeBottom, 0);
   expect(metrics.statusBottom).toBeLessThan(metrics.waveformTop);
   expect(metrics.waveformBottom).toBeGreaterThan(metrics.paperTop);
-  expect(metrics.firstBarBottom).toBeGreaterThan(metrics.paperTop);
-  expect(metrics.lastBarBottom).toBeGreaterThan(metrics.paperTop);
+  if (metrics.waveformCurveBottom !== null) {
+    expect(metrics.waveformCurveBottom).toBeGreaterThan(metrics.paperTop);
+  } else {
+    await expect(page.getByText("WAVEFORM UNAVAILABLE")).toBeVisible();
+  }
   expect(metrics.closeIconCenterX).toBeCloseTo(metrics.closeVisualCenterX, 0);
   expect(metrics.closeIconCenterY).toBeCloseTo(metrics.closeVisualCenterY, 0);
   expect(metrics.closeWidth).toBe(44);

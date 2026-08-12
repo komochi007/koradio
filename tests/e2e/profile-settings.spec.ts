@@ -2,6 +2,9 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
+
+test.use({ serviceWorkers: "block" });
+
 const profile = {
   id: "00000000-0000-4000-8000-000000000020",
   radioName: "After Midnight",
@@ -264,7 +267,8 @@ test("confirms DeepSeek privacy, saves a key through the controlled settings flo
   await mockProfileWorkspace(page, { current: true });
   await page.goto(`${appOrigin}/settings`);
 
-  await page.getByLabel("AI 大脑").selectOption("deepseek");
+  await page.getByRole("button", { name: "AI 大脑" }).click();
+  await page.getByRole("option", { name: "DeepSeek · 远程 API" }).click();
   await expect(page.getByRole("heading", { name: "启用 DeepSeek 前请确认" })).toBeVisible();
   await expect(page.getByText(/EffectiveTaste/)).toBeVisible();
   await page.getByRole("button", { name: "我已了解，启用 DeepSeek" }).click();
@@ -272,8 +276,9 @@ test("confirms DeepSeek privacy, saves a key through the controlled settings flo
   await page.getByLabel("DeepSeek API key").fill("sk-e2e-secret");
   await page.getByRole("button", { name: "保存 key" }).click();
   await expect(page.getByText("DeepSeek API key 已安全写入系统钥匙串。")).toBeVisible();
-  await expect(page.getByLabel("DeepSeek API key")).toHaveValue("");
+  await expect(page.getByLabel("DeepSeek API key")).toHaveCount(0);
   await expect(page.getByText("已配置")).toBeVisible();
+  await expect(page.getByRole("button", { name: "编辑" })).toBeVisible();
 });
 
 test("keeps Settings selectors and profile controls aligned to their shared right edge", async ({
@@ -282,13 +287,11 @@ test("keeps Settings selectors and profile controls aligned to their shared righ
   await mockProfileWorkspace(page, { current: true });
   await page.goto(`${appOrigin}/settings`);
   await expect(page.getByRole("heading", { name: "设置", exact: true })).toBeVisible();
+  await expect(page.locator(".koradio-select__trigger")).toHaveCount(4);
+  await expect(page.locator(".service-status--success").first()).toBeVisible();
 
   const settingsMetrics = await page.evaluate(() => {
-    const selects = [
-      ...document.querySelectorAll<HTMLSelectElement>(
-        ".settings-field select, .preference-row select",
-      ),
-    ];
+    const selects = [...document.querySelectorAll<HTMLButtonElement>(".koradio-select__trigger")];
     const available = document.querySelector<HTMLElement>(".service-status--success");
     if (selects.length !== 4 || available === null) {
       throw new Error("Settings alignment metrics are unavailable");
@@ -300,18 +303,18 @@ test("keeps Settings selectors and profile controls aligned to their shared righ
         const style = getComputedStyle(select);
         const rect = select.getBoundingClientRect();
         return {
-          appearance: style.appearance,
-          backgroundImage: style.backgroundImage,
-          rightInset: rect.right - (rect.left + rect.width - Number.parseFloat(style.paddingRight)),
+          chevronWidth: select
+            .querySelector<HTMLElement>(".koradio-select__chevron")
+            ?.getBoundingClientRect().width,
+          minHeight: Number.parseFloat(style.minHeight),
           right: rect.right,
         };
       }),
     };
   });
   for (const select of settingsMetrics.selects) {
-    expect(select.appearance).toBe("none");
-    expect(select.backgroundImage).not.toBe("none");
-    expect(select.rightInset).toBeGreaterThanOrEqual(16);
+    expect(select.minHeight).toBeGreaterThanOrEqual(44);
+    expect(select.chevronWidth).toBeGreaterThan(0);
   }
 
   await page.setViewportSize({ width: 430, height: 652 });
@@ -355,7 +358,7 @@ test("keeps the profile avatar label separated from the avatar and controls", as
   await page.setViewportSize({ width: 390, height: 844 });
   await mockProfileWorkspace(page, { current: false });
   await page.goto(`${appOrigin}/radio`);
-  const avatarField = page.locator(".avatar-field");
+  const avatarField = page.locator(".avatar-field").first();
   const metrics = await avatarField.evaluate((field) => {
     const legend = field.querySelector<HTMLElement>("legend");
     const avatar = field.querySelector<HTMLElement>(".profile-avatar");

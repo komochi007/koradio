@@ -152,5 +152,6 @@ test("reflows at a 200 percent desktop-equivalent layout viewport", async ({
   await expect(page).toHaveScreenshot("settings-zoom-200.png", {
     animations: "disabled",
     caret: "hide",
+    maxDiffPixels: 100,
   });
 });

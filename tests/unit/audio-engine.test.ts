@@ -144,6 +144,57 @@ class FakeAudio {
   }
 }
 
+class FakeAnalyser {
+  fftSize = 512;
+  readonly connect = vi.fn();
+
+  constructor(private readonly sample: number) {}
+
+  getByteTimeDomainData(values: Uint8Array): void {
+    values.fill(this.sample);
+  }
+}
+
+class FakeAudioContext {
+  state: AudioContextState = "suspended";
+  readonly destination = {} as AudioDestinationNode;
+  readonly analyser: FakeAnalyser;
+  readonly createAnalyser = vi.fn(() => this.analyser as unknown as AnalyserNode);
+  readonly createMediaElementSource = vi.fn(
+    () => ({ connect: vi.fn() }) as unknown as MediaElementAudioSourceNode,
+  );
+  readonly resume = vi.fn(() => {
+    this.state = "running";
+    return Promise.resolve();
+  });
+
+  constructor(sample: number) {
+    this.analyser = new FakeAnalyser(sample);
+  }
+}
+
+function asHtmlAudio(audio: FakeAudio): FakeAudio {
+  const prototype = Object.create(HTMLAudioElement.prototype) as object;
+  const fakeAudioPrototype = Object.getPrototypeOf(audio) as object;
+  Object.defineProperties(prototype, Object.getOwnPropertyDescriptors(fakeAudioPrototype));
+  Object.setPrototypeOf(audio, prototype);
+  return audio;
+}
+
+function stubAudioContext(context: FakeAudioContext): void {
+  const AudioContext = function AudioContext(): FakeAudioContext {
+    return context;
+  };
+  vi.stubGlobal("AudioContext", AudioContext);
+}
+
+function stubMatchMedia(reducedMotion: boolean): void {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => ({ matches: reducedMotion }) as MediaQueryList),
+  );
+}
+
 class FakeLease implements PlaybackLeaseCoordinator {
   state: PlaybackLeaseState = { ownership: "active", epoch: 7, profileId };
   readonly listeners = new Set<(state: PlaybackLeaseState) => void>();
@@ -627,23 +678,137 @@ describe("Audio Engine", () => {
     audio.emit("waiting");
   });
 
-  it("skips media failures and reports an exhausted queue", async () => {
+  it("retries a failed track once before skipping and reports an exhausted queue", async () => {
     const audio = new FakeAudio();
+    const resolveTrackAudio = vi.fn((_profileId: string, trackId: string) =>
+      Promise.resolve({
+        trackId,
+        resolvedAudioRef: `https://media.example.test/${trackId}-refreshed.mp3`,
+        expiresAt: "2030-07-19T08:05:00.000Z",
+      }),
+    );
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      resolveTrackAudio,
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: false });
+    audio.fail();
+    await flushAsync();
+    expect(engine.getSnapshot().currentIndex).toBe(0);
+    expect(audio.src).toContain("00000000-0000-4000-8000-000000000071-refreshed.mp3");
+    expect(resolveTrackAudio).toHaveBeenCalledTimes(1);
+    audio.fail();
+    await flushAsync();
+    expect(engine.getSnapshot().currentIndex).toBe(1);
+    audio.fail();
+    await flushAsync();
+    expect(engine.getSnapshot().currentIndex).toBe(2);
+    audio.fail();
+    await flushAsync();
+    expect(engine.getSnapshot().currentIndex).toBe(2);
+    audio.fail();
+    await flushAsync();
+    expect(engine.getSnapshot()).toMatchObject({ state: "failed", mediaError: "queue_exhausted" });
+    await engine.destroy();
+  });
+
+  it("samples the current media analyser and freezes after the reduced-motion sample", async () => {
+    const audio = asHtmlAudio(new FakeAudio());
+    const context = new FakeAudioContext(156);
+    stubAudioContext(context);
+    stubMatchMedia(true);
     const engine = createAudioEngine({
       audio,
       lease: new FakeLease(),
       preloader: { preload: vi.fn(), clear: vi.fn() },
       transport: createTransport(),
     });
-    await engine.loadProgram(program, { autoplay: false });
-    audio.fail();
-    await flushAsync();
-    expect(engine.getSnapshot().currentIndex).toBe(1);
-    audio.fail();
-    await flushAsync();
-    audio.fail();
-    await flushAsync();
-    expect(engine.getSnapshot()).toMatchObject({ state: "failed", mediaError: "queue_exhausted" });
+
+    await engine.loadProgram(program, { autoplay: true });
+
+    expect(context.createMediaElementSource).toHaveBeenCalledOnce();
+    expect(context.analyser.connect).toHaveBeenCalledWith(context.destination);
+    expect(context.resume).toHaveBeenCalledOnce();
+    expect(engine.getSnapshot()).toMatchObject({ waveformUnavailable: false });
+    expect(engine.getSnapshot().waveform).toHaveLength(64);
+    expect(engine.getSnapshot().waveform?.every((value) => value > 0.015)).toBe(true);
+    await engine.pause();
+    await engine.destroy();
+  });
+
+  it("marks a silent or unavailable analyser without falling back to a decorative waveform", async () => {
+    const audio = asHtmlAudio(new FakeAudio());
+    const context = new FakeAudioContext(128);
+    stubAudioContext(context);
+    stubMatchMedia(true);
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+
+    await engine.loadProgram(program, { autoplay: true });
+
+    expect(engine.getSnapshot()).toMatchObject({ waveform: undefined, waveformUnavailable: true });
+    await engine.destroy();
+  });
+
+  it("continues sampling real media only while playback remains active", async () => {
+    const audio = asHtmlAudio(new FakeAudio());
+    const context = new FakeAudioContext(156);
+    let sample: FrameRequestCallback | undefined;
+    stubAudioContext(context);
+    stubMatchMedia(false);
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => {
+      sample = callback;
+      return 7;
+    });
+    vi.stubGlobal("requestAnimationFrame", requestFrame);
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+
+    await engine.loadProgram(program, { autoplay: true });
+    expect(requestFrame).toHaveBeenCalledOnce();
+    sample?.(0);
+    expect(engine.getSnapshot().waveform).toHaveLength(64);
+    audio.paused = true;
+    sample?.(16);
+    expect(requestFrame).toHaveBeenCalledTimes(2);
+    await engine.destroy();
+  });
+
+  it("keeps the existing source playable when a short-lived URL refresh fails", async () => {
+    const audio = new FakeAudio();
+    const firstItem = program.timeline[0];
+    const firstTrack = program.tracks[0];
+    if (firstItem === undefined || firstTrack === undefined)
+      throw new Error("Fixture is incomplete");
+    const resolveTrackAudio = vi.fn(() => Promise.reject(new Error("resolver unavailable")));
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      resolveTrackAudio,
+      transport: createTransport(),
+    });
+
+    await engine.loadProgram(
+      { ...program, tracks: [firstTrack], timeline: [firstItem] },
+      { autoplay: false },
+    );
+    await engine.play();
+    expect(engine.getSnapshot()).toMatchObject({ state: "playing", currentIndex: 0 });
+    expect(resolveTrackAudio).toHaveBeenCalledOnce();
+    await engine.destroy();
   });
 
   it("keeps autoplay denial recoverable without skipping the item", async () => {
@@ -873,9 +1038,14 @@ describe("Audio Engine", () => {
     expect(voice.paused).toBe(true);
     await engine.play();
     expect(voice.play).toHaveBeenCalledTimes(2);
+    engine.setVolume(0.5);
+    voice.currentTime = 1.2;
+    voice.emit("timeupdate");
+    expect(engine.getSnapshot()).toMatchObject({ voicePositionMs: 1_200, volume: 0.5 });
+    expect(music.volume).toBeCloseTo(0.14, 2);
     voice.emit("ended");
     vi.advanceTimersByTime(650);
-    expect(music.volume).toBeCloseTo(1, 2);
+    expect(music.volume).toBeCloseTo(0.5, 2);
     expect(engine.getSnapshot()).toMatchObject({
       voiceActive: false,
       voiceSegmentId: undefined,

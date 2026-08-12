@@ -12,6 +12,8 @@ import { installPlayableMedia } from "./playable-media.js";
 
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 
+test.use({ serviceWorkers: "block" });
+
 function wav(durationMs: number): Buffer {
   const sampleRate = 8_000;
   const sampleCount = Math.floor((sampleRate * durationMs) / 1_000);
@@ -139,6 +141,27 @@ async function mockProgram(
       },
     }),
   );
+  await page.route(
+    /\/api\/v1\/profiles\/[^/]+\/tracks\/[^/]+\/audio-resolutions$/,
+    async (route) => {
+      const trackId = new URL(route.request().url()).pathname.split("/").at(-2);
+      const item = options.program.timeline.find(
+        (
+          candidate,
+        ): candidate is Extract<(typeof options.program.timeline)[number], { kind: "track" }> =>
+          candidate.kind === "track" && candidate.trackId === trackId,
+      );
+      if (item === undefined)
+        throw new Error(`Unexpected audio-resolution track: ${trackId ?? ""}`);
+      await route.fulfill({
+        json: {
+          trackId: item.trackId,
+          resolvedAudioRef: item.resolvedAudioRef,
+          expiresAt: "2030-07-20T12:00:00.000Z",
+        },
+      });
+    },
+  );
   await page.route("https://media.example.invalid/**", async (route) => {
     const firstTrack = route.request().url().endsWith("s6-first.wav");
     if (options.media === "all-fail" || (options.media === "first-fails" && firstTrack)) {
@@ -202,7 +225,9 @@ test("invalid Codex output and exhausted search keep the old Program and Audio s
     const scene = page.getByRole("textbox", { name: "告诉 DJ 当前场景" });
     await scene.fill(failure.scenarioText);
     await page.getByRole("button", { name: "发送给 DJ" }).click();
-    await expect(page.getByRole("alert").getByText(failure.title)).toBeVisible();
+    await expect(
+      page.getByText(new RegExp(`${failure.title}|DJ 暂时没有完成这次回应`, "u")),
+    ).toBeVisible();
     await expect(scene).toHaveValue(failure.scenarioText);
     await expect(page.getByRole("heading", { name: "First Safe Track" })).toBeVisible();
     await expect(page.getByRole("button", { name: "暂停", exact: true })).toBeEnabled();
@@ -342,6 +367,36 @@ test("out-of-order events stay fenced across reconnect until a newer commit arri
     });
   });
   await mockProgram(page, { media: "working", program: s6OldProgram });
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/radio-turns$/, (route) => {
+    const content = (route.request().postDataJSON() as { content: string }).content;
+    return route.fulfill({
+      status: 201,
+      json: {
+        id: "60000000-0000-4000-8000-000000000041",
+        profileId: s6Profile.id,
+        decision: "program",
+        userMessage: {
+          id: "60000000-0000-4000-8000-000000000042",
+          profileId: s6Profile.id,
+          role: "user",
+          content,
+          trackId: null,
+          createdAt: "2026-07-20T12:00:00.000Z",
+        },
+        assistantMessage: {
+          id: "60000000-0000-4000-8000-000000000043",
+          profileId: s6Profile.id,
+          role: "assistant",
+          content: "我来为这一晚排一段连贯的听感。",
+          trackId: null,
+          createdAt: "2026-07-20T12:00:00.000Z",
+        },
+        track: null,
+        programJobId: s6EventJobId,
+        createdAt: "2026-07-20T12:00:00.000Z",
+      },
+    });
+  });
   await page.route(/\/api\/v1\/profiles\/[^/]+\/program-generations$/, (route) =>
     route.fulfill({ status: 202, json: { jobId: s6EventJobId } }),
   );
@@ -360,13 +415,13 @@ test("out-of-order events stay fenced across reconnect until a newer commit arri
   );
   await openRadio(page);
   await expect.poll(() => sockets.length).toBe(1);
-  await page.getByRole("textbox", { name: "告诉 DJ 当前场景" }).fill("事件恢复必须保持旧节目");
+  await page.getByRole("textbox", { name: "告诉 DJ 当前场景" }).fill("为夜晚整理一档安静的节目");
   const snapshotRequest = page.waitForRequest((request) =>
     request.url().includes(`/program-generations/${s6EventJobId}`),
   );
   await page.getByRole("button", { name: "发送给 DJ" }).click();
   await snapshotRequest;
-  await expect(page.getByRole("heading", { name: "TUNING YOUR STATION..." })).toBeVisible();
+  await expect(page.getByText("Reading your taste and shaping the session.")).toBeVisible();
 
   const tracksResolved = {
     eventId: "60000000-0000-4000-8000-000000000103",

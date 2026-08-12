@@ -681,17 +681,16 @@ describe("App Shell", () => {
     render(<App audioEngine={createTestAudioEngine()} transport={createOnlineTransport()} />);
 
     expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
-    fireEvent.change(screen.getByRole("combobox", { name: "AI 大脑" }), {
-      target: { value: "deepseek" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "AI 大脑" }));
+    fireEvent.click(await screen.findByRole("option", { name: "DeepSeek · 远程 API" }));
 
     expect(await screen.findByRole("heading", { name: "启用 DeepSeek 前请确认" })).toBeTruthy();
     expect(screen.getByText(/EffectiveTaste/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "我已了解，启用 DeepSeek" }));
 
-    expect(screen.getByRole<HTMLSelectElement>("combobox", { name: "AI 大脑" }).value).toBe(
-      "deepseek",
-    );
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "AI 大脑" }).textContent,
+    ).toContain("DeepSeek · 远程 API");
   });
 
   it("starts data-root migration as an idempotent safe command", async () => {

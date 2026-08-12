@@ -174,6 +174,22 @@ describe("Detail Sheet", () => {
     expect(pause).toHaveBeenCalledOnce();
   });
 
+  it("renders real YRC word progress inside the active lyric line", async () => {
+    renderDetail({
+      lyrics: {
+        trackId,
+        status: "available",
+        content: "[1000,3000](1000,1000,0)Someway (2000,1000,0)baby (3000,1000,0)now",
+      },
+    });
+    await screen.findByText("Someway");
+    const activeWord = document.querySelector<HTMLElement>(".detail-copy__unit--current");
+    expect(activeWord?.textContent).toBe("baby ");
+    expect(activeWord?.getAttribute("style")).toContain("--detail-unit-progress: 50%");
+    expect(document.querySelector(".detail-copy__unit--played")?.textContent).toBe("Someway ");
+    expect(document.querySelector(".detail-copy__unit--upcoming")?.textContent).toBe("now");
+  });
+
   it("centers the current lyric whenever playback advances to another line", async () => {
     const queryClient = createAppQueryClient();
     const initialAudio = { ...snapshot(1), positionMs: 2_500 };
@@ -198,7 +214,7 @@ describe("Detail Sheet", () => {
       (await screen.findByText("A small light stayed awake")).getAttribute("aria-current"),
     ).toBe("true");
 
-    const copy = document.querySelector<HTMLElement>(".detail-copy");
+    const copy = document.querySelector<HTMLElement>(".detail-copy__scroller");
     const nextLine = screen
       .getByText("We let the hours move")
       .closest<HTMLElement>(".detail-copy__line");

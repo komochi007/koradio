@@ -1,6 +1,7 @@
 import {
   currentProgramResponseSchema,
   deleteProgramResponseSchema,
+  djScriptSegmentSchema,
   errorEnvelopeSchema,
   feedbackEventSchema,
   musicSearchResponseSchema,
@@ -228,6 +229,38 @@ describe("S3-04 Programs and Playback REST", () => {
       headers,
     });
     expect(programDetailSchema.parse(detailResponse.json<unknown>())).toEqual(detail);
+
+    const revealedResponse = await app.inject({
+      method: "PUT",
+      url: `/api/v1/profiles/${profile.id}/programs/${ids.program}/dj-scripts/${ids.segment}/reveal`,
+      headers,
+    });
+    expect(revealedResponse.statusCode).toBe(200);
+    const revealed = djScriptSegmentSchema.parse(revealedResponse.json<unknown>());
+    expect(revealed.revealedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/u);
+
+    const repeatedRevealResponse = await app.inject({
+      method: "PUT",
+      url: `/api/v1/profiles/${profile.id}/programs/${ids.program}/dj-scripts/${ids.segment}/reveal`,
+      headers,
+    });
+    expect(djScriptSegmentSchema.parse(repeatedRevealResponse.json<unknown>()).revealedAt).toBe(
+      revealed.revealedAt,
+    );
+
+    const unrelatedProfileResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/profiles",
+      headers: { ...headers, "idempotency-key": "program-api-profile-002" },
+      payload: { radioName: "Elsewhere", nickname: "Other" },
+    });
+    const unrelatedProfile = profileSchema.parse(unrelatedProfileResponse.json<unknown>());
+    const foreignRevealResponse = await app.inject({
+      method: "PUT",
+      url: `/api/v1/profiles/${unrelatedProfile.id}/programs/${ids.program}/dj-scripts/${ids.segment}/reveal`,
+      headers,
+    });
+    expect(foreignRevealResponse.statusCode).toBe(404);
 
     const noCheckpoint = await app.inject({
       method: "GET",

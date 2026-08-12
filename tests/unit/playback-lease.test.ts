@@ -290,7 +290,11 @@ describe("Playback lease coordinator", () => {
     }
     vi.stubGlobal("BroadcastChannel", BrowserChannel);
     vi.stubGlobal("crypto", { randomUUID: () => "browser-owner" });
-    window.localStorage.clear();
+    const storage = new MemoryStorage();
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: storage,
+    });
     const coordinator = createPlaybackLeaseCoordinator({ onYield: () => Promise.resolve() });
     const listener = vi.fn();
     const unsubscribe = coordinator.subscribe(listener);
@@ -306,6 +310,55 @@ describe("Playback lease coordinator", () => {
     expect(listener).toHaveBeenCalled();
     coordinator.destroy();
     expect(playbackLeaseChannel).toBe("koradio.playback.v1");
+  });
+
+  it("falls back to in-memory storage when browser storage is unavailable", () => {
+    class BrowserChannel {
+      addEventListener(): void {}
+      close(): void {}
+      postMessage(): void {}
+    }
+    vi.stubGlobal("BroadcastChannel", BrowserChannel);
+    vi.stubGlobal("crypto", { randomUUID: () => "fallback-owner" });
+    const descriptor = Object.getOwnPropertyDescriptor(window, "localStorage");
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new DOMException("blocked", "SecurityError");
+      },
+    });
+    try {
+      const coordinator = createPlaybackLeaseCoordinator({ onYield: () => Promise.resolve() });
+      expect(coordinator.start(profileId)).toBeDefined();
+      coordinator.release();
+      expect(coordinator.getState()).toEqual({ ownership: "passive", profileId });
+      coordinator.destroy();
+    } finally {
+      if (descriptor === undefined) delete (window as { localStorage?: Storage }).localStorage;
+      else Object.defineProperty(window, "localStorage", descriptor);
+    }
+  });
+
+  it("acquires immediately when a passive takeover sees the lease disappear", async () => {
+    const now = 65_000;
+    const storage = new MemoryStorage();
+    storage.setItem(
+      playbackLeaseKey,
+      JSON.stringify({ ownerId: "other", profileId, epoch: 11, expiresAt: now + 1_000 }),
+    );
+    const coordinator = createPlaybackLeaseCoordinator({
+      channel: new ChannelHub().endpoint(),
+      now: () => now,
+      onYield: () => Promise.resolve(),
+      ownerId: "immediate",
+      storage,
+    });
+    coordinator.start(profileId);
+    storage.removeItem(playbackLeaseKey);
+
+    await expect(coordinator.requestTakeover()).resolves.toBeGreaterThan(11);
+    expect(coordinator.getState().ownership).toBe("active");
+    coordinator.destroy();
   });
 
   it("handles storage fallback takeover, invalid requests and focus expiry", async () => {

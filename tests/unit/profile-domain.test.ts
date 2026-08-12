@@ -23,6 +23,7 @@ describe("Profiles domain defaults", () => {
       radioName: "Night Signals",
       nickname: "Klein",
       avatarRef: null,
+      djAvatarRef: null,
       frequentGenres: [],
       defaultScenario: "",
       createdAt: occurredAt,

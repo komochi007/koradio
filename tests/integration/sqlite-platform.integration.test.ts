@@ -44,8 +44,8 @@ describe("SQLite platform bootstrap", () => {
     const context = await bootstrapDatabase({ dataRoot });
 
     try {
-      expect(readScalar(context.client, "PRAGMA user_version")).toBe(14);
-      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(14);
+      expect(readScalar(context.client, "PRAGMA user_version")).toBe(15);
+      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(15);
       if (process.platform !== "win32") {
         expect((await stat(dataRoot)).mode & 0o777).toBe(0o700);
         expect((await stat(context.databasePath)).mode & 0o777).toBe(0o600);
@@ -62,8 +62,8 @@ describe("SQLite platform bootstrap", () => {
     try {
       expect(readScalar(context.client, "PRAGMA foreign_keys")).toBe(1);
       expect(readScalar(context.client, "PRAGMA journal_mode")).toBe("wal");
-      expect(readScalar(context.client, "PRAGMA user_version")).toBe(14);
-      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(14);
+      expect(readScalar(context.client, "PRAGMA user_version")).toBe(15);
+      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(15);
       expect(
         readScalar(
           context.client,
@@ -98,8 +98,8 @@ describe("SQLite platform bootstrap", () => {
 
     const second = await bootstrapDatabase({ dataRoot });
     try {
-      expect(readScalar(second.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(14);
-      expect(readScalar(second.client, "PRAGMA user_version")).toBe(14);
+      expect(readScalar(second.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(15);
+      expect(readScalar(second.client, "PRAGMA user_version")).toBe(15);
     } finally {
       second.close();
     }
@@ -114,7 +114,7 @@ describe("SQLite platform bootstrap", () => {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
-    expect(migrationDirectories.at(-1)).toBe("20260809120000_add_radio_conversation_and_overlay");
+    expect(migrationDirectories.at(-1)).toBe("20260811100000_add_dj_avatar_and_revealed_script");
     const feedbackMigrationIndex = migrationDirectories.indexOf(
       "20260716210000_add_feedback_taste_memory",
     );
@@ -267,8 +267,8 @@ describe("SQLite platform bootstrap", () => {
 
     const upgraded = await bootstrapDatabase({ dataRoot });
     try {
-      expect(readScalar(upgraded.client, "PRAGMA user_version")).toBe(14);
-      expect(readScalar(upgraded.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(14);
+      expect(readScalar(upgraded.client, "PRAGMA user_version")).toBe(15);
+      expect(readScalar(upgraded.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(15);
       expect(
         upgraded.client
           .prepare(

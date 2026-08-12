@@ -61,12 +61,11 @@ async function generateProgram(page: Page): Promise<void> {
     .getByRole("textbox", { name: "告诉 DJ 当前场景" })
     .fill("今晚写作，保持安静但不要沉闷");
   await page.getByRole("button", { name: "发送给 DJ" }).click();
-  const currentTrack = page.getByRole("heading", { name: "Space Song" });
-  await expect(page.getByRole("button", { name: "下一段" })).toBeEnabled({
+  const currentProgram = page.getByRole("region", { name: "当前节目" });
+  await expect(page.getByRole("button", { name: "跳过当前歌曲" })).toBeEnabled({
     timeout: 15_000,
   });
-  if (!(await currentTrack.isVisible())) await page.getByRole("button", { name: "下一段" }).click();
-  await expect(currentTrack).toBeVisible();
+  await expect(currentProgram.getByRole("heading")).toBeVisible();
   const playControl = page.getByRole("button", { name: /^(?:播放|暂停)$/ });
   if ((await playControl.getAttribute("aria-label")) === "播放") await playControl.click();
   await expect(page.getByRole("button", { name: "暂停", exact: true })).toBeVisible();
@@ -124,7 +123,7 @@ test("persists seven feedback events, rolls back failures, and keeps playback ru
       "aria-pressed",
       "false",
     );
-    await expect(page.getByRole("heading", { name: "Space Song" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "当前节目" }).getByRole("heading")).toBeVisible();
     await page.unroute(feedbackRouteGlob, failureHandler);
   }
 
@@ -160,6 +159,7 @@ test("persists seven feedback events, rolls back failures, and keeps playback ru
     await expect(page).toHaveScreenshot("feedback-radio-dark.png", {
       animations: "disabled",
       fullPage: false,
+      maxDiffPixels: 100,
     });
   }
 

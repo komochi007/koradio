@@ -152,6 +152,12 @@ describe("UX-11 Radio conversation", () => {
     expect(naturalProgram.assistantMessage.content).toContain("策划一档完整节目");
     expect(naturalProgram.programJobId).not.toBeNull();
 
+    const scenarioProgram = radioTurnSchema.parse(
+      (await send("今晚写作，保持安静但不要沉闷", "program-scenario-only")).json<unknown>(),
+    );
+    expect(scenarioProgram.decision).toBe("program");
+    expect(scenarioProgram.programJobId).not.toBeNull();
+
     const speechAccepted = jobAcceptedResponseSchema.parse(
       (
         await app.inject({
@@ -195,6 +201,7 @@ describe("UX-11 Radio conversation", () => {
       "chat",
       "single_track",
       "clarify",
+      "program",
       "program",
       "program",
     ]);

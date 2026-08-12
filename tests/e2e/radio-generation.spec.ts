@@ -222,6 +222,38 @@ async function mockRadio(
       },
     });
   });
+  if (options.generation === true) {
+    await page.route(/\/api\/v1\/profiles\/[^/]+\/radio-turns$/, (route) => {
+      const content = (route.request().postDataJSON() as { content: string }).content;
+      return route.fulfill({
+        status: 201,
+        json: {
+          id: "00000000-0000-4000-8000-000000000079",
+          profileId: profile.id,
+          decision: "program",
+          userMessage: {
+            id: "00000000-0000-4000-8000-000000000080",
+            profileId: profile.id,
+            role: "user",
+            content,
+            trackId: null,
+            createdAt: "2026-07-17T08:00:00.000Z",
+          },
+          assistantMessage: {
+            id: "00000000-0000-4000-8000-000000000081",
+            profileId: profile.id,
+            role: "assistant",
+            content: "我来把这一段听感接起来。",
+            trackId: null,
+            createdAt: "2026-07-17T08:00:00.000Z",
+          },
+          track: null,
+          programJobId: "00000000-0000-4000-8000-000000000074",
+          createdAt: "2026-07-17T08:00:00.000Z",
+        },
+      });
+    });
+  }
   await page.route("https://media.example.test/**", (route) =>
     route.fulfill({
       body: wav(20_000),
@@ -259,7 +291,7 @@ async function mockRadio(
       .getByRole("textbox", { name: "告诉 DJ 当前场景" })
       .fill("今晚写东西，安静但不要太困");
     await page.getByRole("button", { name: "发送给 DJ" }).click();
-    await expect(page.getByRole("heading", { name: "TUNING YOUR STATION..." })).toBeVisible();
+    await expect(page.getByText("Searching for tracks that fit the room.")).toBeVisible();
   }
   await page.locator(".radio-time__clock").evaluate((element) => {
     element.textContent = "22:47";
@@ -283,14 +315,14 @@ test("generates and commits a program through the deterministic Mock backend", a
   await page
     .getByRole("textbox", { name: "告诉 DJ 当前场景" })
     .fill("今晚写作，保持安静但不要沉闷");
-  const generationRequest = page.waitForRequest(
-    (request) => request.url().endsWith("/program-generations") && request.method() === "POST",
+  const turnRequest = page.waitForRequest(
+    (request) => request.url().endsWith("/radio-turns") && request.method() === "POST",
   );
   await page.getByRole("button", { name: "发送给 DJ" }).click();
-  const request = await generationRequest;
+  const request = await turnRequest;
   expect(request.headers()).toHaveProperty("idempotency-key");
   await expect(
-    page.getByRole("region", { name: "播放队列" }).getByText("Space Song", { exact: true }),
+    page.getByRole("region", { name: "播放队列" }).getByRole("listitem").first(),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("ON AIR")).toBeVisible();
 });
@@ -370,7 +402,7 @@ test("Radio queue collapse reflows the DJ area without leaving a gap", async ({
 
   const typography = await page.evaluate(() => {
     const user = document.querySelector<HTMLElement>(".radio-user-bubble");
-    const dj = document.querySelector<HTMLElement>(".radio-dj-copy > div > p");
+    const dj = document.querySelector<HTMLElement>(".radio-dj-bubble > p");
     if (user === null || dj === null) throw new Error("Dialogue typography is unavailable");
     const userStyle = getComputedStyle(user);
     const djStyle = getComputedStyle(dj);
@@ -449,6 +481,15 @@ test("Radio standalone desktop PWA keeps the complete canvas in a narrow window"
     animations: "disabled",
     fullPage: false,
   });
+
+  const queue = page.getByRole("region", { name: "播放队列" });
+  const status = page.getByRole("button", { name: "打开当前节目详情" });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await queue.getByRole("button", { name: "HIDE" }).click();
+  const [queueBox, statusBox] = await Promise.all([queue.boundingBox(), status.boundingBox()]);
+  expect(queueBox).not.toBeNull();
+  expect(statusBox).not.toBeNull();
+  expect((statusBox?.y ?? 0) - ((queueBox?.y ?? 0) + (queueBox?.height ?? 0))).toBeCloseTo(9, 0);
 
   const metrics = await page.evaluate(() => ({
     canvas: document.querySelector<HTMLElement>(".desktop-canvas")?.getBoundingClientRect(),
