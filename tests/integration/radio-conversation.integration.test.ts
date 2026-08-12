@@ -43,6 +43,17 @@ describe("UX-11 Radio conversation", () => {
     const assistant: RadioAssistantProvider = {
       respond(context) {
         const content = (context as { content: string }).content;
+        if (content.includes("推荐5首")) {
+          return Promise.resolve({
+            decision: "recommendations",
+            reply: "我挑了五首，先从最贴近此刻的一首开始。",
+            musicQuery: null,
+            musicQueries: [
+              "Midnight City M83",
+              ...Array.from({ length: 4 }, () => "Space Song Beach House"),
+            ],
+          });
+        }
         if (content.includes("一首")) {
           return Promise.resolve({
             decision: "single_track",
@@ -97,6 +108,14 @@ describe("UX-11 Radio conversation", () => {
     expect(single.decision).toBe("single_track");
     expect(single.track?.title).toBe("Space Song");
     expect(single.programJobId).toBeNull();
+
+    const recommendationsResponse = await send("推荐5首Beach House的歌", "recommendations-1");
+    expect(recommendationsResponse.statusCode).toBe(201);
+    const recommendations = radioTurnSchema.parse(recommendationsResponse.json<unknown>());
+    expect(recommendations.decision).toBe("recommendations");
+    expect(recommendations.recommendedTracks).toHaveLength(1);
+    expect(recommendations.recommendedTracks?.[0]?.artist).toBe("Beach House");
+    expect(recommendations.programJobId).toBeNull();
 
     const invalidCount = radioTurnSchema.parse(
       (await send("做一档 5 首歌的节目", "program-invalid-count")).json<unknown>(),
@@ -200,6 +219,7 @@ describe("UX-11 Radio conversation", () => {
     expect(conversation.turns.map((turn) => turn.decision)).toEqual([
       "chat",
       "single_track",
+      "recommendations",
       "clarify",
       "program",
       "program",

@@ -43,6 +43,21 @@ export function isHighConfidenceProgramRequest(content: string): boolean {
   );
 }
 
+function requestedRecommendationCount(content: string): number | undefined {
+  const match = /(?:推荐|挑|选).{0,8}?([345三四五])\s*首/u.exec(content);
+  if (match === null) return undefined;
+  return ({ "3": 3, "4": 4, "5": 5, 三: 3, 四: 4, 五: 5 } as Record<string, number>)[
+    match[1] ?? ""
+  ];
+}
+
+function requestedRecommendationArtist(content: string): string | undefined {
+  const match = /(?:推荐|挑|选).{0,8}?([a-z][a-z0-9 .&'’-]{1,80}?)(?:的歌曲|的歌|的音乐)/iu.exec(
+    content,
+  );
+  return match?.[1]?.trim().toLowerCase();
+}
+
 function programAcknowledgement(content: string): string {
   const scene = content.trim().replace(/[。！？!?]+$/u, "");
   const label =
@@ -99,27 +114,51 @@ export function createRadioService(options: CreateRadioServiceOptions) {
       );
       if (!output.success) throw new RadioTurnUnavailableError();
       const requestedTrackCount = requestedProgramTrackCount(command.content);
+      const recommendationCount = requestedRecommendationCount(command.content);
+      const recommendationArtist = requestedRecommendationArtist(command.content);
       const response =
-        requestedTrackCount !== null && (requestedTrackCount < 8 || requestedTrackCount > 12)
+        requestedTrackCount !== null &&
+        recommendationCount === undefined &&
+        (requestedTrackCount < 8 || requestedTrackCount > 12)
           ? {
               decision: "clarify" as const,
               reply: "一档完整节目可以安排 8–12 首歌。你希望我做 8、9、10、11 还是 12 首？",
               musicQuery: null,
+              musicQueries: [],
             }
-          : isHighConfidenceProgramRequest(command.content) && output.data.decision !== "program"
+          : recommendationCount === undefined &&
+              isHighConfidenceProgramRequest(command.content) &&
+              output.data.decision !== "program"
             ? {
                 decision: "program" as const,
                 reply: programAcknowledgement(command.content),
                 musicQuery: null,
+                musicQueries: [],
               }
             : output.data;
       let track = null;
+      const recommendedTracks: NonNullable<RadioTurn["recommendedTracks"]> = [];
       let programJobId: string | null = null;
       if (response.decision === "single_track") {
         if (response.musicQuery === null) throw new RadioTurnUnavailableError();
         const result = await options.library.search(response.musicQuery);
         track = result.items.find((candidate) => candidate.playable) ?? null;
         if (track === null) throw new RadioTurnUnavailableError();
+      } else if (response.decision === "recommendations") {
+        const seen = new Set<string>();
+        for (const query of response.musicQueries.slice(0, 5)) {
+          const candidate = (await options.library.search(query)).items.find(
+            (item) =>
+              item.playable &&
+              !seen.has(item.id) &&
+              (recommendationArtist === undefined ||
+                item.artist.toLowerCase().includes(recommendationArtist)),
+          );
+          if (candidate === undefined) continue;
+          seen.add(candidate.id);
+          recommendedTracks.push(candidate);
+        }
+        if (recommendedTracks.length === 0) throw new RadioTurnUnavailableError();
       } else if (response.decision === "program") {
         programJobId = options.programs.start(
           profileId,
@@ -128,6 +167,12 @@ export function createRadioService(options: CreateRadioServiceOptions) {
         ).jobId;
       }
       const createdAt = now().toISOString();
+      const reply =
+        response.decision === "recommendations" && recommendedTracks.length < 5
+          ? recommendationArtist === undefined
+            ? `${response.reply} 目前只找到 ${String(recommendedTracks.length)} 首可播放的歌曲。`
+            : `${response.reply} 目前只找到 ${String(recommendedTracks.length)} 首可播放的 ${recommendationArtist} 歌曲。`
+          : response.reply;
       const turn = radioTurnSchema.parse({
         id: randomId(),
         profileId,
@@ -144,11 +189,12 @@ export function createRadioService(options: CreateRadioServiceOptions) {
           id: randomId(),
           profileId,
           role: "assistant",
-          content: response.reply,
+          content: reply,
           trackId: track?.id ?? null,
           createdAt,
         },
         track,
+        recommendedTracks,
         programJobId,
         createdAt,
       });

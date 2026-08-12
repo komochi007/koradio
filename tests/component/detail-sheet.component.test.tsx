@@ -174,6 +174,77 @@ describe("Detail Sheet", () => {
     expect(pause).toHaveBeenCalledOnce();
   });
 
+  it("uses a DJ preview track's own position when following lyrics", async () => {
+    renderDetail({
+      audio: {
+        ...snapshot(1),
+        positionMs: 1_000,
+        preview: {
+          kind: "track",
+          previewId: trackId,
+          state: "playing",
+          positionMs: 4_500,
+          durationMs: 20_000,
+          mediaError: undefined,
+          track: program.tracks[0],
+        },
+      },
+      lyrics: {
+        trackId,
+        status: "available",
+        content: "[00:01.00]First line\n[00:04.00]Preview current line",
+      },
+    });
+    expect((await screen.findByText("Preview current line")).getAttribute("aria-current")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("progressbar", { name: /00:04/ }).getAttribute("aria-valuenow")).toBe(
+      "4500",
+    );
+  });
+
+  it("uses a paused DJ preview state for the detail playback control", () => {
+    const play = vi.fn(() => Promise.resolve());
+    renderDetail({
+      audio: {
+        ...snapshot(1),
+        preview: {
+          kind: "track",
+          previewId: trackId,
+          state: "paused",
+          positionMs: 4_500,
+          durationMs: 20_000,
+          mediaError: undefined,
+          track: program.tracks[0],
+        },
+      },
+      engine: { ...audioEngine(), play },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "播放" }));
+    expect(play).toHaveBeenCalledOnce();
+    expect(screen.getByText(/PAUSED/)).toBeTruthy();
+  });
+
+  it("does not inherit the paused program state while a DJ preview is playing", () => {
+    renderDetail({
+      audio: {
+        ...snapshot(1),
+        state: "paused",
+        preview: {
+          kind: "track",
+          previewId: trackId,
+          state: "playing",
+          positionMs: 4_500,
+          durationMs: 20_000,
+          mediaError: undefined,
+          track: program.tracks[0],
+        },
+      },
+    });
+    expect(screen.getByText(/PLAYING/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "暂停" })).toBeTruthy();
+  });
+
   it("renders real YRC word progress inside the active lyric line", async () => {
     renderDetail({
       lyrics: {

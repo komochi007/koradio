@@ -2,3 +2,42 @@
 @import "./radio-player.css";
 @import "./radio-queue-dialogue.css";
 @import "./radio-responsive.css";
+
+.radio-page button:not(:disabled),
+.radio-detail-portal button:not(:disabled),
+.radio-page input[type="range"]:not(:disabled) {
+  cursor: pointer;
+}
+
+.radio-page button:not(:disabled),
+.radio-detail-portal button:not(:disabled) {
+  transition:
+    filter 160ms cubic-bezier(0.2, 0, 0, 1),
+    transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.radio-page button:not(:disabled):hover,
+.radio-detail-portal button:not(:disabled):hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.radio-page button:not(:disabled):active,
+.radio-detail-portal button:not(:disabled):active {
+  filter: brightness(0.96);
+  transform: translateY(0) scale(0.98);
+}
+
+.radio-page button:focus-visible,
+.radio-detail-portal button:focus-visible,
+.radio-page input[type="range"]:focus-visible {
+  outline: 2px solid var(--kr-accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radio-page button:not(:disabled),
+  .radio-detail-portal button:not(:disabled) {
+    transition: none;
+  }
+}

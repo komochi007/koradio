@@ -19,6 +19,7 @@ export const radioAssistantOutputSchema = z.strictObject({
   decision: radioTurnDecisionSchema,
   reply: z.string().trim().min(1).max(5000),
   musicQuery: z.string().trim().min(1).max(100).nullable(),
+  musicQueries: z.array(z.string().trim().min(1).max(100)).max(5).default([]),
 });
 
 export interface RadioAssistantProvider {
@@ -56,6 +57,13 @@ function isProgramIntent(value: string): boolean {
   );
 }
 
+function requestedRecommendationCount(value: string): number | undefined {
+  const matched = /(?:推荐|挑|选).{0,8}?([345五三四])\s*首/u.exec(value);
+  if (matched === null) return undefined;
+  const valueByCharacter: Record<string, number> = { "3": 3, "4": 4, "5": 5, 三: 3, 四: 4, 五: 5 };
+  return valueByCharacter[matched[1] ?? ""];
+}
+
 const mockSingleTrackQueries = [
   "Space Song Beach House",
   "Midnight City M83",
@@ -72,12 +80,30 @@ export function createMockRadioAssistantProvider(): RadioAssistantProvider {
       providerCallOptionsSchema.parse(options);
       const content = parsed.content;
       const seed = scenarioSeed(`${content}|${String(parsed.recentMessages.length)}`);
+      const recommendationCount = requestedRecommendationCount(content);
       const explicitlyMultiple = /(?:[二三四五六七八九十]+|\d+|几|多)\s*首/u.test(content);
       const single =
         !explicitlyMultiple &&
         /推荐.*(?:一首|首歌)|听.*(?:一首|这首)|放.*(?:一首|首歌)/u.test(content);
       const broad = /随便|都行|你懂的|来点音乐/u.test(content);
-      const program = !single && !broad && isProgramIntent(content);
+      const program =
+        recommendationCount === undefined && !single && !broad && isProgramIntent(content);
+      if (recommendationCount !== undefined) {
+        const queries = Array.from(
+          { length: 5 },
+          (_, index) =>
+            mockSingleTrackQueries[(seed + index) % mockSingleTrackQueries.length] ??
+            "Space Song Beach House",
+        );
+        return Promise.resolve({
+          decision: "recommendations",
+          reply: isChinese(content)
+            ? "我挑了五首，先从最贴近你此刻心情的开始；它们会一点点把氛围推开。"
+            : "I picked five tracks that start close to this moment, then let the mood open gradually.",
+          musicQuery: null,
+          musicQueries: queries,
+        });
+      }
       if (program) {
         const topic = topicFor(content);
         const replies = isChinese(content)
@@ -95,6 +121,7 @@ export function createMockRadioAssistantProvider(): RadioAssistantProvider {
           decision: "program",
           reply: replies[seed % replies.length] ?? replies[0],
           musicQuery: null,
+          musicQueries: [],
         });
       }
       if (single) {
@@ -117,6 +144,7 @@ export function createMockRadioAssistantProvider(): RadioAssistantProvider {
               ? "Space Song Beach House"
               : (mockSingleTrackQueries[seed % mockSingleTrackQueries.length] ??
                 "Space Song Beach House"),
+          musicQueries: [],
         });
       }
       if (broad) {
@@ -126,6 +154,7 @@ export function createMockRadioAssistantProvider(): RadioAssistantProvider {
             ? "你想先听一首，还是让我把这个时刻排成一档 8 首左右的节目？"
             : "Would you like one song first, or a full programme of around eight tracks?",
           musicQuery: null,
+          musicQueries: [],
         });
       }
       const topic = topicFor(content);
@@ -144,6 +173,7 @@ export function createMockRadioAssistantProvider(): RadioAssistantProvider {
         decision: "chat",
         reply: chatReplies[seed % chatReplies.length] ?? chatReplies[0],
         musicQuery: null,
+        musicQueries: [],
       });
     },
   };

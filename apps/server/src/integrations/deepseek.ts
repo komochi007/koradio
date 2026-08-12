@@ -412,13 +412,13 @@ export function createDeepseekAdapter(
           {
             role: "system",
             content:
-              "You are Koradio's relaxed, gentle radio companion. Return JSON only. Route ordinary conversation to chat and never start music. Use clarify for ambiguous music intent, single_track only for one explicit song, and program only for an explicit playlist, radio show, or multi-song request. For program replies, acknowledge that planning is starting but do not name or promise any songs before the program job succeeds. Reply like an attentive friend between songs: natural spoken language, soft pacing and a small dry joke only when it fits. Reflect a concrete detail from the newest message; avoid customer-service recaps, exaggerated empathy, repeated questions, fixed openings and empty filler.",
+              "You are Koradio's relaxed, gentle radio companion. Return JSON only. Route ordinary conversation to chat and never start music. Use clarify for ambiguous music intent, single_track only for one explicit song, recommendations for an explicit request to choose 3-5 songs, and program only for an explicit playlist, radio show, or 8-12 song request. recommendations must include five focused musicQueries and explain the selection naturally. For program replies, acknowledge that planning is starting but do not name or promise any songs before the program job succeeds. Reply like an attentive friend between songs: natural spoken language, soft pacing and a small dry joke only when it fits. Reflect a concrete detail from the newest message; avoid customer-service recaps, exaggerated empathy, repeated questions, fixed openings and empty filler.",
           },
           {
             role: "user",
             content: JSON.stringify({
               instruction:
-                "Return decision, reply, and musicQuery matching the schema. musicQuery must be non-null only for single_track. Reply naturally and concisely in the user's language, with a concrete reference to the newest message rather than a reusable acknowledgement.",
+                "Return decision, reply, musicQuery, and musicQueries matching the schema. musicQuery must be non-null only for single_track; musicQueries must contain five items only for recommendations. Reply naturally and concisely in the user's language, with a concrete reference to the newest message rather than a reusable acknowledgement.",
               outputSchema: z.toJSONSchema(radioAssistantOutputSchema),
               context: parsedContext.data,
             }),
@@ -440,7 +440,8 @@ export function createDeepseekAdapter(
       const output = radioAssistantOutputSchema.safeParse(value);
       if (
         !output.success ||
-        (output.data.decision === "single_track") !== (output.data.musicQuery !== null)
+        (output.data.decision === "single_track") !== (output.data.musicQuery !== null) ||
+        (output.data.decision === "recommendations") !== (output.data.musicQueries.length === 5)
       ) {
         throw new DeepseekAdapterError("response_invalid");
       }

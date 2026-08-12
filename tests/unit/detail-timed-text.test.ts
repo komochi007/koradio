@@ -18,8 +18,13 @@ describe("Detail timed text", () => {
   it("splits DJ copy and estimates continuous sentence timing by readable length", () => {
     expect(splitDjSentences("先慢下来。\n然后，听见房间呼吸！最后一句")).toEqual([
       "先慢下来。",
-      "然后，听见房间呼吸！",
+      "然后，",
+      "听见房间呼吸！",
       "最后一句",
+    ]);
+    expect(splitDjSentences("这是一句没有自然停顿但确实很长的串讲文字需要分成两行阅读")).toEqual([
+      "这是一句没有自然停顿但确实很长的串讲文字需要分成",
+      "两行阅读",
     ]);
     const lines = estimateDjTiming("短句。这里是一句更长的串讲。", 9_000);
     expect(lines).toHaveLength(2);

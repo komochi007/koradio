@@ -190,7 +190,7 @@ sequenceDiagram
 
 阻断失败不得改变正在播放的旧节目。文字降级 DJ 只保留在 Program segment；只有取得真实音频引用的 `dj` segment 才进入 PlaybackTimeline。
 
-Radio turn 持久化用户消息、路由决策、助手消息和可选单曲引用；每个 Profile 只保留最近 50 个 turn。普通消息不会创建 generation job。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Programs 不直接读取 Library 表：它通过 Library application Port 获取最多 500 首当前 Profile 可播放曲目摘要与近 10 期歌曲身份，按活动 Planner 的有序 intent 解析并最多补选两轮；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败。generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。`voice-overlay` Program 的 `intro` 覆盖首曲开头、`segue` 跨前曲尾部与后曲开头、`outro` 覆盖末曲尾部；旧 Program 缺少该字段时保持 `sequential` 兼容语义。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
+Radio turn 持久化用户消息、路由决策、助手消息和可选单曲或最多 5 首推荐引用；每个 Profile 只保留最近 50 个 turn。普通消息不会创建 generation job。单曲与多首推荐解析出的歌曲可被 Browser Audio Engine 作为临时 DJ 点播播放，点播快照不写入 Program、播放历史或持久队列，结束后恢复原节目位置。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Programs 不直接读取 Library 表：它通过 Library application Port 获取最多 500 首当前 Profile 可播放曲目摘要与近 10 期歌曲身份，按活动 Planner 的有序 intent 解析并最多补选两轮；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败。generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
 
 反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Planner context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。

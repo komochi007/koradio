@@ -470,6 +470,47 @@ describe("Audio Engine", () => {
     expect(engine.getSnapshot()).toMatchObject({ state: "playing", positionMs: 4_000 });
   });
 
+  it("uses preview state for pause, resume, and seeking without changing the program clock", async () => {
+    const audio = new FakeAudio();
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: true });
+    audio.currentTime = 4;
+    audio.emit("timeupdate");
+    await engine.previewAudio({
+      kind: "track",
+      previewId: program.tracks[1]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      durationMs: 20_000,
+      track: program.tracks[1],
+    });
+
+    audio.currentTime = 1.5;
+    audio.emit("timeupdate");
+    await engine.pause();
+    expect(engine.getSnapshot()).toMatchObject({
+      positionMs: 4_000,
+      preview: { state: "paused", positionMs: 1_500 },
+    });
+
+    await engine.seek(8_000);
+    expect(audio.currentTime).toBe(8);
+    expect(engine.getSnapshot()).toMatchObject({
+      positionMs: 4_000,
+      preview: { positionMs: 8_000 },
+    });
+
+    audio.src = "https://media.example.test/first.mp3";
+    await engine.play();
+    expect(audio.src).toBe("https://media.example.test/preview.mp3");
+    expect(audio.currentTime).toBe(8);
+    expect(engine.getSnapshot().preview?.state).toBe("playing");
+  });
+
   it("keeps preview failures recoverable and never advances the program", async () => {
     const audio = new FakeAudio();
     const lease = new FakeLease();
@@ -736,6 +777,33 @@ describe("Audio Engine", () => {
     expect(engine.getSnapshot().waveform).toHaveLength(64);
     expect(engine.getSnapshot().waveform?.every((value) => value > 0.015)).toBe(true);
     await engine.pause();
+    await engine.destroy();
+  });
+
+  it("samples a DJ point-play track through the same media analyser", async () => {
+    const audio = asHtmlAudio(new FakeAudio());
+    const context = new FakeAudioContext(156);
+    stubAudioContext(context);
+    stubMatchMedia(true);
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: false });
+    await engine.previewAudio({
+      kind: "track",
+      previewId: program.tracks[1]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      durationMs: 20_000,
+      track: program.tracks[1],
+    });
+
+    expect(context.createMediaElementSource).toHaveBeenCalledOnce();
+    expect(context.resume).toHaveBeenCalledOnce();
+    expect(engine.getSnapshot()).toMatchObject({ waveformUnavailable: false });
+    expect(engine.getSnapshot().waveform).toHaveLength(64);
     await engine.destroy();
   });
 

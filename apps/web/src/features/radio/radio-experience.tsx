@@ -222,7 +222,9 @@ function RadioMain({
       </section>
     );
   }
-  if (state === "empty" || program === null) {
+  const trackPreview = audio.preview?.kind === "track" ? audio.preview : undefined;
+  const previewTrack = trackPreview?.track;
+  if ((state === "empty" || program === null) && previewTrack === undefined) {
     return (
       <section className="radio-main radio-main--empty" aria-label="当前节目">
         <p className="radio-eyebrow">NOW PLAYING</p>
@@ -231,12 +233,18 @@ function RadioMain({
       </section>
     );
   }
-  const tracks = new Map(program.tracks.map((track) => [track.id, track]));
+  const tracks = new Map((program?.tracks ?? []).map((track) => [track.id, track]));
   const current =
-    audio.currentItem?.kind === "track" ? tracks.get(audio.currentItem.trackId) : undefined;
+    previewTrack ??
+    (audio.currentItem?.kind === "track" ? tracks.get(audio.currentItem.trackId) : undefined);
   const active = audio.ownership === "active";
-  const playing = audio.state === "playing" || audio.state === "buffering";
-  const progress = audio.durationMs === 0 ? 0 : (audio.positionMs / audio.durationMs) * 100;
+  const playing =
+    trackPreview === undefined
+      ? audio.state === "playing" || audio.state === "buffering"
+      : trackPreview.state === "playing" || trackPreview.state === "loading";
+  const positionMs = trackPreview?.positionMs ?? audio.positionMs;
+  const durationMs = trackPreview?.durationMs ?? audio.durationMs;
+  const progress = durationMs === 0 ? 0 : (positionMs / durationMs) * 100;
   const currentTrackId = current?.id;
   const liked = currentTrackId === undefined ? false : feedback.isLiked(currentTrackId);
   const disliked = currentTrackId === undefined ? false : feedback.isDisliked(currentTrackId);
@@ -253,10 +261,10 @@ function RadioMain({
           </span>
           <div className="radio-player__meta">
             <p className="radio-eyebrow">NOW PLAYING</p>
-            <h2>{current?.title ?? program.program.title}</h2>
+            <h2>{current?.title ?? program?.program.title ?? "DJ 点播"}</h2>
             <p>
               {current === undefined
-                ? program.program.title
+                ? (program?.program.title ?? "DJ 点播")
                 : `${current.artist} · ${current.album}`}
             </p>
           </div>
@@ -328,21 +336,21 @@ function RadioMain({
           </div>
         </div>
         <div className="radio-player__progress">
-          <span>{formatClockDuration(audio.positionMs)}</span>
+          <span>{formatClockDuration(positionMs)}</span>
           <input
             aria-label="播放进度"
             type="range"
             min={0}
-            max={Math.max(1, audio.durationMs)}
+            max={Math.max(1, durationMs)}
             step={1000}
-            value={audio.positionMs}
+            value={positionMs}
             disabled={!active}
             style={{ "--radio-progress": `${String(progress)}%` } as CSSProperties}
             onChange={(event) => {
               void audioEngine.seek(Number(event.target.value));
             }}
           />
-          <span>{formatClockDuration(audio.durationMs || current?.durationMs || 1)}</span>
+          <span>{formatClockDuration(durationMs || current?.durationMs || 1)}</span>
         </div>
         <div className="radio-player__controls" aria-label="播放控制">
           <button
@@ -392,12 +400,14 @@ function RadioMain({
 }
 
 function RadioQueue({
+  audio,
   currentTrackId,
   expanded,
   onExpandedChange,
   program,
   state,
 }: {
+  audio: AudioEngineSnapshot;
   currentTrackId: string | undefined;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
@@ -405,8 +415,16 @@ function RadioQueue({
   state: RadioViewState;
 }): ReactElement {
   const tracks = program === null ? [] : orderedTracks(program);
+  const previewTrack = audio.preview?.kind === "track" ? audio.preview.track : undefined;
+  const queuedPreviewTrack =
+    audio.queuedPreview?.kind === "track" ? audio.queuedPreview.track : undefined;
+  const temporaryTracks = [previewTrack, queuedPreviewTrack].filter(
+    (track): track is MusicTrack => track !== undefined,
+  );
   const label =
-    state === "generating" ? "QUEUE · PREPARING" : `QUEUE · ${String(tracks.length)} TRACKS`;
+    state === "generating"
+      ? "QUEUE · PREPARING"
+      : `QUEUE · ${String(tracks.length + temporaryTracks.length)} TRACKS`;
   return (
     <section
       className={`radio-queue radio-queue--${state}${expanded ? "" : " radio-queue--collapsed"}`}
@@ -420,7 +438,7 @@ function RadioQueue({
           <button
             type="button"
             aria-expanded={expanded}
-            disabled={tracks.length === 0}
+            disabled={tracks.length + temporaryTracks.length === 0}
             onClick={() => {
               onExpandedChange(!expanded);
             }}
@@ -442,13 +460,34 @@ function RadioQueue({
             </li>
           ))}
         </ol>
-      ) : tracks.length === 0 ? (
+      ) : tracks.length === 0 && previewTrack === undefined && queuedPreviewTrack === undefined ? (
         <div className="radio-queue__empty">
           <Icon name="queue" />
           <p>Your next session will appear here.</p>
         </div>
       ) : expanded ? (
         <ol aria-label="节目曲目" tabIndex={tracks.length > 4 ? 0 : undefined}>
+          {[previewTrack, queuedPreviewTrack].flatMap((track, index) =>
+            track === undefined
+              ? []
+              : [
+                  <li
+                    className={
+                      index === 0
+                        ? "radio-queue__track radio-queue__track--current"
+                        : "radio-queue__track"
+                    }
+                    key={`dj-preview-${track.id}`}
+                  >
+                    <span>{index === 0 ? "DJ" : "NEXT"}</span>
+                    <span>
+                      <strong>{track.title}</strong>
+                      <small>{track.artist}</small>
+                    </span>
+                    <span>{formatClockDuration(track.durationMs)}</span>
+                  </li>,
+                ],
+          )}
           {tracks.map((track, index) => {
             const isCurrent = track.id === currentTrackId;
             return (
@@ -579,15 +618,16 @@ function RadioDialogue({
     ],
   );
   const playTrack = useMutation({
-    mutationFn: async ({ mode, turn }: { mode: "now" | "next"; turn: RadioTurn }) => {
-      if (turn.track === null) return;
-      const resolution = await resolveTrackAudio(transport, profileId, turn.track.id);
+    mutationFn: async ({ mode, track }: { mode: "now" | "next"; track: MusicTrack | null }) => {
+      if (track === null) return;
+      const resolution = await resolveTrackAudio(transport, profileId, track.id);
       await audioEngine.activateProfile(profileId);
       const preview = {
         kind: "track",
-        previewId: turn.track.id,
+        previewId: track.id,
         resolvedAudioRef: resolution.resolvedAudioRef,
-        durationMs: turn.track.durationMs,
+        durationMs: track.durationMs,
+        track,
       } as const;
       if (mode === "now") await audioEngine.previewAudio(preview);
       else if (audioEngine.queuePreviewNext !== undefined)
@@ -724,7 +764,7 @@ function RadioDialogue({
                           aria-busy={playTrack.isPending || undefined}
                           disabled={playTrack.isPending}
                           onClick={() => {
-                            playTrack.mutate({ mode: "now", turn: entry.turn });
+                            playTrack.mutate({ mode: "now", track: entry.turn.track });
                           }}
                         >
                           PLAY NOW
@@ -734,7 +774,7 @@ function RadioDialogue({
                           aria-busy={playTrack.isPending || undefined}
                           disabled={playTrack.isPending}
                           onClick={() => {
-                            playTrack.mutate({ mode: "next", turn: entry.turn });
+                            playTrack.mutate({ mode: "next", track: entry.turn.track });
                           }}
                         >
                           PLAY NEXT
@@ -742,6 +782,34 @@ function RadioDialogue({
                       </div>
                     </article>
                   )}
+                  {(entry.turn.recommendedTracks ?? []).map((track) => (
+                    <article className="radio-track-card" key={track.id}>
+                      <strong>{track.title}</strong>
+                      <span>{`${track.artist} · ${track.album}`}</span>
+                      <div>
+                        <button
+                          type="button"
+                          aria-busy={playTrack.isPending || undefined}
+                          disabled={playTrack.isPending}
+                          onClick={() => {
+                            playTrack.mutate({ mode: "now", track });
+                          }}
+                        >
+                          PLAY NOW
+                        </button>
+                        <button
+                          type="button"
+                          aria-busy={playTrack.isPending || undefined}
+                          disabled={playTrack.isPending}
+                          onClick={() => {
+                            playTrack.mutate({ mode: "next", track });
+                          }}
+                        >
+                          PLAY NEXT
+                        </button>
+                      </div>
+                    </article>
+                  ))}
                   <small>
                     {new Date(entry.turn.createdAt).toLocaleTimeString("zh-CN", {
                       hour: "2-digit",
@@ -934,6 +1002,10 @@ export function RadioExperience({
     transport,
   });
   const audio = useAudioSnapshot(audioEngine);
+  const playbackState: RadioViewState =
+    audio.preview?.kind === "track" && audio.preview.track !== undefined
+      ? "playing"
+      : radio.viewState;
   const feedback = useFeedback({ eventBus, profileId: current.profile.id, transport });
   const [themeError, setThemeError] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -963,9 +1035,14 @@ export function RadioExperience({
   }, [reuseNotice]);
   useEffect(() => {
     if (radio.program !== null) {
-      void audioEngine.loadProgram(radio.program, {
-        autoplay: radio.autoplayProgramId === radio.program.program.id,
-      });
+      if (radio.autoplayProgramId === radio.program.program.id) {
+        void audioEngine.loadProgram(radio.program, { autoplay: true });
+      } else {
+        void (
+          audioEngine.syncProgram?.(radio.program) ??
+          audioEngine.loadProgram(radio.program, { autoplay: false })
+        );
+      }
     } else {
       void audioEngine.activateProfile(current.profile.id);
     }
@@ -1059,16 +1136,17 @@ export function RadioExperience({
             feedback={feedback}
             program={radio.program}
             stage={radio.stage}
-            state={radio.viewState}
+            state={playbackState}
           />
           <RadioQueue
+            audio={audio}
             currentTrackId={
               audio.currentItem?.kind === "track" ? audio.currentItem.trackId : undefined
             }
             expanded={queueExpanded}
             onExpandedChange={setQueueExpanded}
             program={radio.program}
-            state={radio.viewState}
+            state={playbackState}
           />
           {audio.mediaError === "queue_exhausted" ? (
             <div className="radio-blocking-error" role="alert">
@@ -1090,7 +1168,7 @@ export function RadioExperience({
             aria-haspopup="dialog"
             aria-label={radio.program === null ? "查看节目详情" : "打开当前节目详情"}
             onClick={() => {
-              if (radio.program === null) {
+              if (radio.program === null && audio.preview?.track === undefined) {
                 setDetailUnavailable(true);
                 return;
               }
@@ -1246,12 +1324,12 @@ export function RadioExperience({
         <PrimaryNavigation active="radio" onNavigate={navigate} />
       </div>
       {detailOpen &&
-        radio.program !== null &&
+        (radio.program !== null || audio.preview?.track !== undefined) &&
         createPortal(
           <div className="radio-detail-portal">
             <div className="radio-detail-portal__canvas">
               <DetailSheetBoundary
-                key={radio.program.program.id}
+                key={radio.program?.program.id ?? audio.preview?.previewId}
                 onFailure={() => {
                   setDetailOpen(false);
                   setDetailError(true);

@@ -10,7 +10,13 @@ import {
 } from "./common.js";
 import { musicTrackSchema } from "./music.js";
 
-export const radioTurnDecisionSchema = z.enum(["chat", "clarify", "single_track", "program"]);
+export const radioTurnDecisionSchema = z.enum([
+  "chat",
+  "clarify",
+  "single_track",
+  "recommendations",
+  "program",
+]);
 export const radioMessageRoleSchema = z.enum(["user", "assistant"]);
 export const radioMessageSchema = z.strictObject({
   id: z.uuid(),
@@ -27,6 +33,7 @@ export const radioTurnSchema = z.strictObject({
   userMessage: radioMessageSchema,
   assistantMessage: radioMessageSchema,
   track: musicTrackSchema.nullable(),
+  recommendedTracks: z.array(musicTrackSchema).max(5).optional(),
   programJobId: jobIdSchema.nullable(),
   createdAt: occurredAtSchema,
 });

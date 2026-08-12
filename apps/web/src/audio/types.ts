@@ -1,4 +1,4 @@
-import type { PlaybackTimelineItem, ProgramDetail } from "@koradio/contracts";
+import type { MusicTrack, PlaybackTimelineItem, ProgramDetail } from "@koradio/contracts";
 
 export type AudioOwnership = "active" | "passive";
 export type AudioPlaybackState =
@@ -11,6 +11,8 @@ export interface AudioPreviewSnapshot {
   positionMs: number;
   durationMs: number;
   mediaError: "autoplay_blocked" | "media_failed" | undefined;
+  resolvedAudioRef?: string | undefined;
+  track?: MusicTrack | undefined;
 }
 
 export interface PreviewAudioOptions {
@@ -18,6 +20,7 @@ export interface PreviewAudioOptions {
   previewId: string;
   resolvedAudioRef: string;
   durationMs: number;
+  track?: MusicTrack | undefined;
 }
 
 export interface AudioEngineSnapshot {
@@ -35,6 +38,7 @@ export interface AudioEngineSnapshot {
   mediaError: "autoplay_blocked" | "media_failed" | "queue_exhausted" | undefined;
   checkpointError: boolean;
   preview?: AudioPreviewSnapshot | undefined;
+  queuedPreview?: Omit<AudioPreviewSnapshot, "state" | "positionMs" | "mediaError"> | undefined;
   voiceActive?: boolean | undefined;
   voiceSegmentId?: string | undefined;
   voicePositionMs?: number | undefined;
@@ -53,6 +57,7 @@ export interface AudioEngineFacade {
   destroy(): Promise<void>;
   getSnapshot(): AudioEngineSnapshot;
   loadProgram(program: ProgramDetail, options: LoadProgramOptions): Promise<void>;
+  syncProgram?(program: ProgramDetail): Promise<void>;
   next(): Promise<void>;
   pause(): Promise<void>;
   play(): Promise<void>;

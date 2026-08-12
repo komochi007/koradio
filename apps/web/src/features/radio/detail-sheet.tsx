@@ -37,7 +37,7 @@ interface DetailSheetProps {
   audioEngine: AudioEngineFacade;
   onClosed: () => void;
   profileId: string;
-  program: ProgramDetail;
+  program: ProgramDetail | null;
   transport: ServiceTransport;
 }
 
@@ -83,7 +83,13 @@ function timelineHeight(index: number): number {
   return Math.round(8 + activity * 84);
 }
 
-function contextTrack(program: ProgramDetail, audio: AudioEngineSnapshot): MusicTrack | undefined {
+function contextTrack(
+  program: ProgramDetail | null,
+  audio: AudioEngineSnapshot,
+): MusicTrack | undefined {
+  if (audio.preview?.kind === "track" && audio.preview.track !== undefined)
+    return audio.preview.track;
+  if (program === null) return undefined;
   const tracks = new Map(program.tracks.map((track) => [track.id, track]));
   if (audio.currentItem?.kind === "track") return tracks.get(audio.currentItem.trackId);
   for (let index = audio.currentIndex + 1; index < program.timeline.length; index += 1) {
@@ -98,9 +104,10 @@ function contextTrack(program: ProgramDetail, audio: AudioEngineSnapshot): Music
 }
 
 function currentScript(
-  program: ProgramDetail,
+  program: ProgramDetail | null,
   audio: AudioEngineSnapshot,
 ): DjScriptSegment | undefined {
+  if (program === null) return undefined;
   if (audio.voiceSegmentId !== undefined) {
     return program.djScripts.find((script) => script.id === audio.voiceSegmentId);
   }
@@ -110,10 +117,16 @@ function currentScript(
 }
 
 function statusLabel(audio: AudioEngineSnapshot, speaking: boolean): string {
+  if (audio.preview !== undefined) {
+    if (audio.preview.state === "paused") return "PAUSED";
+    if (audio.preview.state === "loading") return "BUFFERING";
+    if (audio.preview.state === "failed") return "PLAYBACK ERROR";
+    return "PLAYING";
+  }
   if (audio.state === "paused" || audio.state === "ready") return "PAUSED";
   if (audio.state === "buffering") return "BUFFERING";
-  if (audio.state === "completed") return "SESSION COMPLETE";
   if (audio.state === "failed") return "PLAYBACK ERROR";
+  if (audio.state === "completed") return "SESSION COMPLETE";
   return speaking ? "SPEAKING NOW" : "PLAYING";
 }
 
@@ -162,7 +175,15 @@ function TimedLines({
     if (container === null || current === null) return;
     const targetTop = current.offsetTop - (container.clientHeight - current.offsetHeight) / 2;
     const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
-    container.scrollTop = Math.min(maxTop, Math.max(0, targetTop));
+    const top = Math.min(maxTop, Math.max(0, targetTop));
+    if (typeof container.scrollTo === "function") {
+      container.scrollTo({
+        top,
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      });
+    } else {
+      container.scrollTop = top;
+    }
   }, [currentIndex, scrollContainerRef]);
   return lines.map((line) => {
     const setCurrent = (element: HTMLElement | null): void => {
@@ -234,6 +255,9 @@ export function DetailSheet({
     ? (audio.voiceDurationMs ?? audio.durationMs)
     : audio.durationMs;
   const scriptPositionMs = audio.voiceActive ? (audio.voicePositionMs ?? 0) : audio.positionMs;
+  const previewingTrack = audio.preview?.kind === "track" ? audio.preview : undefined;
+  const trackDurationMs = previewingTrack?.durationMs ?? audio.durationMs;
+  const trackPositionMs = previewingTrack?.positionMs ?? audio.positionMs;
   const lyrics = useQuery({
     queryKey: ["track-lyrics", profileId, track?.id],
     queryFn: () => {
@@ -252,18 +276,30 @@ export function DetailSheet({
     }
     if (lyrics.data === undefined || lyrics.data.status === "unavailable") return [];
     if (lyrics.data.status !== "available") return [];
-    const lines = parseTimedLyrics(lyrics.data.content, audio.durationMs);
-    return deriveTimedText(lines, audio.positionMs);
-  }, [audio.durationMs, lyrics.data, script, scriptDurationMs, scriptPositionMs, speaking]);
+    const lines = parseTimedLyrics(lyrics.data.content, trackDurationMs);
+    return deriveTimedText(lines, trackPositionMs);
+  }, [
+    lyrics.data,
+    script,
+    scriptDurationMs,
+    scriptPositionMs,
+    speaking,
+    trackDurationMs,
+    trackPositionMs,
+  ]);
   const untimedLyrics = useMemo(
     () =>
       !speaking && lyrics.data?.status === "untimed" ? parseUntimedLyrics(lyrics.data.content) : [],
     [lyrics.data, speaking],
   );
-  const totalProgress = programProgress(program.timeline, audio.currentIndex, audio.positionMs);
+  const totalProgress =
+    program === null ? 0 : programProgress(program.timeline, audio.currentIndex, audio.positionMs);
   const trackProgress =
-    audio.durationMs === 0 ? 0 : Math.min(1, Math.max(0, audio.positionMs / audio.durationMs));
-  const playing = audio.state === "playing" || audio.state === "buffering";
+    trackDurationMs === 0 ? 0 : Math.min(1, Math.max(0, trackPositionMs / trackDurationMs));
+  const playing =
+    previewingTrack === undefined
+      ? audio.state === "playing" || audio.state === "buffering"
+      : previewingTrack.state === "playing" || previewingTrack.state === "loading";
   const waveformPath = useMemo(
     () => (audio.waveform === undefined ? undefined : waveformCurvePath(audio.waveform)),
     [audio.waveform],
@@ -386,21 +422,21 @@ export function DetailSheet({
           )}
         </div>
         <section className="detail-paper">
-          <h1 id="radio-detail-title">{program.program.title}</h1>
+          <h1 id="radio-detail-title">{program?.program.title ?? track?.title ?? "DJ 点播"}</h1>
           <p className="detail-track">
             {track === undefined ? "Koradio live session" : `${track.title} · ${track.artist}`}
           </p>
           <div
-            aria-label={`当前段进度 ${formatClockDuration(audio.positionMs)} / ${formatClockDuration(audio.durationMs)}`}
-            aria-valuemax={Math.max(1, audio.durationMs)}
+            aria-label={`当前段进度 ${formatClockDuration(trackPositionMs)} / ${formatClockDuration(trackDurationMs)}`}
+            aria-valuemax={Math.max(1, trackDurationMs)}
             aria-valuemin={0}
-            aria-valuenow={audio.positionMs}
+            aria-valuenow={trackPositionMs}
             className="detail-track-progress"
             role="progressbar"
           >
-            <span>{formatClockDuration(audio.positionMs)}</span>
+            <span>{formatClockDuration(trackPositionMs)}</span>
             <i />
-            <span>{formatClockDuration(audio.durationMs)}</span>
+            <span>{formatClockDuration(trackDurationMs)}</span>
           </div>
           <article
             aria-label={speaking ? "DJ 串讲词" : "跟随歌词"}
@@ -434,7 +470,7 @@ export function DetailSheet({
               ) : timedLines.length > 0 ? (
                 <TimedLines
                   lines={timedLines}
-                  positionMs={audio.positionMs}
+                  positionMs={trackPositionMs}
                   scrollContainerRef={copyRef}
                   speaking={false}
                 />

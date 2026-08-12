@@ -181,9 +181,19 @@ function parseYrc(value: string, durationMs: number): TimedTextLine[] {
 }
 
 export function splitDjSentences(value: string): string[] {
-  return (value.match(/[^。！？!?；;\n]+[。！？!?；;]?/gu) ?? [])
-    .map((sentence) => sentence.trim())
-    .filter((sentence) => sentence.length > 0);
+  const chunks = value.match(/[^。！？!?；;\n]+[。！？!?；;]?/gu) ?? [];
+  return chunks.flatMap((chunk) => {
+    const sentence = chunk.trim();
+    if (sentence.length === 0) return [];
+    const natural = sentence.split(/(?<=[，、：,;:])\s*/u).filter(Boolean);
+    return natural.flatMap((part) => {
+      const characters = Array.from(part.trim());
+      if (characters.length <= 24) return characters.length === 0 ? [] : [characters.join("")];
+      return Array.from({ length: Math.ceil(characters.length / 24) }, (_, index) =>
+        characters.slice(index * 24, (index + 1) * 24).join(""),
+      );
+    });
+  });
 }
 
 export function estimateDjTiming(value: string, durationMs: number): TimedTextLine[] {

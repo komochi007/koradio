@@ -19,7 +19,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - **Private**：本地优先、单人陪伴、档案隔离。
 - **Restrained**：克制排版、有限操作、避免强装饰。
 - **Curated**：节目感、场景解释、结构化队列和 DJ 串讲。
-- **UX-12 已完成**：双档案头像、已播串讲持久化、中央错误卡片、自定义下拉、原始歌词真实时序与 Web Audio 实时波形已通过隔离 Live 人工验收；正式用户数据未被读取或修改。
+- **UX-12 已完成并验收**：Audio Engine 跨页面播放稳定性、DJ 临时点播在播放器/Detail/歌词/波形中的实时同步、平滑歌词跟随与自然短句串讲、Radio 控件反馈、3～5 首 DJ 策展推荐与 8～12 首节目分流均已通过 Live 人工验收；点播不改写节目历史或持久队列。
 
 ```text
 场景 → 规划 → 搜歌 → 可选 TTS → 节目与队列 → 播放 → 反馈 → 品味投影 → 下一次规划
@@ -37,9 +37,9 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - VDA-17 像素基线提交为 `6e97fb74826cdd48e5f75fe57646ac55340aab3c`；当前树只允许在不改变像素外观的前提下校准业务语义与无障碍文案。
 - Figma 是 VDA-17 基线的派生镜像，不是视觉事实源；历史 VDA 任务与 QA 报告保留追溯，但不属于默认开发入口。
 - 根 manifest、pnpm workspace、单一锁文件、Node 版本文件、四个目标边界源码入口、strict TypeScript project references 与质量配置已创建；frozen install、`check`、Playwright、axe、视觉、`dev` 与 `build` 可运行。
-- React/Vite App Shell 与 Fastify Local Service 默认以 Mock 模式启动，受控本机可显式启用 live；五个一级 route、短期进程内 session bootstrap、认证 REST/WS、事件断线重连、production 同源静态托管和仅静态 App Shell 的离线缓存已验证；Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题与 DJ 偏好、服务检测、安全数据目录迁移、Profile 级持久 DJ 对话、闲聊/澄清/单曲/节目分流、单曲卡片、对话清空与按需 Qwen 朗读、8～12 首节目、生成中保留旧节目、双声道 overlay/ducking、checkpoint、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/分页/缓存/网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看，以及 Programs 分页历史/详情、串讲重播、场景复用和收藏/撤销已实现。
+- React/Vite App Shell 与 Fastify Local Service 默认以 Mock 模式启动，受控本机可显式启用 live；五个一级 route、短期进程内 session bootstrap、认证 REST/WS、事件断线重连、production 同源静态托管和仅静态 App Shell 的离线缓存已验证；Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题与 DJ 偏好、服务检测、安全数据目录迁移、Profile 级持久 DJ 对话、闲聊/澄清/单曲/3～5 首推荐/节目分流、单曲与推荐的临时 DJ 点播、对话清空与按需 Qwen 朗读、8～12 首节目、生成中保留旧节目、双声道 overlay/ducking、checkpoint、多标签租约、全屏 Detail 平滑歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/分页/缓存/网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看，以及 Programs 分页历史/详情、串讲重播、场景复用和收藏/撤销已实现。
 - Electron 桌面窗口最小尺寸为 `430 × 652px`；Radio、Library 等常规页面继续以 `0.425` 的固定内容比例保持已验收的组件与布局，Detail Sheet 在 Electron 下例外使用实际 viewport 并按约 `25% / 75%` 分配波形区与节目面。Radio 页面外层不滚动，队列与 DJ 对话框独立滚动且隐藏滚动条；品牌标记与内容区左边缘对齐并避让 macOS 原生窗口按钮。普通浏览器与手机仍保留响应式阅读布局。
-- Node 24 `node:sqlite`、Drizzle ORM/Kit 1.0 RC、OS 默认数据目录、版本化 migration、WAL、foreign keys、严格文件权限和失败迁移事务回滚已验证；当前 v14 包含 Profile、Taste、Feedback、Settings、Music/Library、Program/Generation、RadioMessage/Turn/SpeechGeneration、DjCitation、PlaybackTimeline 与 PlaybackCheckpoint 等 owner 表。
+- Node 24 `node:sqlite`、Drizzle ORM/Kit 1.0 RC、OS 默认数据目录、版本化 migration、WAL、foreign keys、严格文件权限和失败迁移事务回滚已验证；当前 v17 包含 Profile、Taste、Feedback、Settings、Music/Library、Program/Generation、RadioMessage/Turn/Recommendation/SpeechGeneration、DjCitation、PlaybackTimeline 与 PlaybackCheckpoint 等 owner 表。
 - macOS Keychain adapter 使用 `/usr/bin/security -i` 从 stdin 接收十六进制 secret，不把明文写入 argv；受控 File Store 只生成 data root 内相对引用并限制扩展名、MIME、大小、来源与重定向；日志移除 token、key、敏感正文、凭据 URL 和用户路径。
 - `packages/contracts/src/` 已包含完整 v1 REST DTO/command、显式 `profileId`、幂等 request、异步 job、事件与错误 Zod schemas；health/session/events、Profiles、Library、Radio conversation/speech、Programs/Playback、生成受理/Snapshot、DeviceSettings、DeepSeek credential status、ProfilePreferences 和数据目录迁移已有后端实现。
 - Profiles 创建在单事务内建立 Profile、默认 ProfilePreferences 与由 onboarding genres/default scenario 初始化的 TasteOverrides；current Profile ID 与 active data root 共用原子 bootstrap runtime config，切换失败不会更新当前 context。
@@ -101,7 +101,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 | Module | Owns | Does not own |
 |---|---|---|
 | Profiles | 档案 CRUD、profile context 与受控 avatarRef | 登录身份、播放状态、任意头像 URL/路径 |
-| Radio | Profile 级对话、意图路由、单曲/节目协调与按需朗读 | Provider 实现、实时播放状态 |
+| Radio | Profile 级对话、意图路由、单曲/3～5 首推荐/节目协调与按需朗读 | Provider 实现、实时播放状态 |
 | Programs | 生成任务、节目、DJ 段和历史 | `HTMLAudio` 状态 |
 | Playback | 时间线规则与恢复 checkpoint | 实时播放进度、UI Sheet |
 | Library | 搜索、导入与归一化曲目 | 推荐决策、播放控制 |

@@ -13,7 +13,7 @@ import { parseSqliteRow, parseSqliteRows } from "../../platform/db/rows.js";
 const rowSchema = z.object({
   id: z.string(),
   profile_id: z.string(),
-  decision: z.enum(["chat", "clarify", "single_track", "program"]),
+  decision: z.enum(["chat", "clarify", "single_track", "recommendations", "program"]),
   user_message_id: z.string(),
   user_content: z.string(),
   user_created_at: z.string(),
@@ -36,6 +36,21 @@ const rowSchema = z.object({
   track_origin_mode: z.enum(["live", "mock"]).nullable(),
 });
 
+const recommendationRowSchema = z.object({
+  track_id: z.string(),
+  track_source: z.literal("netease"),
+  track_source_id: z.string(),
+  track_title: z.string(),
+  track_artist: z.string(),
+  track_album: z.string(),
+  track_artwork_url: z.string().nullable(),
+  track_duration_ms: z.number(),
+  track_lyric_status: z.enum(["available", "untimed", "unavailable"]),
+  track_lyrics_queried: z.number(),
+  track_playable: z.number(),
+  track_origin_mode: z.enum(["live", "mock"]),
+});
+
 export interface RadioTurnRepository {
   clear(profileId: string): void;
   findById(profileId: string, turnId: string): RadioTurn | null;
@@ -44,7 +59,29 @@ export interface RadioTurnRepository {
   list(profileId: string): RadioTurn[];
 }
 
-function mapRow(row: z.infer<typeof rowSchema>): RadioTurn {
+function mapTrack(row: z.infer<typeof recommendationRowSchema>) {
+  return musicTrackSchema.parse({
+    id: row.track_id,
+    source: row.track_source,
+    sourceTrackId: row.track_source_id,
+    title: row.track_title,
+    artist: row.track_artist,
+    album: row.track_album,
+    artworkUrl: row.track_artwork_url,
+    durationMs: row.track_duration_ms,
+    lyricStatus:
+      row.track_lyric_status === "unavailable" && row.track_lyrics_queried === 0
+        ? "unknown"
+        : row.track_lyric_status,
+    playable: row.track_playable === 1,
+    originMode: row.track_origin_mode,
+  });
+}
+
+function mapRow(
+  row: z.infer<typeof rowSchema>,
+  recommendedTracks: RadioTurn["recommendedTracks"],
+): RadioTurn {
   const track =
     row.track_id === null || row.track_source === null
       ? null
@@ -85,6 +122,7 @@ function mapRow(row: z.infer<typeof rowSchema>): RadioTurn {
       createdAt: row.assistant_created_at,
     },
     track,
+    recommendedTracks,
     programJobId: row.program_job_id,
     createdAt: row.created_at,
   });
@@ -119,6 +157,24 @@ export function createRadioTurnRepository(client: DatabaseSync): RadioTurnReposi
   const list = client.prepare(
     `${select} WHERE radio_turn.profile_id = ? ORDER BY radio_turn.created_at DESC, radio_turn.id DESC LIMIT 50`,
   );
+  const recommendationsForTurn = client.prepare(`
+    SELECT music_track.id AS track_id,
+      music_track.source AS track_source,
+      music_track.source_track_id AS track_source_id,
+      music_track.title AS track_title,
+      music_track.artist AS track_artist,
+      music_track.album AS track_album,
+      music_track.artwork_url AS track_artwork_url,
+      music_track.duration_ms AS track_duration_ms,
+      music_track.lyric_status AS track_lyric_status,
+      music_track.lyrics_queried AS track_lyrics_queried,
+      music_track.playable AS track_playable,
+      music_track.origin_mode AS track_origin_mode
+    FROM radio_turn_recommendation
+    JOIN music_track ON music_track.id = radio_turn_recommendation.track_id
+    WHERE radio_turn_recommendation.radio_turn_id = ?
+    ORDER BY radio_turn_recommendation.position ASC
+  `);
   const insertMessage = client.prepare(
     "INSERT INTO radio_message (id, profile_id, role, content, track_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
   );
@@ -128,6 +184,9 @@ export function createRadioTurnRepository(client: DatabaseSync): RadioTurnReposi
       assistant_message_id, track_id, program_job_id, created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
+  const insertRecommendation = client.prepare(
+    "INSERT INTO radio_turn_recommendation (radio_turn_id, track_id, position) VALUES (?, ?, ?)",
+  );
   const deleteOverflowTurns = client.prepare(`
     DELETE FROM radio_turn WHERE profile_id = ? AND id NOT IN (
       SELECT id FROM radio_turn WHERE profile_id = ?
@@ -162,11 +221,21 @@ export function createRadioTurnRepository(client: DatabaseSync): RadioTurnReposi
     },
     findById(profileId, turnId) {
       const value = byId.get(profileId, turnId);
-      return value === undefined ? null : mapRow(parseSqliteRow(rowSchema, value));
+      if (value === undefined) return null;
+      const row = parseSqliteRow(rowSchema, value);
+      return mapRow(
+        row,
+        parseSqliteRows(recommendationRowSchema, recommendationsForTurn.all(row.id)).map(mapTrack),
+      );
     },
     findByIdempotency(profileId, key) {
       const value = byKey.get(profileId, key);
-      return value === undefined ? null : mapRow(parseSqliteRow(rowSchema, value));
+      if (value === undefined) return null;
+      const row = parseSqliteRow(rowSchema, value);
+      return mapRow(
+        row,
+        parseSqliteRows(recommendationRowSchema, recommendationsForTurn.all(row.id)).map(mapTrack),
+      );
     },
     insert(turn, idempotencyKey) {
       client.exec("BEGIN IMMEDIATE");
@@ -198,6 +267,9 @@ export function createRadioTurnRepository(client: DatabaseSync): RadioTurnReposi
           turn.programJobId,
           turn.createdAt,
         );
+        for (const [position, track] of (turn.recommendedTracks ?? []).entries()) {
+          insertRecommendation.run(turn.id, track.id, position);
+        }
         deleteOverflowSpeech.run(turn.profileId, turn.profileId);
         deleteOverflowTurns.run(turn.profileId, turn.profileId);
         deleteOrphanMessages.run(turn.profileId, turn.profileId, turn.profileId);
@@ -208,7 +280,14 @@ export function createRadioTurnRepository(client: DatabaseSync): RadioTurnReposi
       }
     },
     list(profileId) {
-      const turns = parseSqliteRows(rowSchema, list.all(profileId)).map((row) => mapRow(row));
+      const turns = parseSqliteRows(rowSchema, list.all(profileId)).map((row) =>
+        mapRow(
+          row,
+          parseSqliteRows(recommendationRowSchema, recommendationsForTurn.all(row.id)).map(
+            mapTrack,
+          ),
+        ),
+      );
       turns.reverse();
       return radioConversationSchema.parse({ turns }).turns;
     },

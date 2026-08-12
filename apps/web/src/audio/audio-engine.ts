@@ -56,6 +56,7 @@ interface CreateAudioEngineOptions {
 interface PreviewContext {
   kind: "dj" | "track";
   previewId: string;
+  resolvedAudioRef: string;
   durationMs: number;
   returnIndex: number | undefined;
   returnPositionMs: number;
@@ -320,6 +321,11 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     }
   }
 
+  async function prepareWaveform(): Promise<void> {
+    initializeWaveform();
+    if (audioContext?.state === "suspended") await audioContext.resume();
+  }
+
   function rampMusic(target: number, durationMs: number): void {
     if (voiceRamp !== undefined) clearInterval(voiceRamp);
     const start = audio.volume;
@@ -572,6 +578,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       previewContext = {
         kind: preview.kind,
         previewId: preview.previewId,
+        resolvedAudioRef: preview.resolvedAudioRef,
         durationMs: preview.durationMs,
         returnIndex: item === undefined ? undefined : currentIndex,
         returnPositionMs: item === undefined ? 0 : snapshot.positionMs,
@@ -582,6 +589,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         ...previewContext,
         kind: preview.kind,
         previewId: preview.previewId,
+        resolvedAudioRef: preview.resolvedAudioRef,
         durationMs: preview.durationMs,
       };
     }
@@ -602,9 +610,12 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         positionMs: 0,
         durationMs: preview.durationMs,
         mediaError: undefined,
+        resolvedAudioRef: preview.resolvedAudioRef,
+        track: preview.track,
       },
     });
     try {
+      await prepareWaveform();
       await audio.play();
       if (!isCurrentPreview(version, preview.previewId)) {
         audio.pause();
@@ -618,8 +629,11 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
           positionMs: 0,
           durationMs: preview.durationMs,
           mediaError: undefined,
+          resolvedAudioRef: preview.resolvedAudioRef,
+          track: preview.track,
         },
       });
+      startWaveformSampling();
     } catch (error) {
       if (!isCurrentPreview(version, preview.previewId)) {
         audio.pause();
@@ -634,12 +648,83 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
           positionMs: 0,
           durationMs: preview.durationMs,
           mediaError: autoplayBlocked ? "autoplay_blocked" : "media_failed",
+          resolvedAudioRef: preview.resolvedAudioRef,
+          track: preview.track,
         },
       });
       if (!autoplayBlocked) {
         restoreAfterPreview(snapshot.preview);
       }
     }
+  }
+
+  async function playPreview(): Promise<void> {
+    const preview = snapshot.preview;
+    const context = previewContext;
+    if (preview === undefined || context === undefined) return;
+    if (lease.getState().ownership !== "active") {
+      await lease.requestTakeover();
+      update({ ownership: lease.getState().ownership, leaseEpoch: lease.getState().epoch });
+    }
+    if (lease.getState().ownership !== "active") return;
+    const version = loadVersion;
+    const previewId = context.previewId;
+    const source = playableSource(context.resolvedAudioRef);
+    if (audio.src !== source) {
+      audio.pause();
+      audio.src = source;
+      expectedSource = audio.src;
+      audio.preload = "auto";
+      audio.load();
+      audio.currentTime = clamp(preview.positionMs, 0, preview.durationMs) / 1000;
+    }
+    update({ preview: { ...preview, state: "loading", mediaError: undefined } });
+    try {
+      await prepareWaveform();
+      await audio.play();
+      if (!isCurrentPreview(version, previewId)) {
+        audio.pause();
+        return;
+      }
+      const currentPreview = snapshot.preview;
+      if (currentPreview === undefined) return;
+      update({ preview: { ...currentPreview, state: "playing", mediaError: undefined } });
+      startWaveformSampling();
+    } catch (error) {
+      if (!isCurrentPreview(version, previewId)) return;
+      const autoplayBlocked = error instanceof DOMException && error.name === "NotAllowedError";
+      const currentPreview = snapshot.preview;
+      if (currentPreview === undefined) return;
+      update({
+        preview: {
+          ...currentPreview,
+          state: autoplayBlocked ? "paused" : "failed",
+          mediaError: autoplayBlocked ? "autoplay_blocked" : "media_failed",
+        },
+      });
+      if (!autoplayBlocked) restoreAfterPreview(snapshot.preview);
+    }
+  }
+
+  function pausePreview(): boolean {
+    if (previewContext === undefined || snapshot.preview === undefined) return false;
+    audio.pause();
+    update({ preview: { ...snapshot.preview, state: "paused" } });
+    return true;
+  }
+
+  function seekPreview(positionMs: number): boolean {
+    if (
+      previewContext === undefined ||
+      snapshot.preview === undefined ||
+      lease.getState().ownership !== "active"
+    ) {
+      return false;
+    }
+    const next = clamp(Math.round(positionMs), 0, snapshot.preview.durationMs);
+    audio.currentTime = next / 1000;
+    update({ preview: { ...snapshot.preview, positionMs: next } });
+    return true;
   }
 
   function stopPreview(): Promise<void> {
@@ -712,6 +797,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       if (reason === "ended" && queuedPreview !== undefined) {
         const queued = queuedPreview;
         queuedPreview = undefined;
+        update({ queuedPreview: undefined });
         await previewAudio(queued);
         if (previewContext !== undefined) {
           previewContext = { ...previewContext, returnIndex: undefined, returnWasPlaying: false };
@@ -730,6 +816,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     if (reason === "ended" && queuedPreview !== undefined) {
       const queued = queuedPreview;
       queuedPreview = undefined;
+      update({ queuedPreview: undefined });
       await previewAudio(queued);
       return;
     }
@@ -879,6 +966,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   audio.addEventListener("playing", () => {
     if (previewContext !== undefined && snapshot.preview !== undefined) {
       update({ preview: { ...snapshot.preview, state: "playing" } });
+      initializeWaveform();
+      startWaveformSampling();
       return;
     }
     if (expectedSource !== undefined && lease.getState().ownership === "active") {
@@ -1035,18 +1124,41 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       });
       await restore(nextProgram, loadOptions.autoplay);
     },
-    next: () => advance("next"),
+    async syncProgram(nextProgram) {
+      await this.activateProfile(nextProgram.program.profileId);
+      if (program !== undefined || snapshot.preview !== undefined) return;
+      await this.loadProgram(nextProgram, { autoplay: false });
+    },
+    async next() {
+      if (previewContext !== undefined) {
+        await stopPreview();
+        return;
+      }
+      await advance("next");
+    },
     async pause() {
       if (lease.getState().ownership !== "active") return;
+      if (pausePreview()) return;
       audio.pause();
       voiceAudio.pause();
       update({ state: "paused" });
       await checkpoint("paused");
     },
-    play: () => playCurrent(true),
+    play() {
+      if (previewContext !== undefined && snapshot.preview !== undefined) return playPreview();
+      return playCurrent(true);
+    },
     previewAudio,
     queuePreviewNext(preview) {
       queuedPreview = preview;
+      update({
+        queuedPreview: {
+          kind: preview.kind,
+          previewId: preview.previewId,
+          durationMs: preview.durationMs,
+          track: preview.track,
+        },
+      });
       return Promise.resolve();
     },
     async prepareForProfileSwitch() {
@@ -1060,6 +1172,10 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     },
     async previous() {
       if (lease.getState().ownership !== "active" || program === undefined) return;
+      if (previewContext !== undefined) {
+        await stopPreview();
+        return;
+      }
       await checkpoint(snapshot.state === "playing" ? "playing" : "paused");
       const shouldPlay = snapshot.state === "playing" || snapshot.state === "buffering";
       const index = snapshot.positionMs > 3_000 ? currentIndex : Math.max(0, currentIndex - 1);
@@ -1070,6 +1186,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       }
     },
     async seek(positionMs) {
+      if (seekPreview(positionMs)) return;
       const item = currentItem();
       if (item === undefined || lease.getState().ownership !== "active") return;
       const next = clamp(Math.round(positionMs), 0, item.durationMs);

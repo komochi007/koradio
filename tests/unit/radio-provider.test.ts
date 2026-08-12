@@ -10,12 +10,15 @@ describe("UX-11 mock Radio intent routing", () => {
       { correlationId: "00000000-0000-4000-8000-000000000001" },
     );
 
-  it("keeps one-song requests separate from multi-song programs", async () => {
+  it("keeps one-song requests, five-track recommendations, and multi-song programs separate", async () => {
     await expect(respond("推荐一首歌")).resolves.toMatchObject({
       decision: "single_track",
       musicQuery: "Space Song Beach House",
     });
     await expect(respond("推荐八首歌做成节目")).resolves.toMatchObject({ decision: "program" });
+    await expect(respond("推荐5首keshi的歌")).resolves.toMatchObject({
+      decision: "recommendations",
+    });
     await expect(respond("来点音乐")).resolves.toMatchObject({ decision: "clarify" });
     await expect(respond("今天有点累")).resolves.toMatchObject({ decision: "chat" });
   });

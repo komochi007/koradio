@@ -50,7 +50,7 @@
   - 本地服务内置的网易云 Provider：通过 TypeScript `linuxapi` 适配器完成音乐搜索、歌曲信息、播放链接和歌词获取，v1 不要求用户填写网易云地址或密钥。
   - 可选 Qwen3-TTS：由 bundled Python/MLX helper 调用固定 revision 的 8-bit 本地模型；中文固定 `Serena`、英文固定 `Ryan`，模型由用户首次下载，不可用时降级为完整文字 DJ。
   - 本地多档案：用户档案、品味标签、播放历史和反馈；活动 Planner、Codex 命令、DeepSeek 模型/Keychain 凭据与数据目录属于设备级配置，网易云与 TTS 属于设备级运行时能力。
-  - Radio 主播放页：顶部品牌区、时间/ON AIR、播放器、队列、DJ 状态栏、DJ 对话区、底部输入的单列固定顺序。
+  - Radio 主播放页：顶部品牌区、时间/ON AIR、播放器、队列、DJ 状态栏、DJ 对话区、底部输入的单列固定顺序；DJ 对话支持单曲与最多 5 首策展卡片的临时点播，不改写节目历史或持久队列。
   - DJ 状态栏详情态：全屏沉浸节目界面、深色声波区、浅色节目面、AI 串讲词、歌词、歌曲进度和节目整体进度。
   - 昼夜模式：夜间和日间都按冷调高级电台风格完整设计。
   - AI DJ 人格与语言：英式电台主持人气质，支持中文或英文串讲。
@@ -189,7 +189,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 3 | 播放器 | 当前歌曲、歌手、音量、上一首、播放/暂停、下一首、队列、喜欢歌曲、More、进度条 | 控制 Browser Audio Engine 中的播放时间线并和 Detail Sheet 同步；不喜欢位于 More，节目收藏仅位于 Programs/节目入口 |
 | 4 | 队列 | `QUEUE`、曲目数、当前高亮曲目、固定高度内最多四行、`HIDE/LIST` | 空状态只显示状态栏；生成节目后默认展开全部 8～12 首并在卡片内滚动 |
 | 5 | DJ 状态栏 | `Koradio`、`LIVE/SPEAKING/THINKING/PLAYING`、状态灯 | 用户点击后打开全屏 Radio Detail Sheet |
-| 6 | DJ 对话区 | 固定标题与独立滚动 transcript、DJ/用户各自 `44px` 圆形头像与克制差异气泡、单曲卡片、来源和时间；普通回复不提供语音按钮，已播 TTS 串讲显示 `REPLAY/PLAYING` | 最近 50 个普通 turn 与当前节目已播串讲分别保存；未播串讲不出现 |
+| 6 | DJ 对话区 | 固定标题与独立滚动 transcript、DJ/用户各自 `44px` 圆形头像与克制差异气泡、单曲或最多 5 首策展卡片、来源和时间；每张卡片提供 `PLAY NOW` 与 `PLAY NEXT`，普通回复不提供语音按钮，已播 TTS 串讲显示 `REPLAY/PLAYING` | 最近 50 个普通 turn 与当前节目已播串讲分别保存；临时点播不写入 Program、播放历史或持久队列，未播串讲不出现 |
 | 7 | 底部输入 | `Say something to the DJ...`、语音按钮、发送按钮、连接状态 | 每轮先路由意图；节目生成期间输入仍可用，再次请求节目时先询问是否替换正在生成的任务 |
 
 ### 4. 页面状态矩阵
@@ -330,7 +330,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 - 每期选择 1～2 首 featured track 生成 45～90 秒深讲，其余开场、转场和结束语保持克制。可核验的背景事实仅来自非阻断音乐事实 Provider 并显示来源；取不到来源时只做音乐性、歌词主题和场景分析。
 - Qwen3-TTS 可用且生成成功 → Program 以 `voice-overlay` 模式保存 DJ 音频；Audio Engine 在音乐播放中叠加串讲并 duck 到 28%，而不是把每段语音当成独立歌曲顺序播放。TTS 失败时保留完整文字 DJ，歌曲继续播放。
 - 当前已有节目时，旧节目在新节目生成期间继续播放；生成失败时保持旧节目不变；新节目完整提交后保存旧 checkpoint、停止旧时间线并原子切换。
-- 数据变化：每轮写入 Profile-owned `RadioMessage` 与 `RadioTurn`；单曲卡片只引用既有或归一化歌曲；只有完整节目成功时新增 `Program`、`DjScriptSegment`、`DjCitation`、`MusicTrack` 与已提交的 `PlaybackTimeline`。每个 Profile 最多保留最近 50 个 turn（100 条消息），清空需二次确认。
+- 数据变化：每轮写入 Profile-owned `RadioMessage` 与 `RadioTurn`；单曲和多首推荐卡片只引用既有或归一化歌曲，临时点播快照只保存在 Browser Audio Engine；只有完整节目成功时新增 `Program`、`DjScriptSegment`、`DjCitation`、`MusicTrack` 与已提交的 `PlaybackTimeline`。每个 Profile 最多保留最近 50 个 turn（100 条消息），清空需二次确认。
 
 **用户流程**
 
