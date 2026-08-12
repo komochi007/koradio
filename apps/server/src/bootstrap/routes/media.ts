@@ -8,6 +8,8 @@ import { sendApiError } from "./api-error.js";
 
 const ttsFileNamePattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:aiff|caf|m4a|wav)$/u;
+const avatarFileNamePattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpe?g|png|webp)$/u;
 const mockMediaFileNames = new Set(
   Array.from(
     { length: 24 },
@@ -47,11 +49,46 @@ function ttsMimeType(fileName: string): string {
   return "audio/wav";
 }
 
+function avatarMimeType(fileName: string): string {
+  if (fileName.endsWith(".png")) return "image/png";
+  if (fileName.endsWith(".webp")) return "image/webp";
+  return "image/jpeg";
+}
+
 export function createMediaRoutes(options: {
   fileStore: LocalFileStore;
   providerMode: RuntimeConfig["providerMode"];
 }): FastifyPluginAsync {
   return async (app) => {
+    app.get("/avatars/:fileName", async (request, reply) => {
+      const params = request.params as { fileName?: unknown };
+      if (
+        request.headers["sec-fetch-site"] !== "same-origin" ||
+        typeof params.fileName !== "string" ||
+        !avatarFileNamePattern.test(params.fileName)
+      ) {
+        return sendApiError(
+          reply,
+          403,
+          "AVATAR_ACCESS_DENIED",
+          "Avatar access is not allowed",
+          false,
+        );
+      }
+      try {
+        const content = await options.fileStore.read(`avatars/${params.fileName}`);
+        reply.header("Cache-Control", "no-store");
+        reply.header("Cross-Origin-Resource-Policy", "same-origin");
+        reply.header("X-Content-Type-Options", "nosniff");
+        return await reply.type(avatarMimeType(params.fileName)).send(content);
+      } catch (error) {
+        if (error instanceof FileStoreError) {
+          return sendApiError(reply, 404, "AVATAR_NOT_FOUND", "Avatar was not found", false);
+        }
+        throw error;
+      }
+    });
+
     app.get("/tts/:fileName", async (request, reply) => {
       const params = request.params as { fileName?: unknown };
       if (

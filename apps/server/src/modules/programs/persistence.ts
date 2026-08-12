@@ -48,6 +48,7 @@ interface DjScriptSegmentRow {
   id: string;
   language: "zh-CN" | "en-GB";
   program_id: string;
+  revealed_at: string | null;
   text: string;
   tts_audio_ref: string | null;
   type: "intro" | "segue" | "outro";
@@ -72,6 +73,7 @@ const djScriptSegmentRowSchema: z.ZodType<DjScriptSegmentRow> = z.object({
   id: z.string(),
   language: z.enum(["zh-CN", "en-GB"]),
   program_id: z.string(),
+  revealed_at: z.string().nullable(),
   text: z.string(),
   tts_audio_ref: z.string().nullable(),
   type: z.enum(["intro", "segue", "outro"]),
@@ -102,6 +104,12 @@ export interface ProgramRepository {
   insert(record: ProgramRecord): void;
   list(profileId: string, cursor?: string, limit?: number): ProgramListResponse;
   markCompleted(profileId: string, programId: string): Program | null;
+  reveal(
+    profileId: string,
+    programId: string,
+    segmentId: string,
+    revealedAt: string,
+  ): DjScriptSegment | null;
   setCurrent(profileId: string, programId: string): void;
   ttsReferences(programId: string): string[];
   ttsReferenceUseCount(reference: string): number;
@@ -126,6 +134,7 @@ function mapSegment(
     text: row.text,
     displayText: row.display_text,
     estimatedTiming: row.estimated_timing === 1,
+    ...(row.revealed_at === null ? {} : { revealedAt: row.revealed_at }),
     ttsAudioRef: row.tts_audio_ref,
     ...(citations.length === 0 ? {} : { citations }),
   });
@@ -193,9 +202,9 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
   const insertSegment = client.prepare(`
     INSERT INTO dj_script_segment (
       id, program_id, position, type, language, text, display_text,
-      estimated_timing, tts_audio_ref
+      estimated_timing, tts_audio_ref, revealed_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const findCitations = client.prepare(
     "SELECT id, title, url, provider FROM dj_citation WHERE segment_id = ? ORDER BY position ASC",
@@ -212,6 +221,21 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
   `);
   const updateCompleted = client.prepare(`
     UPDATE program SET status = 'completed' WHERE profile_id = ? AND id = ?
+  `);
+  const revealSegment = client.prepare(`
+    UPDATE dj_script_segment
+    SET revealed_at = COALESCE(revealed_at, ?)
+    WHERE id = ?
+      AND program_id = ?
+      AND EXISTS (SELECT 1 FROM program WHERE id = ? AND profile_id = ?)
+  `);
+  const findSegment = client.prepare(`
+    SELECT dj_script_segment.*
+    FROM dj_script_segment
+    INNER JOIN program ON program.id = dj_script_segment.program_id
+    WHERE dj_script_segment.id = ?
+      AND dj_script_segment.program_id = ?
+      AND program.profile_id = ?
   `);
   const upsertCurrent = client.prepare(`
     INSERT INTO current_program (profile_id, program_id)
@@ -320,6 +344,7 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
           segment.displayText,
           segment.estimatedTiming ? 1 : 0,
           segment.ttsAudioRef,
+          segment.revealedAt ?? null,
         );
         for (const [citationPosition, citation] of (segment.citations ?? []).entries()) {
           insertCitation.run(
@@ -351,6 +376,13 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
       const value = findProgram.get(profileId, programId);
       const row = value === undefined ? undefined : parseSqliteRow(programRowSchema, value);
       return row === undefined ? null : readProgram(row);
+    },
+    reveal(profileId, programId, segmentId, revealedAt) {
+      revealSegment.run(revealedAt, segmentId, programId, programId, profileId);
+      const value = findSegment.get(segmentId, programId, profileId);
+      if (value === undefined) return null;
+      const segment = parseSqliteRow(djScriptSegmentRowSchema, value);
+      return mapSegment(segment, parseSqliteRows(citationRowSchema, findCitations.all(segment.id)));
     },
     setCurrent(profileId, programId) {
       upsertCurrent.run(profileId, programId);

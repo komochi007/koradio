@@ -16,9 +16,11 @@ import {
   type SyntheticEvent,
 } from "react";
 
+import { KoradioAvatar } from "../../shared/avatar.js";
 import { Brand } from "../../shared/ui.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import { createProfile, selectProfile, updateProfile, uploadAvatar } from "./api.js";
+import { AvatarCropDialog } from "./avatar-crop-dialog.js";
 
 interface ProfileExperienceProps {
   beforeProfileChange: () => Promise<void>;
@@ -34,6 +36,8 @@ interface ProfileExperienceProps {
 interface ProfileDraft {
   avatarFile: File | undefined;
   avatarRef: string | null;
+  djAvatarFile: File | undefined;
+  djAvatarRef: string | null;
   defaultScenario: string;
   frequentGenres: string[];
   nickname: string;
@@ -49,17 +53,25 @@ function initials(profile: Pick<Profile, "nickname" | "radioName">): string {
 function Avatar({
   profile,
   previewUrl,
+  reference,
 }: {
   profile: Pick<Profile, "nickname" | "radioName">;
   previewUrl: string | undefined;
+  reference: string | null | undefined;
 }): ReactElement {
+  if (previewUrl === undefined) {
+    return (
+      <KoradioAvatar
+        className="profile-avatar"
+        fallback={initials(profile)}
+        label="我的头像"
+        reference={reference}
+      />
+    );
+  }
   return (
     <span className="profile-avatar" aria-hidden="true">
-      {previewUrl === undefined ? (
-        <span>{initials(profile)}</span>
-      ) : (
-        <img src={previewUrl} alt="" />
-      )}
+      <img src={previewUrl} alt="" />
     </span>
   );
 }
@@ -126,7 +138,7 @@ function ProfileSelect({
             const isCurrent = current?.profile.id === profile.id;
             return (
               <article className="profile-card" key={profile.id}>
-                <Avatar profile={profile} previewUrl={undefined} />
+                <Avatar profile={profile} previewUrl={undefined} reference={profile.avatarRef} />
                 <button
                   className="profile-card__select"
                   type="button"
@@ -188,11 +200,14 @@ function ProfileForm({
   profile: Profile | undefined;
   transport: ServiceTransport;
 }): ReactElement {
-  const fileInputId = useId();
+  const userFileInputId = useId();
+  const djFileInputId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [draft, setDraft] = useState<ProfileDraft>({
     avatarFile: undefined,
     avatarRef: profile?.avatarRef ?? null,
+    djAvatarFile: undefined,
+    djAvatarRef: profile?.djAvatarRef ?? null,
     defaultScenario: profile?.defaultScenario ?? "",
     frequentGenres: profile?.frequentGenres ?? [],
     nickname: profile?.nickname ?? "",
@@ -204,12 +219,18 @@ function ProfileForm({
     () => (draft.avatarFile === undefined ? undefined : URL.createObjectURL(draft.avatarFile)),
     [draft.avatarFile],
   );
+  const djPreviewUrl = useMemo(
+    () => (draft.djAvatarFile === undefined ? undefined : URL.createObjectURL(draft.djAvatarFile)),
+    [draft.djAvatarFile],
+  );
+  const [cropping, setCropping] = useState<{ file: File; role: "dj" | "user" }>();
   useEffect(() => {
     headingRef.current?.focus();
     return () => {
       if (previewUrl !== undefined) URL.revokeObjectURL(previewUrl);
+      if (djPreviewUrl !== undefined) URL.revokeObjectURL(djPreviewUrl);
     };
-  }, [previewUrl]);
+  }, [djPreviewUrl, previewUrl]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -217,15 +238,19 @@ function ProfileForm({
         radioName: draft.radioName,
         nickname: draft.nickname,
         avatarRef: draft.avatarRef,
+        djAvatarRef: draft.djAvatarRef,
         frequentGenres: draft.frequentGenres,
         defaultScenario: draft.defaultScenario,
       });
       if (!parsed.success) throw new TypeError("PROFILE_FORM_INVALID");
 
       let avatarRef = parsed.data.avatarRef;
+      let djAvatarRef = parsed.data.djAvatarRef;
       if (draft.avatarFile !== undefined)
         avatarRef = await uploadAvatar(transport, draft.avatarFile);
-      const command: CreateProfileCommand = { ...parsed.data, avatarRef };
+      if (draft.djAvatarFile !== undefined)
+        djAvatarRef = await uploadAvatar(transport, draft.djAvatarFile);
+      const command: CreateProfileCommand = { ...parsed.data, avatarRef, djAvatarRef };
       return profile === undefined
         ? createProfile(transport, command)
         : updateProfile(transport, profile.id, command);
@@ -276,6 +301,22 @@ function ProfileForm({
         </div>
       </header>
       <main className="profile-main profile-main--form">
+        {cropping === undefined ? null : (
+          <AvatarCropDialog
+            file={cropping.file}
+            onCancel={() => {
+              setCropping(undefined);
+            }}
+            onUse={(file) => {
+              setDraft((value) =>
+                cropping.role === "user"
+                  ? { ...value, avatarFile: file }
+                  : { ...value, djAvatarFile: file },
+              );
+              setCropping(undefined);
+            }}
+          />
+        )}
         <div className="profile-heading">
           <h1 ref={headingRef} tabIndex={-1}>
             {profile === undefined ? "创建电台档案" : "编辑电台档案"}
@@ -284,25 +325,60 @@ function ProfileForm({
         </div>
         <form className="profile-form" onSubmit={handleSubmit} noValidate>
           <fieldset className="avatar-field">
-            <legend>头像</legend>
+            <legend>我的头像</legend>
             <Avatar
               profile={{ nickname: draft.nickname, radioName: draft.radioName }}
               previewUrl={previewUrl}
+              reference={draft.avatarRef}
             />
             <div>
-              <label className="button button--secondary" htmlFor={fileInputId}>
+              <label className="button button--secondary" htmlFor={userFileInputId}>
                 选择头像
               </label>
               <input
-                id={fileInputId}
+                id={userFileInputId}
                 className="visually-hidden"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 onChange={(event) => {
-                  setDraft((value) => ({ ...value, avatarFile: event.target.files?.[0] }));
+                  const file = event.target.files?.[0];
+                  if (file !== undefined) setCropping({ file, role: "user" });
+                  event.currentTarget.value = "";
                 }}
               />
-              <p>支持本地 JPG、PNG、WebP，最大 5 MB，不会上传到云端。</p>
+              <p>裁剪为 512 × 512 WebP 后保存，最大 5 MB，不会上传到云端。</p>
+            </div>
+          </fieldset>
+          <fieldset className="avatar-field">
+            <legend>DJ 头像</legend>
+            {djPreviewUrl === undefined ? (
+              <KoradioAvatar
+                className="profile-avatar"
+                fallback="KO"
+                label="DJ 头像"
+                reference={draft.djAvatarRef}
+              />
+            ) : (
+              <span className="profile-avatar" aria-hidden="true">
+                <img src={djPreviewUrl} alt="" />
+              </span>
+            )}
+            <div>
+              <label className="button button--secondary" htmlFor={djFileInputId}>
+                选择 DJ 头像
+              </label>
+              <input
+                id={djFileInputId}
+                className="visually-hidden"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file !== undefined) setCropping({ file, role: "dj" });
+                  event.currentTarget.value = "";
+                }}
+              />
+              <p>留空时，DJ 使用 Koradio 品牌标记。</p>
             </div>
           </fieldset>
           <label className="form-field">

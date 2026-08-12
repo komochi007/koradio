@@ -23,16 +23,14 @@ import {
   deriveTimedText,
   deriveTimedTextUnits,
   estimateDjTiming,
-  estimateUntimedLyricsTiming,
-  parseLrc,
+  parseUntimedLyrics,
+  parseTimedLyrics,
   programProgress,
   type DisplayTimedTextLine,
 } from "./detail-timed-text.js";
 import "./detail-sheet.css";
 
-const waveformBars = 64;
 const timelineBars = 96;
-const waveformControlPoints = [31, 46, 38, 61, 76, 58, 82, 67, 49, 72, 42, 30];
 
 interface DetailSheetProps {
   audio: AudioEngineSnapshot;
@@ -74,17 +72,6 @@ export class DetailSheetBoundary extends Component<
 function deterministicNoise(index: number): number {
   const value = Math.sin((index + 1) * 12.9898 + 78.233) * 43_758.5453;
   return value - Math.floor(value);
-}
-
-function smoothWaveHeight(index: number): number {
-  const scaled = (index / Math.max(1, waveformBars - 1)) * (waveformControlPoints.length - 1);
-  const left = Math.floor(scaled);
-  const right = Math.min(waveformControlPoints.length - 1, left + 1);
-  const mix = scaled - left;
-  const start = waveformControlPoints[left] ?? 31;
-  const end = waveformControlPoints[right] ?? start;
-  const eased = mix * mix * (3 - 2 * mix);
-  return Math.min(88, Math.max(24, Math.round(start + (end - start) * eased)));
 }
 
 function timelineHeight(index: number): number {
@@ -130,38 +117,30 @@ function statusLabel(audio: AudioEngineSnapshot, speaking: boolean): string {
   return speaking ? "SPEAKING NOW" : "PLAYING";
 }
 
-function focusableElements(dialog: HTMLElement): HTMLElement[] {
-  return Array.from(dialog.querySelectorAll<HTMLElement>("[data-detail-focus]:not(:disabled)"));
+function waveformCurvePath(values: number[]): { area: string; curve: string } {
+  const points = values.map((value, index) => {
+    const x = (index / Math.max(1, values.length - 1)) * 100;
+    const y = 96 - Math.min(1, Math.max(0, value)) * 84;
+    return { x, y };
+  });
+  const first = points[0];
+  const last = points.at(-1);
+  if (first === undefined || last === undefined) return { area: "", curve: "" };
+  let curve = `M ${String(first.x)} ${String(first.y)}`;
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const point = points[index];
+    if (previous === undefined || point === undefined) continue;
+    const midpointX = (previous.x + point.x) / 2;
+    const midpointY = (previous.y + point.y) / 2;
+    curve += ` Q ${String(previous.x)} ${String(previous.y)} ${String(midpointX)} ${String(midpointY)}`;
+  }
+  curve += ` T ${String(last.x)} ${String(last.y)}`;
+  return { area: `${curve} L 100 100 L 0 100 Z`, curve };
 }
 
-function TimedLineText({
-  line,
-  positionMs,
-}: {
-  line: DisplayTimedTextLine;
-  positionMs: number;
-}): ReactElement {
-  const units = deriveTimedTextUnits(line, positionMs);
-  return (
-    <span className="detail-copy__units">
-      <span
-        aria-current={line.state === "current" ? "true" : undefined}
-        className="visually-hidden"
-      >
-        {line.text}
-      </span>
-      {units.map((unit, index) => (
-        <span
-          aria-hidden="true"
-          className={`detail-copy__unit detail-copy__unit--${unit.state}`}
-          key={`${String(unit.startMs)}-${String(index)}-${unit.text}`}
-          style={{ "--detail-unit-progress": `${String(unit.progress * 100)}%` } as CSSProperties}
-        >
-          {unit.text}
-        </span>
-      ))}
-    </span>
-  );
+function focusableElements(dialog: HTMLElement): HTMLElement[] {
+  return Array.from(dialog.querySelectorAll<HTMLElement>("[data-detail-focus]:not(:disabled)"));
 }
 
 function TimedLines({
@@ -197,9 +176,7 @@ function TimedLines({
         ref={setCurrent}
       >
         <small>KORADIO · {formatClockDuration(line.startMs)}</small>
-        <p>
-          <TimedLineText line={line} positionMs={positionMs} />
-        </p>
+        <p>{line.text}</p>
       </div>
     ) : (
       <p
@@ -208,7 +185,19 @@ function TimedLines({
         key={`${String(line.startMs)}-${line.text}`}
         ref={setCurrent}
       >
-        <TimedLineText line={line} positionMs={positionMs} />
+        {line.units === undefined
+          ? line.text
+          : deriveTimedTextUnits(line, positionMs).map((unit) => (
+              <span
+                className={`detail-copy__unit detail-copy__unit--${unit.state}`}
+                key={`${String(unit.startMs)}-${unit.text}`}
+                style={
+                  { "--detail-unit-progress": `${String(unit.progress * 100)}%` } as CSSProperties
+                }
+              >
+                {unit.text}
+              </span>
+            ))}
       </p>
     );
   });
@@ -233,7 +222,7 @@ export function DetailSheet({
   const [closing, setClosing] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const copyRef = useRef<HTMLElement>(null);
+  const copyRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<number | undefined>(undefined);
   const dragOffsetRef = useRef(0);
@@ -262,16 +251,23 @@ export function DetailSheet({
       );
     }
     if (lyrics.data === undefined || lyrics.data.status === "unavailable") return [];
-    const lines =
-      lyrics.data.status === "available"
-        ? parseLrc(lyrics.data.content, audio.durationMs)
-        : estimateUntimedLyricsTiming(lyrics.data.content, audio.durationMs);
+    if (lyrics.data.status !== "available") return [];
+    const lines = parseTimedLyrics(lyrics.data.content, audio.durationMs);
     return deriveTimedText(lines, audio.positionMs);
   }, [audio.durationMs, lyrics.data, script, scriptDurationMs, scriptPositionMs, speaking]);
+  const untimedLyrics = useMemo(
+    () =>
+      !speaking && lyrics.data?.status === "untimed" ? parseUntimedLyrics(lyrics.data.content) : [],
+    [lyrics.data, speaking],
+  );
   const totalProgress = programProgress(program.timeline, audio.currentIndex, audio.positionMs);
   const trackProgress =
     audio.durationMs === 0 ? 0 : Math.min(1, Math.max(0, audio.positionMs / audio.durationMs));
   const playing = audio.state === "playing" || audio.state === "buffering";
+  const waveformPath = useMemo(
+    () => (audio.waveform === undefined ? undefined : waveformCurvePath(audio.waveform)),
+    [audio.waveform],
+  );
   const style = {
     "--detail-drag-offset": `${String(dragOffset)}px`,
     "--detail-track-progress": `${String(trackProgress * 100)}%`,
@@ -379,27 +375,15 @@ export function DetailSheet({
         <p aria-live="polite" className="detail-status">
           <span aria-hidden="true" /> {statusLabel(audio, speaking)}
         </p>
-        <div className="detail-waveform" aria-hidden="true">
-          {Array.from({ length: waveformBars }, (_, index) => {
-            const tone =
-              smoothWaveHeight(index) >= 70 || deterministicNoise(index + 101) > 0.86
-                ? "bright"
-                : deterministicNoise(index + 101) < 0.32
-                  ? "soft"
-                  : "mist";
-            return (
-              <span
-                className={`detail-waveform__bar detail-waveform__bar--${tone}`}
-                key={index}
-                style={
-                  {
-                    "--detail-wave-height": `${String(smoothWaveHeight(index))}%`,
-                    "--detail-wave-index": index,
-                  } as CSSProperties
-                }
-              />
-            );
-          })}
+        <div className="detail-waveform" aria-label="实时音频波形">
+          {waveformPath === undefined ? (
+            <p>WAVEFORM UNAVAILABLE</p>
+          ) : (
+            <svg aria-hidden="true" preserveAspectRatio="none" viewBox="0 0 100 100">
+              <path className="detail-waveform__area" d={waveformPath.area} />
+              <path className="detail-waveform__curve" d={waveformPath.curve} />
+            </svg>
+          )}
         </div>
         <section className="detail-paper">
           <h1 id="radio-detail-title">{program.program.title}</h1>
@@ -421,44 +405,55 @@ export function DetailSheet({
           <article
             aria-label={speaking ? "DJ 串讲词" : "跟随歌词"}
             className={`detail-copy detail-copy--${speaking ? "speaking" : "lyrics"}`}
-            data-detail-focus
-            ref={copyRef}
-            tabIndex={0}
           >
-            {speaking ? (
-              timedLines.length === 0 ? (
-                <p className="detail-copy__fallback">文字串讲暂时不可用，歌曲播放不受影响</p>
-              ) : (
+            <div className="detail-copy__scroller" data-detail-focus ref={copyRef} tabIndex={0}>
+              {speaking ? (
+                timedLines.length === 0 ? (
+                  <p className="detail-copy__fallback">文字串讲暂时不可用，歌曲播放不受影响</p>
+                ) : (
+                  <TimedLines
+                    lines={timedLines}
+                    positionMs={scriptPositionMs}
+                    scrollContainerRef={copyRef}
+                    speaking
+                  />
+                )
+              ) : track?.lyricStatus === "unavailable" || lyrics.data?.status === "unavailable" ? (
+                <p className="detail-copy__fallback">暂无歌词，正在播放 DJ 推荐曲目</p>
+              ) : lyrics.isError ? (
+                <div className="detail-copy__fallback" role="status">
+                  <p>歌词加载失败，播放不受影响</p>
+                  <button type="button" onClick={() => void lyrics.refetch()}>
+                    重试歌词
+                  </button>
+                </div>
+              ) : lyrics.isPending ? (
+                <p className="detail-copy__fallback" role="status">
+                  LOADING LYRICS...
+                </p>
+              ) : timedLines.length > 0 ? (
                 <TimedLines
                   lines={timedLines}
                   positionMs={audio.positionMs}
                   scrollContainerRef={copyRef}
-                  speaking
+                  speaking={false}
                 />
-              )
-            ) : track?.lyricStatus === "unavailable" || lyrics.data?.status === "unavailable" ? (
-              <p className="detail-copy__fallback">暂无歌词，正在播放 DJ 推荐曲目</p>
-            ) : lyrics.isError ? (
-              <div className="detail-copy__fallback" role="status">
-                <p>歌词加载失败，播放不受影响</p>
-                <button type="button" onClick={() => void lyrics.refetch()}>
-                  重试歌词
-                </button>
-              </div>
-            ) : lyrics.isPending ? (
-              <p className="detail-copy__fallback" role="status">
-                LOADING LYRICS...
-              </p>
-            ) : timedLines.length > 0 ? (
-              <TimedLines
-                lines={timedLines}
-                positionMs={audio.positionMs}
-                scrollContainerRef={copyRef}
-                speaking={false}
-              />
-            ) : (
-              <p className="detail-copy__fallback">暂无歌词，正在播放 DJ 推荐曲目</p>
-            )}
+              ) : untimedLyrics.length > 0 ? (
+                <>
+                  <p className="detail-copy__notice">STATIC LYRICS · NO TIMECODES</p>
+                  {untimedLyrics.map((line, index) => (
+                    <p
+                      className="detail-copy__line detail-copy__line--static"
+                      key={`${String(index)}-${line}`}
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </>
+              ) : (
+                <p className="detail-copy__fallback">暂无歌词，正在播放 DJ 推荐曲目</p>
+              )}
+            </div>
           </article>
           <div className="detail-bottom-control">
             <div

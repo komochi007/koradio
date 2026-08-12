@@ -10,6 +10,8 @@ import { useEffect, useRef, useState, type ReactElement, type SyntheticEvent } f
 import { updateProfilePreferences } from "../profile-preferences/api.js";
 import { applyTheme } from "../profile-preferences/theme.js";
 import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
+import { KoradioSelect } from "../../shared/koradio-select.js";
+import { KoradioAvatar } from "../../shared/avatar.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import {
   deleteDeepseekApiKey,
@@ -75,7 +77,11 @@ function SettingsTopbar({
           onClick={onOpenProfiles}
           aria-label="切换档案"
         >
-          {Array.from(current.profile.nickname).slice(0, 2).join("")}
+          <KoradioAvatar
+            fallback={Array.from(current.profile.nickname).slice(0, 2).join("")}
+            label="当前档案头像"
+            reference={current.profile.avatarRef}
+          />
         </button>
       </div>
     </header>
@@ -217,6 +223,8 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
   );
   const [deepseekPrivacyAccepted, setDeepseekPrivacyAccepted] = useState(false);
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
+  const [editingDeepseekKey, setEditingDeepseekKey] = useState(false);
+  const [deleteKeyConfirmOpen, setDeleteKeyConfirmOpen] = useState(false);
   const [djLanguage, setDjLanguage] = useState(props.current.preferences.djLanguage);
   const [voiceStyle, setVoiceStyle] = useState(props.current.preferences.djVoiceStyle);
   const [themeMode, setThemeMode] = useState<ThemeMode>(props.current.preferences.themeMode);
@@ -448,6 +456,48 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
           </section>
         </div>
       ) : null}
+      {deleteKeyConfirmOpen ? (
+        <div className="settings-modal-backdrop">
+          <section
+            className="settings-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-deepseek-key-title"
+          >
+            <p className="settings-modal__eyebrow">DEEPSEEK · KEY</p>
+            <h2 id="delete-deepseek-key-title">删除 API key？</h2>
+            <p>这会从系统钥匙串删除当前 DeepSeek API key。以后仍可在此重新配置。</p>
+            <div className="settings-modal__actions">
+              <button
+                className="button button--ghost"
+                type="button"
+                onClick={() => {
+                  setDeleteKeyConfirmOpen(false);
+                }}
+                disabled={removeCredential.isPending}
+              >
+                取消
+              </button>
+              <button
+                className="button button--primary"
+                type="button"
+                onClick={() => {
+                  removeCredential.mutate(undefined, {
+                    onSuccess: () => {
+                      setDeleteKeyConfirmOpen(false);
+                      setEditingDeepseekKey(false);
+                      setDeepseekApiKey("");
+                    },
+                  });
+                }}
+                disabled={removeCredential.isPending}
+              >
+                {removeCredential.isPending ? "正在删除…" : "删除 key"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       <SettingsTopbar
         current={props.current}
         health={props.health}
@@ -505,24 +555,24 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
         <form className="settings-form" id="settings-form" onSubmit={handleSave}>
           <section className="settings-section" aria-labelledby="config-heading">
             <h2 id="config-heading">服务配置</h2>
-            <label className="settings-field">
+            <div className="settings-field">
               <span>AI 大脑</span>
-              <select
+              <KoradioSelect
                 aria-label="AI 大脑"
                 value={plannerProvider}
-                onChange={(event) => {
-                  const next = event.target.value as typeof plannerProvider;
+                onChange={(next) => {
                   if (next === "deepseek" && !deepseekPrivacyAccepted) {
                     setPrivacyOpen(true);
                     return;
                   }
                   setPlannerProvider(next);
                 }}
-              >
-                <option value="codex">Codex · 本机 CLI</option>
-                <option value="deepseek">DeepSeek · 远程 API</option>
-              </select>
-            </label>
+                options={[
+                  { value: "codex", label: "Codex · 本机 CLI" },
+                  { value: "deepseek", label: "DeepSeek · 远程 API" },
+                ]}
+              />
+            </div>
             <label className="settings-field">
               <span>Codex 命令路径</span>
               <input
@@ -535,60 +585,92 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                 placeholder="输入本机 Codex 可执行命令路径"
               />
             </label>
-            <label className="settings-field">
+            <div className="settings-field">
               <span>DeepSeek 模型</span>
-              <select
+              <KoradioSelect
+                aria-label="DeepSeek 模型"
                 value={deepseekModel}
                 disabled={plannerProvider !== "deepseek"}
-                onChange={(event) => {
-                  setDeepseekModel(event.target.value as typeof deepseekModel);
+                onChange={(next) => {
+                  setDeepseekModel(next);
                 }}
-              >
-                <option value="deepseek-v4-flash">DeepSeek V4 Flash · 快速</option>
-                <option value="deepseek-v4-pro">DeepSeek V4 Pro · 品质</option>
-              </select>
-            </label>
+                options={[
+                  { value: "deepseek-v4-flash", label: "DeepSeek V4 Flash · 快速" },
+                  { value: "deepseek-v4-pro", label: "DeepSeek V4 Pro · 品质" },
+                ]}
+              />
+            </div>
             <div className="provider-readonly deepseek-credentials-card">
               <span>DeepSeek API key</span>
               <strong>{credentials.data?.configured ? "已配置" : "未配置"}</strong>
-              <input
-                type="password"
-                value={deepseekApiKey}
-                autoComplete="new-password"
-                maxLength={8192}
-                onChange={(event) => {
-                  setDeepseekApiKey(event.target.value);
-                }}
-                placeholder="粘贴 DeepSeek API key"
-                aria-label="DeepSeek API key"
-              />
-              <div className="provider-actions">
+              {credentials.data?.configured && !editingDeepseekKey ? (
                 <button
                   type="button"
-                  disabled={deepseekApiKey.trim().length === 0 || credential.isPending}
                   onClick={() => {
-                    credential.mutate();
+                    setEditingDeepseekKey(true);
                   }}
                 >
-                  {credential.isPending
-                    ? "正在保存…"
-                    : credentials.data?.configured
-                      ? "替换 key"
-                      : "保存 key"}
+                  编辑
                 </button>
-                <button
-                  className="button button--ghost"
-                  type="button"
-                  disabled={!credentials.data?.configured || removeCredential.isPending}
-                  onClick={() => {
-                    if (window.confirm("确认从系统钥匙串删除 DeepSeek API key？")) {
-                      removeCredential.mutate();
-                    }
-                  }}
-                >
-                  删除 key
-                </button>
-              </div>
+              ) : (
+                <>
+                  <input
+                    type="password"
+                    value={deepseekApiKey}
+                    autoComplete="new-password"
+                    maxLength={8192}
+                    onChange={(event) => {
+                      setDeepseekApiKey(event.target.value);
+                    }}
+                    placeholder="粘贴 DeepSeek API key"
+                    aria-label="DeepSeek API key"
+                  />
+                  <div className="provider-actions">
+                    <button
+                      type="button"
+                      disabled={deepseekApiKey.trim().length === 0 || credential.isPending}
+                      onClick={() => {
+                        credential.mutate(undefined, {
+                          onSuccess: () => {
+                            setDeepseekApiKey("");
+                            setEditingDeepseekKey(false);
+                          },
+                        });
+                      }}
+                    >
+                      {credential.isPending
+                        ? "正在保存…"
+                        : credentials.data?.configured
+                          ? "替换 key"
+                          : "保存 key"}
+                    </button>
+                    {credentials.data?.configured ? (
+                      <button
+                        className="button button--ghost"
+                        type="button"
+                        disabled={removeCredential.isPending}
+                        onClick={() => {
+                          setDeleteKeyConfirmOpen(true);
+                        }}
+                      >
+                        删除 key
+                      </button>
+                    ) : null}
+                    {credentials.data?.configured ? (
+                      <button
+                        className="button button--ghost"
+                        type="button"
+                        onClick={() => {
+                          setDeepseekApiKey("");
+                          setEditingDeepseekKey(false);
+                        }}
+                      >
+                        取消
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              )}
             </div>
             <div className="provider-readonly">
               <span>NetEase Music API</span>
@@ -644,29 +726,31 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                 {themeError}
               </p>
             )}
-            <label className="preference-row">
+            <div className="preference-row">
               <span>DJ Language</span>
-              <select
+              <KoradioSelect
+                aria-label="DJ Language"
                 value={djLanguage}
-                onChange={(event) => {
-                  setDjLanguage(event.target.value as typeof djLanguage);
+                onChange={(next) => {
+                  setDjLanguage(next);
                 }}
-              >
-                <option value="zh-CN">中文</option>
-                <option value="en-GB">English (UK)</option>
-              </select>
-            </label>
-            <label className="preference-row">
+                options={[
+                  { value: "zh-CN", label: "中文" },
+                  { value: "en-GB", label: "English (UK)" },
+                ]}
+              />
+            </div>
+            <div className="preference-row">
               <span>DJ Voice Style</span>
-              <select
+              <KoradioSelect
+                aria-label="DJ Voice Style"
                 value={voiceStyle}
-                onChange={(event) => {
-                  setVoiceStyle(event.target.value as typeof voiceStyle);
+                onChange={(next) => {
+                  setVoiceStyle(next);
                 }}
-              >
-                <option value="natural-radio">Natural Radio</option>
-              </select>
-            </label>
+                options={[{ value: "natural-radio", label: "Natural Radio" }]}
+              />
+            </div>
           </section>
           <section className="settings-section" aria-labelledby="data-heading">
             <h2 id="data-heading">本地数据</h2>

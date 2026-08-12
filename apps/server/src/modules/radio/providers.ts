@@ -47,7 +47,13 @@ function isProgramIntent(value: string): boolean {
   const namedProgram = /歌单|节目|音乐清单|歌单列表|一组/u.test(value);
   const musicCue = /歌|音乐|歌曲|曲目|听歌|听点|放歌/u.test(value);
   const directAction = /推荐|播放|放点|安排|策划|准备|想听|适合|有没有|需要/u.test(value);
-  return namedProgram || multiple || (musicCue && directAction);
+  const sceneCue = /(?:写作|写东西|工作|学习|通勤|阅读|整理|做饭|跑步|睡前|夜晚|晚上|清晨)/u.test(
+    value,
+  );
+  const listeningPreferenceCue = /(?:安静|放松|轻松|温柔|沉闷|困|氛围|节奏|BGM)/iu.test(value);
+  return (
+    namedProgram || multiple || (musicCue && directAction) || (sceneCue && listeningPreferenceCue)
+  );
 }
 
 const mockSingleTrackQueries = [

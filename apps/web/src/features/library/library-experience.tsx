@@ -18,6 +18,7 @@ import {
 
 import { type AudioEngineFacade, useAudioSnapshot } from "../../audio/index.js";
 import { ArtworkImage } from "../../shared/artwork.js";
+import { KoradioAvatar } from "../../shared/avatar.js";
 import { apiErrorMessage } from "../../shared/error.js";
 import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
 import type { ServiceTransport } from "../../shared/transport.js";
@@ -97,7 +98,11 @@ function LibraryTopbar({
           onClick={onOpenProfiles}
           aria-label="切换档案"
         >
-          {Array.from(current.profile.nickname).slice(0, 2).join("")}
+          <KoradioAvatar
+            fallback={Array.from(current.profile.nickname).slice(0, 2).join("")}
+            label="当前档案头像"
+            reference={current.profile.avatarRef}
+          />
         </button>
       </div>
     </header>

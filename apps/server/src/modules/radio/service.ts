@@ -33,7 +33,14 @@ export function isHighConfidenceProgramRequest(content: string): boolean {
     normalized,
   );
   const contextualListeningCue = /(?:适合|有没有|需要).*(?:听|歌|音乐)/u.test(normalized);
-  return musicCue && (directActionCue || contextualListeningCue);
+  const sceneCue = /(?:写作|写东西|工作|学习|通勤|阅读|整理|做饭|跑步|睡前|夜晚|晚上|清晨)/u.test(
+    normalized,
+  );
+  const listeningPreferenceCue = /(?:安静|放松|轻松|温柔|沉闷|困|氛围|节奏|BGM)/iu.test(normalized);
+  return (
+    (musicCue && (directActionCue || contextualListeningCue)) ||
+    (sceneCue && listeningPreferenceCue)
+  );
 }
 
 function programAcknowledgement(content: string): string {

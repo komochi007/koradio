@@ -19,8 +19,8 @@
 }
 
 .radio-page--queue-collapsed {
-  --radio-dialogue-growth: 172px;
-  --radio-layout-offset: 180px;
+  --radio-dialogue-growth: 232px;
+  --radio-layout-offset: 240px;
 }
 
 :root[data-theme="light"] .radio-page {

@@ -11,6 +11,7 @@ export const timelineItemIdSchema = identifierSchema;
 export const radioTurnIdSchema = identifierSchema;
 export const radioMessageIdSchema = identifierSchema;
 export const radioSpeechGenerationIdSchema = identifierSchema;
+export const djScriptSegmentIdSchema = identifierSchema;
 export const correlationIdSchema = identifierSchema;
 export const occurredAtSchema = z.iso.datetime();
 export const idempotencyKeySchema = z
@@ -44,6 +45,11 @@ export const profileProgramIdParamsSchema = z.strictObject({
   profileId: profileIdSchema,
   programId: programIdSchema,
 });
+export const profileProgramDjScriptParamsSchema = z.strictObject({
+  profileId: profileIdSchema,
+  programId: programIdSchema,
+  segmentId: djScriptSegmentIdSchema,
+});
 export const profileJobIdParamsSchema = z.strictObject({
   profileId: profileIdSchema,
   jobId: jobIdSchema,
@@ -67,6 +73,7 @@ export const idempotencyKeyHeadersSchema = z.strictObject({
 export type PageQuery = z.infer<typeof pageQuerySchema>;
 export type ProfileIdParams = z.infer<typeof profileIdParamsSchema>;
 export type ProfileProgramIdParams = z.infer<typeof profileProgramIdParamsSchema>;
+export type ProfileProgramDjScriptParams = z.infer<typeof profileProgramDjScriptParamsSchema>;
 export type ProfileJobIdParams = z.infer<typeof profileJobIdParamsSchema>;
 export type ProfileTrackIdParams = z.infer<typeof profileTrackIdParamsSchema>;
 export type ProfileRadioTurnIdParams = z.infer<typeof profileRadioTurnIdParamsSchema>;

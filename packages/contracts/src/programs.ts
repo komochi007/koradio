@@ -30,6 +30,7 @@ export const djScriptSegmentSchema = z.strictObject({
   text: z.string().trim().min(1).max(5000),
   displayText: z.string().trim().min(1).max(5000),
   estimatedTiming: z.boolean(),
+  revealedAt: occurredAtSchema.nullable().optional(),
   ttsAudioRef: controlledFileRefSchema.nullable(),
   citations: z.array(djCitationSchema).max(5).optional(),
 });

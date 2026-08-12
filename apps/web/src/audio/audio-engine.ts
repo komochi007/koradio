@@ -1,6 +1,12 @@
-import type { PlaybackCheckpoint, PlaybackTimelineItem, ProgramDetail } from "@koradio/contracts";
+import {
+  djScriptSegmentSchema,
+  type PlaybackCheckpoint,
+  type PlaybackTimelineItem,
+  type ProgramDetail,
+  type AudioResolution,
+} from "@koradio/contracts";
 
-import { ApiRequestError } from "../shared/api.js";
+import { ApiRequestError, requestJson } from "../shared/api.js";
 import type { ServiceTransport } from "../shared/transport.js";
 import { getPlaybackCheckpoint, savePlaybackCheckpoint } from "./api.js";
 import {
@@ -43,6 +49,7 @@ interface CreateAudioEngineOptions {
   lease?: PlaybackLeaseCoordinator;
   now?: () => number;
   preloader?: AudioPreloader;
+  resolveTrackAudio?: (profileId: string, trackId: string) => Promise<AudioResolution>;
   transport: ServiceTransport;
 }
 
@@ -72,7 +79,9 @@ const initialSnapshot: AudioEngineSnapshot = {
 };
 
 function createAudioElement(): AudioElementLike {
-  return new Audio();
+  const audio = new Audio();
+  audio.crossOrigin = "anonymous";
+  return audio;
 }
 
 function createSilentAudioElement(): AudioElementLike {
@@ -122,6 +131,14 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
+function spatiallySmoothWaveform(values: number[]): number[] {
+  return values.map((value, index) => {
+    const previous = Number(values[Math.max(0, index - 1)]);
+    const next = Number(values[Math.min(values.length - 1, index + 1)]);
+    return (previous + value * 2 + next) / 4;
+  });
+}
+
 export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngineFacade {
   const audio = options.audio ?? createAudioElement();
   const voiceAudio =
@@ -144,7 +161,16 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   let voiceActive = false;
   let voiceRamp: ReturnType<typeof setInterval> | undefined;
   let userVolume = 1;
+  let analyser: AnalyserNode | undefined;
+  let audioContext: AudioContext | undefined;
+  let waveformFrame: number | undefined;
+  let lastWaveformSampleAt: number | undefined;
+  let waveformConnected = false;
+  let smoothedWaveform: number[] | undefined;
+  const audioResolutions = new Map<string, { expiresAtMs: number; resolvedAudioRef: string }>();
+  const retriedMediaItems = new Set<string>();
   const triggeredVoiceCues = new Set<string>();
+  const revealedVoiceSegments = new Set<string>();
   let destroyed = false;
 
   async function yieldPlayback(): Promise<void> {
@@ -226,6 +252,74 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     publish();
   }
 
+  function stopWaveformSampling(): void {
+    if (waveformFrame !== undefined) cancelAnimationFrame(waveformFrame);
+    waveformFrame = undefined;
+  }
+
+  function readWaveform(): number[] | undefined {
+    if (analyser === undefined) return undefined;
+    const values = new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(values);
+    const raw = Array.from({ length: 64 }, (_, index) => {
+      const start = Math.floor((index * values.length) / 64);
+      const end = Math.max(start + 1, Math.floor(((index + 1) * values.length) / 64));
+      let total = 0;
+      for (let cursor = start; cursor < end; cursor += 1)
+        total += Math.abs(Number(values[cursor]) - 128);
+      return Math.min(1, total / (end - start) / 34);
+    });
+    const spatial = spatiallySmoothWaveform(raw);
+    smoothedWaveform = spatial.map((value, index) => {
+      const previous = smoothedWaveform?.[index] ?? value;
+      return previous * 0.8 + value * 0.2;
+    });
+    return smoothedWaveform;
+  }
+
+  function publishWaveformSample(): void {
+    const waveform = readWaveform();
+    const active = waveform?.some((value) => value > 0.015) ?? false;
+    update({ waveform: active ? waveform : undefined, waveformUnavailable: !active });
+  }
+
+  function startWaveformSampling(): void {
+    if (waveformFrame !== undefined || analyser === undefined) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      publishWaveformSample();
+      return;
+    }
+    const sample = (timestamp: number): void => {
+      if (destroyed || analyser === undefined) return;
+      if (lastWaveformSampleAt === undefined || timestamp - lastWaveformSampleAt >= 42) {
+        lastWaveformSampleAt = timestamp;
+        publishWaveformSample();
+      }
+      if (!audio.paused) waveformFrame = requestAnimationFrame(sample);
+      else waveformFrame = undefined;
+    };
+    waveformFrame = requestAnimationFrame(sample);
+  }
+
+  function initializeWaveform(): void {
+    if (waveformConnected || typeof window === "undefined") return;
+    if (!(audio instanceof HTMLAudioElement)) {
+      update({ waveformUnavailable: true });
+      return;
+    }
+    try {
+      audioContext = new AudioContext();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.84;
+      audioContext.createMediaElementSource(audio).connect(analyser);
+      analyser.connect(audioContext.destination);
+      waveformConnected = true;
+    } catch {
+      update({ waveformUnavailable: true });
+    }
+  }
+
   function rampMusic(target: number, durationMs: number): void {
     if (voiceRamp !== undefined) clearInterval(voiceRamp);
     const start = audio.volume;
@@ -270,7 +364,6 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   async function startVoice(item: PlaybackTimelineItem | undefined): Promise<void> {
     if (item?.kind !== "dj" || triggeredVoiceCues.has(item.id)) return;
     triggeredVoiceCues.add(item.id);
-    voiceActive = true;
     voiceAudio.pause();
     voiceAudio.src = sourceFor(item);
     voiceAudio.preload = "auto";
@@ -278,14 +371,30 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     voiceAudio.currentTime = 0;
     voiceAudio.volume = 1;
     rampMusic(userVolume * 0.28, 350);
-    update({
-      voiceActive: true,
-      voiceDurationMs: item.durationMs,
-      voicePositionMs: 0,
-      voiceSegmentId: item.segmentId,
-    });
     try {
       await voiceAudio.play();
+      voiceActive = true;
+      update({
+        voiceActive: true,
+        voiceDurationMs: item.durationMs,
+        voicePositionMs: 0,
+        voiceSegmentId: item.segmentId,
+      });
+      if (
+        profileId !== undefined &&
+        program !== undefined &&
+        !revealedVoiceSegments.has(item.segmentId)
+      ) {
+        revealedVoiceSegments.add(item.segmentId);
+        void requestJson(
+          options.transport,
+          `/api/v1/profiles/${encodeURIComponent(profileId)}/programs/${encodeURIComponent(program.program.id)}/dj-scripts/${encodeURIComponent(item.segmentId)}/reveal`,
+          djScriptSegmentSchema,
+          { method: "PUT" },
+        ).catch(() => {
+          revealedVoiceSegments.delete(item.segmentId);
+        });
+      }
     } catch {
       voiceActive = false;
       rampMusic(userVolume, 650);
@@ -323,12 +432,78 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     if (voiceRamp !== undefined) clearInterval(voiceRamp);
     audio.volume = userVolume;
     preloader.clear();
+    stopWaveformSampling();
+  }
+
+  async function refreshTrackAudio(
+    item: Extract<PlaybackTimelineItem, { kind: "track" }>,
+    force = false,
+  ): Promise<Extract<PlaybackTimelineItem, { kind: "track" }>> {
+    if (profileId === undefined) return item;
+    if (options.resolveTrackAudio === undefined) return item;
+    const cached = audioResolutions.get(item.trackId);
+    if (!force && cached !== undefined && cached.expiresAtMs > now() + 30_000) {
+      return { ...item, resolvedAudioRef: cached.resolvedAudioRef };
+    }
+    try {
+      const resolution = await options.resolveTrackAudio(profileId, item.trackId);
+      const expiresAtMs = Date.parse(resolution.expiresAt);
+      if (!Number.isFinite(expiresAtMs) || expiresAtMs <= now()) return item;
+      audioResolutions.set(item.trackId, {
+        expiresAtMs,
+        resolvedAudioRef: resolution.resolvedAudioRef,
+      });
+      while (audioResolutions.size > 24) {
+        const oldest = audioResolutions.keys().next().value;
+        if (oldest === undefined) break;
+        audioResolutions.delete(oldest);
+      }
+      return { ...item, resolvedAudioRef: resolution.resolvedAudioRef };
+    } catch {
+      return item;
+    }
+  }
+
+  function applyTrackAudio(
+    item: Extract<PlaybackTimelineItem, { kind: "track" }>,
+  ): Extract<PlaybackTimelineItem, { kind: "track" }> {
+    const index = timeline.findIndex((candidate) => candidate.id === item.id);
+    if (index >= 0) timeline[index] = item;
+    if (currentIndex === index) update({ currentItem: item });
+    return item;
+  }
+
+  async function refreshCurrentTrackSource(force = false): Promise<boolean> {
+    const item = currentItem();
+    if (item?.kind !== "track") return true;
+    const refreshed = applyTrackAudio(await refreshTrackAudio(item, force));
+    if (currentItem()?.id !== item.id) return false;
+    const source = sourceFor(refreshed);
+    if (source === expectedSource || playableSource(source) === expectedSource) return true;
+    const positionMs = snapshot.positionMs;
+    audio.pause();
+    audio.src = source;
+    expectedSource = audio.src;
+    audio.preload = "auto";
+    audio.load();
+    audio.currentTime = clamp(positionMs, 0, refreshed.durationMs) / 1000;
+    return true;
   }
 
   function preloadNext(): void {
     const next = timeline[currentIndex + 1];
     if (next === undefined) preloader.clear();
-    else preloader.preload(sourceFor(next));
+    else if (next.kind === "track") {
+      preloader.preload(sourceFor(next));
+      void refreshTrackAudio(next).then((resolved) => {
+        if (
+          timeline[currentIndex + 1]?.id === resolved.id &&
+          sourceFor(resolved) !== sourceFor(next)
+        ) {
+          preloader.preload(sourceFor(resolved));
+        }
+      });
+    } else preloader.preload(sourceFor(next));
   }
 
   function setCurrentItem(
@@ -574,12 +749,17 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       if (program !== undefined) setCurrentItem(currentIndex, snapshot.positionMs, "ready");
     }
     const epoch = lease.getState().epoch;
-    const item = currentItem();
+    let item = currentItem();
     if (epoch === undefined || item === undefined || lease.getState().ownership !== "active")
       return;
+    if (options.resolveTrackAudio !== undefined && !(await refreshCurrentTrackSource())) return;
+    item = currentItem();
+    if (item === undefined) return;
     const version = loadVersion;
     update({ state: "buffering", mediaError: undefined, leaseEpoch: epoch, ownership: "active" });
     try {
+      initializeWaveform();
+      if (audioContext?.state === "suspended") await audioContext.resume();
       await audio.play();
       if (
         version !== loadVersion ||
@@ -590,6 +770,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         return;
       }
       update({ state: "playing" });
+      startWaveformSampling();
       if (voiceActive && voiceAudio.paused) {
         await voiceAudio.play().catch(() => {
           voiceActive = false;
@@ -609,10 +790,21 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       if (name === "NotAllowedError") {
         update({ state: "paused", mediaError: "autoplay_blocked" });
       } else {
-        update({ state: "failed", mediaError: "media_failed" });
-        await advance("error");
+        await recoverMediaFailure();
       }
     }
+  }
+
+  async function recoverMediaFailure(): Promise<void> {
+    const item = currentItem();
+    if (item?.kind === "track" && !retriedMediaItems.has(item.id)) {
+      retriedMediaItems.add(item.id);
+      await refreshCurrentTrackSource(true);
+      await playCurrent(false);
+      return;
+    }
+    update({ state: "failed", mediaError: "media_failed" });
+    await advance("error");
   }
 
   async function restore(programDetail: ProgramDetail, autoplay: boolean): Promise<void> {
@@ -691,6 +883,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     }
     if (expectedSource !== undefined && lease.getState().ownership === "active") {
       update({ state: "playing" });
+      initializeWaveform();
+      startWaveformSampling();
     }
   });
   audio.addEventListener("ended", () => {
@@ -716,8 +910,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       lease.getState().ownership === "active" &&
       audio.error !== null
     ) {
-      update({ state: "failed", mediaError: "media_failed" });
-      void advance("error");
+      void recoverMediaFailure();
     }
   });
   voiceAudio.addEventListener("ended", () => {
@@ -825,6 +1018,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
           ? nextProgram.timeline.filter((item) => item.kind === "track")
           : nextProgram.timeline;
       triggeredVoiceCues.clear();
+      retriedMediaItems.clear();
+      audioResolutions.clear();
       profileId = nextProgram.program.profileId;
       currentIndex = 0;
       update({

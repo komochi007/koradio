@@ -4,6 +4,7 @@ import {
   idempotencyKeyHeadersSchema,
   pageQuerySchema,
   profileIdParamsSchema,
+  profileProgramDjScriptParamsSchema,
   profileJobIdParamsSchema,
   profileProgramIdParamsSchema,
   profileRadioMessageIdParamsSchema,
@@ -75,6 +76,9 @@ export const radioSpeechGenerationSnapshotRequestSchema = z.strictObject({
 });
 export const programDetailRequestSchema = z.strictObject({
   params: profileProgramIdParamsSchema,
+});
+export const revealDjScriptRequestSchema = z.strictObject({
+  params: profileProgramDjScriptParamsSchema,
 });
 export const programListRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
@@ -149,6 +153,7 @@ export type CreateRadioSpeechGenerationRequest = z.infer<
 export type ProgramGenerationSnapshotRequest = z.infer<
   typeof programGenerationSnapshotRequestSchema
 >;
+export type RevealDjScriptRequest = z.infer<typeof revealDjScriptRequestSchema>;
 export type ProgramListRequest = z.infer<typeof programListRequestSchema>;
 export type PlaybackSnapshotRequest = z.infer<typeof playbackSnapshotRequestSchema>;
 export type SavePlaybackCheckpointRequest = z.infer<typeof savePlaybackCheckpointRequestSchema>;

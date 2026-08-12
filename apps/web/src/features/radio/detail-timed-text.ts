@@ -1,12 +1,18 @@
 import type { PlaybackTimelineItem } from "@koradio/contracts";
 
 export type TimedTextState = "read" | "current" | "upcoming";
-export type TimedTextUnitState = TimedTextState | "played";
+
+export interface TimedTextUnit {
+  endMs: number;
+  startMs: number;
+  text: string;
+}
 
 export interface TimedTextLine {
   endMs: number;
   startMs: number;
   text: string;
+  units?: TimedTextUnit[];
 }
 
 export interface DisplayTimedTextLine extends TimedTextLine {
@@ -17,7 +23,7 @@ export interface DisplayTimedTextUnit {
   endMs: number;
   progress: number;
   startMs: number;
-  state: TimedTextUnitState;
+  state: TimedTextState | "played";
   text: string;
 }
 
@@ -50,17 +56,11 @@ function splitTextUnits(value: string): TextUnit[] {
       continue;
     }
     flushLatin();
-    if (/\p{Script=Han}/u.test(character)) {
-      units.push({ text: `${prefix}${character}`, weight: 1 });
-      prefix = "";
-    } else if (/^[\s\p{P}\p{S}]$/u.test(character)) {
-      const previous = units.at(-1);
-      if (previous === undefined) prefix += character;
-      else previous.text += character;
-    } else {
-      units.push({ text: `${prefix}${character}`, weight: 1 });
-      prefix = "";
-    }
+    const previous = units.at(-1);
+    if (/\p{Script=Han}/u.test(character)) units.push({ text: `${prefix}${character}`, weight: 1 });
+    else if (previous === undefined) prefix += character;
+    else previous.text += character;
+    if (/\p{Script=Han}/u.test(character)) prefix = "";
   }
   flushLatin();
   if (prefix.length > 0) {
@@ -79,41 +79,105 @@ export function deriveTimedTextUnits(
   line: DisplayTimedTextLine,
   positionMs: number,
 ): DisplayTimedTextUnit[] {
+  if (line.units !== undefined) {
+    return line.units.map((unit) => {
+      const state =
+        line.state === "current"
+          ? positionMs >= unit.endMs
+            ? "played"
+            : positionMs >= unit.startMs
+              ? "current"
+              : "upcoming"
+          : line.state;
+      return {
+        ...unit,
+        state,
+        progress:
+          state === "played" || state === "read"
+            ? 1
+            : state === "current"
+              ? clamp((positionMs - unit.startMs) / Math.max(1, unit.endMs - unit.startMs), 0, 1)
+              : 0,
+      };
+    });
+  }
   const units = splitTextUnits(line.text);
-  if (units.length === 0) return [];
   const durationMs = Math.max(1, line.endMs - line.startMs);
   const totalWeight = units.reduce((total, unit) => total + unit.weight, 0);
   let elapsed = line.startMs;
-  const timed = units.map((unit, index) => {
+  return units.map((unit, index) => {
     const startMs = elapsed;
     elapsed =
       index === units.length - 1
         ? line.endMs
         : Math.round(elapsed + (durationMs * unit.weight) / totalWeight);
-    return { endMs: Math.max(startMs + 1, elapsed), startMs, text: unit.text };
+    const endMs = Math.max(startMs + 1, elapsed);
+    const state =
+      line.state === "current"
+        ? positionMs >= endMs
+          ? "played"
+          : positionMs >= startMs
+            ? "current"
+            : "upcoming"
+        : line.state;
+    return {
+      endMs,
+      startMs,
+      text: unit.text,
+      state,
+      progress:
+        state === "played" || state === "read"
+          ? 1
+          : state === "current"
+            ? clamp((positionMs - startMs) / Math.max(1, endMs - startMs), 0, 1)
+            : 0,
+    };
   });
-  if (line.state !== "current") {
-    return timed.map((unit) => ({
-      ...unit,
-      progress: line.state === "read" ? 1 : 0,
-      state: line.state,
-    }));
-  }
-  const safePosition = Math.max(line.startMs, Math.min(positionMs, line.endMs));
-  let currentIndex = timed.findIndex(
-    (unit) => safePosition >= unit.startMs && safePosition < unit.endMs,
-  );
-  if (currentIndex < 0) currentIndex = timed.length - 1;
-  return timed.map((unit, index) => {
-    const state = index < currentIndex ? "played" : index === currentIndex ? "current" : "upcoming";
-    const progress =
-      state === "played"
-        ? 1
-        : state === "current"
-          ? clamp((safePosition - unit.startMs) / Math.max(1, unit.endMs - unit.startMs), 0, 1)
-          : 0;
-    return { ...unit, progress, state };
-  });
+}
+
+function parseYrc(value: string, durationMs: number): TimedTextLine[] {
+  const parsed = value
+    .split(/\r?\n/u)
+    .flatMap((line) => {
+      const matchedLine = /^\[(\d+),(\d+)\](.*)$/u.exec(line.trim());
+      if (matchedLine === null) return [];
+      const startMs = Number(matchedLine[1]);
+      const lineDurationMs = Number(matchedLine[2]);
+      if (
+        !Number.isSafeInteger(startMs) ||
+        !Number.isSafeInteger(lineDurationMs) ||
+        lineDurationMs <= 0
+      )
+        return [];
+      const units = Array.from(matchedLine[3]?.matchAll(/\((\d+),(\d+),\d+\)([^()]*)/gu) ?? [])
+        .map((match) => {
+          const unitStartMs = Number(match[1]);
+          const unitDurationMs = Number(match[2]);
+          const text = match[3] ?? "";
+          if (
+            !Number.isSafeInteger(unitStartMs) ||
+            !Number.isSafeInteger(unitDurationMs) ||
+            unitDurationMs <= 0 ||
+            text.trim().length === 0
+          ) {
+            return undefined;
+          }
+          return { endMs: unitStartMs + unitDurationMs, startMs: unitStartMs, text };
+        })
+        .filter((unit): unit is TimedTextUnit => unit !== undefined);
+      const text = units.map((unit) => unit.text).join("");
+      if (text.length === 0 || isLyricMetadata(line, text)) return [];
+      return [
+        {
+          endMs: Math.min(durationMs, startMs + lineDurationMs),
+          startMs,
+          text,
+          units,
+        },
+      ];
+    })
+    .sort((left, right) => left.startMs - right.startMs);
+  return parsed.filter((line) => line.endMs > line.startMs);
 }
 
 export function splitDjSentences(value: string): string[] {
@@ -143,12 +207,17 @@ function parseTimestamp(minutes: string, seconds: string, fraction: string | und
   return Number(minutes) * 60_000 + Number(seconds) * 1_000 + fractionMs;
 }
 
+function isLyricMetadata(originalLine: string, text: string): boolean {
+  if (/^\[(?:ar|al|ti|by|offset|re|ve|length):/iu.test(originalLine.trim())) return true;
+  return /^(?:作词|作曲|编曲|制作人|词曲|lyricist|composer|arranger|producer)\s*[:：]/iu.test(text);
+}
+
 export function parseLrc(value: string, durationMs: number): TimedTextLine[] {
   const parsed = value
     .split(/\r?\n/u)
     .flatMap((line) => {
       const text = line.replace(/(?:\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\])+/gu, "").trim();
-      if (text.length === 0) return [];
+      if (text.length === 0 || isLyricMetadata(line, text)) return [];
       return Array.from(line.matchAll(/\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/gu)).map(
         (match) => ({
           startMs: parseTimestamp(match[1] ?? "0", match[2] ?? "0", match[3]),
@@ -163,11 +232,17 @@ export function parseLrc(value: string, durationMs: number): TimedTextLine[] {
   }));
 }
 
+export function parseTimedLyrics(value: string, durationMs: number): TimedTextLine[] {
+  const wordTimed = parseYrc(value, durationMs);
+  return wordTimed.length > 0 ? wordTimed : parseLrc(value, durationMs);
+}
+
 export function parseUntimedLyrics(value: string): string[] {
   return value
     .split(/\r?\n/u)
-    .map((line) => line.replace(/^\[[^\]]+\]\s*/u, "").trim())
-    .filter((line) => line.length > 0);
+    .map((line) => ({ original: line, text: line.replace(/^\[[^\]]+\]\s*/u, "").trim() }))
+    .filter(({ original, text }) => text.length > 0 && !isLyricMetadata(original, text))
+    .map(({ text }) => text);
 }
 
 export function estimateUntimedLyricsTiming(value: string, durationMs: number): TimedTextLine[] {

@@ -22,6 +22,7 @@ import {
 } from "../shared/transport.js";
 import { createAppEventBus } from "../shared/events.js";
 import { SettingsExperience } from "../features/device-settings/index.js";
+import { resolveTrackAudio } from "../features/library/api.js";
 import { applyTheme } from "../features/profile-preferences/index.js";
 import { getCurrentProfile, getProfiles, ProfileExperience } from "../features/profiles/index.js";
 import { ConnectingPage, OfflinePage, OfflineSettingsPage, OnlineShellPage } from "./pages.js";
@@ -266,7 +267,13 @@ export function App({ audioEngine, transport }: AppProps): ReactElement {
     () => transport ?? createServiceTransport(resolveApiOrigin()),
   );
   const [serviceAudioEngine] = useState(
-    () => audioEngine ?? createAudioEngine({ transport: serviceTransport }),
+    () =>
+      audioEngine ??
+      createAudioEngine({
+        resolveTrackAudio: (profileId, trackId) =>
+          resolveTrackAudio(serviceTransport, profileId, trackId),
+        transport: serviceTransport,
+      }),
   );
   const destroyTimer = useRef<number | undefined>(undefined);
 

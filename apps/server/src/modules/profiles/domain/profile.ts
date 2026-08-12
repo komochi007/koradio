@@ -15,6 +15,7 @@ export function createProfile(
     radioName: command.radioName,
     nickname: command.nickname,
     avatarRef: command.avatarRef ?? null,
+    djAvatarRef: command.djAvatarRef ?? null,
     frequentGenres: command.frequentGenres ?? [],
     defaultScenario: command.defaultScenario ?? "",
     createdAt: occurredAt,

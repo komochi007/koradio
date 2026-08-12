@@ -14,6 +14,7 @@ import {
   createLibraryItemRequestSchema,
   createProfileRequestSchema,
   currentProgramResponseSchema,
+  djScriptSegmentSchema,
   currentProfileResponseSchema,
   deleteProgramResponseSchema,
   feedbackEventSchema,
@@ -38,6 +39,7 @@ import {
   profileAvatarUploadResponseSchema,
   profileIdParamsSchema,
   radioConversationRequestSchema,
+  revealDjScriptRequestSchema,
   radioConversationSchema,
   radioSpeechGenerationSchema,
   radioSpeechGenerationSnapshotRequestSchema,
@@ -1101,6 +1103,55 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
         throw error;
       }
     });
+
+    app.put(
+      "/api/v1/profiles/:profileId/programs/:programId/dj-scripts/:segmentId/reveal",
+      (request, reply) => {
+        const parsed = revealDjScriptRequestSchema.safeParse({ params: request.params });
+        if (!parsed.success) {
+          return sendApiError(
+            reply,
+            400,
+            "DJ_SCRIPT_REVEAL_VALIDATION_FAILED",
+            "DJ script reveal request is invalid",
+            false,
+          );
+        }
+        try {
+          profiles.get(parsed.data.params.profileId);
+          return djScriptSegmentSchema.parse(
+            programs.revealDjScript(
+              parsed.data.params.profileId,
+              parsed.data.params.programId,
+              parsed.data.params.segmentId,
+            ),
+          );
+        } catch (error) {
+          if (error instanceof ProfileNotFoundError) {
+            return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+          }
+          if (error instanceof ProgramNotFoundError) {
+            return sendApiError(
+              reply,
+              404,
+              "DJ_SCRIPT_NOT_FOUND",
+              "DJ script was not found",
+              false,
+            );
+          }
+          if (error instanceof ProgramDataError) {
+            return sendApiError(
+              reply,
+              500,
+              "PROGRAM_UNREADABLE",
+              "Program could not be read",
+              true,
+            );
+          }
+          throw error;
+        }
+      },
+    );
 
     app.get("/api/v1/profiles/:profileId/programs/:programId", (request, reply) => {
       const parsed = programDetailRequestSchema.safeParse({ params: request.params });

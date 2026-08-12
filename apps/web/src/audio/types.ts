@@ -39,6 +39,8 @@ export interface AudioEngineSnapshot {
   voiceSegmentId?: string | undefined;
   voicePositionMs?: number | undefined;
   voiceDurationMs?: number | undefined;
+  waveform?: number[] | undefined;
+  waveformUnavailable?: boolean | undefined;
 }
 
 export interface LoadProgramOptions {

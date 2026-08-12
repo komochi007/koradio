@@ -15,6 +15,7 @@ export const profileSchema = z.strictObject({
   radioName: radioNameSchema,
   nickname: nicknameSchema,
   avatarRef: avatarRefSchema.nullable(),
+  djAvatarRef: avatarRefSchema.nullable().optional(),
   frequentGenres: z.array(genreTagSchema).max(12),
   defaultScenario: z.string().trim().max(120),
   createdAt: occurredAtSchema,
@@ -24,6 +25,7 @@ export const createProfileCommandSchema = z.strictObject({
   radioName: radioNameSchema,
   nickname: nicknameSchema,
   avatarRef: avatarRefSchema.nullable().optional(),
+  djAvatarRef: avatarRefSchema.nullable().optional(),
   frequentGenres: z.array(genreTagSchema).max(12).optional(),
   defaultScenario: z.string().trim().max(120).optional(),
 });
@@ -32,6 +34,7 @@ export const updateProfileCommandSchema = z
     radioName: radioNameSchema.optional(),
     nickname: nicknameSchema.optional(),
     avatarRef: avatarRefSchema.nullable().optional(),
+    djAvatarRef: avatarRefSchema.nullable().optional(),
     frequentGenres: z.array(genreTagSchema).max(12).optional(),
     defaultScenario: z.string().trim().max(120).optional(),
   })

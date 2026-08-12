@@ -232,9 +232,10 @@
   --radio-dialogue-copy-size: 20px;
   box-sizing: border-box;
   height: calc(var(--radio-dialogue-height) + var(--radio-dialogue-growth));
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: 24px 28px;
+  display: grid;
+  overflow: hidden;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: 0;
   border: 1px solid var(--kr-border-subtle);
   border-radius: 24px;
   background:
@@ -246,48 +247,50 @@
     min-height 320ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.radio-dialogue {
+.radio-dialogue__transcript {
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 24px 16px 28px;
+  scroll-padding-block: 24px;
   overscroll-behavior: contain;
   scrollbar-width: none;
 }
 
-.radio-dialogue::-webkit-scrollbar {
+.radio-dialogue__transcript::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;
 }
 
 .radio-dialogue--empty:not(.radio-dialogue--has-conversation) {
+  display: grid;
+}
+
+.radio-dialogue--empty:not(.radio-dialogue--has-conversation) .radio-dialogue__transcript {
   display: flex;
   align-items: flex-end;
 }
 
 .radio-dialogue__header {
-  position: sticky;
-  z-index: 1;
-  top: -24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin: -24px -28px 24px;
-  padding: 12px 28px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--kr-border-subtle);
   background: color-mix(in srgb, var(--kr-surface) 94%, transparent);
   backdrop-filter: blur(12px);
 }
 
 .radio-dialogue__header span,
-.radio-dialogue__header button,
-.radio-read-aloud {
+.radio-dialogue__header button {
   color: var(--kr-text-tertiary);
   font-size: 12px;
   font-weight: 650;
   letter-spacing: 0.07em;
 }
 
-.radio-dialogue__header button,
-.radio-read-aloud {
+.radio-dialogue__header button {
   min-height: 44px;
   padding: 0 8px;
   border: 0;
@@ -296,16 +299,14 @@
 }
 
 .radio-dialogue__header button:hover,
-.radio-dialogue__header button:focus-visible,
-.radio-read-aloud:hover,
-.radio-read-aloud:focus-visible {
+.radio-dialogue__header button:focus-visible {
   color: var(--kr-accent);
 }
 
 .radio-user-bubble {
   width: fit-content;
   max-width: 520px;
-  margin: 0 0 24px auto;
+  margin: 0;
   padding: 10px 16px;
   border: 1px solid var(--kr-border-subtle);
   border-radius: 18px 18px 4px;
@@ -313,6 +314,37 @@
   background: var(--kr-surface-elevated);
   font-size: var(--radio-dialogue-copy-size);
   line-height: var(--radio-dialogue-copy-line-height);
+}
+
+.radio-message {
+  display: grid;
+  align-items: end;
+  gap: 10px;
+}
+
+.radio-message .koradio-avatar {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+}
+
+.radio-message--user {
+  grid-template-columns: minmax(0, 1fr) 44px;
+  justify-items: end;
+}
+
+.radio-message--dj {
+  grid-template-columns: 44px minmax(0, 1fr);
+  justify-items: start;
+}
+
+.radio-dj-bubble {
+  min-height: 44px;
+  max-width: 720px;
+  padding: 10px 16px;
+  border: 1px solid color-mix(in srgb, var(--radio-info) 28%, var(--kr-border-subtle));
+  border-radius: 4px 18px 18px;
+  background: color-mix(in srgb, var(--radio-info) 10%, var(--kr-surface-elevated));
 }
 
 .radio-dj-copy,
@@ -331,6 +363,7 @@
 }
 
 .radio-dj-copy > div > p,
+.radio-dj-bubble > p,
 .radio-dialogue__error > div > p {
   max-width: 720px;
   margin: 0;
@@ -339,23 +372,57 @@
   line-height: var(--radio-dialogue-copy-line-height);
 }
 
-.radio-dj-copy small {
+.radio-dj-copy small,
+.radio-dj-bubble small {
   display: block;
   margin-top: 8px;
-  color: var(--kr-text-tertiary);
+  color: var(--kr-text-secondary);
   font-size: 14px;
   letter-spacing: 0.06em;
 }
 
-.radio-read-aloud {
-  margin-top: 2px;
-  margin-left: -8px;
-}
-
 .radio-turn + .radio-turn,
 .radio-turn + .radio-dj-copy,
-.radio-dj-copy + .radio-turn {
+.radio-dj-copy + .radio-turn,
+.radio-turn + .radio-message,
+.radio-message + .radio-turn,
+.radio-message + .radio-message {
   margin-top: 24px;
+}
+
+.radio-turn {
+  display: grid;
+  gap: 12px;
+}
+
+.radio-script-replay {
+  min-height: 32px;
+  margin-top: 10px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--kr-accent) 50%, var(--kr-border));
+  border-radius: 999px;
+  color: var(--kr-text-secondary);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.radio-script-replay:not(:disabled):hover,
+.radio-script-replay:not(:disabled):focus-visible {
+  color: var(--kr-accent);
+  border-color: var(--kr-accent);
+}
+
+.radio-script-replay:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.radio-script-replay--playing {
+  border-color: color-mix(in srgb, var(--kr-accent) 72%, var(--kr-border));
+  color: var(--kr-accent);
 }
 
 .radio-track-card {
@@ -539,13 +606,15 @@
 
 .radio-toast {
   position: fixed;
-  z-index: 8;
-  top: 116px;
+  z-index: 1001;
+  top: 50%;
   left: 50%;
+  width: min(420px, calc(100vw - 40px));
+  min-height: 64px;
   margin: 0;
   padding: 10px 16px;
   border: 1px solid var(--kr-border);
-  border-radius: 999px;
+  border-radius: 18px;
   color: var(--kr-text-secondary);
   background: var(--kr-surface);
   font:
@@ -553,7 +622,8 @@
     "SF Mono",
     Consolas,
     monospace;
-  transform: translateX(-50%);
+  box-shadow: 0 18px 44px rgb(0 0 0 / 32%);
+  transform: translate(-50%, -50%);
 }
 
 .radio-toast {
@@ -563,8 +633,8 @@
 }
 
 .radio-toast button {
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 50%;
   color: inherit;

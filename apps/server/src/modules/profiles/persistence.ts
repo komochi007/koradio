@@ -10,6 +10,7 @@ interface ProfileRow {
   radio_name: string;
   nickname: string;
   avatar_ref: string | null;
+  dj_avatar_ref: string | null;
   frequent_genres_json: string;
   default_scenario: string;
   created_at: string;
@@ -22,6 +23,7 @@ const profileRowSchema: z.ZodType<ProfileRow> = z.object({
   radio_name: z.string(),
   nickname: z.string(),
   avatar_ref: z.string().nullable(),
+  dj_avatar_ref: z.string().nullable(),
   frequent_genres_json: z.string(),
   default_scenario: z.string(),
   created_at: z.string(),
@@ -50,6 +52,7 @@ function mapRow(row: ProfileRow): Profile {
       radioName: row.radio_name,
       nickname: row.nickname,
       avatarRef: row.avatar_ref,
+      djAvatarRef: row.dj_avatar_ref,
       frequentGenres: JSON.parse(row.frequent_genres_json) as unknown,
       defaultScenario: row.default_scenario,
       createdAt: row.created_at,
@@ -71,6 +74,7 @@ export function createProfileRepository(client: DatabaseSync): ProfileRepository
     radio_name,
     nickname,
     avatar_ref,
+    dj_avatar_ref,
     frequent_genres_json,
     default_scenario,
     created_at,
@@ -98,12 +102,13 @@ export function createProfileRepository(client: DatabaseSync): ProfileRepository
       radio_name,
       nickname,
       avatar_ref,
+      dj_avatar_ref,
       frequent_genres_json,
       default_scenario,
       created_at,
       updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const update = client.prepare(`
     UPDATE profile
@@ -111,6 +116,7 @@ export function createProfileRepository(client: DatabaseSync): ProfileRepository
       radio_name = ?,
       nickname = ?,
       avatar_ref = ?,
+      dj_avatar_ref = ?,
       frequent_genres_json = ?,
       default_scenario = ?,
       updated_at = ?
@@ -137,6 +143,7 @@ export function createProfileRepository(client: DatabaseSync): ProfileRepository
         profile.radioName,
         profile.nickname,
         profile.avatarRef,
+        profile.djAvatarRef ?? null,
         JSON.stringify(profile.frequentGenres),
         profile.defaultScenario,
         profile.createdAt,
@@ -169,6 +176,7 @@ export function createProfileRepository(client: DatabaseSync): ProfileRepository
         command.radioName ?? current.radioName,
         command.nickname ?? current.nickname,
         command.avatarRef === undefined ? current.avatarRef : command.avatarRef,
+        command.djAvatarRef === undefined ? (current.djAvatarRef ?? null) : command.djAvatarRef,
         JSON.stringify(command.frequentGenres ?? current.frequentGenres),
         command.defaultScenario ?? current.defaultScenario,
         updatedAt,

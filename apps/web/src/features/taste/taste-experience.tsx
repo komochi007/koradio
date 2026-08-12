@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import type { ServiceTransport } from "../../shared/transport.js";
+import { KoradioAvatar } from "../../shared/avatar.js";
 import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
 import { getTaste, updateTasteOverrides } from "./api.js";
 import {
@@ -73,7 +74,11 @@ function TasteTopbar({
           onClick={onOpenProfiles}
           aria-label="切换档案"
         >
-          {Array.from(current.profile.nickname).slice(0, 2).join("")}
+          <KoradioAvatar
+            fallback={Array.from(current.profile.nickname).slice(0, 2).join("")}
+            label="当前档案头像"
+            reference={current.profile.avatarRef}
+          />
         </button>
       </div>
     </header>

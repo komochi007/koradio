@@ -74,6 +74,13 @@ type GenerationPrograms = Pick<ProgramService, "commit" | "list">;
 type GenerationPreferences = Pick<ProfilePreferencesService, "get">;
 type GenerationTaste = Pick<TasteService, "get">;
 
+const alternativeVersionMarker =
+  /(?:\((?:[^)]*\b(?:live|karaoke|cover|remix|unplugged)\b|[^)]*(?:现场|演唱会|伴奏))[^)]*\)|\[(?:[^\]]*\b(?:live|karaoke|cover|remix|unplugged)\b|[^\]]*(?:现场|演唱会|伴奏))[^\]]*\]|\s[-–—]\s*(?:live|karaoke|cover|remix|unplugged)\b)/iu;
+
+export function isAlternativeVersion(track: Pick<MusicTrack, "album" | "title">): boolean {
+  return alternativeVersionMarker.test(`${track.title}\n${track.album}`);
+}
+
 export interface CreateProgramGenerationServiceOptions {
   codex?: CodexProvider;
   events: { publish(event: V1Event): void };
@@ -296,7 +303,13 @@ export function createProgramGenerationService(
     );
     const chineseOnly = /中文歌|华语歌|国语歌|粤语歌/u.test(scenarioText);
     const normalizedScenario = scenarioText.toLocaleLowerCase("en-US");
+    const deferredLibraryTracks: MusicTrack[] = [];
     let trackDegraded = false;
+
+    const isExplicitTrack = (track: MusicTrack): boolean => {
+      const titleKey = track.title.trim().toLocaleLowerCase("en-US");
+      return titleKey.length >= 2 && normalizedScenario.includes(titleKey);
+    };
 
     const isChineseVocal = async (track: MusicTrack): Promise<boolean> => {
       if (!chineseOnly) return true;
@@ -316,14 +329,17 @@ export function createProgramGenerationService(
       }
     };
 
-    const tryResolve = async (track: MusicTrack): Promise<boolean> => {
+    const tryResolve = async (track: MusicTrack, discovery = false): Promise<boolean> => {
       if (selectedTrackIds.has(track.id)) {
         return false;
       }
       const artistKey = track.artist.trim().toLocaleLowerCase("en-US");
       const explicitArtist = artistKey.length > 0 && normalizedScenario.includes(artistKey);
-      const titleKey = track.title.trim().toLocaleLowerCase("en-US");
-      const explicitTrack = titleKey.length >= 2 && normalizedScenario.includes(titleKey);
+      const explicitTrack = isExplicitTrack(track);
+      if (discovery && !explicitTrack && isAlternativeVersion(track)) {
+        trackDegraded = true;
+        return false;
+      }
       if (
         (!explicitTrack && recentTrackIds.has(track.id)) ||
         (!explicitArtist && selectedArtists.has(artistKey))
@@ -378,7 +394,7 @@ export function createProgramGenerationService(
           ) {
             continue;
           }
-          if (await tryResolve(track)) {
+          if (await tryResolve(track, true)) {
             return true;
           }
         }
@@ -407,6 +423,10 @@ export function createProgramGenerationService(
             trackDegraded = true;
             continue;
           }
+          if (isAlternativeVersion(track) && !isExplicitTrack(track)) {
+            deferredLibraryTracks.push(track);
+            continue;
+          }
           if (!(await tryResolve(track))) {
             await searchAndResolve(track.artist, true);
           }
@@ -415,6 +435,11 @@ export function createProgramGenerationService(
         await searchAndResolve(intent.keyword);
       }
       if (resolved.length === targetTrackCount) break;
+    }
+
+    for (const track of deferredLibraryTracks) {
+      if (resolved.length === targetTrackCount) break;
+      await tryResolve(track);
     }
 
     if (trackDegraded) {
@@ -554,6 +579,7 @@ export function createProgramGenerationService(
         text: script.text,
         displayText: script.text,
         estimatedTiming,
+        revealedAt: null,
         ttsAudioRef,
         citations: (script.citations ?? []).map((citation) => ({
           id: randomId(),
@@ -625,6 +651,7 @@ export function createProgramGenerationService(
         text: segment.text,
         displayText: segment.text,
         estimatedTiming: segment.estimatedTiming,
+        revealedAt: null,
         ttsAudioRef: segment.ttsAudioRef,
         citations: segment.citations,
       })),

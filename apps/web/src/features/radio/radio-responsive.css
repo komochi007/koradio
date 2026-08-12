@@ -220,6 +220,11 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-page {
   min-height: var(--desktop-canvas-logical-height, 1600px);
 }
 
+html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-page--queue-collapsed {
+  --radio-dialogue-growth: 172px;
+  --radio-layout-offset: 180px;
+}
+
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-page__tools {
   gap: 32px;
 }
@@ -371,7 +376,7 @@ html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-dialogue {
   top: calc(1008px - var(--radio-layout-offset));
   height: calc(348px + var(--desktop-canvas-extra-height, 0px) + var(--radio-dialogue-growth));
   min-height: 0;
-  padding: 24px 28px;
+  padding: 0;
 }
 
 html[data-desktop-pwa-canvas="true"] .desktop-canvas .radio-dj-copy > div > p,

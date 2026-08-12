@@ -62,6 +62,7 @@ const lyricsResponseSchema = z.object({
   nolyric: z.boolean().optional(),
   lrc: z.object({ lyric: z.string().max(1_000_000) }).optional(),
   tlyric: z.object({ lyric: z.string().max(1_000_000) }).optional(),
+  yrc: z.object({ lyric: z.string().max(1_000_000) }).optional(),
 });
 const audioResponseSchema = z.object({
   code: z.literal(200),
@@ -509,21 +510,27 @@ export function createNetEaseAdapter(options: CreateNetEaseAdapterOptions = {}):
         throw new MusicProviderResponseError();
       }
       const parsed = lyricsResponseSchema.safeParse(
-        await request("/api/song/lyric", { id: id.data, lv: -1, tv: -1 }, callOptions),
+        await request(
+          "/api/song/lyric/v1",
+          { id: id.data, kv: -1, lv: -1, rv: -1, tv: -1, yrv: -1, ytv: -1, yv: -1 },
+          callOptions,
+        ),
       );
       if (!parsed.success) {
         throw new MusicProviderResponseError();
       }
       const original = parsed.data.lrc?.lyric.trim() ?? "";
-      if (parsed.data.nolyric === true || original.length === 0) {
+      const wordTimed = parsed.data.yrc?.lyric.trim() ?? "";
+      if (parsed.data.nolyric === true || (original.length === 0 && wordTimed.length === 0)) {
         return { status: "unavailable", content: null };
       }
-      const translation = parsed.data.tlyric?.lyric.trim() ?? "";
-      const content = translation.length === 0 ? original : `${original}\n${translation}`;
       return {
-        status: /\[\d{1,3}:\d{2}(?:\.\d{1,3})?\]/u.test(original) ? "available" : "untimed",
-        content,
-        originalContent: original,
+        status:
+          wordTimed.length > 0 || /\[\d{1,3}:\d{2}(?:\.\d{1,3})?\]/u.test(original)
+            ? "available"
+            : "untimed",
+        content: wordTimed.length > 0 ? wordTimed : original,
+        ...(original.length === 0 ? {} : { originalContent: original }),
       };
     },
     async resolveAudio(sourceTrackId, callOptions) {

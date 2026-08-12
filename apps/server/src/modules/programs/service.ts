@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 
 import {
   programDetailSchema,
+  type DjScriptSegment,
   type MusicTrack,
   type Program,
   type ProgramDetail,
@@ -55,6 +56,7 @@ export interface ProgramService {
   get(profileId: string, programId: string): ProgramDetail;
   hasProgram(profileId: string, programId: string): boolean;
   list(profileId: string, cursor?: string, limit?: number): ProgramListResponse;
+  revealDjScript(profileId: string, programId: string, segmentId: string): DjScriptSegment;
 }
 
 export function createProgramService(options: CreateProgramServiceOptions): ProgramService {
@@ -147,6 +149,18 @@ export function createProgramService(options: CreateProgramServiceOptions): Prog
     },
     list(profileId, cursor, limit) {
       return options.repository.list(profileId, cursor, limit);
+    },
+    revealDjScript(profileId, programId, segmentId) {
+      const segment = options.repository.reveal(
+        profileId,
+        programId,
+        segmentId,
+        new Date().toISOString(),
+      );
+      if (segment === null) {
+        throw new ProgramNotFoundError();
+      }
+      return segment;
     },
   };
 }
