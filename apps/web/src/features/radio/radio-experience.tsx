@@ -35,9 +35,11 @@ import type { AppEventBus } from "../../shared/events.js";
 import { formatClockDuration } from "../../shared/format.js";
 import { Icon as SharedIcon, type IconName } from "../../shared/icon.js";
 import { ArtworkImage } from "../../shared/artwork.js";
+import { ApiRequestError } from "../../shared/api.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import { DetailSheet, DetailSheetBoundary } from "./detail-sheet.js";
 import { clearRadioConversation } from "./api.js";
+import { buildDialogueTimeline } from "./dialogue-timeline.js";
 import {
   useRadioProgram,
   type PendingRadioTurn,
@@ -525,15 +527,29 @@ function RadioDialogue({
   const dialogueRef = useRef<HTMLDivElement>(null);
   const transcriptPinnedToEnd = useRef(true);
   const [clearConfirmation, setClearConfirmation] = useState(false);
+  const [recommendedTrackMessage, setRecommendedTrackMessage] = useState<string>();
   const error = failure === undefined ? undefined : failureCopy(failure.code);
   const intro = program?.djScripts.find((script) => script.type === "intro")?.text;
-  const [revealedScriptIds, setRevealedScriptIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [revealedScriptTimes, setRevealedScriptTimes] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
   const visibleProgramScripts = useMemo(
     () =>
       (program?.djScripts ?? []).filter(
-        (script) => script.revealedAt != null || revealedScriptIds.has(script.id),
+        (script) => script.revealedAt != null || revealedScriptTimes.has(script.id),
       ),
-    [program?.djScripts, revealedScriptIds],
+    [program?.djScripts, revealedScriptTimes],
+  );
+  const dialogueTimeline = useMemo(
+    () =>
+      buildDialogueTimeline(
+        conversation,
+        visibleProgramScripts.map((script) => ({
+          script,
+          occurredAt: script.revealedAt ?? revealedScriptTimes.get(script.id) ?? "",
+        })),
+      ),
+    [conversation, revealedScriptTimes, visibleProgramScripts],
   );
   const visibleScenario =
     conversation.length === 0
@@ -544,7 +560,7 @@ function RadioDialogue({
       [
         conversation.map((turn) => turn.id).join(","),
         pendingTurn === undefined ? "" : `${pendingTurn.status}:${pendingTurn.content}`,
-        visibleProgramScripts.map((script) => script.id).join(","),
+        dialogueTimeline.map((entry) => `${entry.kind}:${entry.occurredAt}`).join(","),
         visibleScenario ?? "",
         scenarioText ?? "",
         turnError ?? "",
@@ -558,7 +574,7 @@ function RadioDialogue({
       pendingTurn,
       scenarioText,
       turnError,
-      visibleProgramScripts,
+      dialogueTimeline,
       visibleScenario,
     ],
   );
@@ -574,7 +590,26 @@ function RadioDialogue({
         durationMs: turn.track.durationMs,
       } as const;
       if (mode === "now") await audioEngine.previewAudio(preview);
-      else await audioEngine.queuePreviewNext?.(preview);
+      else if (audioEngine.queuePreviewNext !== undefined)
+        await audioEngine.queuePreviewNext(preview);
+    },
+    onMutate() {
+      setRecommendedTrackMessage(undefined);
+    },
+    onSuccess(_result, variables) {
+      if (variables.mode === "next") {
+        setRecommendedTrackMessage("已安排为当前播放结束后的下一首。");
+      }
+    },
+    onError(error) {
+      if (
+        error instanceof ApiRequestError &&
+        error.envelope?.code === "MUSIC_PROVIDER_UNAVAILABLE"
+      ) {
+        setRecommendedTrackMessage("这首歌暂时无法取得可播放音频，请换一首或稍后重试。");
+        return;
+      }
+      setRecommendedTrackMessage("这首歌暂时无法播放，请稍后重试。");
     },
   });
   const replayScript = useMutation({
@@ -606,7 +641,12 @@ function RadioDialogue({
   }, [transcriptContentKey]);
   useEffect(() => {
     if (!audio.voiceActive || audio.voiceSegmentId === undefined) return;
-    setRevealedScriptIds((current) => new Set(current).add(audio.voiceSegmentId ?? ""));
+    setRevealedScriptTimes((current) => {
+      if (current.has(audio.voiceSegmentId ?? "")) return current;
+      const next = new Map(current);
+      next.set(audio.voiceSegmentId ?? "", new Date().toISOString());
+      return next;
+    });
   }, [audio.voiceActive, audio.voiceSegmentId]);
   return (
     <section
@@ -657,56 +697,106 @@ function RadioDialogue({
             />
           </div>
         )}
-        {conversation.map((turn) => (
-          <div className="radio-turn" key={turn.id}>
-            <div className="radio-message radio-message--user">
-              <p className="radio-user-bubble">{turn.userMessage.content}</p>
-              <KoradioAvatar
-                fallback={Array.from(profile.nickname).slice(0, 2).join("")}
-                label="我的头像"
-                reference={profile.avatarRef}
-              />
-            </div>
-            <div className="radio-message radio-message--dj">
-              <KoradioAvatar fallback="KO" label="DJ 头像" reference={profile.djAvatarRef} />
-              <div className="radio-dj-bubble">
-                <p>{turn.assistantMessage.content}</p>
-                {turn.track !== null && (
-                  <article className="radio-track-card">
-                    <strong>{turn.track.title}</strong>
-                    <span>
-                      {turn.track.artist} · {turn.track.album}
-                    </span>
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playTrack.mutate({ mode: "now", turn });
-                        }}
-                      >
-                        PLAY NOW
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playTrack.mutate({ mode: "next", turn });
-                        }}
-                      >
-                        PLAY NEXT
-                      </button>
-                    </div>
-                  </article>
-                )}
-                <small>
-                  {new Date(turn.createdAt).toLocaleTimeString("zh-CN", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </small>
+        {dialogueTimeline.map((entry) =>
+          entry.kind === "turn" ? (
+            <div className="radio-turn" key={entry.turn.id}>
+              <div className="radio-message radio-message--user">
+                <p className="radio-user-bubble">{entry.turn.userMessage.content}</p>
+                <KoradioAvatar
+                  fallback={Array.from(profile.nickname).slice(0, 2).join("")}
+                  label="我的头像"
+                  reference={profile.avatarRef}
+                />
+              </div>
+              <div className="radio-message radio-message--dj">
+                <KoradioAvatar fallback="KO" label="DJ 头像" reference={profile.djAvatarRef} />
+                <div className="radio-dj-bubble">
+                  <p>{entry.turn.assistantMessage.content}</p>
+                  {entry.turn.track !== null && (
+                    <article className="radio-track-card">
+                      <strong>{entry.turn.track.title}</strong>
+                      <span>
+                        {entry.turn.track.artist} · {entry.turn.track.album}
+                      </span>
+                      <div>
+                        <button
+                          type="button"
+                          aria-busy={playTrack.isPending || undefined}
+                          disabled={playTrack.isPending}
+                          onClick={() => {
+                            playTrack.mutate({ mode: "now", turn: entry.turn });
+                          }}
+                        >
+                          PLAY NOW
+                        </button>
+                        <button
+                          type="button"
+                          aria-busy={playTrack.isPending || undefined}
+                          disabled={playTrack.isPending}
+                          onClick={() => {
+                            playTrack.mutate({ mode: "next", turn: entry.turn });
+                          }}
+                        >
+                          PLAY NEXT
+                        </button>
+                      </div>
+                    </article>
+                  )}
+                  <small>
+                    {new Date(entry.turn.createdAt).toLocaleTimeString("zh-CN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </small>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ) : (
+            <div className="radio-message radio-message--dj" key={entry.script.id}>
+              <KoradioAvatar fallback="KO" label="DJ 头像" reference={profile.djAvatarRef} />
+              <div className="radio-dj-bubble">
+                <p>{entry.script.text}</p>
+                {(entry.script.citations ?? []).map((citation) => (
+                  <a
+                    className="radio-dj-source"
+                    href={citation.url}
+                    key={citation.id}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    SOURCE · {citation.title}
+                  </a>
+                ))}
+                {entry.script.ttsAudioRef !== null
+                  ? (() => {
+                      const playing =
+                        (audio.voiceActive && audio.voiceSegmentId === entry.script.id) ||
+                        (audio.preview?.kind === "dj" &&
+                          audio.preview.previewId === entry.script.id &&
+                          audio.preview.state === "playing");
+                      return (
+                        <button
+                          className={`radio-script-replay${playing ? " radio-script-replay--playing" : ""}`}
+                          type="button"
+                          disabled={replayScript.isPending}
+                          onClick={() => {
+                            replayScript.mutate(entry.script);
+                          }}
+                        >
+                          {playing
+                            ? "PLAYING"
+                            : replayScript.isPending &&
+                                replayScript.variables.id === entry.script.id
+                              ? "PREPARING…"
+                              : "REPLAY"}
+                        </button>
+                      );
+                    })()
+                  : null}
+              </div>
+            </div>
+          ),
+        )}
         {pendingTurn !== undefined && (
           <div className="radio-turn radio-turn--pending" aria-live="polite">
             <div className="radio-message radio-message--user">
@@ -736,50 +826,11 @@ function RadioDialogue({
             </div>
           </div>
         )}
-        {visibleProgramScripts.map((script) => (
-          <div className="radio-message radio-message--dj" key={script.id}>
-            <KoradioAvatar fallback="KO" label="DJ 头像" reference={profile.djAvatarRef} />
-            <div className="radio-dj-bubble">
-              <p>{script.text}</p>
-              {(script.citations ?? []).map((citation) => (
-                <a
-                  className="radio-dj-source"
-                  href={citation.url}
-                  key={citation.id}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  SOURCE · {citation.title}
-                </a>
-              ))}
-              {script.ttsAudioRef !== null
-                ? (() => {
-                    const playing =
-                      (audio.voiceActive && audio.voiceSegmentId === script.id) ||
-                      (audio.preview?.kind === "dj" &&
-                        audio.preview.previewId === script.id &&
-                        audio.preview.state === "playing");
-                    return (
-                      <button
-                        className={`radio-script-replay${playing ? " radio-script-replay--playing" : ""}`}
-                        type="button"
-                        disabled={replayScript.isPending}
-                        onClick={() => {
-                          replayScript.mutate(script);
-                        }}
-                      >
-                        {playing
-                          ? "PLAYING"
-                          : replayScript.isPending && replayScript.variables.id === script.id
-                            ? "PREPARING…"
-                            : "REPLAY"}
-                      </button>
-                    );
-                  })()
-                : null}
-            </div>
-          </div>
-        ))}
+        {recommendedTrackMessage !== undefined && (
+          <p className="radio-dialogue__turn-error" role="status">
+            {recommendedTrackMessage}
+          </p>
+        )}
         {scenarioText !== undefined && !turnPending && (
           <div className="radio-message radio-message--dj" role="status">
             <KoradioAvatar fallback="KO" label="DJ 头像" reference={profile.djAvatarRef} />
