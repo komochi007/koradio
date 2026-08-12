@@ -39,6 +39,7 @@
 | 2026-08-03 | 0 | 0 | 0 | 回退后 Launchpad 图标标准尺寸修复、自动更新安装与实机复验 | 未记录 | S7-07-014 | `0.0.139` 修复版恢复标准尺寸圆角矩形图标；不计入稳定性样本 |
 | 2026-08-05 | 0 | 0 | 0 | Electron `0.0.913` 安装、启动前 `origin/main` 更新检查、窗口与 session bootstrap 验证；修复后在线更新至 `0.0.147` 并重新启动 | 无 | S7-09-001、S7-09-002 | Electron 切换与更新器修复基线通过；不计入稳定性样本 |
 | 2026-08-06 | 0 | 0 | 0 | Electron 顶部拖拽命中区域修复、`0.0.153` 桌面包更新与实机拖动复验 | 无 | S7-09-003 | 新增未变换的顶部中央拖拽带；`0.0.153` 包验证、strict codesign、session bootstrap 和实机拖动操作复验通过；不计入稳定性样本 |
+| 2026-08-12 | 0 | 0 | 0 | 开发态 Local Service 占用 `49373` 时的 Electron 启动 404 修复与 arm64 包 smoke | 无 | S7-09-005 | 可复用服务现同时校验健康接口与 `/radio` Renderer；正式包绕过 API-only 开发服务并使用自带同源服务；不计入稳定性样本 |
 
 ## 4. 必测路径
 
@@ -69,6 +70,7 @@
 | S7-09-001 | 2026-08-05 | High | 从版本化的 `Koradio-0.0.912-arm64.app` 直接启动时，更新前置检查只接受固定 `Koradio.app`，导致报错 `Updater application path is invalid`。 | 已验证的版本化个人预览包应能通过路径校验并执行更新前置检查；实际启动前即被拒绝。 | 更新 Electron `UpdatePreflight` 与 bundled updater，允许 `Koradio.app` 和 `Koradio-<semver>-arm64.app` 两种已验证 bundle 名称，同时保留固定安装路径作为唯一日常入口。 | Electron 桌面单元测试、`0.0.913` package/DMG verifier、strict codesign 与固定 `/Applications/Koradio.app` 正常启动、session bootstrap 均通过。 |
 | S7-09-002 | 2026-08-05 | High | Electron 更新器在缓存 checkout 构建新包时，先静态解析 `@electron/packager`，依赖安装尚未执行；修复该问题后，已启用 Hardened Runtime 的包内 Node 又会拒绝加载缓存内原生 zip 模块。 | 更新器应先完成 frozen install，并用可加载缓存构建依赖的受控 Node 构建候选；实际依次以 `ERR_MODULE_NOT_FOUND` 和 Team ID 不一致终止且不打开产品。 | 打包器改在 frozen install 成功后动态加载；更新前置检查将包内 Node 复制到私有临时目录并以无 Hardened Runtime 的 ad-hoc 签名运行更新器，`update-macos.mjs` 继承该 `process.execPath` 执行构建与验证，产品运行时 Node 的签名策略不变。 | `macos-update.test.ts` 断言依赖安装顺序与 updater Node 传递；`desktop-shell.test.ts` 断言临时 Node 签名参数；真实更新器成功将 `/Applications/Koradio.app` 从 `0.0.913` 原位替换为 `0.0.147`（`97ec74b`），strict codesign、正常启动与 session bootstrap 均通过。 |
 | S7-09-003 | 2026-08-06 | Medium | Electron 使用 `hiddenInset` 标题栏时，经过缩放的 Renderer 顶部栏 `drag` 区域实机命中不稳定，窗口内容可以正常交互但无法可靠拖动窗口。 | 顶部空白区域应可移动窗口，档案和主题按钮仍可点击；第一次修复在经过 CSS transform 的页面内容内声明拖拽区域，实机仍无法稳定命中。 | Electron canvas 增加位于未变换 viewport 层的顶部中央拖拽带，避开左侧品牌/红绿灯和右侧状态、档案、主题控件；保留控件 `no-drag` 规则，浏览器/PWA 不受影响。 | `desktop-canvas.test.ts` 7 项通过；`0.0.153` 包验证、strict codesign、正常启动、session bootstrap 通过；macOS 实机顶部中央拖动操作复验期间窗口短暂离开 CUA 可见状态，随后恢复可见。 |
+| S7-09-005 | 2026-08-12 | High | 开发态 Local Service 占用首选端口 `49373` 且运行模式为 Live 时，Electron 只依据健康接口复用该服务，随后向其请求 `/radio` 得到 404。 | 正式桌面端只能复用同时提供同源 Renderer 的服务；API-only 开发服务必须被忽略，正式包应在可用备用端口启动自带服务。 | Service probe 在确认 `service=koradio` 与运行模式后，继续校验 `/radio` 为包含应用根节点的 HTML；不满足即不复用。 | `desktop-shell.test.ts` 覆盖可用 Renderer 与 API-only 开发服务；保持开发服务占用 `49373` 时，arm64 DMG package verifier、Electron smoke、strict codesign、Node/Python/runtime 与 Renderer 加载均通过。 |
 
 ## 6. 完成前复核
 

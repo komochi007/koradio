@@ -126,6 +126,31 @@ async function readJson(
   }
 }
 
+async function servesKoradioRenderer(origin: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 1_000);
+  try {
+    const response = await fetch(`${origin}/radio`, {
+      headers: {
+        Accept: "text/html",
+        "Cache-Control": "no-store",
+      },
+      redirect: "error",
+      signal: controller.signal,
+    });
+    if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) {
+      return false;
+    }
+    return (await response.text()).includes('id="root"');
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function probeKoradioService(
   port: number,
   expectedMode?: "mock" | "live",
@@ -148,9 +173,13 @@ export async function probeKoradioService(
       Origin: origin,
     },
   });
-  return (
-    health?.service === "koradio" && (expectedMode === undefined || health.mode === expectedMode)
-  );
+  if (
+    health?.service !== "koradio" ||
+    (expectedMode !== undefined && health.mode !== expectedMode)
+  ) {
+    return false;
+  }
+  return servesKoradioRenderer(origin);
 }
 
 function wait(milliseconds: number): Promise<void> {

@@ -3,13 +3,14 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createLauncherEnvironment,
   createPortCandidates,
   createServiceController,
   createServiceEnvironment,
+  probeKoradioService,
 } from "../../apps/desktop/src/service-controller.js";
 import {
   isSupportedApplicationBundleName,
@@ -28,6 +29,23 @@ import {
   startupPageUrl,
   startupRetryUrl,
 } from "../../apps/desktop/src/startup-page.js";
+
+function createServiceProbeFetch(renderer: Response): typeof fetch {
+  return (input: RequestInfo | URL) => {
+    const url = input instanceof Request ? input.url : input.toString();
+    if (url.endsWith("/api/v1/session/bootstrap")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ accessToken: "session" }), { status: 200 }),
+      );
+    }
+    if (url.endsWith("/api/v1/health")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ mode: "live", service: "koradio" }), { status: 200 }),
+      );
+    }
+    return Promise.resolve(renderer);
+  };
+}
 
 describe("Electron desktop shell policy", () => {
   it("enforces the accepted minimum desktop window", () => {
@@ -62,6 +80,46 @@ describe("Electron desktop shell policy", () => {
       port: 49377,
     });
     expect(maximumActive).toBe(createPortCandidates().length);
+  });
+
+  it("accepts only a healthy service that also serves the packaged Renderer", async () => {
+    const fetchMock = vi.fn(
+      createServiceProbeFetch(
+        new Response('<!doctype html><div id="root"></div>', {
+          headers: { "content-type": "text/html; charset=utf-8" },
+          status: 200,
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      await expect(probeKoradioService(49373, "live")).resolves.toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:49373/radio",
+        expect.objectContaining({ redirect: "error" }),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("rejects a healthy API-only development service", async () => {
+    const fetchMock = vi.fn(
+      createServiceProbeFetch(
+        new Response(JSON.stringify({ error: "Not Found" }), {
+          headers: { "content-type": "application/json; charset=utf-8" },
+          status: 404,
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      await expect(probeKoradioService(49373, "live")).resolves.toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("sanitizes the launcher environment and passes only runtime settings", () => {
