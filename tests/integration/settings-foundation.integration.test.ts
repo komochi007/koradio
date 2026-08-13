@@ -237,9 +237,11 @@ describe("S2-05 settings, health and data root foundation", () => {
 
   it("runs a complete planning readiness check through the active provider boundary", async () => {
     let planCalls = 0;
+    let receivedContext: unknown;
     const plannerProvider = {
       plan(context: unknown) {
         planCalls += 1;
+        receivedContext = context;
         const language = (context as { preferences: { djLanguage: "zh-CN" } }).preferences
           .djLanguage;
         return Promise.resolve({
@@ -269,10 +271,18 @@ describe("S2-05 settings, health and data root foundation", () => {
       plannerProvider,
     });
     const session = await bootstrapSession(context.app);
+    const headers = authorizedHeaders(session);
+    const profileId = await createProfile(context.app, headers, "readiness-profile", "Readiness");
+    await context.app.inject({
+      method: "PUT",
+      url: "/api/v1/profiles/current",
+      headers,
+      payload: { profileId },
+    });
     const response = await context.app.inject({
       method: "POST",
       url: "/api/v1/device-settings/planner-test",
-      headers: authorizedHeaders(session),
+      headers,
     });
 
     expect(response.statusCode).toBe(200);
@@ -282,6 +292,11 @@ describe("S2-05 settings, health and data root foundation", () => {
       redactedSummary: "Active AI planner test succeeded",
     });
     expect(planCalls).toBe(1);
+    expect(receivedContext).toMatchObject({
+      effectiveTaste: { profileId },
+      library: { maximumTracks: 8 },
+      preferences: { djLanguage: "zh-CN", djVoiceStyle: "natural-radio" },
+    });
   });
 
   it("rejects a planner that answers a lightweight check but cannot form a complete program", async () => {
@@ -289,10 +304,23 @@ describe("S2-05 settings, health and data root foundation", () => {
       plannerProvider: { plan: () => Promise.resolve({}) },
     });
     const session = await bootstrapSession(context.app);
+    const headers = authorizedHeaders(session);
+    const profileId = await createProfile(
+      context.app,
+      headers,
+      "invalid-readiness-profile",
+      "Readiness",
+    );
+    await context.app.inject({
+      method: "PUT",
+      url: "/api/v1/profiles/current",
+      headers,
+      payload: { profileId },
+    });
     const response = await context.app.inject({
       method: "POST",
       url: "/api/v1/device-settings/planner-test",
-      headers: authorizedHeaders(session),
+      headers,
     });
 
     expect(response.statusCode).toBe(422);

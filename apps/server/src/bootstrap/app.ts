@@ -360,10 +360,18 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     tts: options.ttsProvider ?? runtimeProviders.tts,
   });
   const plannerReadiness = createPlannerReadinessService({
+    context: {
+      library,
+      now: () => new Date(),
+      preferences: profilePreferences,
+      programs,
+      taste,
+    },
     planner:
       options.plannerProvider === undefined && options.codexProvider === undefined
         ? runtimeProviders.planner
         : () => (options.plannerProvider ?? options.codexProvider) as ProgramPlannerProvider,
+    profileId: async () => (await profileContext.getCurrent()).current?.profile.id ?? null,
   });
   const radio = createRadioService({
     assistant: options.radioAssistantProvider ?? runtimeProviders.radioAssistant,

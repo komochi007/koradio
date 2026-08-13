@@ -23,7 +23,6 @@ import type { LibraryService } from "../library/index.js";
 import type { ProfilePreferencesService } from "../profile-preferences/index.js";
 import type { TasteService } from "../taste/index.js";
 import {
-  codexPlanningContextSchema,
   codexProgramPlanSchema,
   ttsSynthesisResultSchema,
   type CodexProgramPlan,
@@ -31,6 +30,7 @@ import {
   type ProgramPlannerProvider,
   type TtsProvider,
 } from "./providers.js";
+import { createPlanningContext } from "./planning-context.js";
 import type { ProgramGenerationRepository } from "./generation-persistence.js";
 import type { ProgramService } from "./service.js";
 import type { MusicFact, MusicFactProvider } from "./music-facts.js";
@@ -677,42 +677,19 @@ export function createProgramGenerationService(
     const targetTrackCount = strictTrackCount
       ? (requestedTrackCount ?? configuredTrackCount)
       : configuredTrackCount;
-    const preferences = options.preferences.get(snapshot.profileId);
-    const effectiveTaste = options.taste.get(snapshot.profileId).effective;
     const libraryTracks = options.library.candidateTracks(snapshot.profileId, 120);
-    const preferredLibraryTrackCount = Math.min(
-      libraryTracks.length,
-      Math.round(targetTrackCount * 0.7),
+    const context = createPlanningContext(
+      {
+        library: options.library,
+        now,
+        preferences: options.preferences,
+        programs: options.programs,
+        taste: options.taste,
+      },
+      snapshot.profileId,
+      command.scenarioText,
+      targetTrackCount,
     );
-    const history = options.programs
-      .list(snapshot.profileId, undefined, 20)
-      .items.map((program) => ({
-        title: program.title,
-        scenarioText: program.scenarioText,
-        createdAt: program.createdAt,
-        trackIds: program.trackIds,
-      }));
-    const context = codexPlanningContextSchema.parse({
-      scenarioText: command.scenarioText,
-      effectiveTaste,
-      history,
-      library: {
-        tracks: libraryTracks.map((track) => ({
-          trackId: track.id,
-          title: track.title,
-          artist: track.artist,
-          album: track.album,
-          durationMs: track.durationMs,
-        })),
-        maximumTracks: targetTrackCount,
-        preferredLibraryTrackCount,
-      },
-      currentTime: now().toISOString(),
-      preferences: {
-        djLanguage: preferences.djLanguage,
-        djVoiceStyle: preferences.djVoiceStyle,
-      },
-    });
     let rawPlan: unknown;
     try {
       rawPlan = await withAbort(
@@ -730,8 +707,16 @@ export function createProgramGenerationService(
         "unavailable",
       ].find((code) => hasErrorCode(error, code));
       if (plannerFailure !== undefined) {
+        const reason =
+          plannerFailure === "response_invalid" &&
+          typeof error === "object" &&
+          error !== null &&
+          "reason" in error &&
+          typeof (error as { reason?: unknown }).reason === "string"
+            ? `_${(error as { reason: string }).reason.toUpperCase()}`
+            : "";
         throw new GenerationPipelineError(
-          `PROGRAM_GENERATION_PLANNER_${plannerFailure.toUpperCase()}`,
+          `PROGRAM_GENERATION_PLANNER_${plannerFailure.toUpperCase()}${reason}`,
         );
       }
       throw error;

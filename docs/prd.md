@@ -613,7 +613,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 - 用户选择 `Theme Mode` 为 `Dark`、`Light` 或 `System` → 系统立即预览主题并保存偏好 → 用户看到 Radio 主播放页和详情页按对应昼夜视觉基准切换。
 - 用户选择 `DJ Language` 为中文或英文 → 系统保存串讲语言偏好 → 用户下一次生成节目时听到对应语言的 DJ 串讲。
 - 用户选择 `DJ Voice Style` 为 `Natural Radio` → 系统将该声音风格传给 Codex 编排上下文；中文通过 `Serena`、英文通过 `Ryan` 合成自然电台口吻，模型不可用时降级为完整文字 DJ。
-- 用户点击“测试连接” → 系统用活动 Planner 执行一次不落库的完整节目骨架检测，并检查内置网易云 Provider、Qwen runtime 与模型状态 → 用户看到每项成功或失败；健康摘要只反映活动 Planner，不把未选中的 AI 大脑标为核心故障。
+- 用户点击“测试连接” → 系统使用当前档案的偏好、`EffectiveTaste`、最近节目历史和可播放库内曲目摘要，向活动 Planner 发起一次不落库的 8 首完整节目骨架检测，并检查内置网易云 Provider、Qwen runtime 与模型状态 → 用户看到每项成功或失败；健康摘要只反映活动 Planner，不把未选中的 AI 大脑标为核心故障。
 - 用户查看服务检测结果 → 系统汇总可用服务数量并展开失败项修复建议 → 用户看到 `3 OF 4 SERVICES AVAILABLE` 或对应数量、TTS 降级说明、返回 Radio 和修改配置按钮。
 - 用户在 Settings 发起数据目录迁移 → 系统创建幂等异步迁移任务：验证目标为空且可写，暂停生成和播放，保存 checkpoint，备份并复制校验，原子切换 bootstrap 配置后重启服务；失败时回滚到旧目录，旧数据永不自动删除。
 - 数据变化：非敏感设备配置写入 `DeviceSettings`，DeepSeek key 只存在 OS Keychain，档案偏好写入 `ProfilePreferences`；`ServiceHealth` 仅是运行时快照。原始 Planner 输出、reasoning 和未脱敏诊断不得进入播放历史、SQLite 或普通日志。

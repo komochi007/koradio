@@ -379,7 +379,7 @@ describe("DeepSeek adapter", () => {
       response_format?: { type: string };
       thinking?: { type: string };
     };
-    expect(body.max_tokens).toBe(8_192);
+    expect(body.max_tokens).toBe(12_288);
     expect(body.model).toBe("deepseek-v4-pro");
     expect(body.response_format).toEqual({ type: "json_object" });
     expect(body.thinking).toEqual({ type: "enabled" });
@@ -462,6 +462,7 @@ describe("DeepSeek adapter", () => {
     ).resolves.toEqual(codexProgramPlanFixture);
     expect(invocations).toHaveLength(2);
     expect(invocations[1]?.init?.body).toContain("previous planning attempt failed");
+    expect(invocations[1]?.init?.body).toContain("no library intents");
   });
 
   it("rejects empty or invalid JSON without exposing response content", async () => {

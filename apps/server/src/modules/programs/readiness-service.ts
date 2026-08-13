@@ -1,10 +1,7 @@
 import { randomUUID } from "node:crypto";
 
-import {
-  codexPlanningContextSchema,
-  codexProgramPlanSchema,
-  type ProgramPlannerProvider,
-} from "./providers.js";
+import { codexProgramPlanSchema, type ProgramPlannerProvider } from "./providers.js";
+import { createPlanningContext, type PlanningContextDependencies } from "./planning-context.js";
 
 export class PlannerReadinessError extends Error {
   readonly code:
@@ -28,26 +25,23 @@ export interface PlannerReadinessService {
 }
 
 export function createPlannerReadinessService(options: {
+  context: PlanningContextDependencies;
   now?: () => Date;
   planner: () => ProgramPlannerProvider;
+  profileId: () => Promise<string | null>;
 }): PlannerReadinessService {
   const now = options.now ?? (() => new Date());
 
   return {
     async check() {
-      const context = codexPlanningContextSchema.parse({
-        scenarioText: "为安静专注的工作时段规划一档 8 首歌的完整节目",
-        effectiveTaste: {
-          profileId: "00000000-0000-4000-8000-000000000001",
-          projectionVersion: 0,
-          overrideVersion: 0,
-          resolvedTaste: { affinities: [], avoidRules: [], sceneRules: [], tags: [] },
-        },
-        history: [],
-        library: { tracks: [], maximumTracks: 8, preferredLibraryTrackCount: 0 },
-        currentTime: now().toISOString(),
-        preferences: { djLanguage: "zh-CN", djVoiceStyle: "natural-radio" },
-      });
+      const profileId = await options.profileId();
+      if (profileId === null) return;
+      const context = createPlanningContext(
+        { ...options.context, now },
+        profileId,
+        "为安静专注的工作时段规划一档 8 首歌的完整节目",
+        8,
+      );
       try {
         const plan = codexProgramPlanSchema.safeParse(
           await options.planner().plan(context, { correlationId: randomUUID() }),
