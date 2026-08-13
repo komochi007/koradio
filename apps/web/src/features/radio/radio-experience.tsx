@@ -573,7 +573,12 @@ function RadioDialogue({
   const dialogueRef = useRef<HTMLDivElement>(null);
   const transcriptPinnedToEnd = useRef(true);
   const [clearConfirmation, setClearConfirmation] = useState(false);
-  const [recommendedTrackMessage, setRecommendedTrackMessage] = useState<string>();
+  const [recommendedTrackMessage, setRecommendedTrackMessage] = useState<
+    { message: string; trackId: string } | undefined
+  >();
+  useEffect(() => {
+    setRecommendedTrackMessage(undefined);
+  }, [conversation.length]);
   const error = failure === undefined ? undefined : failureCopy(failure.code);
   const intro = program?.djScripts.find((script) => script.type === "intro")?.text;
   const [revealedScriptTimes, setRevealedScriptTimes] = useState<ReadonlyMap<string, string>>(
@@ -645,18 +650,27 @@ function RadioDialogue({
     },
     onSuccess(_result, variables) {
       if (variables.mode === "next") {
-        setRecommendedTrackMessage("已安排为当前播放结束后的下一首。");
+        setRecommendedTrackMessage({
+          message: "已安排为当前播放结束后的下一首。",
+          trackId: variables.track?.id ?? "",
+        });
       }
     },
-    onError(error) {
+    onError(error, variables) {
       if (
         error instanceof ApiRequestError &&
         error.envelope?.code === "MUSIC_PROVIDER_UNAVAILABLE"
       ) {
-        setRecommendedTrackMessage("这首歌暂时无法取得可播放音频，请换一首或稍后重试。");
+        setRecommendedTrackMessage({
+          message: "这首歌暂时无法取得可播放音频，请换一首或稍后重试。",
+          trackId: variables.track?.id ?? "",
+        });
         return;
       }
-      setRecommendedTrackMessage("这首歌暂时无法播放，请稍后重试。");
+      setRecommendedTrackMessage({
+        message: "这首歌暂时无法播放，请稍后重试。",
+        trackId: variables.track?.id ?? "",
+      });
     },
   });
   const replayScript = useMutation({
@@ -760,62 +774,76 @@ function RadioDialogue({
                 <div className="radio-dj-bubble">
                   <p>{entry.turn.assistantMessage.content}</p>
                   {entry.turn.track !== null && (
-                    <article className="radio-track-card">
-                      <strong>{entry.turn.track.title}</strong>
-                      <span>
-                        {entry.turn.track.artist} · {entry.turn.track.album}
-                      </span>
-                      <div>
-                        <button
-                          type="button"
-                          aria-busy={playTrack.isPending || undefined}
-                          disabled={playTrack.isPending}
-                          onClick={() => {
-                            playTrack.mutate({ mode: "now", track: entry.turn.track });
-                          }}
-                        >
-                          PLAY NOW
-                        </button>
-                        <button
-                          type="button"
-                          aria-busy={playTrack.isPending || undefined}
-                          disabled={playTrack.isPending}
-                          onClick={() => {
-                            playTrack.mutate({ mode: "next", track: entry.turn.track });
-                          }}
-                        >
-                          PLAY NEXT
-                        </button>
-                      </div>
-                    </article>
+                    <>
+                      <article className="radio-track-card">
+                        <strong>{entry.turn.track.title}</strong>
+                        <span>
+                          {entry.turn.track.artist} · {entry.turn.track.album}
+                        </span>
+                        <div>
+                          <button
+                            type="button"
+                            aria-busy={playTrack.isPending || undefined}
+                            disabled={playTrack.isPending}
+                            onClick={() => {
+                              playTrack.mutate({ mode: "now", track: entry.turn.track });
+                            }}
+                          >
+                            PLAY NOW
+                          </button>
+                          <button
+                            type="button"
+                            aria-busy={playTrack.isPending || undefined}
+                            disabled={playTrack.isPending}
+                            onClick={() => {
+                              playTrack.mutate({ mode: "next", track: entry.turn.track });
+                            }}
+                          >
+                            PLAY NEXT
+                          </button>
+                        </div>
+                      </article>
+                      {recommendedTrackMessage?.trackId === entry.turn.track.id && (
+                        <p className="radio-dialogue__turn-error" role="status">
+                          {recommendedTrackMessage.message}
+                        </p>
+                      )}
+                    </>
                   )}
                   {(entry.turn.recommendedTracks ?? []).map((track) => (
-                    <article className="radio-track-card" key={track.id}>
-                      <strong>{track.title}</strong>
-                      <span>{`${track.artist} · ${track.album}`}</span>
-                      <div>
-                        <button
-                          type="button"
-                          aria-busy={playTrack.isPending || undefined}
-                          disabled={playTrack.isPending}
-                          onClick={() => {
-                            playTrack.mutate({ mode: "now", track });
-                          }}
-                        >
-                          PLAY NOW
-                        </button>
-                        <button
-                          type="button"
-                          aria-busy={playTrack.isPending || undefined}
-                          disabled={playTrack.isPending}
-                          onClick={() => {
-                            playTrack.mutate({ mode: "next", track });
-                          }}
-                        >
-                          PLAY NEXT
-                        </button>
-                      </div>
-                    </article>
+                    <div key={track.id}>
+                      <article className="radio-track-card">
+                        <strong>{track.title}</strong>
+                        <span>{`${track.artist} · ${track.album}`}</span>
+                        <div>
+                          <button
+                            type="button"
+                            aria-busy={playTrack.isPending || undefined}
+                            disabled={playTrack.isPending}
+                            onClick={() => {
+                              playTrack.mutate({ mode: "now", track });
+                            }}
+                          >
+                            PLAY NOW
+                          </button>
+                          <button
+                            type="button"
+                            aria-busy={playTrack.isPending || undefined}
+                            disabled={playTrack.isPending}
+                            onClick={() => {
+                              playTrack.mutate({ mode: "next", track });
+                            }}
+                          >
+                            PLAY NEXT
+                          </button>
+                        </div>
+                      </article>
+                      {recommendedTrackMessage?.trackId === track.id && (
+                        <p className="radio-dialogue__turn-error" role="status">
+                          {recommendedTrackMessage.message}
+                        </p>
+                      )}
+                    </div>
                   ))}
                   <small>
                     {new Date(entry.turn.createdAt).toLocaleTimeString("zh-CN", {
@@ -900,11 +928,6 @@ function RadioDialogue({
               </div>
             </div>
           </div>
-        )}
-        {recommendedTrackMessage !== undefined && (
-          <p className="radio-dialogue__turn-error" role="status">
-            {recommendedTrackMessage}
-          </p>
         )}
         {scenarioText !== undefined && !turnPending && (
           <div className="radio-message radio-message--dj" role="status">

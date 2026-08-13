@@ -70,7 +70,7 @@ function programAcknowledgement(content: string): string {
 
 export interface CreateRadioServiceOptions {
   assistant: RadioAssistantProvider | (() => RadioAssistantProvider);
-  library: Pick<LibraryService, "search">;
+  library: Pick<LibraryService, "resolveAudio" | "search">;
   now?: () => Date;
   programs: Pick<ProgramGenerationService, "start">;
   randomId?: () => string;
@@ -104,7 +104,13 @@ export function createRadioService(options: CreateRadioServiceOptions) {
         content: command.content,
         recentMessages: recent.flatMap((turn) => [
           { role: turn.userMessage.role, content: turn.userMessage.content },
-          { role: turn.assistantMessage.role, content: turn.assistantMessage.content },
+          {
+            role: turn.assistantMessage.role,
+            content:
+              turn.recommendedTracks === undefined || turn.recommendedTracks.length === 0
+                ? turn.assistantMessage.content
+                : `${turn.assistantMessage.content}\nRecommended tracks: ${turn.recommendedTracks.map((track) => `${track.title} — ${track.artist}`).join("; ")}`,
+          },
         ]),
       });
       const assistant =
@@ -139,21 +145,48 @@ export function createRadioService(options: CreateRadioServiceOptions) {
       let track = null;
       const recommendedTracks: NonNullable<RadioTurn["recommendedTracks"]> = [];
       let programJobId: string | null = null;
+      const previousRecommendations = [...recent]
+        .reverse()
+        .find((turn) => (turn.recommendedTracks?.length ?? 0) > 0)?.recommendedTracks;
+      const recommendationFollowUp =
+        /(?:最推荐|哪.*(?:首|一首)|top pick|best pick|recommend.*most)/iu.test(command.content);
       if (response.decision === "single_track") {
-        if (response.musicQuery === null) throw new RadioTurnUnavailableError();
-        const result = await options.library.search(response.musicQuery);
-        track = result.items.find((candidate) => candidate.playable) ?? null;
+        if (recommendationFollowUp && previousRecommendations !== undefined) {
+          track =
+            previousRecommendations.find((candidate) =>
+              `${candidate.title} ${candidate.artist}`
+                .toLocaleLowerCase("en-US")
+                .includes((response.musicQuery ?? "").toLocaleLowerCase("en-US")),
+            ) ??
+            previousRecommendations[0] ??
+            null;
+        } else if (response.musicQuery !== null) {
+          const result = await options.library.search(response.musicQuery);
+          track = result.items.find((candidate) => candidate.playable) ?? null;
+        }
         if (track === null) throw new RadioTurnUnavailableError();
       } else if (response.decision === "recommendations") {
         const seen = new Set<string>();
         for (const query of response.musicQueries.slice(0, 5)) {
-          const candidate = (await options.library.search(query)).items.find(
+          const candidates = (await options.library.search(query)).items.filter(
             (item) =>
               item.playable &&
               !seen.has(item.id) &&
               (recommendationArtist === undefined ||
                 item.artist.toLowerCase().includes(recommendationArtist)),
           );
+          const candidate = (
+            await Promise.all(
+              candidates.map(async (item) => {
+                try {
+                  await options.library.resolveAudio(item.id);
+                  return item;
+                } catch {
+                  return undefined;
+                }
+              }),
+            )
+          ).find((item) => item !== undefined);
           if (candidate === undefined) continue;
           seen.add(candidate.id);
           recommendedTracks.push(candidate);

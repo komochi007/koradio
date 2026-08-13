@@ -774,7 +774,7 @@ describe("S3-06 Program generation orchestration", () => {
     await harness.generation.waitForIdle();
     expect(harness.generation.get(harness.profile.id, started.jobId)).toMatchObject({
       status: "failed",
-      errorCode: "PROGRAM_GENERATION_PLANNER_UNAVAILABLE",
+      errorCode: "PROGRAM_GENERATION_PLANNER_CONFIGURATION_INVALID",
     });
     await closeHarness(harness);
   });

@@ -720,15 +720,19 @@ export function createProgramGenerationService(
         signal,
       );
     } catch (error) {
-      if (
-        hasErrorCode(error, "configuration_invalid") ||
-        hasErrorCode(error, "unauthorized") ||
-        hasErrorCode(error, "payment_required") ||
-        hasErrorCode(error, "rate_limited") ||
-        hasErrorCode(error, "response_invalid") ||
-        hasErrorCode(error, "unavailable")
-      ) {
-        throw new GenerationPipelineError("PROGRAM_GENERATION_PLANNER_UNAVAILABLE");
+      const plannerFailure = [
+        "configuration_invalid",
+        "unauthorized",
+        "payment_required",
+        "rate_limited",
+        "response_invalid",
+        "timeout",
+        "unavailable",
+      ].find((code) => hasErrorCode(error, code));
+      if (plannerFailure !== undefined) {
+        throw new GenerationPipelineError(
+          `PROGRAM_GENERATION_PLANNER_${plannerFailure.toUpperCase()}`,
+        );
       }
       throw error;
     }

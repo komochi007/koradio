@@ -189,7 +189,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 3 | 播放器 | 当前歌曲、歌手、音量、上一首、播放/暂停、下一首、队列、喜欢歌曲、More、进度条 | 控制 Browser Audio Engine 中的播放时间线并和 Detail Sheet 同步；不喜欢位于 More，节目收藏仅位于 Programs/节目入口 |
 | 4 | 队列 | `QUEUE`、曲目数、当前高亮曲目、固定高度内最多四行、`HIDE/LIST` | 空状态只显示状态栏；生成节目后默认展开全部 8～12 首并在卡片内滚动 |
 | 5 | DJ 状态栏 | `Koradio`、`LIVE/SPEAKING/THINKING/PLAYING`、状态灯 | 用户点击后打开全屏 Radio Detail Sheet |
-| 6 | DJ 对话区 | 固定标题与独立滚动 transcript、DJ/用户各自 `44px` 圆形头像与克制差异气泡、单曲或最多 5 首策展卡片、来源和时间；每张卡片提供 `PLAY NOW` 与 `PLAY NEXT`，普通回复不提供语音按钮，已播 TTS 串讲显示 `REPLAY/PLAYING` | 最近 50 个普通 turn 与当前节目已播串讲分别保存；临时点播不写入 Program、播放历史或持久队列，未播串讲不出现 |
+| 6 | DJ 对话区 | 固定标题与独立滚动 transcript、DJ/用户各自 `44px` 圆形头像与克制差异气泡、单曲或最多 5 首已验证可播放的策展卡片、来源和时间；每张卡片提供 `PLAY NOW` 与 `PLAY NEXT`，普通回复不提供语音按钮，已播 TTS 串讲显示 `REPLAY/PLAYING` | 最近 50 个普通 turn 与当前节目已播串讲分别保存；临时点播不写入 Program、播放历史或持久队列，未播串讲不出现 |
 | 7 | 底部输入 | `Say something to the DJ...`、语音按钮、发送按钮、连接状态 | 每轮先路由意图；节目生成期间输入仍可用，再次请求节目时先询问是否替换正在生成的任务 |
 
 ### 4. 页面状态矩阵
