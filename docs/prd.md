@@ -33,7 +33,7 @@
 | 指标 | 当前状态 | 目标状态 |
 |------|----------|----------|
 | 场景点歌闭环 | 当前无产品实现 | 在活动 Planner（Codex 或 DeepSeek）与网易云可用时，提交合法场景后生成至少 1 首可播放歌曲和 1 段开场文字；新节目提交成功后原子切换并开始播放 |
-| 首次启动 | 当前无配置流程 | 首次启动自动选择可写的 OS 应用数据目录；用户可完成 Codex 配置，或在确认 DeepSeek 隐私提示后保存 Keychain API key 并选择模型；内置网易云 Provider 通过健康检查后即可发起首次生成 |
+| 首次启动 | 当前无配置流程 | 首次启动自动选择可写的 OS 应用数据目录；用户可完成 Codex 配置，或在确认 DeepSeek 隐私提示后保存 Keychain API key 并选择模型；桌面入口在打开 Radio 前以活动 AI 大脑执行一次完整节目骨架检测，未通过时停留在 Settings 修复状态 |
 | 桌面入口与更新 | 迁移前存在 Native launcher 与浏览器 PWA 重复入口 | Launchpad 只保留固定路径的品牌圆角 `Koradio.app`；Electron 主进程每次正常打开先联网检查可信 `origin/main`，只有当前提交完成本机构建与 Electron 包装验证后才加载 `http://127.0.0.1:<port>/radio`，检查或更新失败时不得继续打开旧版 |
 | DJ 串讲降级 | 当前无串讲 | TTS 缺失、无效或超时时仍保存文字 DJ，时间线不创建伪音频项，歌曲可继续播放 |
 | 推荐反馈沉淀 | 当前无反馈记录 | 喜欢、取消喜欢、不喜欢、取消不喜欢、节目收藏、取消收藏和跳过均追加显式事件，重建自动品味时不覆盖人工规则 |
@@ -613,7 +613,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 - 用户选择 `Theme Mode` 为 `Dark`、`Light` 或 `System` → 系统立即预览主题并保存偏好 → 用户看到 Radio 主播放页和详情页按对应昼夜视觉基准切换。
 - 用户选择 `DJ Language` 为中文或英文 → 系统保存串讲语言偏好 → 用户下一次生成节目时听到对应语言的 DJ 串讲。
 - 用户选择 `DJ Voice Style` 为 `Natural Radio` → 系统将该声音风格传给 Codex 编排上下文；中文通过 `Serena`、英文通过 `Ryan` 合成自然电台口吻，模型不可用时降级为完整文字 DJ。
-- 用户点击“测试连接” → 系统检查活动 Planner、内置网易云 Provider、Qwen runtime 与模型状态 → 用户看到每项成功或失败；健康摘要只反映活动 Planner，不把未选中的 AI 大脑标为核心故障。
+- 用户点击“测试连接” → 系统用活动 Planner 执行一次不落库的完整节目骨架检测，并检查内置网易云 Provider、Qwen runtime 与模型状态 → 用户看到每项成功或失败；健康摘要只反映活动 Planner，不把未选中的 AI 大脑标为核心故障。
 - 用户查看服务检测结果 → 系统汇总可用服务数量并展开失败项修复建议 → 用户看到 `3 OF 4 SERVICES AVAILABLE` 或对应数量、TTS 降级说明、返回 Radio 和修改配置按钮。
 - 用户在 Settings 发起数据目录迁移 → 系统创建幂等异步迁移任务：验证目标为空且可写，暂停生成和播放，保存 checkpoint，备份并复制校验，原子切换 bootstrap 配置后重启服务；失败时回滚到旧目录，旧数据永不自动删除。
 - 数据变化：非敏感设备配置写入 `DeviceSettings`，DeepSeek key 只存在 OS Keychain，档案偏好写入 `ProfilePreferences`；`ServiceHealth` 仅是运行时快照。原始 Planner 输出、reasoning 和未脱敏诊断不得进入播放历史、SQLite 或普通日志。

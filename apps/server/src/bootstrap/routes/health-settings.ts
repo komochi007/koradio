@@ -9,13 +9,8 @@ import {
   updateDeepseekApiKeyRequestSchema,
   updateDeviceSettingsRequestSchema,
 } from "@koradio/contracts";
-import { randomUUID } from "node:crypto";
 import type { FastifyPluginAsync } from "fastify";
 
-import {
-  DeepseekAdapterError,
-  type TestableDeepseekPlannerProvider,
-} from "../../integrations/deepseek.js";
 import {
   DataRootMigrationConflictError,
   type DataRootMigrationService,
@@ -26,23 +21,20 @@ import {
   DeepseekPrivacyNoticeRequiredError,
   type DeviceSettingsService,
 } from "../../modules/device-settings/index.js";
-import type { ProgramPlannerProvider } from "../../modules/programs/index.js";
+import {
+  PlannerReadinessError,
+  type PlannerReadinessService,
+} from "../../modules/programs/index.js";
 import { SecretStoreError } from "../../platform/secrets/index.js";
 import type { TtsModelService } from "../../integrations/tts-model.js";
 import { sendApiError } from "./api-error.js";
-
-function isTestablePlanner(
-  provider: ProgramPlannerProvider,
-): provider is TestableDeepseekPlannerProvider {
-  return "test" in provider && typeof provider.test === "function";
-}
 
 export function createHealthSettingsRoutes(options: {
   dataRootMigration: DataRootMigrationService;
   deviceSettings: DeviceSettingsService;
   deepseekCredentials: DeepseekCredentialService;
   health: HealthService;
-  plannerProvider: () => ProgramPlannerProvider;
+  plannerReadiness: PlannerReadinessService;
   ttsModelService: TtsModelService;
 }): FastifyPluginAsync {
   return async (app) => {
@@ -112,34 +104,31 @@ export function createHealthSettingsRoutes(options: {
     });
     app.post("/api/v1/device-settings/planner-test", async (_request, reply) => {
       const checkedAt = new Date().toISOString();
-      const planner = options.plannerProvider();
-      if (isTestablePlanner(planner)) {
-        try {
-          await planner.test({ correlationId: randomUUID() });
-        } catch (error) {
-          if (error instanceof DeepseekAdapterError) {
-            const statusCode =
-              error.code === "unauthorized"
-                ? 401
-                : error.code === "payment_required"
-                  ? 402
-                  : error.code === "rate_limited"
-                    ? 429
-                    : error.code === "configuration_invalid" || error.code === "response_invalid"
-                      ? 422
-                      : error.code === "timeout"
-                        ? 504
-                        : 503;
-            return sendApiError(
-              reply,
-              statusCode,
-              "PLANNER_TEST_FAILED",
-              "Active AI planner test failed",
-              error.code === "rate_limited" || error.code === "timeout" || statusCode >= 500,
-            );
-          }
-          throw error;
+      try {
+        await options.plannerReadiness.check();
+      } catch (error) {
+        if (error instanceof PlannerReadinessError) {
+          const statusCode =
+            error.code === "unauthorized"
+              ? 401
+              : error.code === "payment_required"
+                ? 402
+                : error.code === "rate_limited"
+                  ? 429
+                  : error.code === "configuration_invalid" || error.code === "response_invalid"
+                    ? 422
+                    : error.code === "timeout"
+                      ? 504
+                      : 503;
+          return sendApiError(
+            reply,
+            statusCode,
+            "PLANNER_TEST_FAILED",
+            "Active AI planner test failed",
+            error.code === "timeout" || statusCode >= 500,
+          );
         }
+        throw error;
       }
       return serviceHealthSchema.parse({
         service: "planner",

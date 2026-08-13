@@ -5,4 +5,5 @@ export * from "./generation-service.js";
 export * from "./music-facts.js";
 export * from "./persistence.js";
 export * from "./providers.js";
+export * from "./readiness-service.js";
 export * from "./service.js";

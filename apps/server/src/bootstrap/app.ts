@@ -109,6 +109,7 @@ import {
   ProgramNotFoundError,
   createProgramGenerationRepository,
   createProgramGenerationService,
+  createPlannerReadinessService,
   createMusicBrainzFactProvider,
   createProgramDeletionService,
   createProgramRepository,
@@ -357,6 +358,12 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
         : {}
       : { timeoutMs: options.generationTimeoutMs }),
     tts: options.ttsProvider ?? runtimeProviders.tts,
+  });
+  const plannerReadiness = createPlannerReadinessService({
+    planner:
+      options.plannerProvider === undefined && options.codexProvider === undefined
+        ? runtimeProviders.planner
+        : () => (options.plannerProvider ?? options.codexProvider) as ProgramPlannerProvider,
   });
   const radio = createRadioService({
     assistant: options.radioAssistantProvider ?? runtimeProviders.radioAssistant,
@@ -1830,10 +1837,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       deepseekCredentials,
       deviceSettings,
       health,
-      plannerProvider:
-        options.plannerProvider === undefined && options.codexProvider === undefined
-          ? runtimeProviders.planner
-          : () => (options.plannerProvider ?? options.codexProvider) as ProgramPlannerProvider,
+      plannerReadiness,
       ttsModelService,
     }),
   );

@@ -1819,7 +1819,7 @@ export default {
 | 12 | Programs 节目历史列表 | `840px` 单列管理页；本周摘要三组信息使用等宽三分网格定位，第一组靠左、时长组水平居中、歌曲组靠右，每组上下两行左对齐 | 导航选中 Programs；分段控制器 All 选中 | 标题“节目”、搜索图标、本周收听摘要、150–180px 节目卡片、日期时间、收藏图标、节目标题、场景摘要、曲目数量、总时长、封面叠放或歌曲名 |
 | 13 | 节目历史详情 | `840px` 单列详情页；节目队列使用 `96px` 行高、`64 × 64px` 低饱和封面和上下各 `16px` 内边距 | 导航选中 Programs | 返回箭头、收藏和更多、`PROGRAM ARCHIVE`、节目元数据、`YOUR SCENE` 摘要卡片、复用场景、重播串讲、DJ 开场自然段、节目队列、节目反馈摘要 |
 | 14 | Settings 服务配置 | `832px` 单列设置页；AI 大脑配置与 Provider 能力行 `64px` 高；主要区块间距 `24px` | `● 3 SERVICES ONLINE`；导航选中 Settings | 标题“设置”、服务状态四行、TTS `DEGRADED` 黄色状态、AI 大脑 Codex/DeepSeek 选择、Codex 命令路径、DeepSeek 模型/Keychain 密钥状态、持久隐私提示、网易云“内置·本地模式”只读行、Theme Mode、DJ Language、DJ Voice Style、本地数据、底部固定操作区；不显示任何明文密钥、网易云地址或自定义 endpoint |
-| 15 | Settings 连接检测结果 | `832px` 单列检测页 | 导航选中 Settings | 标题“服务检测”、摘要按活动 Planner、网易云、TTS 汇总可用数量、四张检测结果卡片、TTS/DeepSeek 展开修复建议、局部降级说明、主按钮“返回 Radio”、次按钮“修改配置” |
+| 15 | Settings 连接检测结果 | `832px` 单列检测页 | 导航选中 Settings | 标题“服务检测”、摘要按活动 Planner、网易云、TTS 汇总可用数量、活动 Planner 卡片明确“完整节目骨架检测”结果、TTS/DeepSeek 展开修复建议、局部降级说明、主按钮“返回 Radio”、次按钮“修改配置” |
 
 ### 8.3 页面间一致性检查
 

@@ -341,6 +341,9 @@ Radio 输入先由活动 AI 大脑结合最近对话路由为闲聊、澄清、�
 [Launchpad 唯一 Koradio 入口]
   -> 联网读取可信 origin/main
   -> 当前提交一致：继续启动 bundled Local Service
+  -> 活动 AI 大脑执行不落库的完整节目骨架检测
+     ├─ 通过：进入 Radio
+     └─ 失败：进入 Settings 修复活动 AI 大脑；不打开 Radio
   -> 发现新提交：在应用拥有的缓存源码中构建并验证候选
      ├─ 成功：原位替换 /Applications/Koradio.app，重新启动最新版
      └─ 失败：保留当前 app 与用户数据，但不打开旧版

@@ -34,6 +34,25 @@ let startupAttempt: Promise<void> | undefined;
 let startupNavigationActive = true;
 let startupRetry: (() => void) | undefined;
 
+async function verifyPlannerReadiness(origin: string): Promise<void> {
+  const bootstrap = await fetch(`${origin}/api/v1/session/bootstrap`, {
+    headers: { Origin: origin },
+    method: "POST",
+  });
+  if (!bootstrap.ok) throw new Error("Koradio session bootstrap failed");
+  const session = (await bootstrap.json()) as { accessToken?: unknown };
+  if (typeof session.accessToken !== "string" || session.accessToken.length === 0) {
+    throw new Error("Koradio session bootstrap returned an invalid token");
+  }
+  const readiness = await fetch(`${origin}/api/v1/device-settings/planner-test`, {
+    headers: { Authorization: `Bearer ${session.accessToken}`, Origin: origin },
+    method: "POST",
+  });
+  if (!readiness.ok) {
+    throw new Error("活动 AI 大脑尚未通过完整节目规划检测，请在 Settings 修复后重试。");
+  }
+}
+
 function applicationBundlePath(): string {
   return resolve(dirname(process.execPath), "../..");
 }
@@ -233,6 +252,7 @@ async function runRendererSmoke(window: BrowserWindow, expectedOrigin: string): 
 async function runStartupAttempt(window: BrowserWindow): Promise<void> {
   if (startupAttempt !== undefined) return startupAttempt;
   const attempt = (async () => {
+    let expectedOrigin: string | undefined;
     try {
       await updateStartupStatus("正在检查更新", "正在验证 Koradio 当前版本");
       if (app.isPackaged && !smokeMode) {
@@ -247,7 +267,6 @@ async function runStartupAttempt(window: BrowserWindow): Promise<void> {
         }
       }
 
-      let expectedOrigin: string;
       if (app.isPackaged) {
         await updateStartupStatus("正在启动 Local Service", "正在检查本机服务状态");
         serviceController = createServiceController({
@@ -271,6 +290,9 @@ async function runStartupAttempt(window: BrowserWindow): Promise<void> {
         expectedOrigin = developmentOrigin();
       }
 
+      await updateStartupStatus("正在验证 AI 大脑", "正在执行完整节目规划检测");
+      await verifyPlannerReadiness(expectedOrigin);
+
       const rendererUrl = app.isPackaged
         ? `${expectedOrigin}/radio`
         : `${process.env.KORADIO_DESKTOP_DEV_URL ?? "http://127.0.0.1:5173"}/radio`;
@@ -289,7 +311,23 @@ async function runStartupAttempt(window: BrowserWindow): Promise<void> {
         app.exit(0);
       }
     } catch (error) {
-      await stopOwnedService();
+      if (expectedOrigin !== undefined) {
+        try {
+          startupNavigationActive = false;
+          installRendererSecurity(window, expectedOrigin);
+          await loadRenderer(window, `${expectedOrigin}/settings`);
+          await updateStartupStatus(
+            "AI 大脑需要修复",
+            "请在 Settings 修复活动 AI 大脑后重新打开 Koradio。",
+            true,
+          );
+          return;
+        } catch {
+          await stopOwnedService();
+        }
+      } else {
+        await stopOwnedService();
+      }
       if (smokeMode) {
         showFailure(error);
         return;

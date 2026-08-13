@@ -64,7 +64,7 @@ flowchart LR
 
 ### Packaging and delivery
 
-- macOS 包装采用 Electron 主进程 + 现有 Web Renderer + bundled Node Local Service + bundled Python/MLX TTS runtime；Electron 主进程只负责进程生命周期、health ready、窗口和加载同源 origin，不成为播放或业务事实源。`app.whenReady()` 后先显示仅包含本地静态内容的启动状态窗口，状态页只通过私有重试通道与主进程交互。
+- macOS 包装采用 Electron 主进程 + 现有 Web Renderer + bundled Node Local Service + bundled Python/MLX TTS runtime；Electron 主进程只负责进程生命周期、活动 Planner 完整骨架检测、窗口和加载同源 origin，不成为播放或业务事实源。`app.whenReady()` 后先显示仅包含本地静态内容的启动状态窗口，状态页只通过私有重试通道与主进程交互；Planner 未通过检测时只加载同源 Settings 修复页，不打开 Radio。
 - Personal Local Preview 只允许 `/Applications/Koradio.app` 作为 Launchpad 桌面入口，并使用同一品牌圆角图标；不安装第二个 PWA shim。Electron 窗口只加载 `http://127.0.0.1:<port>/radio`，不创建普通网页标签。
 - 每次正常桌面打开都先从固定 HTTPS 仓库检查 `origin/main`。更新器在应用拥有的缓存目录维护独立源码副本，不修改开发工作树；只有精确远端提交完成 frozen install、production build、ad-hoc strict codesign、Electron 包结构与 smoke 后，才原位替换固定应用路径并重新启动。
 - 更新行为是 fail-closed：远端检查、源码同步、构建、验证或替换任一步失败时保留已安装 app、用户数据与回滚副本，但不得启动已知旧版本或打开产品页面；失败期间保留本地启动状态窗口并允许完整重试。旧 app 只允许以非 `.app` 目录保留在非应用位置，避免被 Launch Services、Launchpad 或 Dock 注册为入口。
@@ -190,7 +190,7 @@ sequenceDiagram
 
 阻断失败不得改变正在播放的旧节目。文字降级 DJ 只保留在 Program segment；只有取得真实音频引用的 `dj` segment 才进入 PlaybackTimeline。
 
-Radio turn 持久化用户消息、路由决策、助手消息和可选单曲或最多 5 首推荐引用；每个 Profile 只保留最近 50 个 turn。普通消息不会创建 generation job。单曲与多首推荐解析出的歌曲可被 Browser Audio Engine 作为临时 DJ 点播播放，点播快照不写入 Program、播放历史或持久队列，结束后恢复原节目位置。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Programs 不直接读取 Library 表：它通过 Library application Port 获取最多 500 首当前 Profile 可播放曲目摘要与近 10 期歌曲身份，按活动 Planner 的有序 intent 解析并最多补选两轮；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败。generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
+Radio turn 持久化用户消息、路由决策、助手消息和可选单曲或最多 5 首推荐引用；每个 Profile 只保留最近 50 个 turn。普通消息不会创建 generation job。单曲与多首推荐解析出的歌曲可被 Browser Audio Engine 作为临时 DJ 点播播放，点播快照不写入 Program、播放历史或持久队列，结束后恢复原节目位置。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。活动 Planner 在桌面启动和 Settings 测试时都以同一份不落库的 8 首节目骨架 context 验证真实结构化输出；该检测不切换 Provider、不写入 Program、历史或日志正文。Programs 不直接读取 Library 表：它通过 Library application Port 获取最多 500 首当前 Profile 可播放曲目摘要与近 10 期歌曲身份，按活动 Planner 的有序 intent 解析并最多补选两轮；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败。generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
 
 反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Planner context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。

@@ -235,15 +235,34 @@ describe("S2-05 settings, health and data root foundation", () => {
     expect(credentials.values.has("deepseek.api-key")).toBe(false);
   });
 
-  it("runs the active planner test through the backend provider boundary", async () => {
-    let testCalls = 0;
+  it("runs a complete planning readiness check through the active provider boundary", async () => {
+    let planCalls = 0;
     const plannerProvider = {
-      plan() {
-        return Promise.resolve({});
-      },
-      test() {
-        testCalls += 1;
-        return Promise.resolve();
+      plan(context: unknown) {
+        planCalls += 1;
+        const language = (context as { preferences: { djLanguage: "zh-CN" } }).preferences
+          .djLanguage;
+        return Promise.resolve({
+          programTitle: "启动检查",
+          scenarioSummary: "验证完整节目规划能力",
+          djLanguage: language,
+          djPersona: "natural-radio",
+          djScripts: [
+            {
+              type: "intro",
+              language,
+              text: "开始这段节目。",
+              displayText: "开始这段节目。",
+              estimatedTiming: true,
+            },
+          ],
+          trackIntents: Array.from({ length: 8 }, (_, index) => ({
+            kind: "discovery" as const,
+            keyword: `Ready Song Artist ${String(index + 1)}`,
+            reason: "启动检查候选",
+          })),
+          playlistIntent: { energy: "平稳", mood: "专注", avoid: [] },
+        });
       },
     };
     const context = await createTestApp({
@@ -262,7 +281,22 @@ describe("S2-05 settings, health and data root foundation", () => {
       status: "available",
       redactedSummary: "Active AI planner test succeeded",
     });
-    expect(testCalls).toBe(1);
+    expect(planCalls).toBe(1);
+  });
+
+  it("rejects a planner that answers a lightweight check but cannot form a complete program", async () => {
+    const context = await createTestApp({
+      plannerProvider: { plan: () => Promise.resolve({}) },
+    });
+    const session = await bootstrapSession(context.app);
+    const response = await context.app.inject({
+      method: "POST",
+      url: "/api/v1/device-settings/planner-test",
+      headers: authorizedHeaders(session),
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({ code: "PLANNER_TEST_FAILED" });
   });
 
   it("keeps device settings separate from profile preferences", async () => {
