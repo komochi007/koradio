@@ -148,17 +148,24 @@ export function transcriptIsPinnedToEnd(
 }
 
 function failureCopy(code: string): { message: string; settings: boolean; title: string } {
-  if (code.includes("NO_PLAYABLE") || code.includes("TRACK")) {
+  if (
+    code === "PROGRAM_GENERATION_NO_PLAYABLE_TRACKS" ||
+    code === "PROGRAM_GENERATION_INSUFFICIENT_TRACKS"
+  ) {
     return {
       title: "NO TRACKS FOUND",
       message: "没有找到合适歌曲，换个说法后再试一次。",
       settings: false,
     };
   }
-  if (code.includes("UNAVAILABLE") || code.includes("CONFIG")) {
+  if (
+    code.includes("PLANNER_UNAVAILABLE") ||
+    code.includes("UNAVAILABLE") ||
+    code.includes("CONFIG")
+  ) {
     return {
       title: "SERVICE CHECK NEEDED",
-      message: "核心服务暂时不可用，请前往 Settings 检查 AI 大脑与音乐服务。",
+      message: "AI 大脑暂时无法规划节目，请前往 Settings 检查当前规划器的连接与配置。",
       settings: true,
     };
   }

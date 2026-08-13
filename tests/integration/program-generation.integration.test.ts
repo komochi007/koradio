@@ -757,6 +757,28 @@ describe("S3-06 Program generation orchestration", () => {
     await closeHarness(harness);
   });
 
+  it("reports unavailable planner configuration without misleading track failure", async () => {
+    const unavailable: CodexProvider = {
+      plan() {
+        return Promise.reject(
+          Object.assign(new Error("planner unavailable"), { code: "configuration_invalid" }),
+        );
+      },
+    };
+    const harness = await createHarness(unavailable);
+    const started = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "为午后工作规划一档节目" },
+      "generation-planner-unavailable-001",
+    );
+    await harness.generation.waitForIdle();
+    expect(harness.generation.get(harness.profile.id, started.jobId)).toMatchObject({
+      status: "failed",
+      errorCode: "PROGRAM_GENERATION_PLANNER_UNAVAILABLE",
+    });
+    await closeHarness(harness);
+  });
+
   it("times out ignored cancellation and recovers interrupted jobs to a stable failure", async () => {
     const hanging: CodexProvider = {
       plan: () => new Promise(() => undefined),

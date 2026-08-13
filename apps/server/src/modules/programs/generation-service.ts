@@ -713,10 +713,25 @@ export function createProgramGenerationService(
         djVoiceStyle: preferences.djVoiceStyle,
       },
     });
-    const rawPlan = await withAbort(
-      () => resolvePlanner(options).plan(context, { correlationId: snapshot.jobId, signal }),
-      signal,
-    );
+    let rawPlan: unknown;
+    try {
+      rawPlan = await withAbort(
+        () => resolvePlanner(options).plan(context, { correlationId: snapshot.jobId, signal }),
+        signal,
+      );
+    } catch (error) {
+      if (
+        hasErrorCode(error, "configuration_invalid") ||
+        hasErrorCode(error, "unauthorized") ||
+        hasErrorCode(error, "payment_required") ||
+        hasErrorCode(error, "rate_limited") ||
+        hasErrorCode(error, "response_invalid") ||
+        hasErrorCode(error, "unavailable")
+      ) {
+        throw new GenerationPipelineError("PROGRAM_GENERATION_PLANNER_UNAVAILABLE");
+      }
+      throw error;
+    }
     assertActive(snapshot.jobId, signal);
     const parsedPlan = codexProgramPlanSchema.safeParse(rawPlan);
     if (!parsedPlan.success) {
