@@ -5,6 +5,42 @@ import { occurredAtSchema, profileIdSchema } from "./common.js";
 export const tasteTagSchema = z.string().trim().min(1).max(24);
 export const avoidRuleSchema = z.string().trim().min(1).max(120);
 export const sceneRuleSchema = z.string().trim().min(1).max(160);
+const tasteBlueprintTextSchema = z.string().trim().min(1).max(160);
+const tasteBlueprintArtistSchema = z.string().trim().min(1).max(80);
+export const tasteBlueprintSchema = z.strictObject({
+  profileId: profileIdSchema,
+  sourceLabel: z.string().trim().min(1).max(120),
+  version: z.string().trim().min(1).max(40),
+  summary: z.string().trim().min(1).max(600),
+  primaryTraits: z.array(tasteBlueprintTextSchema).min(1).max(16),
+  clusters: z
+    .array(
+      z.strictObject({
+        name: z.string().trim().min(1).max(80),
+        affinity: z.number().min(0).max(1),
+        signals: z.array(tasteBlueprintTextSchema).min(1).max(6),
+      }),
+    )
+    .min(1)
+    .max(8),
+  anchorArtists: z.array(tasteBlueprintArtistSchema).min(1).max(40),
+  bridgeArtists: z.array(tasteBlueprintArtistSchema).max(20),
+  softAvoids: z.array(tasteBlueprintTextSchema).max(12),
+  transitionPriorities: z.array(tasteBlueprintTextSchema).min(1).max(8),
+  scenes: z
+    .array(
+      z.strictObject({
+        name: z.string().trim().min(1).max(48),
+        guidance: z.string().trim().min(1).max(240),
+      }),
+    )
+    .min(1)
+    .max(10),
+  libraryRatio: z.number().min(0).max(1),
+  discoveryRatio: z.number().min(0).max(1),
+  learningStartedAt: occurredAtSchema,
+  updatedAt: occurredAtSchema,
+});
 export const tasteProjectionSchema = z.strictObject({
   profileId: profileIdSchema,
   tags: z.array(tasteTagSchema).max(100),
@@ -33,6 +69,7 @@ export const effectiveTasteSchema = z.strictObject({
   resolvedTaste: resolvedTasteSchema,
 });
 export const tasteResponseSchema = z.strictObject({
+  blueprint: tasteBlueprintSchema.nullable().optional(),
   projection: tasteProjectionSchema,
   overrides: tasteOverridesSchema,
   effective: effectiveTasteSchema,
@@ -44,6 +81,7 @@ export const updateTasteOverridesCommandSchema = z.strictObject({
 });
 
 export type TasteProjection = z.infer<typeof tasteProjectionSchema>;
+export type TasteBlueprint = z.infer<typeof tasteBlueprintSchema>;
 export type TasteOverrides = z.infer<typeof tasteOverridesSchema>;
 export type EffectiveTaste = z.infer<typeof effectiveTasteSchema>;
 export type TasteResponse = z.infer<typeof tasteResponseSchema>;

@@ -2,6 +2,7 @@ import {
   djLanguageSchema,
   djVoiceStyleSchema,
   effectiveTasteSchema,
+  tasteBlueprintSchema,
   occurredAtSchema,
   trackIdSchema,
 } from "@koradio/contracts";
@@ -36,6 +37,7 @@ export const codexPlanningContextSchema = z
   .strictObject({
     scenarioText: z.string().trim().min(1).max(500),
     effectiveTaste: effectiveTasteSchema,
+    tasteBlueprint: tasteBlueprintSchema.nullable().default(null),
     history: z.array(programHistoryContextSchema).max(20),
     library: z.strictObject({
       tracks: z.array(libraryTrackContextSchema).max(500),

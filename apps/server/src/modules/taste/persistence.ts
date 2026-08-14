@@ -1,6 +1,8 @@
 import {
   tasteOverridesSchema,
+  tasteBlueprintSchema,
   tasteProjectionSchema,
+  type TasteBlueprint,
   type TasteOverrides,
   type TasteProjection,
   type UpdateTasteOverridesCommand,
@@ -23,6 +25,17 @@ interface TasteProjectionRow {
   affinities_json: string;
   avoid_signals_json: string;
   source_version: number;
+  updated_at: string;
+}
+
+interface TasteBlueprintRow {
+  profile_id: string;
+  version: string;
+  source_label: string;
+  summary: string;
+  blueprint_json: string;
+  feedback_baseline_replay_order: number;
+  learning_started_at: string;
   updated_at: string;
 }
 
@@ -53,9 +66,12 @@ export class TasteWriteError extends Error {
 }
 
 export interface TasteRepository {
+  getBlueprint(profileId: string): TasteBlueprint | null;
+  getFeedbackBaselineReplayOrder(profileId: string): number;
   getOverrides(profileId: string): TasteOverridesRecord | null;
   getProjection(profileId: string): TasteProjection | null;
   initialize(overrides: TasteOverrides): void;
+  resetForBlueprint(blueprint: TasteBlueprint, feedbackBaselineReplayOrder: number): void;
   saveProjection(projection: TasteProjection): void;
   updateOverrides(
     profileId: string,
@@ -104,6 +120,22 @@ function mapProjection(row: TasteProjectionRow): TasteProjection {
   });
 }
 
+function mapBlueprint(row: TasteBlueprintRow): TasteBlueprint {
+  const stored = parseJson(row.blueprint_json);
+  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
+    throw new TasteDataError();
+  }
+  return parseStored(tasteBlueprintSchema, {
+    ...stored,
+    profileId: row.profile_id,
+    version: row.version,
+    sourceLabel: row.source_label,
+    summary: row.summary,
+    learningStartedAt: row.learning_started_at,
+    updatedAt: row.updated_at,
+  });
+}
+
 export function createTasteRepository(client: DatabaseSync): TasteRepository {
   const insertOverrides = client.prepare(`
     INSERT INTO taste_overrides (
@@ -145,6 +177,19 @@ export function createTasteRepository(client: DatabaseSync): TasteRepository {
     FROM taste_projection
     WHERE profile_id = ?
   `);
+  const selectBlueprint = client.prepare(`
+    SELECT
+      profile_id,
+      version,
+      source_label,
+      summary,
+      blueprint_json,
+      feedback_baseline_replay_order,
+      learning_started_at,
+      updated_at
+    FROM taste_blueprint
+    WHERE profile_id = ?
+  `);
   const updateOverrides = client.prepare(`
     UPDATE taste_overrides
     SET
@@ -172,8 +217,47 @@ export function createTasteRepository(client: DatabaseSync): TasteRepository {
       source_version = excluded.source_version,
       updated_at = excluded.updated_at
   `);
+  const resetOverrides = client.prepare(`
+    UPDATE taste_overrides
+    SET tags_json = '[]', avoid_rules_json = '[]', scene_rules_json = ?, updated_at = ?, version = version + 1
+    WHERE profile_id = ?
+  `);
+  const resetProjection = client.prepare(`
+    UPDATE taste_projection
+    SET tags_json = '[]', affinities_json = '[]', avoid_signals_json = '[]', source_version = 0, updated_at = ?
+    WHERE profile_id = ?
+  `);
+  const upsertBlueprint = client.prepare(`
+    INSERT INTO taste_blueprint (
+      profile_id,
+      version,
+      source_label,
+      summary,
+      blueprint_json,
+      feedback_baseline_replay_order,
+      learning_started_at,
+      updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(profile_id) DO UPDATE SET
+      version = excluded.version,
+      source_label = excluded.source_label,
+      summary = excluded.summary,
+      blueprint_json = excluded.blueprint_json,
+      feedback_baseline_replay_order = excluded.feedback_baseline_replay_order,
+      learning_started_at = excluded.learning_started_at,
+      updated_at = excluded.updated_at
+  `);
 
   return {
+    getBlueprint(profileId) {
+      const row = selectBlueprint.get(profileId) as TasteBlueprintRow | undefined;
+      return row === undefined ? null : mapBlueprint(row);
+    },
+    getFeedbackBaselineReplayOrder(profileId) {
+      const row = selectBlueprint.get(profileId) as TasteBlueprintRow | undefined;
+      return row?.feedback_baseline_replay_order ?? 0;
+    },
     getOverrides(profileId) {
       const row = selectOverrides.get(profileId) as TasteOverridesRow | undefined;
       return row === undefined ? null : mapOverrides(row);
@@ -191,6 +275,42 @@ export function createTasteRepository(client: DatabaseSync): TasteRepository {
         overrides.updatedAt,
       );
       insertProjection.run(overrides.profileId, overrides.updatedAt);
+    },
+    resetForBlueprint(blueprint, feedbackBaselineReplayOrder) {
+      try {
+        const overrides = resetOverrides.run(
+          JSON.stringify([]),
+          blueprint.updatedAt,
+          blueprint.profileId,
+        );
+        const projection = resetProjection.run(blueprint.updatedAt, blueprint.profileId);
+        if (overrides.changes === 0 || projection.changes === 0) {
+          throw new TasteNotFoundError();
+        }
+        upsertBlueprint.run(
+          blueprint.profileId,
+          blueprint.version,
+          blueprint.sourceLabel,
+          blueprint.summary,
+          JSON.stringify({
+            primaryTraits: blueprint.primaryTraits,
+            clusters: blueprint.clusters,
+            anchorArtists: blueprint.anchorArtists,
+            bridgeArtists: blueprint.bridgeArtists,
+            softAvoids: blueprint.softAvoids,
+            transitionPriorities: blueprint.transitionPriorities,
+            scenes: blueprint.scenes,
+            libraryRatio: blueprint.libraryRatio,
+            discoveryRatio: blueprint.discoveryRatio,
+          }),
+          feedbackBaselineReplayOrder,
+          blueprint.learningStartedAt,
+          blueprint.updatedAt,
+        );
+      } catch (error) {
+        if (error instanceof TasteNotFoundError) throw error;
+        throw new TasteWriteError();
+      }
     },
     saveProjection(projection) {
       upsertProjection.run(

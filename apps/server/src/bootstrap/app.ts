@@ -151,6 +151,7 @@ import {
   TasteDataError,
   TasteNotFoundError,
   TasteWriteError,
+  createPersonalTasteBlueprint,
   createTasteDefaultsService,
   createTasteRepository,
   createTasteService,
@@ -1536,6 +1537,49 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
             500,
             "TASTE_WRITE_FAILED",
             "Taste overrides could not be stored",
+            true,
+          );
+        }
+        if (
+          error instanceof ProfileDataError ||
+          error instanceof TasteDataError ||
+          error instanceof TasteNotFoundError
+        ) {
+          return sendApiError(reply, 500, "TASTE_UNREADABLE", "Taste could not be read", false);
+        }
+        throw error;
+      }
+    });
+
+    app.post("/api/v1/profiles/:profileId/taste/blueprint", (request, reply) => {
+      const parsed = profileIdParamsSchema.safeParse(request.params);
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "TASTE_VALIDATION_FAILED",
+          "Taste blueprint request is invalid",
+          false,
+        );
+      }
+
+      try {
+        profiles.get(parsed.data.profileId);
+        feedback.resetTasteLearning(
+          parsed.data.profileId,
+          createPersonalTasteBlueprint(parsed.data.profileId, new Date().toISOString()),
+        );
+        return tasteResponseSchema.parse(taste.get(parsed.data.profileId));
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof TasteWriteError) {
+          return sendApiError(
+            reply,
+            500,
+            "TASTE_WRITE_FAILED",
+            "Taste blueprint could not be stored",
             true,
           );
         }

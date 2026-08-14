@@ -1,4 +1,5 @@
 import {
+  createPersonalTasteBlueprint,
   mergeEffectiveTaste,
   rebuildTasteProjection,
 } from "../../apps/server/src/modules/taste/index.js";
@@ -38,6 +39,25 @@ function feedback(
 }
 
 describe("Taste projection policy", () => {
+  it("builds the user blueprint as a bounded, profile-owned soft taste context", () => {
+    const blueprint = createPersonalTasteBlueprint(profileId, "2026-08-14T08:00:00.000Z");
+    expect(blueprint.profileId).toBe(profileId);
+    expect(blueprint.version).toBe("1.0");
+    expect(blueprint.libraryRatio).toBe(0.7);
+    expect(blueprint.discoveryRatio).toBe(0.3);
+    expect(blueprint.primaryTraits).toEqual(
+      expect.arrayContaining(["旋律优先", "温暖有空间", "松弛 Groove"]),
+    );
+    expect(blueprint.clusters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Neo-Soul / Alternative R&B / Soulful Pop",
+          affinity: 0.96,
+        }),
+      ]),
+    );
+  });
+
   it("replays every feedback type in append order and keeps skips as facts only", () => {
     const projection = rebuildTasteProjection(
       profileId,

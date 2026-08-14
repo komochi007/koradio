@@ -175,7 +175,8 @@ describe("S5-02 Taste experience", () => {
     expect(screen.getByText("EFFECTIVE TASTE")).toBeTruthy();
     expect(screen.getByText("Ambient")).toBeTruthy();
     expect(screen.getByText("歌曲偏好 · …00000020")).toBeTruthy();
-    expect(screen.getByText("已记录 4 条反馈")).toBeTruthy();
+    expect(screen.getByText("重塑后已记录 4 条反馈")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "应用品味蓝图" })).toBeTruthy();
   });
 
   it("adds, deduplicates, validates, reorders and saves manual rules", async () => {

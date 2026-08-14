@@ -2,6 +2,7 @@ import {
   feedbackEventSchema,
   type CreateFeedbackCommand,
   type FeedbackEvent,
+  type TasteBlueprint,
   type TasteProjection,
 } from "@koradio/contracts";
 import { randomUUID } from "node:crypto";
@@ -40,6 +41,7 @@ export interface FeedbackService {
   ): PersistFeedbackResult;
   removeProgramFavoriteForDeletion(profileId: string, programId: string): FeedbackEvent | null;
   rebuildProjection(profileId: string): TasteProjection;
+  resetTasteLearning(profileId: string, blueprint: TasteBlueprint): void;
 }
 
 export interface CreateFeedbackServiceOptions {
@@ -71,7 +73,10 @@ export function createFeedbackService(options: CreateFeedbackServiceOptions): Fe
     const current = readProjection(profileId);
     const projection = rebuildTasteProjection(
       profileId,
-      options.repository.list(profileId),
+      options.repository.listForTaste(
+        profileId,
+        options.tasteRepository.getFeedbackBaselineReplayOrder(profileId),
+      ),
       current.updatedAt,
     );
     options.tasteRepository.saveProjection(projection);
@@ -162,6 +167,19 @@ export function createFeedbackService(options: CreateFeedbackServiceOptions): Fe
         const projection = rebuild(profileId);
         options.client.exec("COMMIT");
         return projection;
+      } catch (error) {
+        options.client.exec("ROLLBACK");
+        throw error;
+      }
+    },
+    resetTasteLearning(profileId, blueprint) {
+      options.client.exec("BEGIN IMMEDIATE");
+      try {
+        options.tasteRepository.resetForBlueprint(
+          blueprint,
+          options.repository.latestReplayOrder(profileId),
+        );
+        options.client.exec("COMMIT");
       } catch (error) {
         options.client.exec("ROLLBACK");
         throw error;

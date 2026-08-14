@@ -27,6 +27,7 @@ function readTaste(repository: TasteRepository, profileId: string): TasteRespons
   }
 
   return tasteResponseSchema.parse({
+    blueprint: repository.getBlueprint(profileId),
     projection,
     overrides: overrideRecord.overrides,
     effective: mergeEffectiveTaste(projection, overrideRecord.overrides, overrideRecord.version),

@@ -35,6 +35,8 @@ export interface FeedbackRepository {
   findByIdempotencyKey(profileId: string, idempotencyKey: string): FeedbackEvent | null;
   insert(event: FeedbackEvent): void;
   list(profileId: string): FeedbackEvent[];
+  listForTaste(profileId: string, minimumReplayOrder: number): FeedbackEvent[];
+  latestReplayOrder(profileId: string): number;
 }
 
 function mapRow(row: FeedbackEventRow): FeedbackEvent {
@@ -77,6 +79,17 @@ export function createFeedbackRepository(client: DatabaseSync): FeedbackReposito
     WHERE profile_id = ?
     ORDER BY replay_order ASC
   `);
+  const listForTaste = client.prepare(`
+    SELECT ${selectColumns}
+    FROM feedback_event
+    WHERE profile_id = ? AND replay_order > ?
+    ORDER BY replay_order ASC
+  `);
+  const latestReplayOrder = client.prepare(`
+    SELECT COALESCE(MAX(replay_order), 0) AS replay_order
+    FROM feedback_event
+    WHERE profile_id = ?
+  `);
 
   return {
     findByIdempotencyKey(profileId, idempotencyKey) {
@@ -96,6 +109,16 @@ export function createFeedbackRepository(client: DatabaseSync): FeedbackReposito
     },
     list(profileId) {
       return parseSqliteRows(feedbackEventRowSchema, list.all(profileId)).map(mapRow);
+    },
+    listForTaste(profileId, minimumReplayOrder) {
+      return parseSqliteRows(
+        feedbackEventRowSchema,
+        listForTaste.all(profileId, minimumReplayOrder),
+      ).map(mapRow);
+    },
+    latestReplayOrder(profileId) {
+      const row = latestReplayOrder.get(profileId) as { replay_order: number } | undefined;
+      return row?.replay_order ?? 0;
     },
   };
 }

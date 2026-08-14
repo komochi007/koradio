@@ -19,9 +19,11 @@ export function createPlanningContext(
   targetTrackCount: number,
 ): CodexPlanningContext {
   const libraryTracks = dependencies.library.candidateTracks(profileId, 120);
+  const taste = dependencies.taste.get(profileId);
   return codexPlanningContextSchema.parse({
     scenarioText,
-    effectiveTaste: dependencies.taste.get(profileId).effective,
+    effectiveTaste: taste.effective,
+    tasteBlueprint: taste.blueprint,
     history: dependencies.programs.list(profileId, undefined, 20).items.map((program) => ({
       title: program.title,
       scenarioText: program.scenarioText,

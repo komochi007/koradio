@@ -158,6 +158,82 @@ async function persistFeedback(
 }
 
 describe("S3-03 Feedback and Taste memory backend", () => {
+  it("applies the personal blueprint without deleting historical feedback or program facts", async () => {
+    const context = await createTestApp();
+    const session = await bootstrapSession(context.app);
+    const headers = authorizedHeaders(session);
+    const profile = await createProfile(context.app, headers, "taste-blueprint-profile-001");
+    const oldTrack = await searchTrack(context.app, headers, profile.id, "Space");
+    const newTrack = await searchTrack(context.app, headers, profile.id, "M83");
+
+    expect(
+      (
+        await persistFeedback(context.app, headers, profile.id, "taste-blueprint-old-feedback", {
+          type: "track_liked",
+          targetId: oldTrack.id,
+        })
+      ).statusCode,
+    ).toBe(201);
+    const overrides = await context.app.inject({
+      method: "PATCH",
+      url: `/api/v1/profiles/${profile.id}/taste`,
+      headers,
+      payload: { tags: ["旧标签"], avoidRules: ["旧规则"], sceneRules: ["旧场景"] },
+    });
+    expect(overrides.statusCode).toBe(200);
+
+    const applied = await context.app.inject({
+      method: "POST",
+      url: `/api/v1/profiles/${profile.id}/taste/blueprint`,
+      headers,
+      payload: {},
+    });
+    expect(applied.statusCode).toBe(200);
+    expect(tasteResponseSchema.parse(applied.json<unknown>())).toMatchObject({
+      blueprint: {
+        profileId: profile.id,
+        sourceLabel: "基于 taste.md 的三张歌单分析",
+        version: "1.0",
+        libraryRatio: 0.7,
+        discoveryRatio: 0.3,
+      },
+      projection: { sourceVersion: 0, affinities: [], avoidSignals: [] },
+      overrides: { tags: [], avoidRules: [], sceneRules: [] },
+    });
+
+    expect(
+      (
+        await persistFeedback(context.app, headers, profile.id, "taste-blueprint-new-feedback", {
+          type: "track_disliked",
+          targetId: newTrack.id,
+        })
+      ).statusCode,
+    ).toBe(201);
+    const rebuilt = await context.app.inject({
+      method: "GET",
+      url: `/api/v1/profiles/${profile.id}/taste`,
+      headers,
+    });
+    expect(tasteResponseSchema.parse(rebuilt.json<unknown>())).toMatchObject({
+      projection: {
+        sourceVersion: 1,
+        affinities: [],
+        avoidSignals: [`track:${newTrack.id}`],
+      },
+    });
+
+    const database = new DatabaseSync(join(context.dataRoot, "koradio.sqlite"));
+    try {
+      expect(
+        database
+          .prepare("SELECT COUNT(*) AS count FROM feedback_event WHERE profile_id = ?")
+          .get(profile.id),
+      ).toEqual({ count: 2 });
+    } finally {
+      database.close();
+    }
+  });
+
   it("appends, replays, deduplicates and rebuilds isolated taste memory", async () => {
     const context = await createTestApp();
     const session = await bootstrapSession(context.app);

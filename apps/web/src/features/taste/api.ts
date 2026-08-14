@@ -27,3 +27,15 @@ export function updateTasteOverrides(
     jsonRequest("PATCH", command),
   );
 }
+
+export function applyTasteBlueprint(
+  transport: ServiceTransport,
+  profileId: string,
+): Promise<TasteResponse> {
+  return requestJson(
+    transport,
+    `${tastePath(profileId)}/blueprint`,
+    tasteResponseSchema,
+    jsonRequest("POST", {}),
+  );
+}

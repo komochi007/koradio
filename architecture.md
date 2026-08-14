@@ -10,7 +10,7 @@
 ## 1. System Overview
 
 Koradio 是运行在单台设备上的私人 AI 音乐电台，由 Electron 桌面壳、现有 Web Renderer 与本地 Node.js 服务组成。
-系统读取当前档案的 `EffectiveTaste` 与历史，通过设备级选择的 Codex 或 DeepSeek Planner 规划节目，经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled Python/MLX helper 调用 Qwen3-TTS 8-bit 本地模型生成 DJ 语音。
+系统读取当前档案的 `EffectiveTaste`、可选 `TasteBlueprint` 与历史，通过设备级选择的 Codex 或 DeepSeek Planner 规划节目；蓝图只提供软性的特征级选歌与串联依据，不改变约 70% 库内 / 30% 探索或确定性约束。系统经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled Python/MLX helper 调用 Qwen3-TTS 8-bit 本地模型生成 DJ 语音。
 ### System boundaries
 
 - **Client**：界面、HTMLAudio、实时播放进度和短生命周期交互状态。
@@ -112,17 +112,17 @@ flowchart LR
 |---|---|---|---|---|
 | Profiles | 档案 CRUD、profile context、受控 `avatarRef` 与 `djAvatarRef` | ProfilePreferences | Profile DTO | 登录身份、播放状态、任意头像路径/URL |
 | Radio | Profile 级对话、意图路由、澄清与单曲推荐 | Programs、Library/Planner/TTS ports、Playback | Radio turn snapshot、Generate command | Provider 协议、HTMLAudio、Program 持久化 |
-| Programs | 生成任务、节目、DJ 段、引用、历史 | EffectiveTaste、Library application ports、Planner/Music/TTS/Fact ports | Program、PlaybackTimeline、events | HTMLAudio 状态、Library owner 表、Radio 对话 |
+| Programs | 生成任务、节目、DJ 段、引用、历史 | EffectiveTaste、TasteBlueprint、Library application ports、Planner/Music/TTS/Fact ports | Program、PlaybackTimeline、events | HTMLAudio 状态、Library owner 表、Radio 对话 |
 | Playback | 时间线规则、低频 checkpoint | Program timeline | Playback snapshot | 实时进度、UI Sheet |
 | Library | 搜索、导入、候选池 | MusicProvider | NormalizedTrack | 推荐与播放控制 |
-| Taste | 自动 projection、人工 overrides、EffectiveTaste | Feedback | Taste context | Provider response、覆盖人工规则 |
+| Taste | Profile 级蓝图、自动 projection、人工 overrides、EffectiveTaste | Feedback | Taste context | Provider response、覆盖人工规则 |
 | Feedback | 显式喜欢/撤销、不喜欢/撤销、节目收藏/撤销、跳过事实 | Playback、Programs | Append-only FeedbackEvent | 重写历史事实 |
 | DeviceSettings | dataRoot、活动 Planner、Codex 命令、DeepSeek 模型/隐私确认、迁移命令、Qwen 模型安装命令 | health ports、Secret Store Port | Safe device settings、credential status、migration/model job | Profile 偏好、NetEase/TTS 地址或密钥、明文密钥输出 |
 | ProfilePreferences | 主题、DJ 语言、声音风格 | Profiles | Profile preferences | 服务配置、密钥 |
 
 - 每个持久实体只有一个写入 owner；其他模块通过 use case/event 协作，Programs 只通过 Ports 调用 Provider。
-- Feedback 成功持久化后才更新 TasteProjection；TasteOverrides 独立持久化且合并时优先。DeviceSettings 不接受或输出任何 Provider API key；DeepSeek key 只由 Secret Store Port 读写。
-- Feedback 以 `(profileId, idempotencyKey)` 去重，并在 `BEGIN IMMEDIATE` 短事务中由 SQLite 分配内部 replay order、按该稳定追加顺序回放 Profile 全部事件、写入新的 TasteProjection；重复命令返回原事件且不推进 projection，内部 replay order 不进入公共 DTO。
+- Feedback 成功持久化后才更新 TasteProjection；TasteBlueprint 与 TasteOverrides 独立持久化，人工规则合并时优先。DeviceSettings 不接受或输出任何 Provider API key；DeepSeek key 只由 Secret Store Port 读写。
+- Feedback 以 `(profileId, idempotencyKey)` 去重，并在 `BEGIN IMMEDIATE` 短事务中由 SQLite 分配内部 replay order、按稳定追加顺序回放当前 Profile 反馈学习起点之后的事件、写入新的 TasteProjection；重复命令返回原事件且不推进 projection，内部 replay order 不进入公共 DTO。应用蓝图会清空旧 projection 与 overrides，并将学习起点设为当时的最后 replay order；历史 FeedbackEvent、节目与收藏不删除。
 - v1 projection 是事实型映射：`track_liked` / removed、`track_disliked` / removed 和 `program_favorited` / removed 分别维护对应目标的最新有效状态；`track_skipped` 只保留事实和版本，不产生负向推断。自动 tags 暂为空，affinity/avoid signal 使用 `track:<targetId>` 或 `program:<targetId>` 稳定标识。
 - EffectiveTaste 在读取时合并，不单独持久化。人工列表保序优先，比较时 trim 并忽略大小写；人工 avoid rule 排除同文本自动 tag 或 affinity，自动 avoid signal 在人工规则之后去重并只填充 contract 剩余容量。
 ## 6. Data Flow
@@ -153,7 +153,7 @@ sequenceDiagram
     P->>M: Read up to 500 playable Profile library summaries
     M-->>P: Bounded library context
     P->>S: Resolve Provider snapshot from DeviceSettings
-    S->>C: Plan with EffectiveTaste, history, time, preferences and library context
+    S->>C: Plan with EffectiveTaste, optional TasteBlueprint, history, time, preferences and library context
     C-->>P: Validated ordered library/discovery intents
     P-->>E: generation.planned
     P->>M: Resolve and repair 8-12 tracks with language/history/artist constraints
@@ -192,7 +192,7 @@ sequenceDiagram
 
 Radio turn 持久化用户消息、路由决策、助手消息和可选单曲或最多 5 首推荐引用；每个 Profile 只保留最近 50 个 turn。只有明确节目、歌单、8～12 首、重新规划或替换当前节目的请求能创建 generation job；“其他、类似、再推荐”等追问固定为推荐，不得被 Provider 或本地兜底升级为节目。Radio context 带入当前节目标题、场景与曲目摘要，使推荐有明确参照；追问“最推荐哪首”只能引用最近一次推荐列表。单曲与多首推荐解析出的歌曲可被 Browser Audio Engine 作为临时 DJ 点播播放，点播快照不写入 Program、播放历史或持久队列；`PLAY NEXT` 在手动和自然切歌路径都优先消费，结束后恢复原节目队列；空节目时手动下一首直接消费该点播。成功入队不改变对话时间线，只有失败写入卡片关联错误。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，活动 Job 可由 REST Snapshot 在 Radio 重新挂载时恢复。完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。活动 Planner 在桌面启动和 Settings 测试时都从当前 Profile 的偏好、`EffectiveTaste`、最近 20 期历史和最多 120 首可播放曲目摘要构造同一份不落库的 8 首节目骨架 context，验证真实结构化输出；该检测不切换 Provider、不写入 Program、历史或日志正文。Programs 不直接读取 Library 表：它通过同一 Library application Port 获取上述当前 Profile 曲目摘要，按活动 Planner 的有序 intent 解析并最多补选两轮；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败。已有当前节目时，成功生成的新 Program 与 `program_handoff` 在同一事务提交，旧 `current_program` 保持不变；Audio Engine 只在当前曲自然结束时调用原子 activate 命令，或响应用户的显式立即切换。DeepSeek 首次结构化输出无效或被截断时，仅在同一 Provider 内以精简的合法计划契约重试一次；generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
 
-反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Planner context`。
+反馈记忆流：`TasteBlueprint 应用 → feedback learning baseline → UI intent → explicit FeedbackEvent → TasteProjection → TasteBlueprint + TasteOverrides → Planner context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。
 Feedback target 必须先通过 owner 提供的公开 Port 校验：歌曲目标由 Library 校验，节目目标由 Programs 校验；production composition 使用真实 Programs owner，只有模块测试可注入确定性 Programs target resolver。
 ## 7. State Management Strategy
@@ -328,8 +328,9 @@ erDiagram
 |---|---|---|
 | `profile` | Profiles | `id`、受控 `avatarRef`；本地数据分区根 |
 | `profile_preferences` | ProfilePreferences | `profileId`；主题、DJ language、voice style |
-| `taste_projection` | Taste | `profileId`；可由反馈事实重建的自动投影 |
-| `taste_overrides` | Taste | `profileId`；人工规则，重建投影不得覆盖 |
+| `taste_blueprint` | Taste | `profileId`；稳定特质、70/30 比例与反馈学习起点 |
+| `taste_projection` | Taste | `profileId`；仅由学习起点之后的反馈事实重建的自动投影 |
+| `taste_overrides` | Taste | `profileId`；人工规则，正常重建不得覆盖；仅显式应用蓝图会清空 |
 | `device_settings` | DeviceSettings | 单设备；dataRoot、活动 Planner、DeepSeek 模型与隐私确认、Codex 命令路径 |
 | `data_root_migration` | DeviceSettings | `jobId` + idempotency key；迁移阶段与回滚状态 |
 | `music_track` | Library | `id` + source identity、专辑封面 URL、歌词状态与 `originMode` |

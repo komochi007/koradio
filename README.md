@@ -4,7 +4,7 @@
 
 > Status: **S1–S6 stage gates complete · S7-01/02/06/08 complete · S7-09 Electron shell migration in progress · UX-11 DJ conversation/curation/radio optimization accepted · UX-12 core experience and visual optimization accepted · DeepSeek planner integration implemented, real API smoke deferred · S7-07 stability trial in progress · external distribution deferred · production defaults to Live mode**
 > Audience: AI Coding Agents、开发者、维护者  
-> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Profile 级持久 DJ 对话与意图分流、单曲与 3～5 首策展推荐卡片、8～12 首节目生成、临时 DJ 点播队列、双声道 Radio 播放、按需 Qwen 朗读、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；Electron 主进程与 Production Server 默认使用真实 Provider，Development、Test、CI 与 `start:mock` 使用确定性 Mock Provider
+> Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Profile 级持久 DJ 对话与意图分流、单曲与 3～5 首策展推荐卡片、8～12 首节目生成、临时 DJ 点播队列、双声道 Radio 播放、按需 Qwen 朗读、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste Blueprint 重塑/反馈学习/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；Electron 主进程与 Production Server 默认使用真实 Provider，Development、Test、CI 与 `start:mock` 使用确定性 Mock Provider
 
 ## 1. 项目入口
 
@@ -16,7 +16,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 对话输入
   → Radio 先路由为闲聊、澄清、单曲、3～5 首推荐或完整节目；“其他/类似/再推荐”始终保持为推荐，只有明确节目需求才生成节目
   → 单曲与推荐以临时 DJ 点播卡片提供立即播放或下一首播放；手动与自然下一首一致优先消费临时点播，空节目时手动下一首也可直接播放，成功排队不插入对话红字，不改写节目历史或持久队列
-  → 完整节目将当前 Profile 最多 120 首可播放库内曲目摘要、EffectiveTaste 与近 20 期历史交给活动 Planner（Codex 或 DeepSeek）
+  → 完整节目将当前 Profile 最多 120 首可播放库内曲目摘要、EffectiveTaste、可选 TasteBlueprint 与近 20 期历史交给活动 Planner（Codex 或 DeepSeek）
   → 活动 Planner 生成有序 library/discovery 选曲意图与 DJ 串讲
   → Library 按意图顺序解析并最多补选两轮，严格满足 8～12 首目标、语言、近期去重与艺人约束
   → Qwen3-TTS 8-bit 通过本机 Python/MLX helper 生成可选 DJ 语音
@@ -53,10 +53,10 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] macOS Native launcher + 外部浏览器 PWA 的历史包装已由 S7-01/S7-02 记录；[ADR 0006](docs/adr/0006-electron-desktop-shell.md) 已裁决由 Electron 主进程与现有 Web Renderer 替代，S7-09 正在完成迁移
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭；其中 Apple TTS 仅为 S7-06 历史验收事实，已由 [ADR 0005](docs/adr/0005-qwen3-local-tts.md) 与 UX-10 的 bundled Qwen3-TTS helper 取代。DeepSeek 可切换规划 Provider 的边界由 [ADR 0007](docs/adr/0007-deepseek-planner-provider.md) 固定；Production Server 与 Electron 主进程默认 Live
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
-- [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Profile 级 DJ transcript、闲聊/澄清/单曲/3～5 首推荐/节目分流、单曲与推荐立即/下一首临时点播（含空节目手动下一首与无成功红字）、对话清空、按需朗读、旧节目生成中继续播放、双声道 overlay/ducking、多标签租约、全屏 Detail 平滑歌词/DJ 串讲跟随、七类反馈 UI、Settings/Library/Taste 的可关闭短时操作反馈、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
+- [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Profile 级 DJ transcript、闲聊/澄清/单曲/3～5 首推荐/节目分流、单曲与推荐立即/下一首临时点播（含空节目手动下一首与无成功红字）、对话清空、按需朗读、旧节目生成中继续播放、双声道 overlay/ducking、多标签租约、全屏 Detail 平滑歌词/DJ 串讲跟随、七类反馈 UI、Settings/Library/Taste 的可关闭短时操作反馈、Library 搜索/试听/候选池/歌单导入、Taste Blueprint 显式重塑/学习基线后的自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
 - [x] Fastify Local Service health/session/events、Profiles、Library、Feedback、Taste、Programs、Playback、Radio conversation/speech、异步节目生成、DeviceSettings、ProfilePreferences 与数据目录迁移路由已实现；节目与朗读命令使用持久 Job 和 REST Snapshot 恢复
 - [x] 完整 v1 公共 Contracts 已用 Zod 固化：REST DTO/command、显式 `profileId`、`Idempotency-Key`、异步 job、WebSocket event 与安全 error envelope 均有正反向和兼容性测试
-- [x] SQLite/Drizzle 底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；Profile、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、RadioMessage/Turn/SpeechGeneration、DjCitation、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已落地
+- [x] SQLite/Drizzle 底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；Profile、TasteBlueprint、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、RadioMessage/Turn/SpeechGeneration、DjCitation、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已落地
 - [x] Secret Store、File Store 与脱敏日志平台边界已实现：macOS Keychain 往返、headless 稳定错误、受控引用、扩展名/MIME/大小/重定向限制和敏感信息清除已验证；DeepSeek API key 只通过 Keychain 读写，TTS Adapter 只向受控 File Store 写入校验后的音频
 - [x] 本地 HTTP 安全边界已完成：每次 bootstrap 签发短期进程内 token，REST 与 WebSocket 共享校验，Web 只在内存持有 token，并支持 401 后重新 bootstrap 的重连基础
 - [x] DeviceSettings 与 ProfilePreferences owner 已实现：设备配置和 Profile 偏好分表、分路由持久化；活动 Planner、DeepSeek 模型、隐私确认和密钥配置状态在设备级管理，Health 不返回命令路径、凭据或 Provider 私有字段
@@ -123,7 +123,7 @@ AI Agent **不得**：
 4. 生成节目计划、DJ 开场和歌曲队列。
 5. 播放、暂停、切歌、seek 并查看歌词或串讲。
 6. 记录喜欢/撤销、不喜欢/撤销、跳过和节目收藏/撤销。
-7. 将反馈投影与人工规则合并为可读、可编辑的品味档案。
+7. 按需应用 Profile 级 Taste Blueprint；仅学习起点之后的反馈形成自动投影，并与人工规则合并为可读、可编辑的品味档案。
 8. 在后续节目中使用品味、历史和场景上下文。
 
 ### 功能优先级
@@ -460,7 +460,7 @@ packages/
 
 ### 当前可执行状态
 
-**当前可以安装 workspace、启动开发双进程并构建/启动同源生产应用；Web 已提供路由、内存 Session、事件重连、离线异常页、Profile/Settings、持久 DJ 对话与意图分流、单曲卡片、8～12 首节目、双声道 Radio、Library 搜索/试听/候选池/歌单导入、Taste 查看/人工编辑，以及多标签接管和 checkpoint；Local Service 已提供对应领域与平台后端能力。**
+**当前可以安装 workspace、启动开发双进程并构建/启动同源生产应用；Web 已提供路由、内存 Session、事件重连、离线异常页、Profile/Settings、持久 DJ 对话与意图分流、单曲卡片、8～12 首节目、双声道 Radio、Library 搜索/试听/候选池/歌单导入、Taste Blueprint 重塑/反馈学习/人工编辑，以及多标签接管和 checkpoint；Local Service 已提供对应领域与平台后端能力。**
 
 `design/assets/prototype/index.html` 是可直接在浏览器打开的零构建设计预览骨架，不是 Koradio 产品运行入口。
 
@@ -503,12 +503,12 @@ pnpm verify:package:macos <path-to-Koradio.app>
 
 当前骨架边界：
 
-- 已有 OS 数据目录 bootstrap、SQLite connection、Drizzle migration runner、Profile/TasteProjection/TasteOverrides/FeedbackEvent/DeviceSettings/ProfilePreferences/MusicTrack/PlaylistSource/LibraryItem/import job/Program/ProgramTrack/DjScriptSegment/PlaybackTimelineItem/PlaybackCheckpoint owner 表，以及同时保存 active data root 与 current Profile 的原子 bootstrap 指针。
+- 已有 OS 数据目录 bootstrap、SQLite connection、Drizzle migration runner、Profile/TasteBlueprint/TasteProjection/TasteOverrides/FeedbackEvent/DeviceSettings/ProfilePreferences/MusicTrack/PlaylistSource/LibraryItem/import job/Program/ProgramTrack/DjScriptSegment/PlaybackTimelineItem/PlaybackCheckpoint owner 表，以及同时保存 active data root 与 current Profile 的原子 bootstrap 指针。
 - 已有 macOS Keychain Secret Store、受控 File Store 和结构化脱敏 logger；DeviceSettings 只持久化非敏感配置，TTS Adapter 只向受控 File Store 写入已校验音频。
 - 已有 Profiles、Library、Feedback、Taste、Programs 与 Playback application/persistence/public API、持久节目生成 Job、有序事件、Provider orchestration、MusicProvider Port、确定性 Mock、真实 Programs/Library 反馈目标校验和可重建 projection；Mock Provider 后端闭环已通过固定 fixture 验收。
 - 已有完整 v1 wire contracts；health/session/events、Profiles、Library、Feedback、Taste、Programs 历史/详情、Playback snapshot/checkpoint、DeviceSettings、ProfilePreferences 和数据目录迁移已有 route/use case。
 - 已有 Codex、DeepSeek、NetEase 与 TTS Adapter、Qwen Python/MLX helper 及确定性 Mock；Production composition 默认 `live`，Development、Test 和 CI 默认 `mock`，也可由 `KORADIO_PROVIDER_MODE` 显式覆盖；Qwen 8-bit 本机完整句子合成与受控 TTS 音频已验收，DeepSeek 真实 API smoke 仍需手动执行。
-- App Shell 提供五个一级 route、TanStack Query health snapshot、内存 Session、WebSocket 事件重连、完全离线异常页和只读 Settings；在线模式已提供 Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题/DJ 偏好、四服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、节目 generation command、Snapshot/有序事件恢复、原子节目替换、喜欢/不喜欢/跳过/节目收藏反馈、Library 搜索/试听/候选池/分页/缓存与网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看、字段约束和只写 overrides 的人工编辑，以及 Programs 分页历史、详情、Provider source identity 恢复、可用串讲重播、文字降级、场景草稿复用和收藏/撤销。
+- App Shell 提供五个一级 route、TanStack Query health snapshot、内存 Session、WebSocket 事件重连、完全离线异常页和只读 Settings；在线模式已提供 Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题/DJ 偏好、四服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、节目 generation command、Snapshot/有序事件恢复、原子节目替换、喜欢/不喜欢/跳过/节目收藏反馈、Library 搜索/试听/候选池/分页/缓存与网易云歌单导入、按 Profile 隔离的 Taste 蓝图/学习基线/投影/人工规则/有效结果查看、显式蓝图重塑与只写 overrides 的人工编辑，以及 Programs 分页历史、详情、Provider source identity 恢复、可用串讲重播、文字降级、场景草稿复用和收藏/撤销。
 - Session 只保护本地 HTTP 边界，不代表云账号或 Profile 身份；浏览器不会从 LocalStorage、SessionStorage、IndexedDB 或 Cookie 恢复 token。
 
 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 的完整根 script 名和 CI 安装合同已实装。`pnpm check` 聚合非浏览器合并门；[GitHub Actions CI](https://github.com/komochi007/koradio/actions/workflows/ci.yml) 在 `main` push、Pull Request 和手动触发时执行 frozen install、`check`、三浏览器 E2E、axe 与 Chromium 视觉回归。S7-01 已建立本机 macOS 包装与验收脚本；包装 CI、x64、签名公证和干净环境仍由后续任务验证。

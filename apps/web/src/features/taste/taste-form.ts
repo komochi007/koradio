@@ -25,6 +25,7 @@ export function createTasteDraft(taste: TasteResponse): TasteDraft {
 
 export function isTasteEmpty(taste: TasteResponse): boolean {
   return (
+    (taste.blueprint === null || taste.blueprint === undefined) &&
     taste.projection.sourceVersion === 0 &&
     taste.overrides.tags.length === 0 &&
     taste.overrides.avoidRules.length === 0 &&

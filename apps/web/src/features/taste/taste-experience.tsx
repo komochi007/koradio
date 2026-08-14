@@ -13,7 +13,7 @@ import {
 import type { ServiceTransport } from "../../shared/transport.js";
 import { KoradioAvatar } from "../../shared/avatar.js";
 import { Brand, OperationNotice, PrimaryNavigation, Status } from "../../shared/ui.js";
-import { getTaste, updateTasteOverrides } from "./api.js";
+import { applyTasteBlueprint, getTaste, updateTasteOverrides } from "./api.js";
 import {
   createTasteDraft,
   isTasteEmpty,
@@ -147,7 +147,89 @@ function TasteStatePanel({
   );
 }
 
-function TasteOverview({ taste }: { taste: TasteResponse }): ReactElement {
+function TasteBlueprintPanel({
+  applying,
+  onApply,
+  taste,
+}: {
+  applying: boolean;
+  onApply: () => void;
+  taste: TasteResponse;
+}): ReactElement {
+  const blueprint = taste.blueprint;
+  return (
+    <section className="taste-blueprint" aria-labelledby="taste-blueprint-title">
+      <SectionHeading
+        count={
+          blueprint === undefined || blueprint === null ? "NOT APPLIED" : `v${blueprint.version}`
+        }
+        id="taste-blueprint-title"
+        title="品味蓝图"
+      />
+      <article className="taste-blueprint-card">
+        {blueprint === undefined || blueprint === null ? (
+          <>
+            <p>将基于 taste.md 的三张歌单分析重塑当前档案，并从此刻开始重新学习。</p>
+            <button
+              className="button button--primary"
+              type="button"
+              disabled={applying}
+              onClick={onApply}
+            >
+              应用品味蓝图
+            </button>
+          </>
+        ) : (
+          <>
+            <div>
+              <p className="taste-blueprint-card__meta">{blueprint.sourceLabel}</p>
+              <p>{blueprint.summary}</p>
+            </div>
+            <div className="taste-blueprint-card__facts">
+              <span>{`${String(blueprint.clusters.length)} 个审美簇`}</span>
+              <span>{`库内 ${String(Math.round(blueprint.libraryRatio * 100))}% · 探索 ${String(Math.round(blueprint.discoveryRatio * 100))}%`}</span>
+              <time dateTime={blueprint.learningStartedAt}>
+                从 {formatUpdatedAt(blueprint.learningStartedAt)} 开始学习
+              </time>
+            </div>
+            <div className="taste-blueprint-traits" aria-label="核心审美特质">
+              {blueprint.primaryTraits.map((trait) => (
+                <span key={trait}>{trait}</span>
+              ))}
+            </div>
+            <div className="taste-blueprint-clusters" aria-label="核心审美簇">
+              {blueprint.clusters.map((cluster) => (
+                <article key={cluster.name}>
+                  <strong>{cluster.name}</strong>
+                  <span>{`${String(Math.round(cluster.affinity * 100))}%`}</span>
+                  <p>{cluster.signals.join(" · ")}</p>
+                </article>
+              ))}
+            </div>
+            <button
+              className="button button--secondary"
+              type="button"
+              disabled={applying}
+              onClick={onApply}
+            >
+              重新应用蓝图
+            </button>
+          </>
+        )}
+      </article>
+    </section>
+  );
+}
+
+function TasteOverview({
+  applying,
+  onApplyBlueprint,
+  taste,
+}: {
+  applying: boolean;
+  onApplyBlueprint: () => void;
+  taste: TasteResponse;
+}): ReactElement {
   const manualTags = useMemo(
     () => new Set(taste.overrides.tags.map((tag) => tag.trim().toLocaleLowerCase("en-US"))),
     [taste.overrides.tags],
@@ -176,10 +258,18 @@ function TasteOverview({ taste }: { taste: TasteResponse }): ReactElement {
         <SectionHeading id="taste-overview-title" title="品味概览" />
         <article className="taste-overview-card">
           <p>
-            Koradio 已从 {taste.projection.sourceVersion} 条反馈形成自动投影，并合并 {manualCount}
-            条人工规则。人工规则始终优先，投影重建不会覆盖你的编辑。
+            Koradio 会将品味蓝图、从重塑起点开始的 {taste.projection.sourceVersion} 条反馈和{" "}
+            {manualCount}
+            条人工规则一起带给 DJ。人工规则始终优先，历史节目和收藏不会被重塑改写。
           </p>
           <dl>
+            <div>
+              <dt>TASTE BLUEPRINT</dt>
+              <dd>
+                <b>{taste.blueprint === null || taste.blueprint === undefined ? "—" : "1"}</b>
+                <span>稳定起点</span>
+              </dd>
+            </div>
             <div>
               <dt>AUTO PROJECTION</dt>
               <dd>
@@ -204,6 +294,8 @@ function TasteOverview({ taste }: { taste: TasteResponse }): ReactElement {
           </dl>
         </article>
       </section>
+
+      <TasteBlueprintPanel applying={applying} onApply={onApplyBlueprint} taste={taste} />
 
       <section className="taste-genres" aria-labelledby="taste-genres-title">
         <SectionHeading
@@ -296,8 +388,8 @@ function TasteOverview({ taste }: { taste: TasteResponse }): ReactElement {
         <div>
           <span aria-hidden="true">↗</span>
           <p>
-            <strong>已记录 {taste.projection.sourceVersion} 条反馈</strong>
-            <small>这些事实只重建自动投影，不会改写人工规则。</small>
+            <strong>重塑后已记录 {taste.projection.sourceVersion} 条反馈</strong>
+            <small>只有重塑起点之后的事实会影响自动投影，人工规则始终优先。</small>
           </p>
           <time dateTime={taste.projection.updatedAt}>
             {formatUpdatedAt(taste.projection.updatedAt)}
@@ -681,6 +773,7 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
   const [actionNotice, setActionNotice] = useState<
     { message: string; tone: "success" | "error" } | undefined
   >();
+  const [confirmingBlueprint, setConfirmingBlueprint] = useState(false);
   const taste = useQuery({
     queryKey: ["taste", profileId],
     queryFn: () => getTaste(props.transport, profileId),
@@ -701,6 +794,17 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
       setActionNotice({ message: "保存失败，内容已保留。", tone: "error" });
     },
   });
+  const blueprint = useMutation({
+    mutationFn: () => applyTasteBlueprint(props.transport, profileId),
+    onSuccess: (result) => {
+      queryClient.setQueryData<TasteResponse>(["taste", profileId], result);
+      setConfirmingBlueprint(false);
+      setActionNotice({ message: "品味蓝图已应用，DJ 将从新的起点开始学习", tone: "success" });
+    },
+    onError: () => {
+      setActionNotice({ message: "应用品味蓝图失败，现有档案未被修改", tone: "error" });
+    },
+  });
 
   useEffect(() => {
     props.headingRef.current?.focus();
@@ -713,6 +817,11 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
     setSaveError(undefined);
     setActionNotice(undefined);
     setEditing(true);
+  }
+
+  function requestBlueprint(): void {
+    setConfirmingBlueprint(true);
+    setActionNotice(undefined);
   }
 
   function cancelEditing(): void {
@@ -804,17 +913,56 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
           </TasteStatePanel>
         ) : isTasteEmpty(taste.data) ? (
           <TasteStatePanel
-            title="播放和反馈后会在这里形成你的音乐品味"
-            action={() => {
-              props.navigate("/radio");
-            }}
-            actionLabel="去 Radio 开始播放"
+            title="先应用你的品味蓝图"
+            action={requestBlueprint}
+            actionLabel="应用品味蓝图"
           >
-            先生成几次电台，让 Koradio 认识你；也可以直接编辑人工规则。
+            蓝图会成为 DJ 的稳定起点，之后的新反馈会继续塑造它。
           </TasteStatePanel>
         ) : (
-          <TasteOverview taste={taste.data} />
+          <TasteOverview
+            applying={blueprint.isPending}
+            onApplyBlueprint={requestBlueprint}
+            taste={taste.data}
+          />
         )}
+        {confirmingBlueprint ? (
+          <section
+            className="taste-blueprint-confirm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="taste-blueprint-confirm-title"
+          >
+            <p className="taste-blueprint-confirm__eyebrow">RESET TASTE LEARNING</p>
+            <h2 id="taste-blueprint-confirm-title">应用这份品味蓝图？</h2>
+            <p>
+              当前档案的人工标签、避雷和场景规则会被清空；旧反馈将保留在节目历史中，但不再影响 DJ
+              的品味学习。
+            </p>
+            <div>
+              <button
+                className="button button--ghost"
+                type="button"
+                disabled={blueprint.isPending}
+                onClick={() => {
+                  setConfirmingBlueprint(false);
+                }}
+              >
+                取消
+              </button>
+              <button
+                className="button button--primary"
+                type="button"
+                disabled={blueprint.isPending}
+                onClick={() => {
+                  blueprint.mutate();
+                }}
+              >
+                {blueprint.isPending ? "正在应用…" : "确认重塑"}
+              </button>
+            </div>
+          </section>
+        ) : null}
       </main>
       <PrimaryNavigation active="taste" onNavigate={props.navigate} />
       {actionNotice === undefined ? null : (

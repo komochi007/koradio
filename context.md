@@ -37,7 +37,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - VDA-17 像素基线提交为 `6e97fb74826cdd48e5f75fe57646ac55340aab3c`；当前树只允许在不改变像素外观的前提下校准业务语义与无障碍文案。
 - Figma 是 VDA-17 基线的派生镜像，不是视觉事实源；历史 VDA 任务与 QA 报告保留追溯，但不属于默认开发入口。
 - 根 manifest、pnpm workspace、单一锁文件、Node 版本文件、四个目标边界源码入口、strict TypeScript project references 与质量配置已创建；frozen install、`check`、Playwright、axe、视觉、`dev` 与 `build` 可运行。
-- React/Vite App Shell 与 Fastify Local Service 默认以 Mock 模式启动，受控本机可显式启用 live；五个一级 route、短期进程内 session bootstrap、认证 REST/WS、事件断线重连、production 同源静态托管和仅静态 App Shell 的离线缓存已验证；Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题与 DJ 偏好、服务检测、安全数据目录迁移、Profile 级持久 DJ 对话、闲聊/澄清/单曲/3～5 首推荐/节目分流、单曲与推荐的临时 DJ 点播（含空节目手动下一首）、对话清空与按需 Qwen 朗读、8～12 首节目、活动规划跨页面恢复、生成中保留旧节目和待切换节目、双声道 overlay/ducking、checkpoint、多标签租约、全屏 Detail 平滑歌词/DJ 串讲跟随、七类反馈 UI、Settings/Library/Taste 的可关闭短时操作成功或失败提示、Library 搜索/试听/候选池/分页/缓存/网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看，以及 Programs 分页历史/详情、串讲重播、场景复用和收藏/撤销已实现。
+- React/Vite App Shell 与 Fastify Local Service 默认以 Mock 模式启动，受控本机可显式启用 live；五个一级 route、短期进程内 session bootstrap、认证 REST/WS、事件断线重连、production 同源静态托管和仅静态 App Shell 的离线缓存已验证；Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题与 DJ 偏好、服务检测、安全数据目录迁移、Profile 级持久 DJ 对话、闲聊/澄清/单曲/3～5 首推荐/节目分流、单曲与推荐的临时 DJ 点播（含空节目手动下一首）、对话清空与按需 Qwen 朗读、8～12 首节目、活动规划跨页面恢复、生成中保留旧节目和待切换节目、双声道 overlay/ducking、checkpoint、多标签租约、全屏 Detail 平滑歌词/DJ 串讲跟随、七类反馈 UI、Settings/Library/Taste 的可关闭短时操作成功或失败提示、Library 搜索/试听/候选池/分页/缓存/网易云歌单导入、按 Profile 隔离的 Taste 蓝图/学习基线/投影/人工规则/有效结果查看与显式重塑，以及 Programs 分页历史/详情、串讲重播、场景复用和收藏/撤销已实现。
 - Electron 桌面窗口最小尺寸为 `430 × 652px`；Radio、Library 等常规页面继续以 `0.425` 的固定内容比例保持已验收的组件与布局，Detail Sheet 在 Electron 下例外使用实际 viewport 并按约 `25% / 75%` 分配波形区与节目面。Radio 页面外层不滚动，队列与 DJ 对话框独立滚动且隐藏滚动条；品牌标记与内容区左边缘对齐并避让 macOS 原生窗口按钮。普通浏览器与手机仍保留响应式阅读布局。
 - Node 24 `node:sqlite`、Drizzle ORM/Kit 1.0 RC、OS 默认数据目录、版本化 migration、WAL、foreign keys、严格文件权限和失败迁移事务回滚已验证；当前 v18 包含 Profile、Taste、Feedback、Settings、Music/Library、Program/Generation/ProgramHandoff、RadioMessage/Turn/Recommendation/SpeechGeneration、DjCitation、PlaybackTimeline 与 PlaybackCheckpoint 等 owner 表。
 - macOS Keychain adapter 使用 `/usr/bin/security -i` 从 stdin 接收十六进制 secret，不把明文写入 argv；受控 File Store 只生成 data root 内相对引用并限制扩展名、MIME、大小、来源与重定向；日志移除 token、key、敏感正文、凭据 URL 和用户路径。
@@ -105,7 +105,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 | Programs | 生成任务、节目、DJ 段和历史 | `HTMLAudio` 状态 |
 | Playback | 时间线规则与恢复 checkpoint | 实时播放进度、UI Sheet |
 | Library | 搜索、导入与归一化曲目 | 推荐决策、播放控制 |
-| Taste | TasteProjection、TasteOverrides 与 EffectiveTaste | Provider response、覆盖人工规则 |
+| Taste | TasteBlueprint、TasteProjection、TasteOverrides 与 EffectiveTaste | Provider response、覆盖人工规则 |
 | Feedback | 显式喜欢/撤销、不喜欢/撤销、跳过、节目收藏/撤销事实 | 重写历史事实 |
 | DeviceSettings | 设备服务配置、Secret Store 引用与数据目录迁移 | Profile 偏好、明文密钥输出 |
 | ProfilePreferences | 主题、DJ 语言与声音风格 | 设备服务配置、密钥 |
@@ -116,6 +116,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 |---|---|
 | `Profile` | 本地数据分区根，头像只保存受控 `avatarRef` |
 | `TasteProjection` | 可从反馈事实重建的自动投影 |
+| `TasteBlueprint` | Profile 级稳定品味起点；记录学习基线，蓝图应用前的反馈不再参与品味学习 |
 | `TasteOverrides` | 人工规则，优先且不被重建覆盖 |
 | `EffectiveTaste` | 合并后的活动 Planner 只读上下文 |
 | `DeviceSettings` | 设备级 dataRoot、Planner/模型/隐私配置与 Secret Store 引用 |
@@ -141,7 +142,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 
 ### 反馈记忆
 
-`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Planner context`
+`TasteBlueprint → feedback learning baseline → UI intent → explicit FeedbackEvent → TasteProjection → TasteBlueprint + TasteOverrides → Planner context`
 
 ## 9. 失败与降级
 

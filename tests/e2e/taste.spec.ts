@@ -1,6 +1,10 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
-import type { TasteResponse, UpdateTasteOverridesCommand } from "@koradio/contracts";
+import type {
+  TasteBlueprint,
+  TasteResponse,
+  UpdateTasteOverridesCommand,
+} from "@koradio/contracts";
 
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const firstProfileId = "00000000-0000-4000-8000-000000000010";
@@ -86,6 +90,32 @@ function taste(profileId: string): TasteResponse {
           : ["夜晚写作时安静、有呼吸感，但不要太催眠", "通勤时节奏稳定，减少过长前奏"],
       },
     },
+  };
+}
+
+function blueprint(profileId: string): TasteBlueprint {
+  return {
+    profileId,
+    sourceLabel: "基于 taste.md 的三张歌单分析",
+    version: "1.0",
+    summary: "旋律优先、温暖有空间、松弛而有情绪连续性的私人电台审美。",
+    primaryTraits: ["旋律优先", "温暖有空间", "松弛 Groove"],
+    clusters: [
+      {
+        name: "Neo-Soul / Alternative R&B / Soulful Pop",
+        affinity: 0.96,
+        signals: ["色彩和声"],
+      },
+    ],
+    anchorArtists: ["方大同"],
+    bridgeArtists: ["FKJ"],
+    softAvoids: ["大型 Drop 导向的 festival EDM"],
+    transitionPriorities: ["情绪连续性"],
+    scenes: [{ name: "深夜", guidance: "保持私密、温暖和低到中等能量。" }],
+    libraryRatio: 0.7,
+    discoveryRatio: 0.3,
+    learningStartedAt: "2026-08-14T08:00:00.000Z",
+    updatedAt: "2026-08-14T08:00:00.000Z",
   };
 }
 
@@ -184,6 +214,31 @@ async function mockTasteWorkspace(
     await route.fulfill({ json: { current: profileContext(currentProfileId) } });
   });
   await page.route("**/api/v1/profiles", (route) => route.fulfill({ json: { items: profiles } }));
+  await page.route("**/api/v1/profiles/*/taste/blueprint", async (route) => {
+    const profileId = new URL(route.request().url()).pathname.split("/").at(-3) ?? firstProfileId;
+    const before = tastes.get(profileId);
+    if (before === undefined) throw new Error("Taste fixture missing");
+    const updated: TasteResponse = {
+      ...before,
+      blueprint: blueprint(profileId),
+      projection: {
+        ...before.projection,
+        tags: [],
+        affinities: [],
+        avoidSignals: [],
+        sourceVersion: 0,
+      },
+      overrides: { ...before.overrides, tags: [], avoidRules: [], sceneRules: [] },
+      effective: {
+        ...before.effective,
+        projectionVersion: 0,
+        overrideVersion: before.effective.overrideVersion + 1,
+        resolvedTaste: { tags: [], affinities: [], avoidRules: [], sceneRules: [] },
+      },
+    };
+    tastes.set(profileId, updated);
+    await route.fulfill({ json: updated });
+  });
   await page.route("**/api/v1/profiles/*/taste", async (route) => {
     const profileId = new URL(route.request().url()).pathname.split("/").at(-2) ?? firstProfileId;
     if (route.request().method() === "GET") {
@@ -249,7 +304,9 @@ test("views, edits, validates and saves Taste overrides", async ({ browserName, 
 
   await expect(page.getByRole("heading", { name: "你的音乐品味" })).toBeFocused();
   await expect(page.getByText("AUTO PROJECTION")).toBeVisible();
-  await expect(page.getByText("人工规则始终优先", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText("只有重塑起点之后的事实会影响自动投影，人工规则始终优先。"),
+  ).toBeVisible();
   if (browserName === "chromium") {
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await expect(page).toHaveScreenshot("taste-overview-dark.png", {
@@ -331,12 +388,29 @@ test("retains the edit draft while the stored Taste rolls back on failure", asyn
   const rule = page.getByRole("textbox", { name: "避雷规则 1" });
   await rule.fill("保留这条未保存规则");
   await page.getByRole("button", { name: "保存品味" }).click();
-  await expect(page.getByText("保存失败，内容已保留")).toBeVisible();
+  await expect(page.getByText("保存失败，内容已保留", { exact: true })).toBeVisible();
   await expect(rule).toHaveValue("保留这条未保存规则");
   await expect(page.getByRole("button", { name: "重新保存" })).toBeVisible();
   await page.getByRole("button", { name: "取消" }).click();
   await expect(page.getByText("避免高频刺耳的人声")).toBeVisible();
   await expect(page.getByText("保留这条未保存规则")).toHaveCount(0);
+});
+
+test("applies the taste blueprint only after explicit confirmation", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName === "webkit", "受控 Taste 路由由 Chromium 与 Firefox 验收");
+  await mockTasteWorkspace(page);
+  await page.goto(`${appOrigin}/taste`);
+  await page.getByRole("button", { name: "应用品味蓝图" }).click();
+  const dialog = page.getByRole("dialog", { name: "应用这份品味蓝图？" });
+  await expect(dialog).toContainText("旧反馈将保留在节目历史中");
+  await dialog.getByRole("button", { name: "确认重塑" }).click();
+  await expect(page.getByText("基于 taste.md 的三张歌单分析")).toBeVisible();
+  await expect(page.getByText("旋律优先", { exact: true })).toBeVisible();
+  await expect(page.getByText("库内 70% · 探索 30%")).toBeVisible();
+  await expect(page.getByText("重塑后已记录 0 条反馈")).toBeVisible();
 });
 
 test("isolates Taste queries and drafts when switching Profile", async ({ browserName, page }) => {
@@ -362,10 +436,8 @@ test("keeps empty and load-error Taste states recoverable on mobile", async ({
   await page.emulateMedia({ reducedMotion: "reduce" });
   await mockTasteWorkspace(page, { empty: true });
   await page.goto(`${appOrigin}/taste`);
-  await expect(
-    page.getByText("播放和反馈后会在这里形成你的音乐品味", { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: "去 Radio 开始播放" })).toBeVisible();
+  await expect(page.getByText("先应用你的品味蓝图", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "应用品味蓝图" })).toBeVisible();
   expect(await page.locator("body").evaluate((body) => body.scrollWidth)).toBe(390);
 
   await page.unrouteAll({ behavior: "wait" });

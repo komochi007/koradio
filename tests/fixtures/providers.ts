@@ -13,6 +13,7 @@ export const codexPlanningContextFixture = {
       sceneRules: ["夜晚写作保持低刺激"],
     },
   },
+  tasteBlueprint: null,
   history: [
     {
       title: "Quiet Signals",

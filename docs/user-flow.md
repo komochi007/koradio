@@ -330,11 +330,11 @@ Radio 输入先由活动 AI 大脑结合最近对话和当前节目摘要路由�
    写入失败            写入成功
      |                  |
      v                  v
-[回滚 UI；播放继续]  [重建 TasteProjection]
+[回滚 UI；播放继续]  [从反馈学习起点重建 TasteProjection]
                         |
                         v
-              [与 TasteOverrides 合并]
-              [人工规则优先得到 EffectiveTaste]
+      [TasteBlueprint / TasteOverrides 共同进入 Planner]
+          [人工规则优先得到 EffectiveTaste]
 ```
 
 ## 6. 关键异常分支清单
@@ -491,4 +491,4 @@ Radio 输入先由活动 AI 大脑结合最近对话和当前节目摘要路由�
 | Profile 切换 | 旧 Profile 正在生成或播放 | 选择新 Profile | 取消旧任务并丢弃迟到事件，保存并停止旧播放，再加载新 Profile |
 | 双标签接管 | 标签 A 持有租约 | 标签 B 申请接管 | A 先存 checkpoint 并停止；B 获得新 epoch 后才能播放；续约 `2s`、过期 `5s` |
 | 反馈撤销 | 已存在喜欢、不喜欢或节目收藏 | 执行撤销 | 追加对应 removed 事件，不覆盖旧事件，界面由最新有效事件投影 |
-| Taste 重建 | 已有自动投影与人工规则 | 回放全部反馈事件 | 可重建 `TasteProjection`，`TasteOverrides` 完整保留并优先合并 |
+| Taste 重建 | 已有自动投影、人工规则与可选学习起点 | 回放学习起点之后的反馈事件 | 可重建 `TasteProjection`，正常重建不覆盖 `TasteOverrides`；显式应用蓝图时才清空 overrides 与旧 projection，并保留历史反馈事实 |

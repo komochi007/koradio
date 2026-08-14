@@ -98,7 +98,7 @@
 .taste-overview-card {
   display: grid;
   min-height: 212px;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) 480px;
   gap: 32px;
   align-items: center;
   margin-top: 12px;
@@ -117,7 +117,7 @@
 
 .taste-overview-card dl {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin: 0;
 }
@@ -156,8 +156,151 @@
 .taste-genres,
 .taste-preference-grid,
 .taste-scenes,
-.taste-feedback {
+.taste-feedback,
+.taste-blueprint {
   margin-top: 24px;
+}
+
+.taste-blueprint-card {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 24px;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 20px;
+  background: var(--kr-surface);
+}
+
+.taste-blueprint-card > p,
+.taste-blueprint-card__meta,
+.taste-blueprint-card__facts,
+.taste-blueprint-clusters p {
+  margin: 0;
+  color: var(--kr-text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.taste-blueprint-card__meta {
+  color: var(--kr-text-tertiary);
+  font:
+    500 11px/16px "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  letter-spacing: 0.05em;
+}
+
+.taste-blueprint-card__facts,
+.taste-blueprint-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.taste-blueprint-card__facts span,
+.taste-blueprint-card__facts time {
+  color: var(--kr-text-secondary);
+  font:
+    500 11px/16px "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+}
+
+.taste-blueprint-traits span {
+  padding: 5px 10px;
+  border: 1px solid var(--kr-border);
+  border-radius: 999px;
+  color: var(--kr-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.taste-blueprint-clusters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.taste-blueprint-clusters article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  padding: 14px;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 14px;
+}
+
+.taste-blueprint-clusters strong {
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 20px;
+}
+
+.taste-blueprint-clusters span {
+  color: var(--kr-text-tertiary);
+  font:
+    500 11px/20px "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+}
+
+.taste-blueprint-clusters p {
+  grid-column: 1 / -1;
+}
+
+.taste-blueprint-card .button {
+  justify-self: start;
+  min-height: 48px;
+  border-radius: 14px;
+}
+
+.taste-blueprint-confirm {
+  position: fixed;
+  z-index: 20;
+  right: max(24px, calc((100vw - 720px) / 2));
+  bottom: 112px;
+  left: max(24px, calc((100vw - 720px) / 2));
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--kr-border-strong);
+  border-radius: 20px;
+  background: var(--kr-surface-elevated);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 38%);
+}
+
+.taste-blueprint-confirm h2,
+.taste-blueprint-confirm p {
+  margin: 0;
+}
+
+.taste-blueprint-confirm h2 {
+  font-size: 22px;
+  line-height: 30px;
+}
+
+.taste-blueprint-confirm p:not(.taste-blueprint-confirm__eyebrow) {
+  color: var(--kr-text-secondary);
+  line-height: 24px;
+}
+
+.taste-blueprint-confirm__eyebrow {
+  color: var(--kr-text-tertiary);
+  font:
+    500 11px/16px "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  letter-spacing: 0.05em;
+}
+
+.taste-blueprint-confirm > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .taste-tag-cloud {
@@ -756,8 +899,15 @@
   }
 
   .taste-preference-grid,
-  .taste-scene-grid {
+  .taste-scene-grid,
+  .taste-blueprint-clusters {
     grid-template-columns: 1fr;
+  }
+
+  .taste-blueprint-confirm {
+    right: 20px;
+    bottom: 100px;
+    left: 20px;
   }
 
   .taste-scene-grid article {
