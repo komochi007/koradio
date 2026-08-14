@@ -6,7 +6,7 @@ describe("UX-11 mock Radio intent routing", () => {
   const provider = createMockRadioAssistantProvider();
   const respond = (content: string) =>
     provider.respond(
-      { content, recentMessages: [] },
+      { content, currentProgram: null, recentMessages: [] },
       { correlationId: "00000000-0000-4000-8000-000000000001" },
     );
 

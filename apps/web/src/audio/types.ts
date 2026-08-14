@@ -57,6 +57,7 @@ export interface AudioEngineFacade {
   destroy(): Promise<void>;
   getSnapshot(): AudioEngineSnapshot;
   loadProgram(program: ProgramDetail, options: LoadProgramOptions): Promise<void>;
+  clearProgramHandoff?(): void;
   syncProgram?(program: ProgramDetail): Promise<void>;
   next(): Promise<void>;
   pause(): Promise<void>;
@@ -67,6 +68,7 @@ export interface AudioEngineFacade {
   setVolume(volume: number): void;
   previewAudio(options: PreviewAudioOptions): Promise<void>;
   queuePreviewNext?(options: PreviewAudioOptions): Promise<void>;
+  scheduleProgramHandoff?(program: ProgramDetail): void;
   stopPreview(): Promise<void>;
   subscribe(listener: () => void): () => void;
 }

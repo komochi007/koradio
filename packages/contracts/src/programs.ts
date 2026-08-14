@@ -78,6 +78,9 @@ export const programListResponseSchema = z.strictObject({
 export const currentProgramResponseSchema = z.strictObject({
   program: programDetailSchema.nullable(),
 });
+export const programHandoffResponseSchema = z.strictObject({
+  program: programDetailSchema.nullable(),
+});
 export const deleteProgramResponseSchema = z.strictObject({
   programId: programIdSchema,
   clearedCurrentSession: z.boolean(),
@@ -112,6 +115,7 @@ export type Program = z.infer<typeof programSchema>;
 export type ProgramDetail = z.infer<typeof programDetailSchema>;
 export type ProgramListResponse = z.infer<typeof programListResponseSchema>;
 export type CurrentProgramResponse = z.infer<typeof currentProgramResponseSchema>;
+export type ProgramHandoffResponse = z.infer<typeof programHandoffResponseSchema>;
 export type DeleteProgramResponse = z.infer<typeof deleteProgramResponseSchema>;
 export type GenerateProgramCommand = z.infer<typeof generateProgramCommandSchema>;
 export type PlaybackCheckpoint = z.infer<typeof playbackCheckpointSchema>;

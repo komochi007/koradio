@@ -29,6 +29,7 @@ export type ProgramGenerationAction =
   | { type: "generation.accepted"; jobId: string; scenarioText: string }
   | { type: "generation.event"; event: V1Event; profileId: string }
   | { type: "generation.snapshot"; snapshot: ProgramGenerationSnapshot }
+  | { type: "generation.ready" }
   | { type: "generation.committed"; program: ProgramDetail }
   | { type: "generation.failed"; code: string; scenarioText: string }
   | { type: "generation.cleared" };
@@ -83,6 +84,10 @@ export function reduceProgramGeneration(
     };
   }
 
+  if (action.type === "generation.ready") {
+    return { ...state, active: undefined, failure: undefined };
+  }
+
   if (action.type === "generation.cleared") {
     return { ...state, failure: undefined };
   }
@@ -135,13 +140,7 @@ export function reduceProgramGeneration(
   ) {
     return state;
   }
-  if (event.eventType === "program.committed") {
-    return {
-      active: undefined,
-      failure: undefined,
-      program: event.payload,
-    };
-  }
+  if (event.eventType === "program.committed") return state;
   const stage = eventStage[event.eventType];
   if (event.eventType === "generation.degraded") {
     return {

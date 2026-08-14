@@ -1,4 +1,5 @@
 import {
+  activeProgramGenerationResponseSchema,
   jobAcceptedResponseSchema,
   profileSchema,
   programDetailSchema,
@@ -43,6 +44,14 @@ describe("UX-11 Radio conversation", () => {
     const assistant: RadioAssistantProvider = {
       respond(context) {
         const content = (context as { content: string }).content;
+        if (content.includes("其他类似")) {
+          return Promise.resolve({
+            decision: "recommendations",
+            reply: "有，我再补几首相近气质的歌。",
+            musicQuery: null,
+            musicQueries: ["Space Song Beach House", "Midnight City M83", "Space Song Beach House"],
+          });
+        }
         if (content.includes("推荐5首")) {
           return Promise.resolve({
             decision: "recommendations",
@@ -91,6 +100,18 @@ describe("UX-11 Radio conversation", () => {
       payload: { radioName: "Night Signals", nickname: "Klein" },
     });
     const profile = profileSchema.parse(profileResponse.json<unknown>());
+
+    const noActiveGeneration = await app.inject({
+      method: "GET",
+      url: `/api/v1/profiles/${profile.id}/program-generations/active`,
+      headers,
+    });
+    expect(noActiveGeneration.statusCode).toBe(200);
+    expect(activeProgramGenerationResponseSchema.parse(noActiveGeneration.json<unknown>())).toEqual(
+      {
+        active: null,
+      },
+    );
 
     const send = (content: string, key: string) =>
       app.inject({
@@ -162,6 +183,13 @@ describe("UX-11 Radio conversation", () => {
     );
     expect(detail.tracks).toHaveLength(10);
 
+    const similar = radioTurnSchema.parse(
+      (await send("有没有其他类似的歌曲推荐", "recommendations-follow-up")).json<unknown>(),
+    );
+    expect(similar.decision).toBe("recommendations");
+    expect(similar.recommendedTracks).toHaveLength(2);
+    expect(similar.programJobId).toBeNull();
+
     const naturalProgram = radioTurnSchema.parse(
       (
         await send("前几天刚过立秋，有没有什么适合秋日晴天听的音乐", "program-natural-scene")
@@ -222,6 +250,7 @@ describe("UX-11 Radio conversation", () => {
       "recommendations",
       "clarify",
       "program",
+      "recommendations",
       "program",
       "program",
     ]);

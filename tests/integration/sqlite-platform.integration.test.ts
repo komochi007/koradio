@@ -44,8 +44,8 @@ describe("SQLite platform bootstrap", () => {
     const context = await bootstrapDatabase({ dataRoot });
 
     try {
-      expect(readScalar(context.client, "PRAGMA user_version")).toBe(17);
-      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(17);
+      expect(readScalar(context.client, "PRAGMA user_version")).toBe(18);
+      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(18);
       if (process.platform !== "win32") {
         expect((await stat(dataRoot)).mode & 0o777).toBe(0o700);
         expect((await stat(context.databasePath)).mode & 0o777).toBe(0o600);
@@ -62,14 +62,14 @@ describe("SQLite platform bootstrap", () => {
     try {
       expect(readScalar(context.client, "PRAGMA foreign_keys")).toBe(1);
       expect(readScalar(context.client, "PRAGMA journal_mode")).toBe("wal");
-      expect(readScalar(context.client, "PRAGMA user_version")).toBe(17);
-      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(17);
+      expect(readScalar(context.client, "PRAGMA user_version")).toBe(18);
+      expect(readScalar(context.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(18);
       expect(
         readScalar(
           context.client,
-          "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('device_settings', 'profile_preferences', 'data_root_migration', 'profile', 'taste_overrides', 'taste_projection', 'feedback_event', 'music_track', 'playlist_source', 'library_item', 'playlist_import_job', 'program', 'program_generation_job', 'program_track', 'dj_script_segment', 'playback_timeline_item', 'playback_checkpoint', 'current_program', 'pending_file_cleanup')",
+          "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('device_settings', 'profile_preferences', 'data_root_migration', 'profile', 'taste_overrides', 'taste_projection', 'feedback_event', 'music_track', 'playlist_source', 'library_item', 'playlist_import_job', 'program', 'program_generation_job', 'program_track', 'dj_script_segment', 'playback_timeline_item', 'playback_checkpoint', 'current_program', 'program_handoff', 'pending_file_cleanup')",
         ),
-      ).toBe(19);
+      ).toBe(20);
 
       context.client.exec(`
         CREATE TABLE parent (id INTEGER PRIMARY KEY);
@@ -98,8 +98,8 @@ describe("SQLite platform bootstrap", () => {
 
     const second = await bootstrapDatabase({ dataRoot });
     try {
-      expect(readScalar(second.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(17);
-      expect(readScalar(second.client, "PRAGMA user_version")).toBe(17);
+      expect(readScalar(second.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(18);
+      expect(readScalar(second.client, "PRAGMA user_version")).toBe(18);
     } finally {
       second.close();
     }
@@ -114,7 +114,7 @@ describe("SQLite platform bootstrap", () => {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
-    expect(migrationDirectories.at(-1)).toBe("20260812150000_add_recommendation_turn_decision");
+    expect(migrationDirectories.at(-1)).toBe("20260814110000_add_program_handoff");
     const feedbackMigrationIndex = migrationDirectories.indexOf(
       "20260716210000_add_feedback_taste_memory",
     );
@@ -267,8 +267,8 @@ describe("SQLite platform bootstrap", () => {
 
     const upgraded = await bootstrapDatabase({ dataRoot });
     try {
-      expect(readScalar(upgraded.client, "PRAGMA user_version")).toBe(17);
-      expect(readScalar(upgraded.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(17);
+      expect(readScalar(upgraded.client, "PRAGMA user_version")).toBe(18);
+      expect(readScalar(upgraded.client, "SELECT COUNT(*) FROM __drizzle_migrations")).toBe(18);
       expect(
         upgraded.client
           .prepare(

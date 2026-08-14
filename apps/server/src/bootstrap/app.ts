@@ -14,8 +14,12 @@ import {
   createLibraryItemRequestSchema,
   createProfileRequestSchema,
   currentProgramResponseSchema,
+  activeProgramGenerationRequestSchema,
+  activeProgramGenerationResponseSchema,
+  activateProgramHandoffRequestSchema,
   djScriptSegmentSchema,
   currentProfileResponseSchema,
+  programHandoffResponseSchema,
   deleteProgramResponseSchema,
   feedbackEventSchema,
   feedbackPersistedEventSchema,
@@ -105,8 +109,10 @@ import {
   ProgramGenerationConflictError,
   ProgramGenerationDataError,
   ProgramGenerationNotFoundError,
+  ProgramHandoffNotFoundError,
   ProgramDeletionError,
   ProgramNotFoundError,
+  ProgramWriteError,
   createProgramGenerationRepository,
   createProgramGenerationService,
   createPlannerReadinessService,
@@ -375,6 +381,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   });
   const radio = createRadioService({
     assistant: options.radioAssistantProvider ?? runtimeProviders.radioAssistant,
+    currentProgram: programs,
     library,
     programs: programGeneration,
     repository: createRadioTurnRepository(database.client),
@@ -997,6 +1004,39 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       }
     });
 
+    app.get("/api/v1/profiles/:profileId/program-generations/active", (request, reply) => {
+      const parsed = activeProgramGenerationRequestSchema.safeParse({ params: request.params });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "PROGRAM_GENERATION_VALIDATION_FAILED",
+          "Program generation request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        return activeProgramGenerationResponseSchema.parse({
+          active: programGeneration.active(parsed.data.params.profileId),
+        });
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof ProgramGenerationDataError) {
+          return sendApiError(
+            reply,
+            500,
+            "PROGRAM_GENERATION_UNAVAILABLE",
+            "Program generation could not be read",
+            true,
+          );
+        }
+        throw error;
+      }
+    });
+
     app.get("/api/v1/profiles/:profileId/program-generations/:jobId", (request, reply) => {
       const parsed = programGenerationSnapshotRequestSchema.safeParse({
         params: request.params,
@@ -1118,6 +1158,78 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
         throw error;
       }
     });
+
+    app.get("/api/v1/profiles/:profileId/program-handoff", (request, reply) => {
+      const parsed = profileIdParamsSchema.safeParse(request.params);
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "PROGRAM_HANDOFF_VALIDATION_FAILED",
+          "Program handoff request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.profileId);
+        return programHandoffResponseSchema.parse({
+          program: programs.pendingHandoff(parsed.data.profileId),
+        });
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof ProgramDataError) {
+          return sendApiError(reply, 500, "PROGRAM_UNREADABLE", "Program could not be read", true);
+        }
+        throw error;
+      }
+    });
+
+    app.post(
+      "/api/v1/profiles/:profileId/program-handoff/:programId/activate",
+      (request, reply) => {
+        const parsed = activateProgramHandoffRequestSchema.safeParse({ params: request.params });
+        if (!parsed.success) {
+          return sendApiError(
+            reply,
+            400,
+            "PROGRAM_HANDOFF_VALIDATION_FAILED",
+            "Program handoff request is invalid",
+            false,
+          );
+        }
+        try {
+          profiles.get(parsed.data.params.profileId);
+          return programDetailSchema.parse(
+            programs.activateHandoff(parsed.data.params.profileId, parsed.data.params.programId),
+          );
+        } catch (error) {
+          if (error instanceof ProfileNotFoundError) {
+            return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+          }
+          if (error instanceof ProgramHandoffNotFoundError) {
+            return sendApiError(
+              reply,
+              409,
+              "PROGRAM_HANDOFF_UNAVAILABLE",
+              "Program handoff is no longer available",
+              false,
+            );
+          }
+          if (error instanceof ProgramDataError || error instanceof ProgramWriteError) {
+            return sendApiError(
+              reply,
+              500,
+              "PROGRAM_UNREADABLE",
+              "Program could not be read",
+              true,
+            );
+          }
+          throw error;
+        }
+      },
+    );
 
     app.put(
       "/api/v1/profiles/:profileId/programs/:programId/dj-scripts/:segmentId/reveal",

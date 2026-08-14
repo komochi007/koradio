@@ -19,7 +19,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - **Private**：本地优先、单人陪伴、档案隔离。
 - **Restrained**：克制排版、有限操作、避免强装饰。
 - **Curated**：节目感、场景解释、结构化队列和 DJ 串讲。
-- **UX-12 已完成并验收**：Audio Engine 跨页面播放稳定性、DJ 临时点播在播放器/Detail/歌词/波形中的实时同步、平滑歌词跟随与自然短句串讲、Radio 控件反馈、3～5 首 DJ 策展推荐与 8～12 首节目分流均已通过 Live 人工验收；点播不改写节目历史或持久队列。
+- **UX-12 已完成并验收**：Audio Engine 跨页面播放稳定性、DJ 临时点播在播放器/Detail/歌词/波形中的实时同步、平滑歌词跟随与自然短句串讲、Radio 控件反馈、3～5 首 DJ 策展推荐与 8～12 首节目分流均已通过 Live 人工验收；点播不改写节目历史或持久队列。推荐追问不升级为节目，活动规划与待切换节目可跨页面及重启恢复。
 
 ```text
 场景 → 规划 → 搜歌 → 可选 TTS → 节目与队列 → 播放 → 反馈 → 品味投影 → 下一次规划
@@ -37,15 +37,15 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - VDA-17 像素基线提交为 `6e97fb74826cdd48e5f75fe57646ac55340aab3c`；当前树只允许在不改变像素外观的前提下校准业务语义与无障碍文案。
 - Figma 是 VDA-17 基线的派生镜像，不是视觉事实源；历史 VDA 任务与 QA 报告保留追溯，但不属于默认开发入口。
 - 根 manifest、pnpm workspace、单一锁文件、Node 版本文件、四个目标边界源码入口、strict TypeScript project references 与质量配置已创建；frozen install、`check`、Playwright、axe、视觉、`dev` 与 `build` 可运行。
-- React/Vite App Shell 与 Fastify Local Service 默认以 Mock 模式启动，受控本机可显式启用 live；五个一级 route、短期进程内 session bootstrap、认证 REST/WS、事件断线重连、production 同源静态托管和仅静态 App Shell 的离线缓存已验证；Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题与 DJ 偏好、服务检测、安全数据目录迁移、Profile 级持久 DJ 对话、闲聊/澄清/单曲/3～5 首推荐/节目分流、单曲与推荐的临时 DJ 点播、对话清空与按需 Qwen 朗读、8～12 首节目、生成中保留旧节目、双声道 overlay/ducking、checkpoint、多标签租约、全屏 Detail 平滑歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/分页/缓存/网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看，以及 Programs 分页历史/详情、串讲重播、场景复用和收藏/撤销已实现。
+- React/Vite App Shell 与 Fastify Local Service 默认以 Mock 模式启动，受控本机可显式启用 live；五个一级 route、短期进程内 session bootstrap、认证 REST/WS、事件断线重连、production 同源静态托管和仅静态 App Shell 的离线缓存已验证；Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题与 DJ 偏好、服务检测、安全数据目录迁移、Profile 级持久 DJ 对话、闲聊/澄清/单曲/3～5 首推荐/节目分流、单曲与推荐的临时 DJ 点播、对话清空与按需 Qwen 朗读、8～12 首节目、活动规划跨页面恢复、生成中保留旧节目和待切换节目、双声道 overlay/ducking、checkpoint、多标签租约、全屏 Detail 平滑歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/分页/缓存/网易云歌单导入、按 Profile 隔离的 Taste 投影/人工规则/有效结果查看，以及 Programs 分页历史/详情、串讲重播、场景复用和收藏/撤销已实现。
 - Electron 桌面窗口最小尺寸为 `430 × 652px`；Radio、Library 等常规页面继续以 `0.425` 的固定内容比例保持已验收的组件与布局，Detail Sheet 在 Electron 下例外使用实际 viewport 并按约 `25% / 75%` 分配波形区与节目面。Radio 页面外层不滚动，队列与 DJ 对话框独立滚动且隐藏滚动条；品牌标记与内容区左边缘对齐并避让 macOS 原生窗口按钮。普通浏览器与手机仍保留响应式阅读布局。
-- Node 24 `node:sqlite`、Drizzle ORM/Kit 1.0 RC、OS 默认数据目录、版本化 migration、WAL、foreign keys、严格文件权限和失败迁移事务回滚已验证；当前 v17 包含 Profile、Taste、Feedback、Settings、Music/Library、Program/Generation、RadioMessage/Turn/Recommendation/SpeechGeneration、DjCitation、PlaybackTimeline 与 PlaybackCheckpoint 等 owner 表。
+- Node 24 `node:sqlite`、Drizzle ORM/Kit 1.0 RC、OS 默认数据目录、版本化 migration、WAL、foreign keys、严格文件权限和失败迁移事务回滚已验证；当前 v18 包含 Profile、Taste、Feedback、Settings、Music/Library、Program/Generation/ProgramHandoff、RadioMessage/Turn/Recommendation/SpeechGeneration、DjCitation、PlaybackTimeline 与 PlaybackCheckpoint 等 owner 表。
 - macOS Keychain adapter 使用 `/usr/bin/security -i` 从 stdin 接收十六进制 secret，不把明文写入 argv；受控 File Store 只生成 data root 内相对引用并限制扩展名、MIME、大小、来源与重定向；日志移除 token、key、敏感正文、凭据 URL 和用户路径。
 - `packages/contracts/src/` 已包含完整 v1 REST DTO/command、显式 `profileId`、幂等 request、异步 job、事件与错误 Zod schemas；health/session/events、Profiles、Library、Radio conversation/speech、Programs/Playback、生成受理/Snapshot、DeviceSettings、DeepSeek credential status、ProfilePreferences 和数据目录迁移已有后端实现。
 - Profiles 创建在单事务内建立 Profile、默认 ProfilePreferences 与由 onboarding genres/default scenario 初始化的 TasteOverrides；current Profile ID 与 active data root 共用原子 bootstrap runtime config，切换失败不会更新当前 context。
 - Library 通过 MusicProvider Port 接收不可信输出并严格归一化为稳定 source identity；搜索、歌词和短期播放解析使用有界 TTL 缓存，播放直链不进入 SQLite，异步歌单导入按完整曲目 ID 清单补齐元数据并在短事务内写入全部可解析歌曲、封面 URL 与可播放状态。
 - Feedback 以 `(profileId, idempotencyKey)` 去重，在同一短事务内追加事实并按内部 replay order 重建 TasteProjection；skip 不自动推断为不喜欢。TasteOverrides 独立版本化，EffectiveTaste 在读取时保序合并且不单独持久化。
-- Programs 通过 Library 公开 API 解析曲目元数据、通过 Playback 公开事务写入 Port 原子提交 Program、ordered track refs、DJ segments 与 timeline；production Feedback composition 使用真实 Programs owner 校验节目目标。
+- Programs 通过 Library 公开 API 解析曲目元数据、通过 Playback 公开事务写入 Port 原子提交 Program、ordered track refs、DJ segments 与 timeline；已有节目时新 Program 进入持久 ProgramHandoff，只有当前曲自然结束或用户显式切换才成为 CurrentProgram；production Feedback composition 使用真实 Programs owner 校验节目目标。
 - Programs application 以持久 Job 元数据和内存 executor 编排活动 Planner（Codex 或 DeepSeek）、Music、可信事实源与可选 TTS；真实生成、桌面启动和 Settings 检测共用规划上下文构造：通过 Library Port 获取当前 Profile 最多 120 首可播放库内摘要、近 20 期历史、偏好和 `EffectiveTaste`，并建议约 70% 库内曲目。检测只发起不落库的 8 首节目骨架请求；完整节目默认 8 首、可指定 8～12 首，Planner 提供目标外四个候选，Backend 按首轮与最多两轮补选解析；精确曲目近期去重、默认同艺人一首，点名歌曲/艺人可覆盖；“中文歌”要求原始歌词汉字占比至少 60%，无法验证即排除。DeepSeek 首次结构化输出无效或截断时，只在原 Provider 内以精简契约重试一次，绝不自动切换 Codex。每个 generation job 启动时快照 Provider/model，Settings 切换只影响下一次生成。
 - 固定 Provider fixtures 已验收 Radio 对话分流、单曲与节目边界、默认/指定数量、两轮补选、中文歌词、同艺人与点名覆盖、近 10 期去重不足时整档失败、MusicBrainz/Wikimedia 来源、Qwen 朗读、双声道叠播与失败保护；DeepSeek adapter 使用脱敏 HTTP fixtures 覆盖 JSON Output/Thinking、错误映射、一次重试和 reasoning 丢弃；常规质量门不调用真实 Provider。
 - S7-06 曾在 macOS 15.7.3 arm64 验证 Codex/NetEase/Apple TTS 闭环；该 TTS 实现已被 UX-10 取代，失败保护与 Mock/fixture 回归边界继续有效。

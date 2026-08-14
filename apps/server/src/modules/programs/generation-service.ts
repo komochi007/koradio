@@ -100,6 +100,7 @@ export interface CreateProgramGenerationServiceOptions {
 }
 
 export interface ProgramGenerationService {
+  active(profileId: string): ProgramGenerationSnapshot | null;
   cancelProfile(profileId: string): Promise<void>;
   close(): Promise<void>;
   get(profileId: string, jobId: string): ProgramGenerationSnapshot;
@@ -864,6 +865,9 @@ export function createProgramGenerationService(
   }
 
   return {
+    active(profileId) {
+      return options.repository.active(profileId);
+    },
     async cancelProfile(profileId) {
       options.repository.cancelProfile(profileId, now().toISOString());
       const pending: Promise<void>[] = [];

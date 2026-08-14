@@ -155,6 +155,13 @@ describe("S3-04 Programs and Playback persistence", () => {
     expect(programs.hasProgram(secondProfileId, ids.program)).toBe(false);
     expect(() => programs.get(secondProfileId, ids.program)).toThrow(ProgramNotFoundError);
 
+    const successor = programs.commit(makeTextOnlyProgram());
+    expect(programs.current(ids.profile)?.program.id).toBe(committed.program.id);
+    expect(programs.pendingHandoff(ids.profile)?.program.id).toBe(successor.program.id);
+    expect(programs.activateHandoff(ids.profile, successor.program.id)).toEqual(successor);
+    expect(programs.current(ids.profile)?.program.id).toBe(successor.program.id);
+    expect(programs.pendingHandoff(ids.profile)).toBeNull();
+
     database.close();
     database = await bootstrapDatabase({ dataRoot });
     const restoredPlaybackRepository = createPlaybackRepository(database.client);
@@ -165,7 +172,10 @@ describe("S3-04 Programs and Playback persistence", () => {
       tracks,
     });
     expect(programs.get(ids.profile, ids.program)).toEqual(committed);
-    expect(programs.list(ids.profile, undefined, 1)).toEqual({ items: [committed.program] });
+    expect(programs.current(ids.profile)?.program.id).toBe(successor.program.id);
+    expect(programs.list(ids.profile, undefined, 2)).toEqual({
+      items: [successor.program, committed.program],
+    });
     database.close();
   });
 

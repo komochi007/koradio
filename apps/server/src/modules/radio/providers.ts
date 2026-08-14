@@ -5,6 +5,20 @@ import { providerCallOptionsSchema, type ProviderCallOptions } from "../programs
 
 export const radioConversationContextSchema = z.strictObject({
   content: z.string().trim().min(1).max(500),
+  currentProgram: z
+    .strictObject({
+      scenarioText: z.string().trim().min(1).max(500),
+      title: z.string().trim().min(1).max(200),
+      tracks: z
+        .array(
+          z.strictObject({
+            artist: z.string().trim().min(1).max(300),
+            title: z.string().trim().min(1).max(300),
+          }),
+        )
+        .max(12),
+    })
+    .nullable(),
   recentMessages: z
     .array(
       z.strictObject({
@@ -44,6 +58,7 @@ function isChinese(value: string): boolean {
 }
 
 function isProgramIntent(value: string): boolean {
+  if (isRecommendationRequest(value)) return false;
   const multiple = /(?:[二三四五六七八九十百]+|\d+|几|多)\s*首/u.test(value);
   const namedProgram = /歌单|节目|音乐清单|歌单列表|一组/u.test(value);
   const musicCue = /歌|音乐|歌曲|曲目|听歌|听点|放歌/u.test(value);
@@ -54,6 +69,12 @@ function isProgramIntent(value: string): boolean {
   const listeningPreferenceCue = /(?:安静|放松|轻松|温柔|沉闷|困|氛围|节奏|BGM)/iu.test(value);
   return (
     namedProgram || multiple || (musicCue && directAction) || (sceneCue && listeningPreferenceCue)
+  );
+}
+
+function isRecommendationRequest(value: string): boolean {
+  return /(?:还有|其他|类似|再(?:推荐|来)).{0,16}(?:歌|歌曲|音乐|推荐)|(?:歌|歌曲|音乐).{0,12}(?:推荐|类似)/u.test(
+    value,
   );
 }
 
@@ -81,6 +102,7 @@ export function createMockRadioAssistantProvider(): RadioAssistantProvider {
       const content = parsed.content;
       const seed = scenarioSeed(`${content}|${String(parsed.recentMessages.length)}`);
       const recommendationCount = requestedRecommendationCount(content);
+      const recommendationFollowUp = isRecommendationRequest(content);
       const explicitlyMultiple = /(?:[二三四五六七八九十]+|\d+|几|多)\s*首/u.test(content);
       const single =
         !explicitlyMultiple &&
@@ -88,7 +110,7 @@ export function createMockRadioAssistantProvider(): RadioAssistantProvider {
       const broad = /随便|都行|你懂的|来点音乐/u.test(content);
       const program =
         recommendationCount === undefined && !single && !broad && isProgramIntent(content);
-      if (recommendationCount !== undefined) {
+      if (recommendationCount !== undefined || recommendationFollowUp) {
         const queries = Array.from(
           { length: 5 },
           (_, index) =>

@@ -9,7 +9,11 @@ import {
 } from "@koradio/contracts";
 
 import type { LibraryService } from "../library/index.js";
-import { requestedProgramTrackCount, type ProgramGenerationService } from "../programs/index.js";
+import {
+  requestedProgramTrackCount,
+  type ProgramGenerationService,
+  type ProgramService,
+} from "../programs/index.js";
 import {
   radioAssistantOutputSchema,
   radioConversationContextSchema,
@@ -23,6 +27,7 @@ export class RadioTurnUnavailableError extends Error {}
 export function isHighConfidenceProgramRequest(content: string): boolean {
   const normalized = content.trim();
   if (/(?:一首|一曲|单曲|这首|这支)/u.test(normalized)) return false;
+  if (isRecommendationRequest(normalized)) return false;
   if (
     /(?:歌单|节目|音乐清单|歌单列表|[二三四五六七八九十百\d]+\s*首|几首|多首)/u.test(normalized)
   ) {
@@ -40,6 +45,12 @@ export function isHighConfidenceProgramRequest(content: string): boolean {
   return (
     (musicCue && (directActionCue || contextualListeningCue)) ||
     (sceneCue && listeningPreferenceCue)
+  );
+}
+
+export function isRecommendationRequest(content: string): boolean {
+  return /(?:还有|其他|类似|再(?:推荐|来)).{0,16}(?:歌|歌曲|音乐|推荐)|(?:歌|歌曲|音乐).{0,12}(?:推荐|类似)/u.test(
+    content.trim(),
   );
 }
 
@@ -70,6 +81,7 @@ function programAcknowledgement(content: string): string {
 
 export interface CreateRadioServiceOptions {
   assistant: RadioAssistantProvider | (() => RadioAssistantProvider);
+  currentProgram: Pick<ProgramService, "current">;
   library: Pick<LibraryService, "resolveAudio" | "search">;
   now?: () => Date;
   programs: Pick<ProgramGenerationService, "start">;
@@ -100,8 +112,20 @@ export function createRadioService(options: CreateRadioServiceOptions) {
       const existing = options.repository.findByIdempotency(profileId, idempotencyKey);
       if (existing !== null) return existing;
       const recent = options.repository.list(profileId);
+      const currentProgram = options.currentProgram.current(profileId);
       const context = radioConversationContextSchema.parse({
         content: command.content,
+        currentProgram:
+          currentProgram === null
+            ? null
+            : {
+                scenarioText: currentProgram.program.scenarioText,
+                title: currentProgram.program.title,
+                tracks: currentProgram.tracks.slice(0, 12).map((track) => ({
+                  artist: track.artist,
+                  title: track.title,
+                })),
+              },
         recentMessages: recent.flatMap((turn) => [
           { role: turn.userMessage.role, content: turn.userMessage.content },
           {
@@ -122,6 +146,7 @@ export function createRadioService(options: CreateRadioServiceOptions) {
       const requestedTrackCount = requestedProgramTrackCount(command.content);
       const recommendationCount = requestedRecommendationCount(command.content);
       const recommendationArtist = requestedRecommendationArtist(command.content);
+      const recommendationRequest = isRecommendationRequest(command.content);
       const response =
         requestedTrackCount !== null &&
         recommendationCount === undefined &&
@@ -132,7 +157,8 @@ export function createRadioService(options: CreateRadioServiceOptions) {
               musicQuery: null,
               musicQueries: [],
             }
-          : recommendationCount === undefined &&
+          : !recommendationRequest &&
+              recommendationCount === undefined &&
               isHighConfidenceProgramRequest(command.content) &&
               output.data.decision !== "program"
             ? {

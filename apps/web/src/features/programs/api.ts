@@ -1,9 +1,11 @@
 import {
+  activeProgramGenerationResponseSchema,
   currentProgramResponseSchema,
   deleteProgramResponseSchema,
   jobAcceptedResponseSchema,
   programDetailSchema,
   programGenerationSnapshotSchema,
+  programHandoffResponseSchema,
   programListResponseSchema,
   type DeleteProgramResponse,
   type JobAcceptedResponse,
@@ -76,6 +78,35 @@ export function getProgramGeneration(
     transport,
     `/api/v1/profiles/${encodeURIComponent(profileId)}/program-generations/${encodeURIComponent(jobId)}`,
     programGenerationSnapshotSchema,
+  );
+}
+
+export function getActiveProgramGeneration(transport: ServiceTransport, profileId: string) {
+  return requestJson(
+    transport,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/program-generations/active`,
+    activeProgramGenerationResponseSchema,
+  );
+}
+
+export function getProgramHandoff(transport: ServiceTransport, profileId: string) {
+  return requestJson(
+    transport,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/program-handoff`,
+    programHandoffResponseSchema,
+  );
+}
+
+export function activateProgramHandoff(
+  transport: ServiceTransport,
+  profileId: string,
+  programId: string,
+): Promise<ProgramDetail> {
+  return requestJson(
+    transport,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/program-handoff/${encodeURIComponent(programId)}/activate`,
+    programDetailSchema,
+    { method: "POST" },
   );
 }
 

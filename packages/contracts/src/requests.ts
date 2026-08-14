@@ -77,6 +77,9 @@ export const radioSpeechGenerationSnapshotRequestSchema = z.strictObject({
 export const programDetailRequestSchema = z.strictObject({
   params: profileProgramIdParamsSchema,
 });
+export const activateProgramHandoffRequestSchema = z.strictObject({
+  params: profileProgramIdParamsSchema,
+});
 export const revealDjScriptRequestSchema = z.strictObject({
   params: profileProgramDjScriptParamsSchema,
 });
@@ -86,6 +89,9 @@ export const programListRequestSchema = z.strictObject({
 });
 export const programGenerationSnapshotRequestSchema = z.strictObject({
   params: profileJobIdParamsSchema,
+});
+export const activeProgramGenerationRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
 });
 export const playbackSnapshotRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
@@ -153,7 +159,9 @@ export type CreateRadioSpeechGenerationRequest = z.infer<
 export type ProgramGenerationSnapshotRequest = z.infer<
   typeof programGenerationSnapshotRequestSchema
 >;
+export type ActiveProgramGenerationRequest = z.infer<typeof activeProgramGenerationRequestSchema>;
 export type RevealDjScriptRequest = z.infer<typeof revealDjScriptRequestSchema>;
+export type ActivateProgramHandoffRequest = z.infer<typeof activateProgramHandoffRequestSchema>;
 export type ProgramListRequest = z.infer<typeof programListRequestSchema>;
 export type PlaybackSnapshotRequest = z.infer<typeof playbackSnapshotRequestSchema>;
 export type SavePlaybackCheckpointRequest = z.infer<typeof savePlaybackCheckpointRequestSchema>;

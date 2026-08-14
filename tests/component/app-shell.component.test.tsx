@@ -240,6 +240,7 @@ function createOnlineTransport(
 ): ServiceTransport & { request: MockedFunction<ServiceTransport["request"]> } {
   const storedProfiles = options.profiles ?? (options.empty === true ? [] : [primaryProfile]);
   let current = options.empty === true ? null : profileContext(storedProfiles[0]);
+  let latestProgram = options.latestProgram ?? null;
   let generationSnapshotReads = 0;
   const request = vi.fn<(path: string, init?: RequestInit) => Promise<Response>>((path, init) => {
     const method = init?.method ?? "GET";
@@ -252,9 +253,15 @@ function createOnlineTransport(
     if (path.endsWith("/programs/current") && method === "GET") {
       return Promise.resolve(
         jsonResponse({
-          program: options.latestProgram ?? null,
+          program: latestProgram,
         }),
       );
+    }
+    if (path.endsWith("/program-generations/active") && method === "GET") {
+      return Promise.resolve(jsonResponse({ active: null }));
+    }
+    if (path.endsWith("/program-handoff") && method === "GET") {
+      return Promise.resolve(jsonResponse({ program: null }));
     }
     if (path.endsWith("/radio-conversation") && method === "GET") {
       return Promise.resolve(jsonResponse({ turns: [] }));
@@ -292,7 +299,8 @@ function createOnlineTransport(
       );
     }
     if (path.endsWith(`/programs/${generatedProgram.program.id}`) && method === "GET") {
-      return Promise.resolve(jsonResponse(options.latestProgram ?? generatedProgram));
+      latestProgram = options.latestProgram ?? generatedProgram;
+      return Promise.resolve(jsonResponse(latestProgram));
     }
     if (path.endsWith("/program-generations") && method === "POST") {
       return Promise.resolve(jsonResponse({ jobId: "00000000-0000-4000-8000-000000000074" }, 202));

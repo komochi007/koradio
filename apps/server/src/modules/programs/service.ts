@@ -31,6 +31,13 @@ export class ProgramWriteError extends Error {
   }
 }
 
+export class ProgramHandoffNotFoundError extends Error {
+  constructor() {
+    super("Program handoff was not found");
+    this.name = "ProgramHandoffNotFoundError";
+  }
+}
+
 export interface ProgramTrackReader {
   getTracks(trackIds: string[]): MusicTrack[];
 }
@@ -43,6 +50,7 @@ export interface CreateProgramServiceOptions {
 }
 
 export interface ProgramService {
+  activateHandoff(profileId: string, programId: string): ProgramDetail;
   commit(detail: ProgramDetail, finalize?: () => void): ProgramDetail;
   completeProgram(profileId: string, programId: string): boolean;
   current(profileId: string): ProgramDetail | null;
@@ -56,6 +64,7 @@ export interface ProgramService {
   get(profileId: string, programId: string): ProgramDetail;
   hasProgram(profileId: string, programId: string): boolean;
   list(profileId: string, cursor?: string, limit?: number): ProgramListResponse;
+  pendingHandoff(profileId: string): ProgramDetail | null;
   revealDjScript(profileId: string, programId: string, segmentId: string): DjScriptSegment;
 }
 
@@ -86,6 +95,21 @@ export function createProgramService(options: CreateProgramServiceOptions): Prog
   }
 
   return {
+    activateHandoff(profileId, programId) {
+      options.client.exec("BEGIN IMMEDIATE");
+      try {
+        const record = options.repository.activateHandoff(profileId, programId);
+        if (record === null) throw new ProgramHandoffNotFoundError();
+        const detail = readDetail(profileId, record.program.id);
+        if (detail === null) throw new ProgramHandoffNotFoundError();
+        options.client.exec("COMMIT");
+        return detail;
+      } catch (error) {
+        options.client.exec("ROLLBACK");
+        if (error instanceof ProgramHandoffNotFoundError) throw error;
+        throw new ProgramWriteError();
+      }
+    },
     commit(detail, finalize) {
       const canonical = programDetailSchema.parse({
         ...detail,
@@ -99,7 +123,15 @@ export function createProgramService(options: CreateProgramServiceOptions): Prog
           djScripts: canonical.djScripts,
         });
         options.timeline.insert(canonical.program.id, canonical.timeline);
-        options.repository.setCurrent(canonical.program.profileId, canonical.program.id);
+        if (options.repository.current(canonical.program.profileId) === null) {
+          options.repository.setCurrent(canonical.program.profileId, canonical.program.id);
+        } else {
+          options.repository.setHandoff(
+            canonical.program.profileId,
+            canonical.program.id,
+            canonical.program.createdAt,
+          );
+        }
         finalize?.();
         options.client.exec("COMMIT");
         return canonical;
@@ -149,6 +181,10 @@ export function createProgramService(options: CreateProgramServiceOptions): Prog
     },
     list(profileId, cursor, limit) {
       return options.repository.list(profileId, cursor, limit);
+    },
+    pendingHandoff(profileId) {
+      const record = options.repository.pendingHandoff(profileId);
+      return record === null ? null : readDetail(profileId, record.program.id);
     },
     revealDjScript(profileId, programId, segmentId) {
       const segment = options.repository.reveal(

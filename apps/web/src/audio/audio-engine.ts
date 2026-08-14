@@ -43,6 +43,7 @@ interface AudioPreloader {
 }
 
 interface CreateAudioEngineOptions {
+  activateProgramHandoff?: (profileId: string, programId: string) => Promise<ProgramDetail>;
   audio?: AudioElementLike;
   voiceAudio?: AudioElementLike;
   checkpointIntervalMs?: number;
@@ -159,6 +160,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   let expectedSource: string | undefined;
   let previewContext: PreviewContext | undefined;
   let queuedPreview: PreviewAudioOptions | undefined;
+  let scheduledProgramHandoff: ProgramDetail | undefined;
   let voiceActive = false;
   let voiceRamp: ReturnType<typeof setInterval> | undefined;
   let userVolume = 1;
@@ -785,6 +787,23 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     await checkpoint(
       reason === "error" ? "failed" : snapshot.state === "playing" ? "playing" : "paused",
     );
+    if (
+      reason === "ended" &&
+      scheduledProgramHandoff !== undefined &&
+      scheduledProgramHandoff.program.profileId === profileId
+    ) {
+      const handoff = scheduledProgramHandoff;
+      try {
+        const activated = await options.activateProgramHandoff?.(profileId, handoff.program.id);
+        if (activated !== undefined) {
+          scheduledProgramHandoff = undefined;
+          await loadProgram(activated, { autoplay: true });
+          return;
+        }
+      } catch {
+        scheduledProgramHandoff = undefined;
+      }
+    }
     if (currentIndex >= timeline.length - 1) {
       audio.pause();
       const state = reason === "error" ? "failed" : "completed";
@@ -794,7 +813,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         mediaError: reason === "error" ? "queue_exhausted" : undefined,
       });
       await checkpoint(reason === "error" ? "failed" : "completed");
-      if (reason === "ended" && queuedPreview !== undefined) {
+      if ((reason === "ended" || reason === "next") && queuedPreview !== undefined) {
         const queued = queuedPreview;
         queuedPreview = undefined;
         update({ queuedPreview: undefined });
@@ -813,7 +832,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       reason === "error";
     const nextIndex = currentIndex + 1;
     setCurrentItem(nextIndex, 0, shouldPlay ? "buffering" : "paused");
-    if (reason === "ended" && queuedPreview !== undefined) {
+    if ((reason === "ended" || reason === "next") && queuedPreview !== undefined) {
       const queued = queuedPreview;
       queuedPreview = undefined;
       update({ queuedPreview: undefined });
@@ -1063,17 +1082,53 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   };
   window.addEventListener("pagehide", onPageHide);
 
+  async function activateProfile(nextProfileId: string): Promise<void> {
+    if (profileId === nextProfileId) return;
+    if (profileId !== undefined) await yieldPlayback();
+    profileId = nextProfileId;
+    const epoch = lease.start(nextProfileId);
+    update({
+      ownership: epoch === undefined ? "passive" : "active",
+      profileId: nextProfileId,
+      leaseEpoch: epoch,
+    });
+  }
+
+  async function loadProgram(
+    nextProgram: ProgramDetail,
+    loadOptions: LoadProgramOptions,
+  ): Promise<void> {
+    await stopPreview();
+    await activateProfile(nextProgram.program.profileId);
+    if (program?.program.id === nextProgram.program.id) return;
+    if (program !== undefined && lease.getState().ownership === "active") await yieldPlayback();
+    program = nextProgram;
+    timeline =
+      nextProgram.program.playbackMode === "voice-overlay"
+        ? nextProgram.timeline.filter((item) => item.kind === "track")
+        : nextProgram.timeline;
+    triggeredVoiceCues.clear();
+    retriedMediaItems.clear();
+    audioResolutions.clear();
+    profileId = nextProgram.program.profileId;
+    currentIndex = 0;
+    update({
+      profileId,
+      programId: nextProgram.program.id,
+      state: "ready",
+      currentIndex: 0,
+      itemCount: timeline.length,
+      positionMs: 0,
+      durationMs: timeline[0]?.durationMs ?? 0,
+      checkpointError: false,
+      mediaError: undefined,
+    });
+    await restore(nextProgram, loadOptions.autoplay);
+  }
+
   return {
     async activateProfile(nextProfileId) {
-      if (profileId === nextProfileId) return;
-      if (profileId !== undefined) await yieldPlayback();
-      profileId = nextProfileId;
-      const epoch = lease.start(nextProfileId);
-      update({
-        ownership: epoch === undefined ? "passive" : "active",
-        profileId: nextProfileId,
-        leaseEpoch: epoch,
-      });
+      await activateProfile(nextProfileId);
     },
     async clearProgram() {
       await stopPreview();
@@ -1096,38 +1151,16 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       listeners.clear();
     },
     getSnapshot: () => snapshot,
+    clearProgramHandoff() {
+      scheduledProgramHandoff = undefined;
+    },
     async loadProgram(nextProgram, loadOptions: LoadProgramOptions) {
-      await stopPreview();
-      await this.activateProfile(nextProgram.program.profileId);
-      if (program?.program.id === nextProgram.program.id) return;
-      if (program !== undefined && lease.getState().ownership === "active") await yieldPlayback();
-      program = nextProgram;
-      timeline =
-        nextProgram.program.playbackMode === "voice-overlay"
-          ? nextProgram.timeline.filter((item) => item.kind === "track")
-          : nextProgram.timeline;
-      triggeredVoiceCues.clear();
-      retriedMediaItems.clear();
-      audioResolutions.clear();
-      profileId = nextProgram.program.profileId;
-      currentIndex = 0;
-      update({
-        profileId,
-        programId: nextProgram.program.id,
-        state: "ready",
-        currentIndex: 0,
-        itemCount: timeline.length,
-        positionMs: 0,
-        durationMs: timeline[0]?.durationMs ?? 0,
-        checkpointError: false,
-        mediaError: undefined,
-      });
-      await restore(nextProgram, loadOptions.autoplay);
+      await loadProgram(nextProgram, loadOptions);
     },
     async syncProgram(nextProgram) {
-      await this.activateProfile(nextProgram.program.profileId);
+      await activateProfile(nextProgram.program.profileId);
       if (program !== undefined || snapshot.preview !== undefined) return;
-      await this.loadProgram(nextProgram, { autoplay: false });
+      await loadProgram(nextProgram, { autoplay: false });
     },
     async next() {
       if (previewContext !== undefined) {
@@ -1160,6 +1193,9 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         },
       });
       return Promise.resolve();
+    },
+    scheduleProgramHandoff(nextProgram) {
+      scheduledProgramHandoff = nextProgram;
     },
     async prepareForProfileSwitch() {
       await yieldPlayback();

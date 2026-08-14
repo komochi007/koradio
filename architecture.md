@@ -190,7 +190,7 @@ sequenceDiagram
 
 阻断失败不得改变正在播放的旧节目。文字降级 DJ 只保留在 Program segment；只有取得真实音频引用的 `dj` segment 才进入 PlaybackTimeline。
 
-Radio turn 持久化用户消息、路由决策、助手消息和可选单曲或最多 5 首推荐引用；每个 Profile 只保留最近 50 个 turn。普通消息不会创建 generation job。单曲与多首推荐解析出的歌曲可被 Browser Audio Engine 作为临时 DJ 点播播放，点播快照不写入 Program、播放历史或持久队列，结束后恢复原节目位置。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。活动 Planner 在桌面启动和 Settings 测试时都从当前 Profile 的偏好、`EffectiveTaste`、最近 20 期历史和最多 120 首可播放曲目摘要构造同一份不落库的 8 首节目骨架 context，验证真实结构化输出；该检测不切换 Provider、不写入 Program、历史或日志正文。Programs 不直接读取 Library 表：它通过同一 Library application Port 获取上述当前 Profile 曲目摘要，按活动 Planner 的有序 intent 解析并最多补选两轮；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败。DeepSeek 首次结构化输出无效或被截断时，仅在同一 Provider 内以精简的合法计划契约重试一次；generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
+Radio turn 持久化用户消息、路由决策、助手消息和可选单曲或最多 5 首推荐引用；每个 Profile 只保留最近 50 个 turn。只有明确节目、歌单、8～12 首、重新规划或替换当前节目的请求能创建 generation job；“其他、类似、再推荐”等追问固定为推荐，不得被 Provider 或本地兜底升级为节目。Radio context 带入当前节目标题、场景与曲目摘要，使推荐有明确参照；追问“最推荐哪首”只能引用最近一次推荐列表。单曲与多首推荐解析出的歌曲可被 Browser Audio Engine 作为临时 DJ 点播播放，点播快照不写入 Program、播放历史或持久队列；`PLAY NEXT` 在手动和自然切歌路径都优先消费，结束后恢复原节目队列。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，活动 Job 可由 REST Snapshot 在 Radio 重新挂载时恢复。完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。活动 Planner 在桌面启动和 Settings 测试时都从当前 Profile 的偏好、`EffectiveTaste`、最近 20 期历史和最多 120 首可播放曲目摘要构造同一份不落库的 8 首节目骨架 context，验证真实结构化输出；该检测不切换 Provider、不写入 Program、历史或日志正文。Programs 不直接读取 Library 表：它通过同一 Library application Port 获取上述当前 Profile 曲目摘要，按活动 Planner 的有序 intent 解析并最多补选两轮；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败。已有当前节目时，成功生成的新 Program 与 `program_handoff` 在同一事务提交，旧 `current_program` 保持不变；Audio Engine 只在当前曲自然结束时调用原子 activate 命令，或响应用户的显式立即切换。DeepSeek 首次结构化输出无效或被截断时，仅在同一 Provider 内以精简的合法计划契约重试一次；generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
 
 反馈记忆流：`UI intent → explicit FeedbackEvent → TasteProjection → merge TasteOverrides → EffectiveTaste → next Planner context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。
@@ -336,6 +336,7 @@ erDiagram
 | `playlist_source` | Library | `id` + `profileId` + source identity；导入统计与 `originMode` |
 | `program` | Programs | `id` + `profileId`；带 `originMode` 的节目快照 |
 | `current_program` | Programs | `profileId`；可空的当前节目指针，空值不得从历史推断 |
+| `program_handoff` | Programs | `profileId`；一档已就绪但尚未播放的节目，最多一条并在 activation 后删除 |
 | `program_generation_job` | Programs | `jobId` + `profileId` + idempotency key；持久阶段、终态和事件 sequence，不保存场景草稿 |
 | `program_track` | Programs | `programId`、position、`trackId`；有序 Library 曲目引用 |
 | `dj_script_segment` | Programs | `id` + `programId`；文本、时序、TTS ref |
@@ -347,7 +348,7 @@ erDiagram
 - Programs 通过 Playback 的公开事务写入 Port，在单个事务中提交 Program、ordered track refs、segments 与 timeline items，避免半成品节目；文字 DJ segment 不生成 timeline item。
 - checkpoint 写入校验 Program/timeline ownership、item position、时长和 `leaseEpoch`；低于已保存 epoch 的写入被拒绝，`completed` 只允许在最后一个 item 的精确结束边界，并与 Program 完成状态同事务提交。
 - Programs 历史详情只通过 Library 的公开 API 重建曲目元数据，不直接读取 Library owner 表。
-- Program 生成成功时在同一事务更新 `current_program`。永久删除由 Programs application use case 协调：先暂存独占 TTS，再提交关系清理与指针清空，失败恢复文件，提交后物理清理。
+- Program 生成成功时在同一事务提交 Program、Job 成功终态，并在没有当前节目时更新 `current_program`；已有当前节目时改写 `program_handoff`。手动 `SWITCH NOW` 和当前曲自然结束都通过同一 activation 事务更新 `current_program` 并删除 handoff。永久删除由 Programs application use case 协调：先暂存独占 TTS，再提交关系清理与指针清空，失败恢复文件，提交后物理清理。
 - `program.deleted` 通过统一 event envelope 发布；其他标签页必须停止相同 Program、释放播放所有权并刷新派生视图。
 - 播放 URL 是短期资源；历史以 source identity 恢复，FileStore 只返回 data root 内的安全相对引用。
 - 头像上传 adapter 只返回 data root 内受控 `avatarRef`，拒绝任意 URL、绝对路径或裸文件名。

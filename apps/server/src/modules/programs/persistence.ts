@@ -93,6 +93,7 @@ export interface ProgramRecord {
 }
 
 export interface ProgramRepository {
+  activateHandoff(profileId: string, programId: string): ProgramRecord | null;
   current(profileId: string): ProgramRecord | null;
   delete(
     profileId: string,
@@ -104,6 +105,7 @@ export interface ProgramRepository {
   insert(record: ProgramRecord): void;
   list(profileId: string, cursor?: string, limit?: number): ProgramListResponse;
   markCompleted(profileId: string, programId: string): Program | null;
+  pendingHandoff(profileId: string): ProgramRecord | null;
   reveal(
     profileId: string,
     programId: string,
@@ -111,6 +113,7 @@ export interface ProgramRepository {
     revealedAt: string,
   ): DjScriptSegment | null;
   setCurrent(profileId: string, programId: string): void;
+  setHandoff(profileId: string, programId: string, createdAt: string): void;
   ttsReferences(programId: string): string[];
   ttsReferenceUseCount(reference: string): number;
 }
@@ -185,6 +188,12 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
     JOIN program ON program.id = current_program.program_id
     WHERE current_program.profile_id = ?
   `);
+  const findPendingProgram = client.prepare(`
+    SELECT program.*
+    FROM program_handoff
+    JOIN program ON program.id = program_handoff.program_id
+    WHERE program_handoff.profile_id = ?
+  `);
   const findProgramTracks = client.prepare(`
     SELECT track_id FROM program_track WHERE program_id = ? ORDER BY position ASC
   `);
@@ -242,6 +251,14 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
     VALUES (?, ?)
     ON CONFLICT(profile_id) DO UPDATE SET program_id = excluded.program_id
   `);
+  const upsertHandoff = client.prepare(`
+    INSERT INTO program_handoff (profile_id, program_id, created_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(profile_id) DO UPDATE SET program_id = excluded.program_id, created_at = excluded.created_at
+  `);
+  const deleteHandoff = client.prepare(
+    "DELETE FROM program_handoff WHERE profile_id = ? AND program_id = ?",
+  );
   const listTtsReferences = client.prepare(`
     SELECT DISTINCT tts_audio_ref
     FROM dj_script_segment
@@ -292,6 +309,14 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
   }
 
   return {
+    activateHandoff(profileId, programId) {
+      const value = findPendingProgram.get(profileId);
+      const row = value === undefined ? undefined : parseSqliteRow(programRowSchema, value);
+      if (row === undefined || row.id !== programId) return null;
+      upsertCurrent.run(profileId, programId);
+      deleteHandoff.run(profileId, programId);
+      return readRecord(row);
+    },
     current(profileId) {
       const value = findCurrentProgram.get(profileId);
       const row = value === undefined ? undefined : parseSqliteRow(programRowSchema, value);
@@ -300,6 +325,7 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
     delete(profileId, programId, cleanup) {
       deleteCheckpoint.run(programId);
       const cleared = deleteCurrent.run(profileId, programId).changes > 0;
+      deleteHandoff.run(profileId, programId);
       deleteTimeline.run(programId);
       deleteTracks.run(programId);
       deleteCitations.run(programId);
@@ -371,6 +397,11 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
         ...(hasNext ? { nextCursor: encodeCursor(offset + limit) } : {}),
       });
     },
+    pendingHandoff(profileId) {
+      const value = findPendingProgram.get(profileId);
+      const row = value === undefined ? undefined : parseSqliteRow(programRowSchema, value);
+      return row === undefined ? null : readRecord(row);
+    },
     markCompleted(profileId, programId) {
       updateCompleted.run(profileId, programId);
       const value = findProgram.get(profileId, programId);
@@ -386,6 +417,9 @@ export function createProgramRepository(client: DatabaseSync): ProgramRepository
     },
     setCurrent(profileId, programId) {
       upsertCurrent.run(profileId, programId);
+    },
+    setHandoff(profileId, programId, createdAt) {
+      upsertHandoff.run(profileId, programId, createdAt);
     },
     ttsReferences(programId) {
       return parseSqliteRows(ttsReferenceRowSchema, listTtsReferences.all(programId)).map(

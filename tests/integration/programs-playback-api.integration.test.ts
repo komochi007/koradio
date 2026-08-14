@@ -8,6 +8,7 @@ import {
   playbackCheckpointSchema,
   profileSchema,
   programDetailSchema,
+  programHandoffResponseSchema,
   programListResponseSchema,
   sessionBootstrapResponseSchema,
   tasteResponseSchema,
@@ -206,6 +207,34 @@ describe("S3-04 Programs and Playback REST", () => {
     openApps.push(app);
     const session = await bootstrapSession(app);
     const headers = authorizedHeaders(session);
+
+    const handoffResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/profiles/${profile.id}/program-handoff`,
+      headers,
+    });
+    expect(handoffResponse.statusCode).toBe(200);
+    expect(programHandoffResponseSchema.parse(handoffResponse.json<unknown>()).program).toEqual(
+      detail,
+    );
+    const activateHandoffResponse = await app.inject({
+      method: "POST",
+      url: `/api/v1/profiles/${profile.id}/program-handoff/${ids.program}/activate`,
+      headers,
+    });
+    expect(activateHandoffResponse.statusCode).toBe(200);
+    expect(programDetailSchema.parse(activateHandoffResponse.json<unknown>())).toEqual(detail);
+    expect(
+      programHandoffResponseSchema.parse(
+        (
+          await app.inject({
+            method: "GET",
+            url: `/api/v1/profiles/${profile.id}/program-handoff`,
+            headers,
+          })
+        ).json<unknown>(),
+      ).program,
+    ).toBeNull();
 
     const listResponse = await app.inject({
       method: "GET",

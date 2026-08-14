@@ -318,19 +318,20 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 **功能描述**
 
-用户可在 Radio 主播放页底部输入框与 DJ 持续交流。系统先通过设备 Settings 选定的 Codex 或 DeepSeek 判断本轮属于闲聊、需要澄清、单曲推荐还是完整节目；只有用户明确表达听歌意图时才解析歌曲或创建节目，避免普通对话意外替换正在播放的内容。
+用户可在 Radio 主播放页底部输入框与 DJ 持续交流。系统先通过设备 Settings 选定的 Codex 或 DeepSeek 判断本轮属于闲聊、需要澄清、单曲、3～5 首推荐还是完整节目；只有明确说出“节目、歌单、8～12 首、重新规划”或“替换当前节目”才创建完整节目。`还有哪些`、`类似的`、`再推荐一些`、`有没有其他推荐`默认只返回点播推荐，不得改写当前节目。
 
 **用户操作路径、界面元素、交互逻辑、数据变化**
 
 - 用户发送任意文字 → 系统只短暂锁定本次发送并结合最近对话完成意图路由 → transcript 追加用户消息和本轮结果，旧节目与输入保持可用。
 - 路由为 `chat` → 系统返回普通助手回复，不访问音乐搜索或节目生成；路由为 `clarify` → 系统提出一个最小澄清问题，等待用户继续回答。
 - 路由为 `single_track` → 系统按明确约束解析一首可播放歌曲，返回含推荐理由、`PLAY NOW` 与 `PLAY NEXT` 的卡片，不替换当前 Program。
-- 路由为 `program` → 系统读取 `EffectiveTaste`、近 10 期节目歌曲、当前时间、`ProfilePreferences`、最近对话和最多 500 首可播放 Live 音乐库摘要，创建默认 8 首、可明确指定为 8～12 首的异步节目任务。
+- 路由为 `recommendations` → 系统返回 3～5 首已完成音频解析的歌曲卡片；“最推荐哪首”只能从最近一次推荐列表中选择，不能新造一首未在列表内的歌曲。
+- 路由为 `program` → 系统读取 `EffectiveTaste`、近 20 期节目歌曲、当前时间、`ProfilePreferences`、最近对话和最多 120 首可播放 Live 音乐库摘要，创建默认 8 首、可明确指定为 8～12 首的异步节目任务。
 - Planner 返回多于目标数量的有序候选 → Backend 依次执行 Profile ownership、可播放性、原始歌词语言、近 10 期精确曲目和本期艺人去重校验，并最多补选两轮；少于目标数量时整次失败，不提交残缺节目。
 - 每期选择 1～2 首 featured track 生成 45～90 秒深讲，其余开场、转场和结束语保持克制。可核验的背景事实仅来自非阻断音乐事实 Provider 并显示来源；取不到来源时只做音乐性、歌词主题和场景分析。
 - Qwen3-TTS 可用且生成成功 → Program 以 `voice-overlay` 模式保存 DJ 音频；Audio Engine 在音乐播放中叠加串讲并 duck 到 28%，而不是把每段语音当成独立歌曲顺序播放。TTS 失败时保留完整文字 DJ，歌曲继续播放。
-- 当前已有节目时，旧节目在新节目生成期间继续播放；生成失败时保持旧节目不变；新节目完整提交后保存旧 checkpoint、停止旧时间线并原子切换。
-- 数据变化：每轮写入 Profile-owned `RadioMessage` 与 `RadioTurn`；单曲和多首推荐卡片只引用既有或归一化歌曲，临时点播快照只保存在 Browser Audio Engine；只有完整节目成功时新增 `Program`、`DjScriptSegment`、`DjCitation`、`MusicTrack` 与已提交的 `PlaybackTimeline`。每个 Profile 最多保留最近 50 个 turn（100 条消息），清空需二次确认。
+- 当前已有节目时，旧节目在新节目生成期间继续播放；生成成功后新节目以持久的“待切换节目”保存，Radio 显示曲目数、首曲和 `SWITCH NOW`，默认在当前歌曲自然结束后原子切换。用户明确点 `SWITCH NOW` 才立即切换；生成失败时保持旧节目不变。切出 Radio 或重启后，活动任务和待切换节目都从持久状态恢复。
+- 数据变化：每轮写入 Profile-owned `RadioMessage` 与 `RadioTurn`；单曲和多首推荐卡片只引用既有或归一化歌曲，临时点播快照只保存在 Browser Audio Engine；`PLAY NEXT` 无论手动下一首还是自然结束都先播放该临时点播，结束后回到原节目的下一项。只有完整节目成功时新增 `Program`、`DjScriptSegment`、`DjCitation`、`MusicTrack` 与已提交的 `PlaybackTimeline`；已有当前节目时同时写入 `ProgramHandoff`，直到切换。每个 Profile 最多保留最近 50 个 turn（100 条消息），清空需二次确认。
 
 **用户流程**
 
@@ -342,9 +343,9 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
   └─ 输入有效 → 读取最近对话并路由
        ├─ chat → 追加助手回复
        ├─ clarify → 追加澄清问题并等待下一轮
-       ├─ single_track → 解析 1 首 → 返回 PLAY NOW / PLAY NEXT 卡片
+       ├─ single_track / recommendations → 解析可播放歌曲 → 返回 PLAY NOW / PLAY NEXT 卡片
        └─ program → 创建 generation job，旧节目继续播放
-              ├─ 8～12 首目标全部满足 → 事实增强 → TTS → 原子提交并切换
+              ├─ 8～12 首目标全部满足 → 事实增强 → TTS → 原子提交；已有节目时待当前曲自然结束再切换，也可 SWITCH NOW
               └─ 约束、补选、Planner 或资源失败 → 保留旧节目并提示重试
 ```
 
@@ -355,12 +356,12 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 空闲 | Radio 已连接 | 用户发送消息 | 输入框可编辑，DJ 状态按当前播放显示 |
 | 校验失败 | 输入为空或超过限制 | 用户修改输入 | 输入框下方显示错误 |
 | 路由中 | 用户发送有效消息 | 活动 AI 返回、失败或超时 | 仅本次发送短暂禁用，旧节目继续播放 |
-| 对话中 | 路由为闲聊或澄清 | 用户继续发送 | transcript 追加文本，不出现节目任务 |
+| 对话中 | 路由为闲聊、澄清或推荐 | 用户继续发送 | transcript 按时间顺序追加文本或点播卡片，不出现节目任务 |
 | 单曲结果 | 路由为单曲 | 用户播放、排到下一首或继续对话 | transcript 展示可操作歌曲卡片 |
 | 规划中 | 路由为完整节目 | 活动 Planner 返回、失败或超时 | transcript 显示 `Tuning your station...`，输入仍可用 |
 | 搜歌中 | Codex 返回候选策略 | 搜歌成功或失败 | 队列区显示骨架项 |
 | 合成中 | 歌曲候选可用且有 DJ 文案 | TTS 成功或失败 | DJ 状态保持 `THINKING`；TTS 段实际播放时 Detail Sheet 显示 `SPEAKING` |
-| 可提交 | 严格达到目标歌曲数且串讲数据完整 | 原子提交成功或失败 | 旧节目继续播放；提交成功后一次性切换 |
+| 待切换 | 新节目已原子提交且已有当前节目 | 当前曲自然结束、用户点击 `SWITCH NOW` 或节目被删除 | transcript 保留“已就绪”状态；旧节目继续播放，显示可预测的切换方式 |
 | 播放中 | 音频开始播放 | 暂停、结束或失败 | 播放按钮切换为暂停 |
 | 失败 | 活动 Planner、搜歌或播放失败 | 用户重试或修改输入 | 显示错误提示和重试入口 |
 
@@ -909,7 +910,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 |------|------|----------|----------|----------|
 | 档案管理 | 创建、读取、选择、更新本地档案 | profile 字段 | 当前 profile | 本地目录不可写时阻止保存 |
 | Radio turn | 调用活动 Codex 或 DeepSeek 路由并回复 | 用户消息、最近 50 个 turn、`EffectiveTaste`、当前节目摘要 | `chat/clarify/single_track/program` 决策与助手消息 | 失败时保留消息和旧节目并允许重试 |
-| 节目规划 | 调用活动 Codex 或 DeepSeek 生成节目计划 | 明确节目需求、`EffectiveTaste`、近 10 期歌曲、时间、偏好、最多 500 首库内摘要与 8～12 首目标 | 超额有序 `trackIntents`、featured tracks 与结构化 scripts | 约束或补选后不足目标时保留旧节目，不提交残缺结果 |
+| 节目规划 | 调用活动 Codex 或 DeepSeek 生成节目计划 | 明确节目需求、`EffectiveTaste`、近 20 期歌曲、时间、偏好、最多 120 首库内摘要与 8～12 首目标 | 超额有序 `trackIntents`、featured tracks 与结构化 scripts | 约束或补选后不足目标时保留旧节目，不提交残缺结果 |
 | 音乐事实增强 | 查询 MusicBrainz/Wikimedia 等可信来源 | featured track 的歌曲、艺人和专辑元数据 | 有来源 URL 的短事实与归因 | 网络、限流或无匹配时只使用无事实的音乐性/主题分析 |
 | 意图解析与音乐搜索 | 通过 Library application API 解析库内 ID，或调用网易云 API 搜索探索歌曲和播放链接 | 有序 library/discovery intent | 稳定去重的歌曲元数据、播放 URL | 单 intent 失败时跳过；全部失败时保留旧节目 |
 | TTS 生成 | 调用持久化 bundled Python/MLX helper，以固定 Qwen3-TTS 8-bit 模型生成完整 WAV | 完整 DJ 文案、语言、声音风格 | 受控音频引用、时长；无 marker 时估算时间 | 失败时保留完整文字 DJ |
@@ -931,6 +932,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | PlaylistSource | id、profileId、source、sourcePlaylistId、title、originMode | 保存歌单来源、导入统计和 Live/Demo 来源 |
 | Program | id、profileId、scenarioText、title、status、trackIds、originMode、playbackMode、createdAt | 保存一次电台节目；新节目使用 `voice-overlay`，旧数据缺失时按 `sequential` 读取 |
 | CurrentProgram | profileId、programId?、updatedAt | 保存每个 Profile 的当前节目指针；空指针不得回退到历史第一条 |
+| ProgramHandoff | profileId、programId、createdAt | 保存每个 Profile 最多一档已就绪、尚未切换的新节目；生成成功不覆盖已有 `CurrentProgram` |
 | DjScriptSegment | id、programId、type、language、text、displayText、estimatedTiming、ttsAudioRef?、citations? | 保存开场、转场、结束语；1～2 个 featured segment 可含可信来源，文字降级仍保留在这里 |
 | DjCitation | id、segmentId、title、url、provider | 保存串讲实际使用的来源链接与展示归因，不保存大段外部原文 |
 | RadioMessage / RadioTurn | id、profileId、role、content、decision、trackId?、createdAt | 保存 Profile 级持续对话、意图决策和可选单曲引用；每个 Profile 最多保留最近 50 个 turn |
@@ -955,7 +957,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | `POST /api/v1/profile-avatars` | 接收单个 `multipart/form-data` 头像文件，校验真实图片类型、大小与受控文件策略后返回 `avatarRef` |
 | `GET/PUT /api/v1/profiles/current` | 读取或切换当前 Profile；切换命令显式携带 `profileId`，并按取消旧生成、丢弃迟到事件、保存并停止旧播放的顺序协调 |
 | `GET/PATCH /api/v1/profiles/:profileId/preferences` | 读取或更新指定 Profile 的主题与 DJ 偏好 |
-| `POST /api/v1/profiles/:profileId/radio-turns` | 提交一轮 Radio 消息，返回 `chat/clarify/single_track/program` snapshot；创建类命令要求 `Idempotency-Key` |
+| `POST /api/v1/profiles/:profileId/radio-turns` | 提交一轮 Radio 消息，返回 `chat/clarify/single_track/recommendations/program` snapshot；创建类命令要求 `Idempotency-Key` |
 | `GET /api/v1/profiles/:profileId/radio-turns/:turnId` | 轮询单轮路由、单曲解析或节目任务关联状态 |
 | `GET/DELETE /api/v1/profiles/:profileId/radio-conversation` | 读取最近 50 个 turn；显式确认后清空当前 Profile 对话 |
 | `POST /api/v1/profiles/:profileId/radio-messages/:messageId/speech-generations` | 幂等创建单条助手消息的 Qwen 朗读任务，立即返回 `202 + jobId`，不自动播放 |
@@ -964,6 +966,9 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | `POST /api/v1/profiles/:profileId/feedback-events` | 使用 `Idempotency-Key` 追加固定枚举 FeedbackEvent；成功后更新 projection 并发布 `feedback.persisted` |
 | `GET /api/v1/profiles/:profileId/programs` | 分页读取指定 Profile 的 Program 历史摘要；详情字段按需加载 |
 | `GET /api/v1/profiles/:profileId/programs/current` | 读取当前节目指针对应的完整节目；空指针返回空结果，不从历史推断 |
+| `GET /api/v1/profiles/:profileId/program-generations/active` | 读取当前 Profile 的活动节目任务；用于 Radio 跨页面或重启后恢复真实进度 |
+| `GET /api/v1/profiles/:profileId/program-handoff` | 读取已就绪的待切换节目；没有时返回空结果 |
+| `POST /api/v1/profiles/:profileId/program-handoff/:programId/activate` | 原子激活指定待切换节目；只供当前曲自然结束或用户显式 `SWITCH NOW` 调用 |
 | `GET /api/v1/profiles/:profileId/programs/:programId` | 读取指定 Profile 拥有的 Program、DJ segments、歌曲元数据和判别式 timeline 详情 |
 | `DELETE /api/v1/profiles/:profileId/programs/:programId` | 永久删除节目；当前节目同时停止播放并清空指针，返回音频删除、保留和待清理数量 |
 | `GET /api/v1/profiles/:profileId/playback` | 读取指定 Profile 最新的低频 Playback checkpoint 与对应 timeline item；无 checkpoint 返回未找到 |

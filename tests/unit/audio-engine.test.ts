@@ -649,6 +649,97 @@ describe("Audio Engine", () => {
     await engine.destroy();
   });
 
+  it("plays a queued single-track preview when the user skips to the next item", async () => {
+    const audio = new FakeAudio();
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: true });
+    await engine.queuePreviewNext?.({
+      kind: "track",
+      previewId: "00000000-0000-4000-8000-000000000096",
+      resolvedAudioRef: "https://media.example.test/manual-next-preview.mp3",
+      durationMs: 12_000,
+    });
+
+    await engine.next();
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot().preview?.previewId).toBe("00000000-0000-4000-8000-000000000096");
+    });
+    audio.emit("ended");
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot()).toMatchObject({ currentIndex: 1, state: "playing" });
+    });
+    await engine.destroy();
+  });
+
+  it("plays a queued single-track preview when the user skips past the final program item", async () => {
+    const audio = new FakeAudio();
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: false });
+    await engine.next();
+    await engine.next();
+    await engine.queuePreviewNext?.({
+      kind: "track",
+      previewId: "00000000-0000-4000-8000-000000000095",
+      resolvedAudioRef: "https://media.example.test/manual-final-preview.mp3",
+      durationMs: 12_000,
+    });
+
+    await engine.next();
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot()).toMatchObject({
+        state: "completed",
+        preview: { previewId: "00000000-0000-4000-8000-000000000095", state: "playing" },
+      });
+    });
+    await engine.destroy();
+  });
+
+  it("switches a scheduled program only when the current item ends naturally", async () => {
+    const audio = new FakeAudio();
+    const nextProgram: ProgramDetail = {
+      ...program,
+      program: {
+        ...program.program,
+        id: "00000000-0000-4000-8000-000000000094",
+        title: "Next Session",
+      },
+    };
+    const activateProgramHandoff = vi.fn(() => Promise.resolve(nextProgram));
+    const engine = createAudioEngine({
+      activateProgramHandoff,
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: true });
+    engine.scheduleProgramHandoff?.(nextProgram);
+
+    await engine.next();
+    expect(activateProgramHandoff).not.toHaveBeenCalled();
+    expect(engine.getSnapshot().programId).toBe(programId);
+
+    audio.emit("ended");
+    await vi.waitFor(() => {
+      expect(activateProgramHandoff).toHaveBeenCalledWith(profileId, nextProgram.program.id);
+      expect(engine.getSnapshot()).toMatchObject({
+        programId: nextProgram.program.id,
+        currentIndex: 0,
+      });
+    });
+    await engine.destroy();
+  });
+
   it("fences preview completions that arrive after the preview was stopped", async () => {
     const audio = new FakeAudio();
     let resolvePlay: (() => void) | undefined;

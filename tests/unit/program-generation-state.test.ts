@@ -136,7 +136,7 @@ describe("Radio program generation state", () => {
     });
   });
 
-  it("drops out-of-order events and atomically swaps only on program.committed", () => {
+  it("drops out-of-order events and keeps the current program until handoff activation", () => {
     const oldProgram = program("00000000-0000-4000-8000-000000000103", "Old Session");
     const newProgram = program("00000000-0000-4000-8000-000000000107", "New Session");
     let state = reduceProgramGeneration(
@@ -186,7 +186,12 @@ describe("Radio program generation state", () => {
       },
     });
 
+    expect(state.active?.stage).toBe("resolving_tracks");
+    expect(state.program).toBe(oldProgram);
+
+    state = reduceProgramGeneration(state, { type: "generation.ready" });
     expect(state.active).toBeUndefined();
-    expect(state.program).toBe(newProgram);
+    expect(state.program).toBe(oldProgram);
+    expect(state.program).not.toBe(newProgram);
   });
 });

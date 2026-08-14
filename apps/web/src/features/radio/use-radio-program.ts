@@ -4,6 +4,8 @@ import { useEffect, useReducer, useRef, useState } from "react";
 
 import {
   getLatestProgram,
+  getActiveProgramGeneration,
+  getProgramHandoff,
   getProgram,
   getProgramGeneration,
   initialProgramGenerationState,
@@ -42,9 +44,7 @@ export function useRadioProgram({
   const [autoplayProgramId, setAutoplayProgramId] = useState<string>();
   const [validationError, setValidationError] = useState<string>();
   const [turnError, setTurnError] = useState<string>();
-  const activeRef = useRef(generation.active);
   const resolvingProgramRef = useRef<string | undefined>(undefined);
-  activeRef.current = generation.active;
 
   const latestProgram = useQuery({
     queryKey: ["programs", "latest", profileId],
@@ -54,6 +54,22 @@ export function useRadioProgram({
     queryKey: ["radio-conversation", profileId],
     queryFn: () => getRadioConversation(transport, profileId),
   });
+  const activeGeneration = useQuery({
+    queryKey: ["program-generation", "active", profileId],
+    queryFn: () => getActiveProgramGeneration(transport, profileId),
+    refetchInterval: (query) => (query.state.data?.active === null ? false : 350),
+  });
+
+  useEffect(() => {
+    const active = activeGeneration.data?.active;
+    if (active === null || active === undefined || generation.active !== undefined) return;
+    const turn = [...(conversation.data?.turns ?? [])]
+      .reverse()
+      .find((candidate) => candidate.programJobId === active.jobId);
+    const scenarioText = turn?.userMessage.content ?? "正在准备一档新节目";
+    setPendingScenario(scenarioText);
+    dispatch({ type: "generation.accepted", jobId: active.jobId, scenarioText });
+  }, [activeGeneration.data?.active, conversation.data?.turns, generation.active]);
 
   useEffect(() => {
     if (latestProgram.data !== undefined) {
@@ -64,7 +80,6 @@ export function useRadioProgram({
   useEffect(
     () =>
       eventBus.subscribe((event) => {
-        const active = activeRef.current;
         if (event.eventType === "program.deleted" && event.profileId === profileId) {
           queryClient.removeQueries({
             queryKey: ["programs", "detail", profileId, event.payload.programId],
@@ -76,17 +91,10 @@ export function useRadioProgram({
           }
           return;
         }
-        if (
-          active !== undefined &&
-          event.eventType === "program.committed" &&
-          event.profileId === profileId &&
-          event.correlationId === active.jobId &&
-          event.sequence > active.sequence
-        ) {
-          setDraft("");
-          setPendingScenario(undefined);
-          setAutoplayProgramId(event.payload.program.id);
-          queryClient.setQueryData(["programs", "latest", profileId], event.payload);
+        if (event.eventType === "program.committed" && event.profileId === profileId) {
+          void queryClient.invalidateQueries({ queryKey: ["program-handoff", profileId] });
+          void queryClient.invalidateQueries({ queryKey: ["programs", "history", profileId] });
+          return;
         }
         dispatch({ type: "generation.event", event, profileId });
       }),
@@ -128,12 +136,21 @@ export function useRadioProgram({
         return;
       }
       resolvingProgramRef.current = snapshot.programId;
-      void queryClient
-        .fetchQuery({
-          queryKey: ["programs", "detail", profileId, snapshot.programId],
-          queryFn: () => getProgram(transport, profileId, snapshot.programId ?? ""),
+      void getProgramHandoff(transport, profileId)
+        .then((handoff) => {
+          if (handoff.program?.program.id === snapshot.programId) {
+            setDraft("");
+            setPendingScenario(undefined);
+            dispatch({ type: "generation.ready" });
+            return undefined;
+          }
+          return queryClient.fetchQuery({
+            queryKey: ["programs", "detail", profileId, snapshot.programId],
+            queryFn: () => getProgram(transport, profileId, snapshot.programId ?? ""),
+          });
         })
         .then((program) => {
+          if (program === undefined) return;
           setDraft("");
           setPendingScenario(undefined);
           setAutoplayProgramId(program.program.id);

@@ -46,6 +46,7 @@ export interface ProgramGenerationRepository {
     idempotencyKey: string,
     createdAt: string,
   ): CreateProgramGenerationJobResult;
+  active(profileId: string): ProgramGenerationSnapshot | null;
   fail(jobId: string, errorCode: string, updatedAt: string): void;
   get(profileId: string, jobId: string): ProgramGenerationSnapshot | null;
   getById(jobId: string): ProgramGenerationSnapshot | null;
@@ -136,6 +137,9 @@ export function createProgramGenerationRepository(
   }
 
   return {
+    active(profileId) {
+      return read(findActive, profileId);
+    },
     cancelProfile(profileId, updatedAt) {
       cancelProfile.run(updatedAt, profileId);
     },

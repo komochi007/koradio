@@ -71,7 +71,12 @@ export const programGenerationSnapshotSchema = z
     }
   });
 
+export const activeProgramGenerationResponseSchema = z.strictObject({
+  active: programGenerationSnapshotSchema.nullable(),
+});
+
 export type JobAcceptedResponse = z.infer<typeof jobAcceptedResponseSchema>;
 export type AsyncJobSnapshot = z.infer<typeof asyncJobSnapshotSchema>;
 export type ProgramGenerationStage = z.infer<typeof programGenerationStageSchema>;
 export type ProgramGenerationSnapshot = z.infer<typeof programGenerationSnapshotSchema>;
+export type ActiveProgramGenerationResponse = z.infer<typeof activeProgramGenerationResponseSchema>;

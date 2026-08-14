@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type MusicTrack,
   type HealthResponse,
@@ -29,6 +29,7 @@ import {
 import { applyTheme, updateProfilePreferences } from "../profile-preferences/index.js";
 import { resolveTrackAudio } from "../library/index.js";
 import { FeedbackNotice, useFeedback } from "../feedback/index.js";
+import { activateProgramHandoff, getProgramHandoff } from "../programs/index.js";
 import { Brand, PrimaryNavigation } from "../../shared/ui.js";
 import { KoradioAvatar } from "../../shared/avatar.js";
 import type { AppEventBus } from "../../shared/events.js";
@@ -536,9 +537,12 @@ function RadioDialogue({
   audioEngine,
   conversation,
   failure,
+  handoff,
+  handoffPending,
   initialError,
   navigate,
   onConversationCleared,
+  onHandoffActivate,
   onRetry,
   profileId,
   profile,
@@ -555,9 +559,12 @@ function RadioDialogue({
   audioEngine: AudioEngineFacade;
   conversation: RadioTurn[];
   failure: { code: string; scenarioText: string } | undefined;
+  handoff: ProgramDetail | null;
+  handoffPending: boolean;
   initialError: boolean;
   navigate: (path: string) => void;
   onConversationCleared: () => void;
+  onHandoffActivate: () => void;
   onRetry: (scenario?: string) => void;
   profileId: string;
   profile: Profile;
@@ -942,6 +949,16 @@ function RadioDialogue({
             </div>
           </div>
         )}
+        {handoff !== null && (
+          <div className="radio-program-handoff" role="status">
+            <p>NEW SESSION READY · {handoff.program.trackIds.length} TRACKS</p>
+            <strong>{handoff.program.title}</strong>
+            <span>当前歌曲结束后自动切换</span>
+            <button type="button" disabled={handoffPending} onClick={onHandoffActivate}>
+              {handoffPending ? "SWITCHING..." : "SWITCH NOW"}
+            </button>
+          </div>
+        )}
         {turnError !== undefined && pendingTurn === undefined && (
           <p className="radio-dialogue__turn-error" role="alert">
             {turnError}
@@ -1032,6 +1049,22 @@ export function RadioExperience({
     transport,
   });
   const audio = useAudioSnapshot(audioEngine);
+  const handoff = useQuery({
+    queryKey: ["program-handoff", current.profile.id],
+    queryFn: () => getProgramHandoff(transport, current.profile.id),
+  });
+  const handoffActivation = useMutation({
+    mutationFn: () => {
+      const programId = handoff.data?.program?.program.id;
+      if (programId === undefined) throw new Error("Program handoff is unavailable");
+      return activateProgramHandoff(transport, current.profile.id, programId);
+    },
+    onSuccess(nextProgram) {
+      audioEngine.clearProgramHandoff?.();
+      void audioEngine.loadProgram(nextProgram, { autoplay: true });
+      void handoff.refetch();
+    },
+  });
   const playbackState: RadioViewState =
     audio.preview?.kind === "track" && audio.preview.track !== undefined
       ? "playing"
@@ -1228,10 +1261,17 @@ export function RadioExperience({
             audioEngine={audioEngine}
             conversation={radio.conversation}
             failure={radio.failure}
+            handoff={handoff.data?.program ?? null}
+            handoffPending={handoffActivation.isPending}
             initialError={radio.initialError}
             navigate={navigate}
             onConversationCleared={() => {
               radio.clearConversation();
+            }}
+            onHandoffActivate={() => {
+              if (handoff.data?.program !== null && handoff.data?.program !== undefined) {
+                handoffActivation.mutate();
+              }
             }}
             onRetry={(scenario) => {
               if (scenario === undefined) {

@@ -15,6 +15,7 @@ import {
 } from "react";
 
 import { createAudioEngine, type AudioEngineFacade } from "../audio/index.js";
+import { useAudioSnapshot } from "../audio/react.js";
 import {
   createServiceTransport,
   resolveApiOrigin,
@@ -25,6 +26,7 @@ import { SettingsExperience } from "../features/device-settings/index.js";
 import { resolveTrackAudio } from "../features/library/api.js";
 import { applyTheme } from "../features/profile-preferences/index.js";
 import { getCurrentProfile, getProfiles, ProfileExperience } from "../features/profiles/index.js";
+import { activateProgramHandoff, getProgramHandoff } from "../features/programs/index.js";
 import { ConnectingPage, OfflinePage, OfflineSettingsPage, OnlineShellPage } from "./pages.js";
 import { createAppQueryClient, QueryClientProvider } from "./query-client.js";
 import { useAppRouter } from "./router.js";
@@ -102,6 +104,19 @@ function AppComposition({
     enabled: connection.state === "online" || connection.state === "reconnecting",
   });
   const currentTheme = currentProfile.data?.current?.preferences.themeMode;
+  const activeProfileId = currentProfile.data?.current?.profile.id;
+  const audio = useAudioSnapshot(audioEngine);
+  const handoff = useQuery({
+    queryKey: ["program-handoff", activeProfileId],
+    queryFn: () => {
+      if (activeProfileId === undefined)
+        throw new Error("Program handoff requested without a profile");
+      return getProgramHandoff(transport, activeProfileId);
+    },
+    enabled:
+      activeProfileId !== undefined &&
+      (connection.state === "online" || connection.state === "reconnecting"),
+  });
   const consumeReusedScenario = useCallback((): void => {
     setReusedScenario(undefined);
   }, []);
@@ -121,6 +136,31 @@ function AppComposition({
       applyTheme(currentTheme);
     }
   }, [currentTheme]);
+
+  useEffect(() => {
+    const pending = handoff.data?.program;
+    if (pending === null || pending === undefined) {
+      audioEngine.clearProgramHandoff?.();
+      return;
+    }
+    audioEngine.scheduleProgramHandoff?.(pending);
+  }, [audioEngine, handoff.data?.program]);
+
+  useEffect(() => {
+    if (activeProfileId === undefined || audio.programId === undefined) return;
+    void queryClient.invalidateQueries({ queryKey: ["program-handoff", activeProfileId] });
+    void queryClient.invalidateQueries({ queryKey: ["programs", "latest", activeProfileId] });
+  }, [activeProfileId, audio.programId, queryClient]);
+
+  useEffect(
+    () =>
+      eventBus.subscribe((event) => {
+        if (event.eventType !== "program.committed" || event.profileId !== activeProfileId) return;
+        void queryClient.invalidateQueries({ queryKey: ["program-handoff", activeProfileId] });
+        void queryClient.invalidateQueries({ queryKey: ["programs", "history", activeProfileId] });
+      }),
+    [activeProfileId, eventBus, queryClient],
+  );
 
   useEffect(() => {
     if (connection.state === "offline") {
@@ -270,6 +310,8 @@ export function App({ audioEngine, transport }: AppProps): ReactElement {
     () =>
       audioEngine ??
       createAudioEngine({
+        activateProgramHandoff: (profileId, programId) =>
+          activateProgramHandoff(serviceTransport, profileId, programId),
         resolveTrackAudio: (profileId, trackId) =>
           resolveTrackAudio(serviceTransport, profileId, trackId),
         transport: serviceTransport,
