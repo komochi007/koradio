@@ -332,6 +332,13 @@
   gap: 24px;
 }
 
+.detail-copy--speaking .detail-copy__line {
+  overflow-wrap: normal;
+  word-break: normal;
+  line-break: strict;
+  text-wrap: pretty;
+}
+
 .detail-copy--lyrics .detail-copy__scroller {
   align-content: start;
 }
@@ -378,6 +385,11 @@
   font-weight: 620;
   opacity: 1;
   transform: scale(1.08);
+}
+
+.detail-copy--speaking .detail-copy__line--current {
+  inline-size: calc(100% / 1.08);
+  max-inline-size: none;
 }
 
 @property --detail-unit-progress {

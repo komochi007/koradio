@@ -26,6 +26,21 @@ describe("Detail timed text", () => {
       "这是一句没有自然停顿但确实很长的串讲文字需要分成",
       "两行阅读",
     ]);
+    const english =
+      "Coming right up. We're keeping the groove crisp, the melodies bright and the energy comfortably below, accidentally dancing through a video call. Settle in and let the next stretch of work find its rhythm.";
+    const englishLines = splitDjSentences(english);
+    expect(englishLines.join("").replace(/\s/gu, "")).toBe(english.replace(/\s/gu, ""));
+    expect(englishLines).toEqual([
+      "Coming right up.",
+      "We're keeping the groove crisp,",
+      "the melodies bright and the energy",
+      "comfortably below,",
+      "accidentally dancing through a",
+      "video call.",
+      "Settle in and let the next stretch",
+      "of work find its rhythm.",
+    ]);
+    expect(englishLines.every((line) => !/^[，。！？!?；;、,:：]/u.test(line))).toBe(true);
     const lines = estimateDjTiming("短句。这里是一句更长的串讲。", 9_000);
     expect(lines).toHaveLength(2);
     expect(lines[0]?.startMs).toBe(0);

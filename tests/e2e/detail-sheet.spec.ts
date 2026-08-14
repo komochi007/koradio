@@ -64,7 +64,7 @@ const timedLyrics = lyricLines
   })
   .join("\n");
 
-function detailProgram(mode: "speaking" | "lyrics") {
+function detailProgram(mode: "speaking" | "lyrics", scriptText?: string) {
   const track = {
     id: trackId,
     source: "netease",
@@ -107,8 +107,11 @@ function detailProgram(mode: "speaking" | "lyrics") {
         programId,
         type: "intro",
         language: "zh-CN",
-        text: "今晚不必急着找到答案。先让声音替房间留一点呼吸。这一首会慢慢展开，但不会把你带得太远。",
+        text:
+          scriptText ??
+          "今晚不必急着找到答案。先让声音替房间留一点呼吸。这一首会慢慢展开，但不会把你带得太远。",
         displayText:
+          scriptText ??
           "今晚不必急着找到答案。先让声音替房间留一点呼吸。这一首会慢慢展开，但不会把你带得太远。",
         estimatedTiming: true,
         ttsAudioRef: "tts/detail-intro.wav",
@@ -145,11 +148,12 @@ async function openDetail(
     lyricStatus?: "available" | "unavailable";
     mode: "speaking" | "lyrics";
     playback?: boolean;
+    scriptText?: string;
     theme?: "dark" | "light";
   },
 ): Promise<void> {
   const context = page.context();
-  const program = detailProgram(options.mode);
+  const program = detailProgram(options.mode, options.scriptText);
   if (options.lyricStatus === "unavailable") {
     program.tracks = program.tracks.map((track) => ({
       ...track,
@@ -281,6 +285,37 @@ test("Detail shows estimated DJ timing while the DJ segment is speaking", async 
   await expect(page.getByRole("article", { name: "DJ 串讲词" })).toContainText(
     "先让声音替房间留一点呼吸。",
   );
+});
+
+test("Detail keeps English DJ copy whole and inside the compact card", async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 652 });
+  await openDetail(page, {
+    mode: "speaking",
+    playback: false,
+    scriptText:
+      "Coming right up. We're keeping the groove crisp, the melodies bright and the energy comfortably below, accidentally dancing through a video call. Settle in and let the next stretch of work find its rhythm.",
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.electronCanvas = "true";
+  });
+  const copy = page.getByRole("article", { name: "DJ 串讲词" });
+  const lines = copy.locator(".detail-copy__line p");
+  await expect(lines).toHaveCount(8);
+  await expect(lines).toHaveText([
+    "Coming right up.",
+    "We're keeping the groove crisp,",
+    "the melodies bright and the energy",
+    "comfortably below,",
+    "accidentally dancing through a",
+    "video call.",
+    "Settle in and let the next stretch",
+    "of work find its rhythm.",
+  ]);
+  expect(
+    await lines.evaluateAll((elements) =>
+      elements.every((element) => element.scrollWidth <= element.clientWidth),
+    ),
+  ).toBe(true);
 });
 
 test("Detail keeps long lyrics scrollable, hides scrollbars and centers the current line", async ({

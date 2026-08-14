@@ -181,19 +181,50 @@ function parseYrc(value: string, durationMs: number): TimedTextLine[] {
 }
 
 export function splitDjSentences(value: string): string[] {
-  const chunks = value.match(/[^。！？!?；;\n]+[。！？!?；;]?/gu) ?? [];
+  const chunks = value.match(/[^。！？!?；;.\n]+[。！？!?；;.]?/gu) ?? [];
   return chunks.flatMap((chunk) => {
     const sentence = chunk.trim();
     if (sentence.length === 0) return [];
     const natural = sentence.split(/(?<=[，、：,;:])\s*/u).filter(Boolean);
-    return natural.flatMap((part) => {
-      const characters = Array.from(part.trim());
-      if (characters.length <= 24) return characters.length === 0 ? [] : [characters.join("")];
-      return Array.from({ length: Math.ceil(characters.length / 24) }, (_, index) =>
-        characters.slice(index * 24, (index + 1) * 24).join(""),
-      );
-    });
+    return natural.flatMap(splitDjLine);
   });
+}
+
+function displayWidth(value: string): number {
+  return Array.from(value).reduce((width, character) => {
+    if (/\s/u.test(character)) return width + 0.25;
+    if (/\p{Script=Han}/u.test(character)) return width + 1;
+    if (/[\p{L}\p{N}]/u.test(character)) return width + 0.55;
+    return width + 0.45;
+  }, 0);
+}
+
+function splitDjLine(value: string): string[] {
+  const tokens =
+    value.trim().match(/[\p{Script=Han}]|[\p{L}\p{N}]+(?:['’_-][\p{L}\p{N}]+)*\s*|[^\s]\s*/gu) ??
+    [];
+  const lines: string[] = [];
+  const characters = Array.from(value);
+  const cjkCount = characters.filter((character) => /\p{Script=Han}/u.test(character)).length;
+  const latinCount = characters.filter((character) => /[\p{L}\p{N}]/u.test(character)).length;
+  const maximumWidth = cjkCount >= latinCount ? 24 : 18;
+  let line = "";
+  for (const token of tokens) {
+    const isTrailingPunctuation = /^[，。！？!?；;、,:：）］】》」』〉>]+\s*$/u.test(token);
+    if (isTrailingPunctuation) {
+      line += token;
+      continue;
+    }
+    const next = `${line}${token}`;
+    if (line.trim().length > 0 && displayWidth(next) > maximumWidth) {
+      lines.push(line.trim());
+      line = token;
+      continue;
+    }
+    line = next;
+  }
+  if (line.trim().length > 0) lines.push(line.trim());
+  return lines;
 }
 
 export function estimateDjTiming(value: string, durationMs: number): TimedTextLine[] {
