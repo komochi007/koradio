@@ -20,7 +20,7 @@ import { type AudioEngineFacade, useAudioSnapshot } from "../../audio/index.js";
 import { ArtworkImage } from "../../shared/artwork.js";
 import { KoradioAvatar } from "../../shared/avatar.js";
 import { apiErrorMessage } from "../../shared/error.js";
-import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
+import { Brand, OperationNotice, PrimaryNavigation, Status } from "../../shared/ui.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import {
   addLibraryItem,
@@ -282,7 +282,9 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
   const [playlistRef, setPlaylistRef] = useState("");
   const [playlistValidation, setPlaylistValidation] = useState<string>();
   const [importJobId, setImportJobId] = useState<string>();
-  const [actionMessage, setActionMessage] = useState<string>();
+  const [actionNotice, setActionNotice] = useState<
+    { message: string; tone: "success" | "error" } | undefined
+  >();
   const [addedAfterSearch, setAddedAfterSearch] = useState<Set<string>>(() => new Set());
   const providerUnavailable = props.health.providers.netease === "unavailable";
 
@@ -330,11 +332,11 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
     mutationFn: (track: MusicTrack) => addLibraryItem(props.transport, profileId, track.id),
     onSuccess: (item) => {
       setAddedAfterSearch((current) => new Set(current).add(item.track.id));
-      setActionMessage("已加入本地音乐库");
+      setActionNotice({ message: "已加入本地音乐库", tone: "success" });
       void queryClient.invalidateQueries({ queryKey: ["library", profileId] });
     },
     onError: () => {
-      setActionMessage("音乐获取失败，请重试");
+      setActionNotice({ message: "音乐获取失败，请重试。", tone: "error" });
     },
   });
   const importMutation = useMutation({
@@ -342,10 +344,13 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
     onSuccess: (accepted) => {
       handledImportRef.current = undefined;
       setImportJobId(accepted.jobId);
-      setActionMessage("正在从网易云获取音乐...");
+      setActionNotice(undefined);
     },
     onError: (error) => {
-      setActionMessage(errorMessage(error, "歌单导入失败，请保留输入后重试。"));
+      setActionNotice({
+        message: errorMessage(error, "歌单导入失败，请保留输入后重试。"),
+        tone: "error",
+      });
     },
   });
   const previewMutation = useMutation({
@@ -360,7 +365,7 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
       });
     },
     onError: (error) => {
-      setActionMessage(errorMessage(error, "音乐获取失败，请重试"));
+      setActionNotice({ message: errorMessage(error, "音乐获取失败，请重试。"), tone: "error" });
     },
   });
 
@@ -377,10 +382,10 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
     }
     handledImportRef.current = snapshot.jobId;
     if (snapshot.status === "succeeded") {
-      setActionMessage(importResultMessage(snapshot));
+      setActionNotice({ message: importResultMessage(snapshot), tone: "success" });
       void queryClient.invalidateQueries({ queryKey: ["library", profileId] });
     } else {
-      setActionMessage("歌单导入失败，输入内容已保留，请重试。");
+      setActionNotice({ message: "歌单导入失败，输入内容已保留，请重试。", tone: "error" });
     }
   }, [importSnapshot.data, profileId, queryClient]);
 
@@ -412,7 +417,7 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
       return;
     }
     setSearchValidation(undefined);
-    setActionMessage(undefined);
+    setActionNotice(undefined);
     setSubmittedSearch(keyword);
   }
 
@@ -424,7 +429,7 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
       return;
     }
     setPlaylistValidation(undefined);
-    setActionMessage(undefined);
+    setActionNotice(undefined);
     importMutation.mutate(normalized);
   }
 
@@ -436,7 +441,7 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
   }
 
   function previewTrack(track: MusicTrack): void {
-    setActionMessage(undefined);
+    setActionNotice(undefined);
     if (previewingTrackId === track.id) {
       void props.audioEngine.stopPreview();
       return;
@@ -666,12 +671,17 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
               : `已显示 ${String(localItems.length)} / 总计 ${String(totalCount)} 首歌曲，下一次节目策展可使用这些来源。${props.health.mode === "live" && demoCount > 0 ? ` 已隔离 ${String(demoCount)} 首 Demo 歌曲。` : ""}`}
           </p>
         </section>
-
-        <div className="library-announcer" role="status" aria-live="polite">
-          {actionMessage}
-        </div>
       </main>
       <PrimaryNavigation active="library" onNavigate={props.navigate} />
+      {actionNotice === undefined ? null : (
+        <OperationNotice
+          message={actionNotice.message}
+          tone={actionNotice.tone}
+          onDismiss={() => {
+            setActionNotice(undefined);
+          }}
+        />
+      )}
     </div>
   );
 }

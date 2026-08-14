@@ -12,7 +12,7 @@ import {
 
 import type { ServiceTransport } from "../../shared/transport.js";
 import { KoradioAvatar } from "../../shared/avatar.js";
-import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
+import { Brand, OperationNotice, PrimaryNavigation, Status } from "../../shared/ui.js";
 import { getTaste, updateTasteOverrides } from "./api.js";
 import {
   createTasteDraft,
@@ -366,6 +366,8 @@ function TasteEditor({
   headingRef,
   onCancel,
   onChange,
+  notice,
+  onDismissNotice,
   onSave,
   saveError,
   saving,
@@ -377,6 +379,8 @@ function TasteEditor({
   headingRef: RefObject<HTMLHeadingElement | null>;
   onCancel: () => void;
   onChange: (draft: TasteDraft) => void;
+  notice: { message: string; tone: "success" | "error" } | undefined;
+  onDismissNotice: () => void;
   onSave: (event: SyntheticEvent<HTMLFormElement>) => void;
   saveError: string | undefined;
   saving: boolean;
@@ -659,6 +663,9 @@ function TasteEditor({
           </div>
         </footer>
       </form>
+      {notice === undefined ? null : (
+        <OperationNotice message={notice.message} tone={notice.tone} onDismiss={onDismissNotice} />
+      )}
     </div>
   );
 }
@@ -671,7 +678,9 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
   const [draft, setDraft] = useState<TasteDraft>();
   const [errors, setErrors] = useState<TasteValidationError[]>([]);
   const [saveError, setSaveError] = useState<string>();
-  const [actionMessage, setActionMessage] = useState<string>();
+  const [actionNotice, setActionNotice] = useState<
+    { message: string; tone: "success" | "error" } | undefined
+  >();
   const taste = useQuery({
     queryKey: ["taste", profileId],
     queryFn: () => getTaste(props.transport, profileId),
@@ -685,10 +694,11 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
       setErrors([]);
       setSaveError(undefined);
       setEditing(false);
-      setActionMessage("已更新你的音乐品味");
+      setActionNotice({ message: "已更新你的音乐品味", tone: "success" });
     },
     onError: () => {
       setSaveError("保存失败，内容已保留");
+      setActionNotice({ message: "保存失败，内容已保留。", tone: "error" });
     },
   });
 
@@ -701,7 +711,7 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
     setDraft(createTasteDraft(taste.data));
     setErrors([]);
     setSaveError(undefined);
-    setActionMessage(undefined);
+    setActionNotice(undefined);
     setEditing(true);
   }
 
@@ -741,6 +751,10 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
           headingRef={props.headingRef}
           onCancel={cancelEditing}
           onChange={setDraft}
+          notice={actionNotice}
+          onDismissNotice={() => {
+            setActionNotice(undefined);
+          }}
           onSave={submit}
           saveError={saveError}
           saving={update.isPending}
@@ -801,11 +815,17 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
         ) : (
           <TasteOverview taste={taste.data} />
         )}
-        <div className="taste-announcer" role="status" aria-live="polite">
-          {actionMessage}
-        </div>
       </main>
       <PrimaryNavigation active="taste" onNavigate={props.navigate} />
+      {actionNotice === undefined ? null : (
+        <OperationNotice
+          message={actionNotice.message}
+          tone={actionNotice.tone}
+          onDismiss={() => {
+            setActionNotice(undefined);
+          }}
+        />
+      )}
     </div>
   );
 }

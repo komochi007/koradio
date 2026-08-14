@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type ReactElement, type SyntheticEvent } f
 
 import { updateProfilePreferences } from "../profile-preferences/api.js";
 import { applyTheme } from "../profile-preferences/theme.js";
-import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
+import { Brand, OperationNotice, PrimaryNavigation, Status } from "../../shared/ui.js";
 import { KoradioSelect } from "../../shared/koradio-select.js";
 import { KoradioAvatar } from "../../shared/avatar.js";
 import type { ServiceTransport } from "../../shared/transport.js";
@@ -228,8 +228,9 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
   const [djLanguage, setDjLanguage] = useState(props.current.preferences.djLanguage);
   const [voiceStyle, setVoiceStyle] = useState(props.current.preferences.djVoiceStyle);
   const [themeMode, setThemeMode] = useState<ThemeMode>(props.current.preferences.themeMode);
-  const [themeError, setThemeError] = useState<string>();
-  const [saveMessage, setSaveMessage] = useState<string>();
+  const [saveNotice, setSaveNotice] = useState<
+    { message: string; tone: "success" | "error" } | undefined
+  >();
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [migrationOpen, setMigrationOpen] = useState(false);
@@ -283,18 +284,20 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
     onSuccess: ({ device, preferences }) => {
       queryClient.setQueryData(["device-settings"], device);
       props.onCurrentChanged({ ...props.current, preferences });
-      setSaveMessage("配置已保存。");
+      setSaveNotice({ message: "配置已保存。", tone: "success" });
     },
     onError: (error) => {
-      setSaveMessage(
-        error instanceof TypeError
-          ? error.message === "DEEPSEEK_PRIVACY_REQUIRED"
-            ? "请先阅读并确认 DeepSeek 隐私提示。"
-            : error.message === "DEEPSEEK_API_KEY_REQUIRED"
-              ? "启用 DeepSeek 前请先保存 API key。"
-              : "Codex 命令路径为必填项，最多 300 个字符。"
-          : "配置保存失败，当前运行配置保持不变。",
-      );
+      setSaveNotice({
+        message:
+          error instanceof TypeError
+            ? error.message === "DEEPSEEK_PRIVACY_REQUIRED"
+              ? "请先阅读并确认 DeepSeek 隐私提示。"
+              : error.message === "DEEPSEEK_API_KEY_REQUIRED"
+                ? "启用 DeepSeek 前请先保存 API key。"
+                : "Codex 命令路径为必填项，最多 300 个字符。"
+            : "配置保存失败，当前运行配置保持不变。",
+        tone: "error",
+      });
     },
   });
 
@@ -302,41 +305,53 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
     mutationFn: async ({ next }: { next: ThemeMode; previous: ThemeMode }) =>
       updateProfilePreferences(props.transport, props.current.profile.id, { themeMode: next }),
     onMutate: ({ next }) => {
-      setThemeError(undefined);
+      setSaveNotice(undefined);
       setThemeMode(next);
       applyTheme(next);
     },
     onSuccess: (preferences) => {
       props.onCurrentChanged({ ...props.current, preferences });
+      setSaveNotice({ message: "主题偏好已保存。", tone: "success" });
     },
     onError: (_error, { previous }) => {
       setThemeMode(previous);
       applyTheme(previous);
-      setThemeError("主题偏好保存失败，已恢复到之前的主题。");
+      setSaveNotice({ message: "主题偏好保存失败，已恢复到之前的主题。", tone: "error" });
     },
   });
 
   const migration = useMutation({
     mutationFn: () => migrateDataRoot(props.transport, targetDataRoot.trim()),
     onSuccess: () => {
-      setSaveMessage("数据目录迁移已安全启动；完成前旧目录会继续保留。");
+      setSaveNotice({
+        message: "数据目录迁移已安全启动；完成前旧目录会继续保留。",
+        tone: "success",
+      });
     },
     onError: () => {
-      setSaveMessage("数据目录迁移未启动，当前目录保持不变。请选择空且可写的目录。");
+      setSaveNotice({
+        message: "数据目录迁移未启动，当前目录保持不变。请选择空且可写的目录。",
+        tone: "error",
+      });
     },
   });
   const installModel = useMutation({
     mutationFn: () => installTtsModel(props.transport),
     onSuccess: (status) => {
       queryClient.setQueryData(["tts-model-status"], status);
-      setSaveMessage(
-        status.state === "ready"
-          ? "Qwen3-TTS 模型已就绪。"
-          : "Qwen3-TTS 模型下载已启动，可离开此页面继续使用文字 DJ。",
-      );
+      setSaveNotice({
+        message:
+          status.state === "ready"
+            ? "Qwen3-TTS 模型已就绪。"
+            : "Qwen3-TTS 模型下载已启动，可离开此页面继续使用文字 DJ。",
+        tone: "success",
+      });
     },
     onError: () => {
-      setSaveMessage("Qwen3-TTS 模型下载未能启动，现有节目和文字 DJ 不受影响。");
+      setSaveNotice({
+        message: "Qwen3-TTS 模型下载未能启动，现有节目和文字 DJ 不受影响。",
+        tone: "error",
+      });
     },
   });
   const credential = useMutation({
@@ -344,29 +359,38 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
     onSuccess: (status) => {
       queryClient.setQueryData(["deepseek-credentials"], status);
       setDeepseekApiKey("");
-      setSaveMessage("DeepSeek API key 已安全写入系统钥匙串。");
+      setSaveNotice({ message: "DeepSeek API key 已安全写入系统钥匙串。", tone: "success" });
     },
     onError: () => {
-      setSaveMessage("DeepSeek API key 未能写入系统钥匙串，当前密钥状态保持不变。");
+      setSaveNotice({
+        message: "DeepSeek API key 未能写入系统钥匙串，当前密钥状态保持不变。",
+        tone: "error",
+      });
     },
   });
   const removeCredential = useMutation({
     mutationFn: () => deleteDeepseekApiKey(props.transport),
     onSuccess: (status) => {
       queryClient.setQueryData(["deepseek-credentials"], status);
-      setSaveMessage("DeepSeek API key 已从系统钥匙串删除。");
+      setSaveNotice({ message: "DeepSeek API key 已从系统钥匙串删除。", tone: "success" });
     },
     onError: () => {
-      setSaveMessage("DeepSeek API key 未能删除，当前密钥状态保持不变。");
+      setSaveNotice({
+        message: "DeepSeek API key 未能删除，当前密钥状态保持不变。",
+        tone: "error",
+      });
     },
   });
   const plannerTest = useMutation({
     mutationFn: () => testPlanner(props.transport),
     onSuccess: () => {
-      setSaveMessage("活动 AI 大脑连接检测成功。");
+      setSaveNotice({ message: "活动 AI 大脑连接检测成功。", tone: "success" });
     },
     onError: () => {
-      setSaveMessage("活动 AI 大脑检测失败；请检查配置、余额或稍后重试。");
+      setSaveNotice({
+        message: "活动 AI 大脑检测失败；请检查配置、余额或稍后重试。",
+        tone: "error",
+      });
     },
   });
 
@@ -382,18 +406,21 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
   }
 
   async function openDiagnostics(): Promise<void> {
-    setSaveMessage(undefined);
+    setSaveNotice(undefined);
     const result = await services.refetch();
     if (result.data !== undefined) {
       setDiagnosticsOpen(true);
     } else {
-      setSaveMessage("服务检测失败，请确认 Local Service 仍可用后重试。");
+      setSaveNotice({
+        message: "服务检测失败，请确认 Local Service 仍可用后重试。",
+        tone: "error",
+      });
     }
   }
 
   function handleSave(event: SyntheticEvent<HTMLFormElement>): void {
     event.preventDefault();
-    setSaveMessage(undefined);
+    setSaveNotice(undefined);
     save.mutate();
   }
 
@@ -721,11 +748,6 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                 ))}
               </div>
             </div>
-            {themeError === undefined ? null : (
-              <p className="inline-error" role="alert">
-                {themeError}
-              </p>
-            )}
             <div className="preference-row">
               <span>DJ Language</span>
               <KoradioSelect
@@ -798,14 +820,6 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
               </div>
             ) : null}
           </section>
-          {saveMessage === undefined ? null : (
-            <p
-              className={save.isError || migration.isError ? "inline-error" : "inline-success"}
-              role={save.isError || migration.isError ? "alert" : "status"}
-            >
-              {saveMessage}
-            </p>
-          )}
         </form>
       </main>
       <div className="settings-actions">
@@ -827,6 +841,15 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
         </button>
       </div>
       <PrimaryNavigation active="settings" onNavigate={props.navigate} />
+      {saveNotice === undefined ? null : (
+        <OperationNotice
+          message={saveNotice.message}
+          tone={saveNotice.tone}
+          onDismiss={() => {
+            setSaveNotice(undefined);
+          }}
+        />
+      )}
     </div>
   );
 }

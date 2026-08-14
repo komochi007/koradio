@@ -655,14 +655,6 @@ function RadioDialogue({
     onMutate() {
       setRecommendedTrackMessage(undefined);
     },
-    onSuccess(_result, variables) {
-      if (variables.mode === "next") {
-        setRecommendedTrackMessage({
-          message: "已安排为当前播放结束后的下一首。",
-          trackId: variables.track?.id ?? "",
-        });
-      }
-    },
     onError(error, variables) {
       if (
         error instanceof ApiRequestError &&

@@ -331,7 +331,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 - 每期选择 1～2 首 featured track 生成 45～90 秒深讲，其余开场、转场和结束语保持克制。可核验的背景事实仅来自非阻断音乐事实 Provider 并显示来源；取不到来源时只做音乐性、歌词主题和场景分析。
 - Qwen3-TTS 可用且生成成功 → Program 以 `voice-overlay` 模式保存 DJ 音频；Audio Engine 在音乐播放中叠加串讲并 duck 到 28%，而不是把每段语音当成独立歌曲顺序播放。TTS 失败时保留完整文字 DJ，歌曲继续播放。
 - 当前已有节目时，旧节目在新节目生成期间继续播放；生成成功后新节目以持久的“待切换节目”保存，Radio 显示曲目数、首曲和 `SWITCH NOW`，默认在当前歌曲自然结束后原子切换。用户明确点 `SWITCH NOW` 才立即切换；生成失败时保持旧节目不变。切出 Radio 或重启后，活动任务和待切换节目都从持久状态恢复。
-- 数据变化：每轮写入 Profile-owned `RadioMessage` 与 `RadioTurn`；单曲和多首推荐卡片只引用既有或归一化歌曲，临时点播快照只保存在 Browser Audio Engine；`PLAY NEXT` 无论手动下一首还是自然结束都先播放该临时点播，结束后回到原节目的下一项。只有完整节目成功时新增 `Program`、`DjScriptSegment`、`DjCitation`、`MusicTrack` 与已提交的 `PlaybackTimeline`；已有当前节目时同时写入 `ProgramHandoff`，直到切换。每个 Profile 最多保留最近 50 个 turn（100 条消息），清空需二次确认。
+- 数据变化：每轮写入 Profile-owned `RadioMessage` 与 `RadioTurn`；单曲和多首推荐卡片只引用既有或归一化歌曲，临时点播快照只保存在 Browser Audio Engine；`PLAY NEXT` 无论手动下一首还是自然结束都先播放该临时点播，结束后回到原节目的下一项；空节目时手动下一首直接播放该点播。成功入队不向对话流追加状态或红色注释，只有解析或播放失败才显示卡片关联错误。只有完整节目成功时新增 `Program`、`DjScriptSegment`、`DjCitation`、`MusicTrack` 与已提交的 `PlaybackTimeline`；已有当前节目时同时写入 `ProgramHandoff`，直到切换。每个 Profile 最多保留最近 50 个 turn（100 条消息），清空需二次确认。
 
 **用户流程**
 
@@ -608,7 +608,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 - 用户打开 Koradio 但本地服务未响应 → 已打开或缓存的 PWA 显示 `○ OFFLINE`；只读 Settings 禁用全部配置、测试与迁移控件，仅显示本地服务启动说明、脱敏的上次状态和重试。未缓存的 PWA 不承诺离线可达。
 - 用户点击 Settings → 系统分别读取共享 `DeviceSettings`、当前 `ProfilePreferences` 和运行时 `ServiceHealth` 快照。
-- 用户填写 Codex 命令路径、选择 AI 大脑或 DeepSeek 模型并点击“保存配置” → 非敏感配置写入 `DeviceSettings` → 用户看到“配置已保存”；DeepSeek API key 只通过独立 Keychain 操作写入、替换或删除，内置网易云 Provider 和 Qwen3-TTS 不保存用户地址或密钥。
+- 用户填写 Codex 命令路径、选择 AI 大脑或 DeepSeek 模型并点击“保存配置” → 非敏感配置写入 `DeviceSettings` → 用户收到可关闭、自动消失的“配置已保存”成功或失败提示；DeepSeek API key 只通过独立 Keychain 操作写入、替换或删除，内置网易云 Provider 和 Qwen3-TTS 不保存用户地址或密钥。
 - 用户第一次启用 DeepSeek → Settings 显示数据出站、费用和隐私提示 → 用户明确确认后才允许选择 DeepSeek；确认状态持久保存，后续仍在 Settings 显示提示。
 - 用户点击“下载本地语音模型” → 系统从固定 revision 下载约 1.84 GiB 模型并显示进度 → 校验完成后原子启用；用户离开页面不终止下载，应用退出会安全中止并清理 partial。
 - 用户选择 `Theme Mode` 为 `Dark`、`Light` 或 `System` → 系统立即预览主题并保存偏好 → 用户看到 Radio 主播放页和详情页按对应昼夜视觉基准切换。
@@ -716,7 +716,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 - 用户在 Library 搜索框输入歌曲或歌手 → 系统调用网易云 API 搜索 → 用户看到歌曲列表、歌手、专辑和试听按钮。
 - 用户点击“加入候选池” → 系统保存歌曲元数据和来源 → 用户看到歌曲出现在本地音乐库。
-- 用户输入网易云歌单链接并点击导入 → 系统解析完整曲目 ID 清单并分批拉取歌曲 → 用户看到总数、导入进度和结果。
+- 用户输入网易云歌单链接并点击导入 → 系统解析完整曲目 ID 清单并分批拉取歌曲 → 用户看到总数、导入进度和结果，并在终态收到可关闭、自动消失的成功或失败提示。
 - 完整曲目 ID 清单按每批最多 100 首补齐详情；Provider 全部读取成功后才在单个数据库事务中写入，失败时不得留下半成功导入。
 - 导入中持续展示 `processed / total`；完成后展示 `imported / unavailable`。重复导入同一来源更新元数据并补充新增歌曲，不重复创建已有歌曲。
 - Library 列表展示“已显示 n / 总计 m”，总计来自完整候选池而非当前分页；Live 模式另行隔离 Demo 数量。
@@ -783,7 +783,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 - 用户点击 Taste → 系统读取自动 `TasteProjection`、人工 `TasteOverrides` 和合并后的 `EffectiveTaste` → 用户看到系统推断、人工规则和最近反馈摘要。
 - 用户点击“编辑标签” → 系统只编辑 `TasteOverrides` → 用户可新增、删除、排序人工标签与规则。
-- 用户点击“保存品味” → 系统写入 `TasteOverrides` 并重新计算 `EffectiveTaste` → 用户看到“已更新你的音乐品味”。
+- 用户点击“保存品味” → 系统写入 `TasteOverrides` 并重新计算 `EffectiveTaste` → 用户收到可关闭、自动消失的成功提示；失败时保留编辑内容并收到错误提示。
 - 自动投影可由完整 `FeedbackEvent` 流重建；重建、回放或算法升级不得覆盖人工 overrides，冲突时人工规则优先。
 - 合并使用稳定、保序、忽略大小写的去重：人工 tags、避雷规则和场景规则完整保留在各自字段前部；自动 tags 和 signals 只填充 contract 剩余容量。
 - 人工避雷规则与自动 tag 或 affinity 文本相同时移除对应自动值；自动 avoid signal 在人工避雷规则之后填充剩余容量。`EffectiveTaste` 是实时合并的只读结果，不单独持久化或提供写入口。

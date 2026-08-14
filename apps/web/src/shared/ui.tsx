@@ -1,5 +1,5 @@
 import type { KeyboardEvent, ReactElement } from "react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import brandMark from "../../../../design/assets/icons/koradio-brand-mark.svg";
 import libraryIcon from "../../../../design/assets/icons/tab-library.svg";
@@ -16,6 +16,33 @@ const routeIcons: Record<AppRouteId, string> = {
   settings: settingsIcon,
   taste: tasteIcon,
 };
+
+interface OperationNoticeProps {
+  message: string;
+  tone: "success" | "error";
+  onDismiss: () => void;
+}
+
+export function OperationNotice({ message, tone, onDismiss }: OperationNoticeProps): ReactElement {
+  useEffect(() => {
+    const timeout = window.setTimeout(onDismiss, 4500);
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [message, onDismiss]);
+
+  return (
+    <div
+      className={`operation-notice operation-notice--${tone}`}
+      role={tone === "error" ? "alert" : "status"}
+    >
+      <span>{message}</span>
+      <button type="button" aria-label="关闭提示" onClick={onDismiss}>
+        ×
+      </button>
+    </div>
+  );
+}
 
 export function Brand(): ReactElement {
   return (

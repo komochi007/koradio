@@ -676,6 +676,34 @@ describe("Audio Engine", () => {
     await engine.destroy();
   });
 
+  it("plays a queued single-track preview when an empty radio is skipped", async () => {
+    const audio = new FakeAudio();
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.activateProfile(profileId);
+    await engine.queuePreviewNext?.({
+      kind: "track",
+      previewId: "00000000-0000-4000-8000-000000000097",
+      resolvedAudioRef: "https://media.example.test/empty-radio-preview.mp3",
+      durationMs: 12_000,
+    });
+
+    await engine.next();
+
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot()).toMatchObject({
+        programId: undefined,
+        preview: { previewId: "00000000-0000-4000-8000-000000000097", state: "playing" },
+        queuedPreview: undefined,
+      });
+    });
+    await engine.destroy();
+  });
+
   it("plays a queued single-track preview when the user skips past the final program item", async () => {
     const audio = new FakeAudio();
     const engine = createAudioEngine({

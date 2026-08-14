@@ -1167,6 +1167,13 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         await stopPreview();
         return;
       }
+      if (program === undefined && queuedPreview !== undefined) {
+        const nextPreview = queuedPreview;
+        queuedPreview = undefined;
+        update({ queuedPreview: undefined });
+        await previewAudio(nextPreview);
+        return;
+      }
       await advance("next");
     },
     async pause() {
