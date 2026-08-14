@@ -9,6 +9,33 @@
   color: var(--kr-text);
 }
 
+.program-activity-link {
+  position: fixed;
+  z-index: 20;
+  top: calc(var(--kr-safe-top) + 80px);
+  right: calc(var(--kr-safe-x) + 16px);
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(83, 207, 137, 0.46);
+  border-radius: 999px;
+  color: #a9f6c4;
+  background: rgba(11, 20, 16, 0.92);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  font:
+    700 11px/1 "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  letter-spacing: 0.07em;
+}
+
+.program-activity-link:hover,
+.program-activity-link:focus-visible {
+  border-color: #53cf89;
+  color: #fff;
+}
+
 .topbar {
   display: flex;
   width: 100%;

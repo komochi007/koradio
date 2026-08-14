@@ -233,6 +233,7 @@ function createOnlineTransport(
     empty?: boolean;
     failTheme?: boolean;
     generation?: "failed" | "succeeded";
+    handoff?: ProgramDetail;
     latestProgram?: ProgramDetail;
     profiles?: Profile[];
     ttsStatus?: "available" | "degraded" | "unavailable";
@@ -261,7 +262,7 @@ function createOnlineTransport(
       return Promise.resolve(jsonResponse({ active: null }));
     }
     if (path.endsWith("/program-handoff") && method === "GET") {
-      return Promise.resolve(jsonResponse({ program: null }));
+      return Promise.resolve(jsonResponse({ program: options.handoff ?? null }));
     }
     if (path.endsWith("/radio-conversation") && method === "GET") {
       return Promise.resolve(jsonResponse({ turns: [] }));
@@ -755,6 +756,18 @@ describe("App Shell", () => {
     );
     expect(generationCall?.[1]?.method).toBe("POST");
     expect(new Headers(generationCall?.[1]?.headers).has("Idempotency-Key")).toBe(true);
+  });
+
+  it("keeps a prepared-program return link visible outside Radio", async () => {
+    window.history.replaceState(null, "", "/library");
+    render(
+      <App
+        audioEngine={createTestAudioEngine()}
+        transport={createOnlineTransport({ handoff: generatedProgram })}
+      />,
+    );
+
+    expect(await screen.findByRole("button", { name: "新节目已就绪 · 返回 Radio" })).toBeTruthy();
   });
 
   it("renders every program track in a keyboard-scrollable queue", async () => {
