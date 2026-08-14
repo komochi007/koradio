@@ -15,7 +15,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 ```text
 对话输入
   → Radio 先路由为闲聊、澄清、单曲、3～5 首推荐或完整节目；“其他/类似/再推荐”始终保持为推荐，只有明确节目需求才生成节目
-  → 单曲与推荐以临时 DJ 点播卡片提供立即播放或下一首播放；手动与自然下一首一致优先消费临时点播，不改写节目历史或持久队列
+  → 单曲与推荐以临时 DJ 点播卡片提供立即播放或下一首播放；手动与自然下一首一致优先消费临时点播，空节目时手动下一首也可直接播放，成功排队不插入对话红字，不改写节目历史或持久队列
   → 完整节目将当前 Profile 最多 120 首可播放库内曲目摘要、EffectiveTaste 与近 20 期历史交给活动 Planner（Codex 或 DeepSeek）
   → 活动 Planner 生成有序 library/discovery 选曲意图与 DJ 串讲
   → Library 按意图顺序解析并最多补选两轮，严格满足 8～12 首目标、语言、近期去重与艺人约束
@@ -53,7 +53,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] macOS Native launcher + 外部浏览器 PWA 的历史包装已由 S7-01/S7-02 记录；[ADR 0006](docs/adr/0006-electron-desktop-shell.md) 已裁决由 Electron 主进程与现有 Web Renderer 替代，S7-09 正在完成迁移
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭；其中 Apple TTS 仅为 S7-06 历史验收事实，已由 [ADR 0005](docs/adr/0005-qwen3-local-tts.md) 与 UX-10 的 bundled Qwen3-TTS helper 取代。DeepSeek 可切换规划 Provider 的边界由 [ADR 0007](docs/adr/0007-deepseek-planner-provider.md) 固定；Production Server 与 Electron 主进程默认 Live
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
-- [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Profile 级 DJ transcript、闲聊/澄清/单曲/3～5 首推荐/节目分流、单曲与推荐立即/下一首临时点播、对话清空、按需朗读、旧节目生成中继续播放、双声道 overlay/ducking、多标签租约、全屏 Detail 平滑歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
+- [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Profile 级 DJ transcript、闲聊/澄清/单曲/3～5 首推荐/节目分流、单曲与推荐立即/下一首临时点播（含空节目手动下一首与无成功红字）、对话清空、按需朗读、旧节目生成中继续播放、双声道 overlay/ducking、多标签租约、全屏 Detail 平滑歌词/DJ 串讲跟随、七类反馈 UI、Settings/Library/Taste 的可关闭短时操作反馈、Library 搜索/试听/候选池/歌单导入、Taste 自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
 - [x] Fastify Local Service health/session/events、Profiles、Library、Feedback、Taste、Programs、Playback、Radio conversation/speech、异步节目生成、DeviceSettings、ProfilePreferences 与数据目录迁移路由已实现；节目与朗读命令使用持久 Job 和 REST Snapshot 恢复
 - [x] 完整 v1 公共 Contracts 已用 Zod 固化：REST DTO/command、显式 `profileId`、`Idempotency-Key`、异步 job、WebSocket event 与安全 error envelope 均有正反向和兼容性测试
 - [x] SQLite/Drizzle 底座已实现：首次启动选择 OS 应用数据目录，版本化 migration、WAL、foreign keys、严格文件权限和失败回滚测试已验证；Profile、TasteProjection、TasteOverrides、FeedbackEvent、DeviceSettings、ProfilePreferences、MusicTrack、PlaylistSource、LibraryItem、异步导入 job、Program、ProgramGenerationJob、RadioMessage/Turn/SpeechGeneration、DjCitation、ProgramTrack、DjScriptSegment、PlaybackTimelineItem 与 PlaybackCheckpoint owner 表已落地
