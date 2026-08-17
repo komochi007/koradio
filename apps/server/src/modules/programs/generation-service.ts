@@ -285,6 +285,7 @@ export function createProgramGenerationService(
     plan: CodexProgramPlan,
     libraryTracks: MusicTrack[],
     targetTrackCount: number,
+    minimumLibraryTrackCount: number,
     scenarioText: string,
     lyricsCache: Map<string, TrackLyrics>,
     signal: AbortSignal,
@@ -312,6 +313,9 @@ export function createProgramGenerationService(
       return titleKey.length >= 2 && normalizedScenario.includes(titleKey);
     };
 
+    const resolvedLibraryTrackCount = (): number =>
+      resolved.filter(({ track }) => libraryCandidates.has(track.id)).length;
+
     const isChineseVocal = async (track: MusicTrack): Promise<boolean> => {
       if (!chineseOnly) return true;
       try {
@@ -337,6 +341,15 @@ export function createProgramGenerationService(
       const artistKey = track.artist.trim().toLocaleLowerCase("en-US");
       const explicitArtist = artistKey.length > 0 && normalizedScenario.includes(artistKey);
       const explicitTrack = isExplicitTrack(track);
+      if (
+        discovery &&
+        resolvedLibraryTrackCount() < minimumLibraryTrackCount &&
+        resolved.length >=
+          targetTrackCount - (minimumLibraryTrackCount - resolvedLibraryTrackCount())
+      ) {
+        trackDegraded = true;
+        return false;
+      }
       if (discovery && !explicitTrack && isAlternativeVersion(track)) {
         rejectedNonCanonicalVersion += 1;
         trackDegraded = true;
@@ -450,10 +463,28 @@ export function createProgramGenerationService(
       if (resolved.length === targetTrackCount) break;
     }
 
+    for (const track of libraryTracks) {
+      if (
+        resolved.length === targetTrackCount ||
+        resolvedLibraryTrackCount() >= minimumLibraryTrackCount
+      ) {
+        break;
+      }
+      if (isAlternativeVersion(track) && !isExplicitTrack(track)) {
+        rejectedNonCanonicalVersion += 1;
+        trackDegraded = true;
+        continue;
+      }
+      await tryResolve(track);
+    }
+
     if (trackDegraded) {
       publishDegraded(snapshot, "track", "PROGRAM_TRACK_UNAVAILABLE");
     }
     const insufficientTracksCode = (): string => {
+      if (resolvedLibraryTrackCount() < minimumLibraryTrackCount) {
+        return "PROGRAM_GENERATION_INSUFFICIENT_LIBRARY_TRACKS";
+      }
       if (chineseOnly && rejectedChineseVocal > 0) {
         return "PROGRAM_GENERATION_INSUFFICIENT_CHINESE_TRACKS";
       }
@@ -466,12 +497,18 @@ export function createProgramGenerationService(
       return "PROGRAM_GENERATION_INSUFFICIENT_TRACKS";
     };
     if (resolved.length === 0) {
+      if (minimumLibraryTrackCount > 0 && resolvedLibraryTrackCount() < minimumLibraryTrackCount) {
+        throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_LIBRARY_TRACKS");
+      }
       if (chineseOnly && rejectedChineseVocal > 0) {
         throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_CHINESE_TRACKS");
       }
       throw new GenerationPipelineError("PROGRAM_GENERATION_NO_PLAYABLE_TRACKS");
     }
-    if (strictTrackCount && resolved.length !== targetTrackCount) {
+    if (
+      (strictTrackCount && resolved.length !== targetTrackCount) ||
+      resolvedLibraryTrackCount() < minimumLibraryTrackCount
+    ) {
       throw new GenerationPipelineError(insufficientTracksCode());
     }
     publish(snapshot.jobId, (sequence, occurredAt) =>
@@ -700,7 +737,7 @@ export function createProgramGenerationService(
     const targetTrackCount = strictTrackCount
       ? (requestedTrackCount ?? configuredTrackCount)
       : configuredTrackCount;
-    const libraryTracks = options.library.candidateTracks(snapshot.profileId, 120);
+    const libraryTracks = options.library.candidateTracks(snapshot.profileId, 1_000);
     const context = createPlanningContext(
       {
         library: options.library,
@@ -772,6 +809,7 @@ export function createProgramGenerationService(
       plan,
       libraryTracks,
       targetTrackCount,
+      context.library.minimumLibraryTrackCount,
       command.scenarioText,
       lyricsCache,
       signal,

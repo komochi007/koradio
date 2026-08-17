@@ -43,6 +43,7 @@ export const codexPlanningContextSchema = z
       tracks: z.array(libraryTrackContextSchema).max(1_000),
       maximumTracks: z.number().int().min(1).max(12),
       preferredLibraryTrackCount: z.number().int().min(0).max(12),
+      minimumLibraryTrackCount: z.number().int().min(0).max(12),
     }),
     currentTime: occurredAtSchema,
     preferences: z.strictObject({
@@ -53,12 +54,14 @@ export const codexPlanningContextSchema = z
   .superRefine((context, refinement) => {
     if (
       context.library.preferredLibraryTrackCount > context.library.maximumTracks ||
-      context.library.preferredLibraryTrackCount > context.library.tracks.length
+      context.library.preferredLibraryTrackCount > context.library.tracks.length ||
+      context.library.minimumLibraryTrackCount > context.library.maximumTracks ||
+      context.library.minimumLibraryTrackCount > context.library.tracks.length
     ) {
       refinement.addIssue({
         code: "custom",
-        message: "Preferred library track count exceeds the bounded library context",
-        path: ["library", "preferredLibraryTrackCount"],
+        message: "Library track requirement exceeds the bounded library context",
+        path: ["library", "minimumLibraryTrackCount"],
       });
     }
   });

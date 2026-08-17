@@ -141,6 +141,13 @@ export function transcriptIsPinnedToEnd(
 }
 
 function failureCopy(code: string): { message: string; settings: boolean; title: string } {
+  if (code === "PROGRAM_GENERATION_INSUFFICIENT_LIBRARY_TRACKS") {
+    return {
+      title: "LIBRARY TRACKS INSUFFICIENT",
+      message: "库内可播放的原版歌曲不足，DJ 没有用探索曲目替代既定的库内比例。",
+      settings: false,
+    };
+  }
   if (code === "PROGRAM_GENERATION_INSUFFICIENT_CHINESE_TRACKS") {
     return {
       title: "CHINESE ORIGINALS INSUFFICIENT",

@@ -14,6 +14,21 @@ export interface PlanningContextDependencies {
 
 const planningLibraryCandidateLimit = 1_000;
 
+function minimumLibraryTrackCount(
+  scenarioText: string,
+  preferredCount: number,
+  targetTrackCount: number,
+): number {
+  const normalized = scenarioText.toLocaleLowerCase("en-US");
+  if (/(?:只探索|只要新歌|全部探索|only\s*(?:new|discovery|explore))/iu.test(normalized)) {
+    return 0;
+  }
+  if (/(?:只听库内|只用库内|全部库内|only\s*library)/iu.test(normalized)) {
+    return targetTrackCount;
+  }
+  return preferredCount;
+}
+
 export function createPlanningContext(
   dependencies: PlanningContextDependencies,
   profileId: string,
@@ -25,6 +40,10 @@ export function createPlanningContext(
     planningLibraryCandidateLimit,
   );
   const taste = dependencies.taste.get(profileId);
+  const preferredLibraryTrackCount = Math.min(
+    libraryTracks.length,
+    Math.round(targetTrackCount * 0.7),
+  );
   return codexPlanningContextSchema.parse({
     scenarioText,
     effectiveTaste: taste.effective,
@@ -44,9 +63,10 @@ export function createPlanningContext(
         durationMs: track.durationMs,
       })),
       maximumTracks: targetTrackCount,
-      preferredLibraryTrackCount: Math.min(
+      preferredLibraryTrackCount,
+      minimumLibraryTrackCount: Math.min(
         libraryTracks.length,
-        Math.round(targetTrackCount * 0.7),
+        minimumLibraryTrackCount(scenarioText, preferredLibraryTrackCount, targetTrackCount),
       ),
     },
     currentTime: dependencies.now().toISOString(),

@@ -56,7 +56,7 @@ export function createMockCodexProvider(): CodexProvider & RadioAssistantProvide
           : `We’ll begin with “${topic}” and let the room open up one song at a time.`;
       const libraryIntents = rotate(parsedContext.library.tracks, seed)
         .filter((track) => !recentTrackIds.has(track.trackId))
-        .slice(0, parsedContext.library.preferredLibraryTrackCount)
+        .slice(0, parsedContext.library.minimumLibraryTrackCount)
         .map((track) => ({
           kind: "library" as const,
           trackId: track.trackId,

@@ -64,7 +64,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] Library 后端已实现：Provider 输出严格归一化为稳定 source identity，支持搜索、幂等加入候选池、分页列表、异步歌单导入及快照、歌词和短期播放解析；搜索/歌词/播放缓存均有容量与 TTL，播放直链不持久化
 - [x] Feedback 与 Taste 记忆后端已实现：七类固定反馈按 Profile append-only 幂等写入，同事务按稳定 replay order 更新可重建 TasteProjection；人工 TasteOverrides 独立版本化并优先合并为只读 EffectiveTaste
 - [x] Programs 与 Playback 领域后端已实现：Program、ordered track refs、DJ segments 与判别式 timeline 单事务提交，文字 DJ 不伪造音频项；分页历史和详情按 Profile 隔离，checkpoint 校验 owner、位置、完成边界与 `leaseEpoch`
-- [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、最多 1,000 首覆盖完整候选库的摘要、默认 8 首且可指定 8～12 首、约 70/30 库内/探索建议、最多 16 个原版候选与补选、近 20 期精确曲目去重、默认同艺人一首、显式点名覆盖、中文原始歌词 60% 汉字校验、活动 Planner 快照、超时、迟到结果隔离、来源增强与重启中断收敛均已验证；不足目标时提供具体诊断并保留旧节目，Program、Job 与待切换状态同事务提交
+- [x] 异步节目生成后端已实现：幂等受理、每 Profile 单活、持久阶段/sequence、最多 1,000 首覆盖完整候选库的摘要、默认 8 首且可指定 8～12 首、默认约 70% 库内曲目的强制下限（Planner 校验与 Backend 全库补位）、最多 16 个原版候选与补选、近 20 期精确曲目去重、默认同艺人一首、显式点名覆盖、中文原始歌词 60% 汉字校验、活动 Planner 快照、超时、迟到结果隔离、来源增强与重启中断收敛均已验证；不足目标时提供具体诊断并保留旧节目，Program、Job 与待切换状态同事务提交
 - [x] Mock Provider 后端闭环已验收：Radio 闲聊不触发节目，歧义追问，单曲卡片、3～5 首推荐卡片和 8～12 首节目分别执行；空库探索、两轮补选、近 10 期去重、同艺人与点名覆盖、中文歌词硬约束、MusicBrainz/Wikimedia 引用、搜索/音频失败、Codex 错误/非法计划、TTS/歌词降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
 - [x] Codex、DeepSeek、NetEase 与 TTS Provider adapters：Codex、NetEase、DeepSeek 和 Qwen TTS 的协议边界、Keychain、重试、响应校验与 Mock fixtures 已实现；真实 DeepSeek API smoke 仍需手动凭据，Production Server 与 Electron 主进程默认 Live，Development、Test 和 CI 默认 Mock

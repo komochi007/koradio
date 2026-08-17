@@ -175,6 +175,7 @@ describe("S3-06 Program generation orchestration", () => {
       tracks: [],
       maximumTracks: 5,
       preferredLibraryTrackCount: 0,
+      minimumLibraryTrackCount: 0,
     });
 
     const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
@@ -267,11 +268,14 @@ describe("S3-06 Program generation orchestration", () => {
     await closeHarness(harness);
   });
 
-  it("provides the full library context and resolves the default five-track 4/1 plan in order", async () => {
+  it("uses the full library candidate range to recover the default library share", async () => {
     const providerTracks = Array.from({ length: 126 }, (_, index) => ({
       source: "netease" as const,
       sourceTrackId: `library-aware-${String(index + 1)}`,
-      title: `Library Aware ${String(index + 1)}`,
+      title:
+        index < 120
+          ? `Library Aware ${String(index + 1)} (Live)`
+          : `Library Aware ${String(index + 1)}`,
       artist: `Artist ${String(index + 1)}`,
       album: "Library Aware Fixtures",
       durationMs: 180_000 + index * 1_000,
@@ -368,10 +372,14 @@ describe("S3-06 Program generation orchestration", () => {
     expect(capturedContext?.library).toMatchObject({
       maximumTracks: 5,
       preferredLibraryTrackCount: 4,
+      minimumLibraryTrackCount: 4,
     });
     expect(capturedContext?.library.tracks).toHaveLength(125);
-    expect(detail.tracks.map((track) => track.title)).toEqual([
-      ...(capturedContext?.library.tracks.slice(0, 4).map((track) => track.title) ?? []),
+    expect(detail.tracks.map((track) => track.title).sort()).toEqual([
+      "Library Aware 121",
+      "Library Aware 122",
+      "Library Aware 123",
+      "Library Aware 124",
       "Library Aware 126",
     ]);
     expect(searchInvocations).toEqual(["adjacent discovery"]);
@@ -467,6 +475,61 @@ describe("S3-06 Program generation orchestration", () => {
     await closeHarness(harness);
   });
 
+  it("fills the required library share from the full library when a planner returns only discovery", async () => {
+    let capturedContext: ReturnType<typeof codexPlanningContextSchema.parse> | undefined;
+    const codex: CodexProvider = {
+      plan(context) {
+        const parsed = codexPlanningContextSchema.parse(context);
+        capturedContext = parsed;
+        return Promise.resolve({
+          programTitle: "Library Share Recovery",
+          scenarioSummary: "规划器遗漏库内歌曲时由后端补齐",
+          djLanguage: parsed.preferences.djLanguage,
+          djPersona: parsed.preferences.djVoiceStyle,
+          djScripts: [
+            {
+              type: "intro",
+              language: parsed.preferences.djLanguage,
+              text: "先留一首新发现，再回到你自己的音乐库。",
+              displayText: "先留一首新发现，再回到你自己的音乐库。",
+              estimatedTiming: true,
+            },
+          ],
+          trackIntents: [
+            {
+              kind: "discovery",
+              keyword: "Quiet Signal Artist Three",
+              expectedArtist: "Artist Three",
+              reason: "故意模拟只返回探索候选的规划器",
+            },
+          ],
+          playlistIntent: { energy: "mid", mood: "balanced", avoid: [] },
+        });
+      },
+    };
+    const harness = await createHarness(codex);
+    harness.library.importPlaylist(
+      harness.profile.id,
+      "mock-library-for-share-recovery",
+      "library-share-recovery-import",
+    );
+    await harness.library.close();
+    const started = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "默认生成五首" },
+      "generation-library-share-recovery-001",
+    );
+    await harness.generation.waitForIdle();
+    const snapshot = harness.generation.get(harness.profile.id, started.jobId);
+    const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
+    const libraryTrackIds = new Set(capturedContext?.library.tracks.map((track) => track.trackId));
+
+    expect(capturedContext?.library.minimumLibraryTrackCount).toBe(2);
+    expect(detail.tracks.filter((track) => libraryTrackIds.has(track.id))).toHaveLength(2);
+    expect(detail.tracks).toHaveLength(3);
+    await closeHarness(harness);
+  });
+
   it("skips foreign library ids and duplicate discoveries without cross-profile fallback", async () => {
     const codex: CodexProvider = {
       plan() {
@@ -522,7 +585,7 @@ describe("S3-06 Program generation orchestration", () => {
     await closeHarness(harness);
   });
 
-  it("degrades an unavailable library intent without replacing it from another profile", async () => {
+  it("fails when an unavailable library intent leaves the required library share unmet", async () => {
     const baseMusic = createMockMusicProvider();
     const music: MusicProvider = {
       ...baseMusic,
@@ -571,9 +634,10 @@ describe("S3-06 Program generation orchestration", () => {
       "generation-library-audio-degradation-001",
     );
     await harness.generation.waitForIdle();
-    const snapshot = harness.generation.get(harness.profile.id, started.jobId);
-    const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
-    expect(detail.tracks.map((track) => track.title)).toEqual(["Midnight City"]);
+    expect(harness.generation.get(harness.profile.id, started.jobId)).toMatchObject({
+      status: "failed",
+      errorCode: "PROGRAM_GENERATION_INSUFFICIENT_LIBRARY_TRACKS",
+    });
     expect(
       harness.events.some(
         (event) =>
@@ -585,7 +649,7 @@ describe("S3-06 Program generation orchestration", () => {
     await closeHarness(harness);
   });
 
-  it("searches the same artist when a selected library track has no playable audio", async () => {
+  it("does not use a discovery fallback to replace a missing required library track", async () => {
     const baseMusic = createMockMusicProvider();
     const fallbackTrack: ProviderTrack = {
       source: "netease",
@@ -664,9 +728,10 @@ describe("S3-06 Program generation orchestration", () => {
       "generation-library-artist-recovery-001",
     );
     await harness.generation.waitForIdle();
-    const snapshot = harness.generation.get(harness.profile.id, started.jobId);
-    const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
-    expect(detail.tracks.map((track) => track.title)).toEqual(["Space (Alternate)"]);
+    expect(harness.generation.get(harness.profile.id, started.jobId)).toMatchObject({
+      status: "failed",
+      errorCode: "PROGRAM_GENERATION_INSUFFICIENT_LIBRARY_TRACKS",
+    });
     await closeHarness(harness);
   });
 
@@ -753,6 +818,7 @@ describe("S3-06 Program generation orchestration", () => {
             tracks: [],
             maximumTracks: 5,
             preferredLibraryTrackCount: 0,
+            minimumLibraryTrackCount: 0,
           },
           currentTime: new Date().toISOString(),
           preferences: {

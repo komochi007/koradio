@@ -176,6 +176,7 @@ describe("Codex adapter", () => {
     };
     expect(providerInput.instruction).toContain("trackIntents");
     expect(providerInput.instruction).toContain("preferredLibraryTrackCount");
+    expect(providerInput.instruction).toContain("minimumLibraryTrackCount");
     expect(providerInput.instruction).toContain("different primary artist");
     expect(providerInput.instruction).toContain("exact song title and primary artist");
     expect(providerInput.context).toEqual(codexPlanningContextFixture);
@@ -205,6 +206,35 @@ describe("Codex adapter", () => {
                 kind: "library",
                 trackId: "90000000-0000-4000-8000-000000000099",
                 reason: "该 ID 不在当前 Profile 的有界音乐库上下文中",
+              },
+            ],
+          }),
+        }),
+      runtimeDirectory,
+    });
+
+    await expect(
+      adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
+    ).rejects.toMatchObject({ code: "response_invalid" });
+  });
+
+  it("rejects a plan below the required library share", async () => {
+    const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-library-share-"));
+    const adapter = createCodexAdapter({
+      command: "codex",
+      resolveExecutable: () => Promise.resolve("/trusted/codex"),
+      runner: () =>
+        Promise.resolve({
+          exitCode: 0,
+          stderr: "",
+          stdout: codexJsonl({
+            ...codexProgramPlanFixture,
+            trackIntents: [
+              {
+                kind: "discovery",
+                keyword: "Space Song Beach House",
+                expectedArtist: "Beach House",
+                reason: "故意遗漏库内候选",
               },
             ],
           }),
@@ -462,7 +492,7 @@ describe("DeepSeek adapter", () => {
     ).resolves.toEqual(codexProgramPlanFixture);
     expect(invocations).toHaveLength(2);
     expect(invocations[1]?.init?.body).toContain("previous planning attempt failed");
-    expect(invocations[1]?.init?.body).toContain("no library intents");
+    expect(invocations[1]?.init?.body).toContain("at least 1 library intents");
   });
 
   it("rejects empty or invalid JSON without exposing response content", async () => {
