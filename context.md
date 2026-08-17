@@ -116,7 +116,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 |---|---|
 | `Profile` | 本地数据分区根，头像只保存受控 `avatarRef` |
 | `TasteProjection` | 可从反馈事实重建的自动投影 |
-| `TasteBlueprint` | Profile 级稳定品味起点；记录学习基线，蓝图应用前的反馈不再参与品味学习 |
+| `TasteBlueprint` | Profile 级稳定品味起点；包含特质、歌曲语言比例、版本偏好与学习基线，蓝图应用前的反馈不再参与品味学习 |
 | `TasteOverrides` | 人工规则，优先且不被重建覆盖 |
 | `EffectiveTaste` | 合并后的活动 Planner 只读上下文 |
 | `DeviceSettings` | 设备级 dataRoot、Planner/模型/隐私配置与 Secret Store 引用 |

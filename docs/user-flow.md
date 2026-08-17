@@ -333,7 +333,7 @@ Radio 输入先由活动 AI 大脑结合最近对话和当前节目摘要路由�
 [回滚 UI；播放继续]  [从反馈学习起点重建 TasteProjection]
                         |
                         v
-      [TasteBlueprint / TasteOverrides 共同进入 Planner]
+      [TasteBlueprint（特质、语言比例、版本偏好）/ TasteOverrides 共同进入 Planner]
           [人工规则优先得到 EffectiveTaste]
 ```
 

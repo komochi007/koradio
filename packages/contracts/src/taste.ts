@@ -7,6 +7,26 @@ export const avoidRuleSchema = z.string().trim().min(1).max(120);
 export const sceneRuleSchema = z.string().trim().min(1).max(160);
 const tasteBlueprintTextSchema = z.string().trim().min(1).max(160);
 const tasteBlueprintArtistSchema = z.string().trim().min(1).max(80);
+const tasteBlueprintLanguageMixSchema = z
+  .array(
+    z.strictObject({
+      language: z.enum(["zh", "en", "ja", "ko"]),
+      ratio: z.number().positive().max(1),
+    }),
+  )
+  .max(4)
+  .default([]);
+const tasteBlueprintVersionPreferenceSchema = z
+  .strictObject({
+    studioFirst: z.boolean(),
+    avoid: z.array(tasteBlueprintTextSchema).max(6),
+    allowWhenStronger: z.array(tasteBlueprintTextSchema).max(6),
+  })
+  .default({
+    studioFirst: true,
+    avoid: [],
+    allowWhenStronger: [],
+  });
 export const tasteBlueprintSchema = z.strictObject({
   profileId: profileIdSchema,
   sourceLabel: z.string().trim().min(1).max(120),
@@ -27,6 +47,8 @@ export const tasteBlueprintSchema = z.strictObject({
   bridgeArtists: z.array(tasteBlueprintArtistSchema).max(20),
   softAvoids: z.array(tasteBlueprintTextSchema).max(12),
   transitionPriorities: z.array(tasteBlueprintTextSchema).min(1).max(8),
+  languageMix: tasteBlueprintLanguageMixSchema,
+  versionPreference: tasteBlueprintVersionPreferenceSchema,
   scenes: z
     .array(
       z.strictObject({

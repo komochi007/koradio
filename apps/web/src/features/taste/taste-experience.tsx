@@ -56,6 +56,16 @@ function signalLabel(value: string): string {
   return value;
 }
 
+function languageMixLabel(language: "zh" | "en" | "ja" | "ko", ratio: number): string {
+  const labels = {
+    en: "英文",
+    ja: "日语",
+    ko: "韩语",
+    zh: "中文",
+  };
+  return `${labels[language]} ${String(Math.round(ratio * 100))}%`;
+}
+
 function TasteTopbar({
   current,
   onOpenProfiles,
@@ -157,6 +167,9 @@ function TasteBlueprintPanel({
   taste: TasteResponse;
 }): ReactElement {
   const blueprint = taste.blueprint;
+  const languageMix = blueprint?.languageMix.map(({ language, ratio }) =>
+    languageMixLabel(language, ratio),
+  );
   return (
     <section className="taste-blueprint" aria-labelledby="taste-blueprint-title">
       <SectionHeading
@@ -192,6 +205,23 @@ function TasteBlueprintPanel({
                 从 {formatUpdatedAt(blueprint.learningStartedAt)} 开始学习
               </time>
             </div>
+            {languageMix === undefined || languageMix.length === 0 ? null : (
+              <div className="taste-blueprint-guidance">
+                <div>
+                  <strong>歌曲语言</strong>
+                  <p>{languageMix.join(" · ")}</p>
+                </div>
+                <div>
+                  <strong>版本选择</strong>
+                  <p>
+                    {blueprint.versionPreference.studioFirst ? "录音室原版优先" : "按场景选择版本"}
+                    {blueprint.versionPreference.allowWhenStronger.length === 0
+                      ? ""
+                      : `；仅在更契合时选择 ${blueprint.versionPreference.allowWhenStronger.join("、")}`}
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="taste-blueprint-traits" aria-label="核心审美特质">
               {blueprint.primaryTraits.map((trait) => (
                 <span key={trait}>{trait}</span>

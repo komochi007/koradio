@@ -42,12 +42,23 @@ describe("Taste projection policy", () => {
   it("builds the user blueprint as a bounded, profile-owned soft taste context", () => {
     const blueprint = createPersonalTasteBlueprint(profileId, "2026-08-14T08:00:00.000Z");
     expect(blueprint.profileId).toBe(profileId);
-    expect(blueprint.version).toBe("1.0");
+    expect(blueprint.version).toBe("1.1");
     expect(blueprint.libraryRatio).toBe(0.7);
     expect(blueprint.discoveryRatio).toBe(0.3);
     expect(blueprint.primaryTraits).toEqual(
       expect.arrayContaining(["旋律优先", "温暖有空间", "松弛 Groove"]),
     );
+    expect(blueprint.languageMix).toEqual([
+      { language: "en", ratio: 0.5 },
+      { language: "zh", ratio: 0.3 },
+      { language: "ja", ratio: 0.1 },
+      { language: "ko", ratio: 0.1 },
+    ]);
+    expect(blueprint.versionPreference).toEqual({
+      studioFirst: true,
+      avoid: ["Live 或现场版", "普通 Remix", "Karaoke、伴奏或低音质翻唱"],
+      allowWhenStronger: ["钢琴版", "Acoustic", "有明确重编曲价值的特殊版本"],
+    });
     expect(blueprint.clusters).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

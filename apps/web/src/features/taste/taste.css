@@ -174,7 +174,8 @@
 .taste-blueprint-card > p,
 .taste-blueprint-card__meta,
 .taste-blueprint-card__facts,
-.taste-blueprint-clusters p {
+.taste-blueprint-clusters p,
+.taste-blueprint-guidance p {
   margin: 0;
   color: var(--kr-text-secondary);
   font-size: 14px;
@@ -215,6 +216,30 @@
   color: var(--kr-text-secondary);
   font-size: 13px;
   line-height: 18px;
+}
+
+.taste-blueprint-guidance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.taste-blueprint-guidance > div {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 14px;
+}
+
+.taste-blueprint-guidance strong {
+  color: var(--kr-text-tertiary);
+  font:
+    500 11px/16px "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  letter-spacing: 0.05em;
 }
 
 .taste-blueprint-clusters {
@@ -900,7 +925,8 @@
 
   .taste-preference-grid,
   .taste-scene-grid,
-  .taste-blueprint-clusters {
+  .taste-blueprint-clusters,
+  .taste-blueprint-guidance {
     grid-template-columns: 1fr;
   }
 

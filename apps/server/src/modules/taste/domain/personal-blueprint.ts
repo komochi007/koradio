@@ -4,9 +4,9 @@ export function createPersonalTasteBlueprint(profileId: string, now: string): Ta
   return tasteBlueprintSchema.parse({
     profileId,
     sourceLabel: "基于 taste.md 的三张歌单分析",
-    version: "1.0",
+    version: "1.1",
     summary:
-      "旋律优先、和声有颜色、松弛而有 Pocket 的律动；偏爱温暖、真实、有空间感的声音，以及克制但不失安慰的苦甜情绪。",
+      "旋律优先、和声有颜色、松弛而有 Pocket 的律动；偏爱温暖、真实、有空间感的声音，以及克制但不失安慰的苦甜情绪。英文为主，默认选择录音室原版。",
     primaryTraits: [
       "旋律优先",
       "温暖有空间",
@@ -45,8 +45,8 @@ export function createPersonalTasteBlueprint(profileId: string, now: string): Ta
       },
       {
         name: "Melodic Rock / Classic Pop-Rock",
-        affinity: 0.78,
-        signals: ["大旋律", "guitar tone", "情绪释放", "乐队动态"],
+        affinity: 0.84,
+        signals: ["大旋律", "guitar tone", "情绪推进", "日常乐队动态"],
       },
     ],
     anchorArtists: [
@@ -75,6 +75,10 @@ export function createPersonalTasteBlueprint(profileId: string, now: string): Ta
       "Oasis",
       "Green Day",
       "The Beatles",
+      "LANY",
+      "Isaac Gracie",
+      "孙燕姿",
+      "夏日入侵企画",
     ],
     bridgeArtists: [
       "FKJ",
@@ -88,44 +92,44 @@ export function createPersonalTasteBlueprint(profileId: string, now: string): Ta
     ],
     softAvoids: [
       "大型 Drop 导向的 festival EDM",
-      "持续高压、攻击性很强的 Trap",
       "极端 Metal、Hardcore 或噪音摇滚",
       "过度堆砌的最大化制作",
       "旋律稀薄、只有纹理的音乐",
       "过亮且缺少情绪深度的流行歌",
-      "只靠噱头的 novelty song",
+      "网络热歌或古风",
     ],
     transitionPriorities: ["情绪连续性", "音色与空间感", "能量", "和声色彩", "Groove", "流派"],
+    languageMix: [
+      { language: "en", ratio: 0.5 },
+      { language: "zh", ratio: 0.3 },
+      { language: "ja", ratio: 0.1 },
+      { language: "ko", ratio: 0.1 },
+    ],
+    versionPreference: {
+      studioFirst: true,
+      avoid: ["Live 或现场版", "普通 Remix", "Karaoke、伴奏或低音质翻唱"],
+      allowWhenStronger: ["钢琴版", "Acoustic", "有明确重编曲价值的特殊版本"],
+    },
     scenes: [
-      { name: "安静清晨", guidance: "低能量的 piano、acoustic、轻 Soul 或器乐，温暖而通透。" },
       {
-        name: "咖啡与轻工作",
-        guidance: "Jazz Pop、器乐 Hip-Hop、mellow R&B；保持低到中等歌词密度。",
-      },
-      {
-        name: "城市散步",
-        guidance: "City-Soul、Indie Pop、Neo-Soul 与松弛 Hip-Hop，带一点前进感。",
-      },
-      {
-        name: "深夜",
-        guidance: "Alternative R&B、Dream Pop、亲密唱作、Ambient 或 Jazz Rap，保持私密感。",
-      },
-      {
-        name: "雨天沉思",
-        guidance: "克制 Ballad、Piano、Acoustic 与 Cinematic Minimalism，避免纯绝望。",
-      },
-      {
-        name: "需要一点提振",
-        guidance: "Melodic Rock、Funk Soul、Upbeat Indie；振奋但不 festival 化。",
-      },
-      {
-        name: "Hip-Hop",
-        guidance: "优先 Jazz Rap、Soulful Rap、叙事性与旋律性强的作品；Trap 只作少量点缀。",
-      },
-      {
-        name: "深度专注",
+        name: "上午工作",
         guidance:
-          "Neo-Classical、Fingerstyle、Game 或 Film Score、Melodic Lo-fi；人声比例保持很低。",
+          "清醒但不催促；中低能量、节奏清晰、旋律提神。优先温暖 Indie、Soul、轻巧 Hip-Hop 与明亮日系 Alternative，避免过度悲伤、爆发摇滚和密集人声。",
+      },
+      {
+        name: "下午工作",
+        guidance:
+          "稳定推进、略有 Groove；允许 Neo-Soul、Alternative R&B、Jazz Rap 与 Melodic Rock 穿插，保持专注，不连续堆叠强情绪或高攻击性说唱。",
+      },
+      {
+        name: "夜晚阅读",
+        guidance:
+          "留白、安静、低干扰；优先 piano、fingerstyle、Ambient、Neo-Classical 与轻声唱作。人声可有，但歌词与编曲不抢注意力，转场平缓。",
+      },
+      {
+        name: "夜晚放松",
+        guidance:
+          "温暖、松弛、有余韵；优先 Neo-Soul、R&B、City-Soul、柔和 Indie 与旋律型 Rock。允许一点感伤，但不要推向沉重、焦虑或过度悲伤。",
       },
     ],
     libraryRatio: 0.7,

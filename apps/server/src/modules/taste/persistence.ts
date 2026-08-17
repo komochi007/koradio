@@ -299,6 +299,8 @@ export function createTasteRepository(client: DatabaseSync): TasteRepository {
             bridgeArtists: blueprint.bridgeArtists,
             softAvoids: blueprint.softAvoids,
             transitionPriorities: blueprint.transitionPriorities,
+            languageMix: blueprint.languageMix,
+            versionPreference: blueprint.versionPreference,
             scenes: blueprint.scenes,
             libraryRatio: blueprint.libraryRatio,
             discoveryRatio: blueprint.discoveryRatio,

@@ -97,7 +97,7 @@ function blueprint(profileId: string): TasteBlueprint {
   return {
     profileId,
     sourceLabel: "基于 taste.md 的三张歌单分析",
-    version: "1.0",
+    version: "1.1",
     summary: "旋律优先、温暖有空间、松弛而有情绪连续性的私人电台审美。",
     primaryTraits: ["旋律优先", "温暖有空间", "松弛 Groove"],
     clusters: [
@@ -111,6 +111,17 @@ function blueprint(profileId: string): TasteBlueprint {
     bridgeArtists: ["FKJ"],
     softAvoids: ["大型 Drop 导向的 festival EDM"],
     transitionPriorities: ["情绪连续性"],
+    languageMix: [
+      { language: "en", ratio: 0.5 },
+      { language: "zh", ratio: 0.3 },
+      { language: "ja", ratio: 0.1 },
+      { language: "ko", ratio: 0.1 },
+    ],
+    versionPreference: {
+      studioFirst: true,
+      avoid: ["Live 或现场版"],
+      allowWhenStronger: ["钢琴版", "Acoustic"],
+    },
     scenes: [{ name: "深夜", guidance: "保持私密、温暖和低到中等能量。" }],
     libraryRatio: 0.7,
     discoveryRatio: 0.3,
@@ -410,6 +421,8 @@ test("applies the taste blueprint only after explicit confirmation", async ({
   await expect(page.getByText("基于 taste.md 的三张歌单分析")).toBeVisible();
   await expect(page.getByText("旋律优先", { exact: true })).toBeVisible();
   await expect(page.getByText("库内 70% · 探索 30%")).toBeVisible();
+  await expect(page.getByText("英文 50% · 中文 30% · 日语 10% · 韩语 10%")).toBeVisible();
+  await expect(page.getByText("录音室原版优先；仅在更契合时选择 钢琴版、Acoustic")).toBeVisible();
   await expect(page.getByText("重塑后已记录 0 条反馈")).toBeVisible();
 });
 

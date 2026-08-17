@@ -781,13 +781,14 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 **用户操作路径、界面元素、交互逻辑、数据变化**
 
-- 用户点击 Taste → 系统读取可选 `TasteBlueprint`、自动 `TasteProjection`、人工 `TasteOverrides` 和合并后的 `EffectiveTaste` → 用户看到稳定审美簇、人工规则与重塑后反馈摘要。
+- 用户点击 Taste → 系统读取可选 `TasteBlueprint`、自动 `TasteProjection`、人工 `TasteOverrides` 和合并后的 `EffectiveTaste` → 用户看到稳定审美簇、歌曲语言比例、版本选择偏好、人工规则与重塑后反馈摘要。
 - 用户点击“应用品味蓝图” → 系统展示二次确认 → 确认后写入当前 Profile 的结构化蓝图，清空旧 `TasteOverrides` 与 `TasteProjection`，并记录反馈学习起点；旧 `FeedbackEvent`、节目历史和收藏状态保留，但起点前事件不再进入品味学习。
 - 用户点击“编辑标签” → 系统只编辑 `TasteOverrides` → 用户可新增、删除、排序人工标签与规则。
 - 用户点击“保存品味” → 系统写入 `TasteOverrides` 并重新计算 `EffectiveTaste` → 用户收到可关闭、自动消失的成功提示；失败时保留编辑内容并收到错误提示。
 - 自动投影仅可由反馈学习起点之后的 `FeedbackEvent` 流重建；重建、回放或算法升级不得覆盖人工 overrides，冲突时人工规则优先。
 - 合并使用稳定、保序、忽略大小写的去重：人工 tags、避雷规则和场景规则完整保留在各自字段前部；自动 tags 和 signals 只填充 contract 剩余容量。
 - 人工避雷规则与自动 tag 或 affinity 文本相同时移除对应自动值；自动 avoid signal 在人工避雷规则之后填充剩余容量。`EffectiveTaste` 是实时合并的只读结果，不单独持久化或提供写入口。
+- 未指定语言或地区时，Planner 将蓝图的歌曲语言比例作为跨节目长期近似目标；场景、可用曲目与明确语言请求优先于精确比例。版本偏好默认优先录音室原版，只在蓝图明确允许且音乐/场景匹配更好时选择特殊版本。
 
 **用户流程**
 
