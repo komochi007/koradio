@@ -193,7 +193,7 @@ describe("S3-03 Feedback and Taste memory backend", () => {
       blueprint: {
         profileId: profile.id,
         sourceLabel: "基于 taste.md 的三张歌单分析",
-        version: "1.1",
+        version: "1.2",
         libraryRatio: 0.7,
         discoveryRatio: 0.3,
         languageMix: [

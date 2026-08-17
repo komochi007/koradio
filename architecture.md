@@ -10,7 +10,7 @@
 ## 1. System Overview
 
 Koradio 是运行在单台设备上的私人 AI 音乐电台，由 Electron 桌面壳、现有 Web Renderer 与本地 Node.js 服务组成。
-系统读取当前档案的 `EffectiveTaste`、可选 `TasteBlueprint` 与历史，通过设备级选择的 Codex 或 DeepSeek Planner 规划节目；蓝图提供软性的特征级选歌、歌曲语言比例、版本选择与串联依据，不改变约 70% 库内 / 30% 探索或确定性约束。语言比例是未指定语言时的长期近似目标，场景、曲库可用性与明确请求优先。系统经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled Python/MLX helper 调用 Qwen3-TTS 8-bit 本地模型生成 DJ 语音。
+系统读取当前档案的 `EffectiveTaste`、可选 `TasteBlueprint` 与历史，通过设备级选择的 Codex 或 DeepSeek Planner 规划节目；蓝图提供软性的特征级选歌、歌曲语言比例、版本选择与串联依据，不改变约 70% 库内 / 30% 探索或确定性约束。语言比例是未指定语言时的长期近似目标，场景、曲库可用性与明确请求优先；原唱与录音室原版优先则由后端统一执行，默认过滤翻唱、Cover、现场、混音、伴奏及加速/降速等变速版本，只有明确点名才可覆盖。系统经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled Python/MLX helper 调用 Qwen3-TTS 8-bit 本地模型生成 DJ 语音。
 ### System boundaries
 
 - **Client**：界面、HTMLAudio、实时播放进度和短生命周期交互状态。
@@ -181,7 +181,7 @@ sequenceDiagram
 | Failure | Boundary behavior | Result |
 |---|---|---|
 | Active Planner error / invalid JSON | End job, retain scenario, expose retry; never auto-switch Provider | Blocked |
-| Track intent unavailable | Skip invalid/foreign library IDs, duplicates, unplayable audio and failed discovery intents in order; never randomly fill from another Profile, and do not create an empty program if all intents fail | Blocked |
+| Track intent unavailable | Skip invalid/foreign library IDs, duplicates, unplayable audio, non-canonical versions and failed discovery intents in order; never randomly fill from another Profile, and do not create an empty program if all intents fail | Blocked |
 | Data path / transaction error | Roll back creation | Blocked |
 | TTS failure | Persist text segment without audio | Continue |
 | Lyrics failure | Set unavailable lyric status | Continue |

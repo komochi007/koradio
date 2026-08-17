@@ -1,0 +1,43 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  hasNonCanonicalVersionMarker,
+  isCanonicalOriginalCandidate,
+  isNonCanonicalVersion,
+} from "../../apps/server/src/modules/library/track-version.js";
+
+describe("track version selection", () => {
+  const original = {
+    title: "Space Song",
+    artist: "Beach House",
+    album: "Depression Cherry",
+  };
+
+  it("keeps canonical originals that match the requested primary artist", () => {
+    expect(isCanonicalOriginalCandidate(original, "Space Song Beach House")).toBe(true);
+  });
+
+  it("rejects cover and all speed-altered variants", () => {
+    expect(
+      isNonCanonicalVersion({ ...original, title: "Space Song (Cover)", artist: "Other Artist" }),
+    ).toBe(true);
+    expect(isNonCanonicalVersion({ ...original, title: "Space Song (Sped Up)" })).toBe(true);
+    expect(isNonCanonicalVersion({ ...original, title: "Space Song（加速版）" })).toBe(true);
+    expect(isNonCanonicalVersion({ ...original, title: "Space Song (Slowed + Reverb)" })).toBe(
+      true,
+    );
+  });
+
+  it("rejects a result whose singer does not match the requested original artist", () => {
+    expect(
+      isCanonicalOriginalCandidate(
+        { ...original, artist: "Cover Singer", album: "Beach House Tribute" },
+        "Space Song Beach House",
+      ),
+    ).toBe(false);
+  });
+
+  it("recognizes an explicitly named non-canonical version", () => {
+    expect(hasNonCanonicalVersionMarker("播放 Space Song 的加速版")).toBe(true);
+  });
+});

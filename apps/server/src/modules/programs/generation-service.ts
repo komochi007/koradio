@@ -20,6 +20,7 @@ import {
 } from "@koradio/contracts";
 
 import type { LibraryService } from "../library/index.js";
+import { isNonCanonicalVersion } from "../library/track-version.js";
 import type { ProfilePreferencesService } from "../profile-preferences/index.js";
 import type { TasteService } from "../taste/index.js";
 import {
@@ -74,11 +75,8 @@ type GenerationPrograms = Pick<ProgramService, "commit" | "list">;
 type GenerationPreferences = Pick<ProfilePreferencesService, "get">;
 type GenerationTaste = Pick<TasteService, "get">;
 
-const alternativeVersionMarker =
-  /(?:\((?:[^)]*\b(?:live|karaoke|cover|remix|unplugged)\b|[^)]*(?:现场|演唱会|伴奏))[^)]*\)|\[(?:[^\]]*\b(?:live|karaoke|cover|remix|unplugged)\b|[^\]]*(?:现场|演唱会|伴奏))[^\]]*\]|\s[-–—]\s*(?:live|karaoke|cover|remix|unplugged)\b)/iu;
-
 export function isAlternativeVersion(track: Pick<MusicTrack, "album" | "title">): boolean {
-  return alternativeVersionMarker.test(`${track.title}\n${track.album}`);
+  return isNonCanonicalVersion({ ...track, artist: "" });
 }
 
 export interface CreateProgramGenerationServiceOptions {
@@ -304,7 +302,6 @@ export function createProgramGenerationService(
     );
     const chineseOnly = /中文歌|华语歌|国语歌|粤语歌/u.test(scenarioText);
     const normalizedScenario = scenarioText.toLocaleLowerCase("en-US");
-    const deferredLibraryTracks: MusicTrack[] = [];
     let trackDegraded = false;
 
     const isExplicitTrack = (track: MusicTrack): boolean => {
@@ -425,7 +422,7 @@ export function createProgramGenerationService(
             continue;
           }
           if (isAlternativeVersion(track) && !isExplicitTrack(track)) {
-            deferredLibraryTracks.push(track);
+            trackDegraded = true;
             continue;
           }
           if (!(await tryResolve(track))) {
@@ -436,11 +433,6 @@ export function createProgramGenerationService(
         await searchAndResolve(intent.keyword);
       }
       if (resolved.length === targetTrackCount) break;
-    }
-
-    for (const track of deferredLibraryTracks) {
-      if (resolved.length === targetTrackCount) break;
-      await tryResolve(track);
     }
 
     if (trackDegraded) {

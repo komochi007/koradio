@@ -781,7 +781,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 **用户操作路径、界面元素、交互逻辑、数据变化**
 
-- 用户点击 Taste → 系统读取可选 `TasteBlueprint`、自动 `TasteProjection`、人工 `TasteOverrides` 和合并后的 `EffectiveTaste` → 用户看到稳定审美簇、歌曲语言比例、版本选择偏好、人工规则与重塑后反馈摘要。
+- 用户点击 Taste → 系统读取可选 `TasteBlueprint`、自动 `TasteProjection`、人工 `TasteOverrides` 和合并后的 `EffectiveTaste` → 用户看到稳定审美簇、歌曲语言比例、版本选择偏好、人工规则与重塑后反馈摘要。原唱与录音室原版默认优先；翻唱、Cover、Live、Remix、Karaoke、伴奏及加速/降速等变速版本由后端统一排除，只有用户明确点名该版本时才可覆盖。
 - 用户点击“应用品味蓝图” → 系统展示二次确认 → 确认后写入当前 Profile 的结构化蓝图，清空旧 `TasteOverrides` 与 `TasteProjection`，并记录反馈学习起点；旧 `FeedbackEvent`、节目历史和收藏状态保留，但起点前事件不再进入品味学习。
 - 用户点击“编辑标签” → 系统只编辑 `TasteOverrides` → 用户可新增、删除、排序人工标签与规则。
 - 用户点击“保存品味” → 系统写入 `TasteOverrides` 并重新计算 `EffectiveTaste` → 用户收到可关闭、自动消失的成功提示；失败时保留编辑内容并收到错误提示。

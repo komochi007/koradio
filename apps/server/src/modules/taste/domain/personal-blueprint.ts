@@ -4,7 +4,7 @@ export function createPersonalTasteBlueprint(profileId: string, now: string): Ta
   return tasteBlueprintSchema.parse({
     profileId,
     sourceLabel: "基于 taste.md 的三张歌单分析",
-    version: "1.1",
+    version: "1.2",
     summary:
       "旋律优先、和声有颜色、松弛而有 Pocket 的律动；偏爱温暖、真实、有空间感的声音，以及克制但不失安慰的苦甜情绪。英文为主，默认选择录音室原版。",
     primaryTraits: [
@@ -107,7 +107,11 @@ export function createPersonalTasteBlueprint(profileId: string, now: string): Ta
     ],
     versionPreference: {
       studioFirst: true,
-      avoid: ["Live 或现场版", "普通 Remix", "Karaoke、伴奏或低音质翻唱"],
+      avoid: [
+        "Live、现场版或普通 Remix",
+        "翻唱、Cover、Karaoke 或伴奏",
+        "加速、降速、Sped Up、Slowed、Nightcore 或 Reverb 版本",
+      ],
       allowWhenStronger: ["钢琴版", "Acoustic", "有明确重编曲价值的特殊版本"],
     },
     scenes: [

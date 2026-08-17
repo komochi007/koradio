@@ -97,7 +97,7 @@ function blueprint(profileId: string): TasteBlueprint {
   return {
     profileId,
     sourceLabel: "基于 taste.md 的三张歌单分析",
-    version: "1.1",
+    version: "1.2",
     summary: "旋律优先、温暖有空间、松弛而有情绪连续性的私人电台审美。",
     primaryTraits: ["旋律优先", "温暖有空间", "松弛 Groove"],
     clusters: [

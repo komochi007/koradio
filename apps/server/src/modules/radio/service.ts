@@ -10,6 +10,10 @@ import {
 
 import type { LibraryService } from "../library/index.js";
 import {
+  hasNonCanonicalVersionMarker,
+  isCanonicalOriginalCandidate,
+} from "../library/track-version.js";
+import {
   requestedProgramTrackCount,
   type ProgramGenerationService,
   type ProgramService,
@@ -176,6 +180,7 @@ export function createRadioService(options: CreateRadioServiceOptions) {
         .find((turn) => (turn.recommendedTracks?.length ?? 0) > 0)?.recommendedTracks;
       const recommendationFollowUp =
         /(?:最推荐|哪.*(?:首|一首)|top pick|best pick|recommend.*most)/iu.test(command.content);
+      const explicitlyRequestedNonCanonicalVersion = hasNonCanonicalVersionMarker(command.content);
       if (response.decision === "single_track") {
         if (recommendationFollowUp && previousRecommendations !== undefined) {
           track =
@@ -188,7 +193,13 @@ export function createRadioService(options: CreateRadioServiceOptions) {
             null;
         } else if (response.musicQuery !== null) {
           const result = await options.library.search(response.musicQuery);
-          track = result.items.find((candidate) => candidate.playable) ?? null;
+          track =
+            result.items.find(
+              (candidate) =>
+                candidate.playable &&
+                (explicitlyRequestedNonCanonicalVersion ||
+                  isCanonicalOriginalCandidate(candidate, response.musicQuery ?? "")),
+            ) ?? null;
         }
         if (track === null) throw new RadioTurnUnavailableError();
       } else if (response.decision === "recommendations") {
@@ -198,6 +209,8 @@ export function createRadioService(options: CreateRadioServiceOptions) {
             (item) =>
               item.playable &&
               !seen.has(item.id) &&
+              (explicitlyRequestedNonCanonicalVersion ||
+                isCanonicalOriginalCandidate(item, query)) &&
               (recommendationArtist === undefined ||
                 item.artist.toLowerCase().includes(recommendationArtist)),
           );

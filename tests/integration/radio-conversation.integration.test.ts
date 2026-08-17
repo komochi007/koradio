@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../../apps/server/src/bootstrap/app.js";
 import type { RuntimeConfig } from "../../apps/server/src/bootstrap/config.js";
 import type { RadioAssistantProvider } from "../../apps/server/src/modules/radio/index.js";
+import type { MusicProvider, ProviderTrack } from "../../apps/server/src/modules/library/index.js";
 
 const origin = "http://127.0.0.1:49373";
 const openApps: Awaited<ReturnType<typeof createApp>>[] = [];
@@ -26,6 +27,123 @@ afterEach(async () => {
 });
 
 describe("UX-11 Radio conversation", () => {
+  it("keeps DJ recommendation cards on the original studio recording", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "koradio-radio-original-version-"));
+    const dataRoot = join(parent, "data");
+    const tracks: ProviderTrack[] = [
+      {
+        source: "netease",
+        sourceTrackId: "cover",
+        title: "Space Song (Cover)",
+        artist: "Cover Singer",
+        album: "Beach House Tribute",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "untimed",
+        playable: true,
+      },
+      {
+        source: "netease",
+        sourceTrackId: "sped-up",
+        title: "Space Song (Sped Up)",
+        artist: "Beach House",
+        album: "Single",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "untimed",
+        playable: true,
+      },
+      {
+        source: "netease",
+        sourceTrackId: "original",
+        title: "Space Song",
+        artist: "Beach House",
+        album: "Depression Cherry",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "untimed",
+        playable: true,
+      },
+    ];
+    const music: MusicProvider = {
+      source: "netease",
+      search() {
+        return Promise.resolve({ items: tracks });
+      },
+      importPlaylist() {
+        return Promise.resolve({
+          source: "netease",
+          sourcePlaylistId: "fixture",
+          title: "Fixture",
+          tracks,
+        });
+      },
+      getLyrics() {
+        return Promise.resolve({ status: "unavailable" as const, content: null });
+      },
+      resolveAudio(sourceTrackId) {
+        return Promise.resolve({
+          resolvedAudioRef: `https://media.example.test/${sourceTrackId}.mp3`,
+          expiresAt: "2099-01-01T00:00:00.000Z",
+        });
+      },
+    };
+    const app = await createApp({
+      config: {
+        environment: "test",
+        host: "127.0.0.1",
+        port: 49373,
+        webPort: 5173,
+        providerMode: "mock",
+        strictPort: true,
+        dataRoot,
+        initialDataRoot: dataRoot,
+        dataRootBootstrapPath: join(parent, "bootstrap.json"),
+        webRoot: "unused-in-test",
+      },
+      musicProvider: music,
+      radioAssistantProvider: {
+        respond() {
+          return Promise.resolve({
+            decision: "single_track",
+            reply: "这首保留原来的录音室版本。",
+            musicQuery: "Space Song Beach House",
+            musicQueries: [],
+          });
+        },
+      },
+      selectedPort: 49373,
+    });
+    openApps.push(app);
+    const session = sessionBootstrapResponseSchema.parse(
+      (
+        await app.inject({ method: "POST", url: "/api/v1/session/bootstrap", headers: { origin } })
+      ).json<unknown>(),
+    );
+    const headers = { authorization: `Bearer ${session.accessToken}`, origin };
+    const profile = profileSchema.parse(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/api/v1/profiles",
+          headers: { ...headers, "idempotency-key": "original-version-profile" },
+          payload: { radioName: "Night Signals", nickname: "Klein" },
+        })
+      ).json<unknown>(),
+    );
+    const turn = radioTurnSchema.parse(
+      (
+        await app.inject({
+          method: "POST",
+          url: `/api/v1/profiles/${profile.id}/radio-turns`,
+          headers: { ...headers, "idempotency-key": "original-version-turn" },
+          payload: { content: "推荐一首歌" },
+        })
+      ).json<unknown>(),
+    );
+    expect(turn.track).toMatchObject({ title: "Space Song", artist: "Beach House" });
+  });
+
   it("persists chat, returns a single-track card and starts programs only for explicit program intent", async () => {
     const parent = await mkdtemp(join(tmpdir(), "koradio-radio-conversation-"));
     const dataRoot = join(parent, "data");
