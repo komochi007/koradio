@@ -12,7 +12,7 @@
 | 问题 | 直接答案 |
 |---|---|
 | 当前工程阶段 | S7 Personal Local Preview 核心闭环已完成；S7-09 Electron 外壳迁移与个人本机稳定性试用进行中，公开分发工程等待项目所有者重新授权 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06`、`S5-01`～`S5-04`、`S6-01`～`S6-05`、`S7-01`、`S7-02`、`S7-06`、`S7-08`、`AI-01`、`UX-01`～`UX-15` |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06`、`S5-01`～`S5-04`、`S6-01`～`S6-05`、`S7-01`、`S7-02`、`S7-06`、`S7-08`、`AI-01`、`UX-01`～`UX-16` |
 | 当前活动任务 | `S7-07`、`S7-09` |
 | 初始下一任务 | `S7-07` 个人本机稳定性试用；`S7-03`～`S7-05` 仅在授权外部分发后启动 |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
@@ -58,7 +58,7 @@ AI 执行任务时按固定顺序操作：
 | S5 P1 全量功能 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S6 集成、质量与安全加固 | 5 | 0 | 0 | 0 | 0 | 5 |
 | S7 macOS 本机运行与后置发布工程 | 4 | 3 | 3 | 0 | 0 | 10 |
-| UX 个人本机使用体验优化 | 11 | 0 | 0 | 1 | 0 | 12 |
+| UX 个人本机使用体验优化 | 12 | 0 | 0 | 0 | 0 | 12 |
 | S8 全量外部测试与 Release Candidate | 0 | 4 | 0 | 0 | 0 | 4 |
 | S9 v1.0 发布与稳定期 | 0 | 4 | 0 | 0 | 0 | 4 |
 
@@ -191,7 +191,7 @@ AI 执行任务时按固定顺序操作：
 | `UX-13` Profile Taste Blueprint 与反馈学习重塑 | 已完成 | High | 将已确认的个人歌单分析转为 Profile 级、可解释且可控的 DJ 品味起点。 | UX-12 | 项目所有者确认的 Taste Blueprint 方案与个人 `taste.md` 分析。 | 固定保留约 70% 库内 / 30% 探索；仅在显式确认时清空旧 projection 与 overrides；不删除 `FeedbackEvent`、节目、收藏或个人分析源文件。 | Blueprint、学习起点、DJ Planner 软特质与 Taste 确认 UI 均可用；起点前反馈不再参与学习；历史事实保留；常规重建继续尊重人工规则。 | v18 migration、Contracts、Taste/Feedback/Programs 服务、Codex/DeepSeek prompt、Taste UI、权威文档与专项测试/视觉基线。 | `pnpm check`、Taste Chromium E2E 6/6、macOS arm64 包严格校验与本机 `0.0.175` 安装启动通过。 | Codex / 项目所有者验收 | 无。 |
 | `UX-14` 基于曲库细化 Taste 语言与版本偏好 | 已完成 | High | 把项目所有者确认的语言比例、曲目版本边界、风格、避雷与工作/夜晚场景写入 DJ 可读的 Taste 上下文。 | UX-13 | 当前已导入曲库的只读分析与项目所有者确认。 | 语言比例为未指定语言时的软性长期目标；不删除反馈、节目或收藏；不按曲名文本合并不同版本。 | Blueprint 显示并向 Planner 提供中/英/日/韩比例与录音室原版优先规则；人工风格、避雷和四类场景写入当前 Profile。 | Taste contract、Blueprint、Codex/DeepSeek prompt、Taste UI、专项测试与权威文档。 | 类型/专项测试、Taste Chromium E2E、当前 Profile API 回读与桌面包启动验证。 | Codex / 项目所有者确认 | 无。 |
 | `UX-15` 修复 Detail 文本、波形与对话头像对齐 | 已完成 | High | 修复最窄 Detail 歌词裁切、DJ 串讲显示与高亮估算、宽窗口波形留白，以及对话头像垂直对齐。 | UX-14 | 项目所有者确认的四项问题与截图。 | 只修改 Detail/Radio 前端样式、文本派生、设计规范和回归测试；不改变 Audio Engine、TTS 生成、REST/WS、数据库、Provider、用户数据或本次范围外设计。 | 最窄窗口歌词不裁切且不拆分英文单词或中文单字；Detail 串讲显示去除句首/尾标点并按实时播放位置估算；Electron 波形覆盖全宽并填充节目面圆角；长消息头像与气泡顶部对齐。 | `apps/web/src/features/radio/`、`design/design.md`、Detail/Radio 回归测试和受影响视觉基线。 | Detail 单元/组件、Chromium Detail/Radio E2E、`git diff --check` 通过；`pnpm check` 的既有 Audio 覆盖率门槛失败已由项目所有者授权例外。 | Codex / 项目所有者验收 | 已验收并推送。 |
-| `UX-16` 统一 Taste 概览与应用弹窗反馈 | 待验收 | High | 修复宽窗口 Taste 统计对齐，并统一普通通知与常规对话框的位置和视觉层级。 | UX-15 | 项目所有者确认的截图、弹窗范围和 Detail Sheet 例外。 | 只调整 Taste/通知/常规对话框前端、设计规范和回归测试；不改变播放、TTS、数据、Provider 或 Detail Sheet。 | 统计英文标题顶部及数字基线对齐；所有普通 Toast 位于顶部中央；Taste、Settings、头像裁切和节目删除对话框居中且视觉一致。 | 共享 UI 基座、受影响前端、设计规范和 E2E。 | typecheck、Taste Chromium E2E、相关 UI 回归、`git diff --check`；完整 `pnpm check` 若仅重现既有 Audio 覆盖率门槛则按已授权例外记录。 | Codex / 项目所有者确认 | 已完成待提交推送与本机 Koradio 更新；`taste.md` 不纳入提交。 |
+| `UX-16` 统一 Taste 概览与应用弹窗反馈 | 已完成 | High | 修复宽窗口 Taste 统计对齐，并统一普通通知与常规对话框的位置和视觉层级。 | UX-15 | 项目所有者确认的截图、弹窗范围和 Detail Sheet 例外。 | 只调整 Taste/通知/常规对话框前端、设计规范和回归测试；不改变播放、TTS、数据、Provider 或 Detail Sheet。 | 统计英文标题顶部及数字基线对齐；所有普通 Toast 位于顶部中央；Taste、Settings、头像裁切和节目删除对话框居中且视觉一致。 | 共享 UI 基座、受影响前端、设计规范和 E2E。 | typecheck、Taste Chromium E2E、相关 UI 回归、`git diff --check` 通过；完整 `pnpm check` 仅重现既有 Audio 覆盖率门槛，按项目所有者已授权例外处理。 | Codex / 项目所有者验收 | 已验收、推送 `dbc654d`，本机 `/Applications/Koradio.app` 已更新至 `0.0.179`；`taste.md` 未纳入提交。 |
 
 ### S8｜全量外部测试与 Release Candidate
 

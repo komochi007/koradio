@@ -31,6 +31,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 
 - S1～S6 阶段门均已通过；S7-01～S7-02 已完成 Native arm64 受控本机 macOS 包装与两版本安装生命周期验收，S7-06 的 Codex/NetEase/Apple TTS 事实只保留为历史验收，当前 TTS 已由 UX-10 替换为 Qwen3-TTS 8-bit。S7-08 维护性优化已关闭，S7-09 Electron 外壳迁移与 S7-07 稳定性试用仍在进行；S7-03 签名、公证与发布流水线继续后置。
 - S7-09 正在收敛本机桌面入口：固定 `/Applications/Koradio.app` 是唯一 Launchpad 图标，每次正常打开先联网检查可信 `origin/main`；新提交只在独立缓存源码完成 frozen install、构建、strict codesign 与 Electron 包验证后原位替换，失败时不打开旧版。产品由 Electron 主进程加载现有 Web Renderer，不创建第二个 PWA 图标或普通网页标签；更新和服务检查期间先显示本地启动状态页。
+- UX-15/16 已验收：最窄 Detail 歌词保持完整单词/汉字、DJ 串讲显示按播放时间估算高亮、宽窗口波形覆盖节目面宽度、对话头像顶部对齐；Taste 宽窗口统计标题与数值对齐。所有普通 Toast 共享顶部中央的状态提示样式，Taste、Settings、头像裁切和节目删除等常规对话框共享居中遮罩与前景卡片；全屏 Detail Sheet 保持沉浸式例外。
 - 当前有产品、流程、架构、视觉规范、原型提示词和参考图。
 - Git 仓库已初始化并关联 GitHub 远端。
 - VDA-17 已冻结并纳入开发基线：`design/assets/prototype/` 是 HTML/CSS/JavaScript 视觉主源，`design/assets/baselines/` 包含 60 张正式基线，`design/assets/reports/handoff-map.md` 是开发交接索引。

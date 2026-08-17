@@ -41,6 +41,7 @@
 | 2026-08-06 | 0 | 0 | 0 | Electron 顶部拖拽命中区域修复、`0.0.153` 桌面包更新与实机拖动复验 | 无 | S7-09-003 | 新增未变换的顶部中央拖拽带；`0.0.153` 包验证、strict codesign、session bootstrap 和实机拖动操作复验通过；不计入稳定性样本 |
 | 2026-08-12 | 0 | 0 | 0 | 开发态 Local Service 占用 `49373` 时的 Electron 启动 404 修复与 arm64 包 smoke | 无 | S7-09-005 | 可复用服务现同时校验健康接口与 `/radio` Renderer；正式包绕过 API-only 开发服务并使用自带同源服务；不计入稳定性样本 |
 | 2026-08-14 | 0 | 0 | 0 | DJ 点播 `PLAY NEXT`、空节目手动切歌与保存/导入反馈回归 | 无 | S7-07-015 | 项目所有者验收通过；该缺陷收口不计入真实生成或播放样本 |
+| 2026-08-17 | 0 | 0 | 0 | UX-15/16 Detail、Taste 与常规反馈层级回归，`0.0.179` 包验证、固定应用替换与重新启动 | 更新器缓存可选原生依赖缺失，候选未替换；受控本地构建与严格包验证后完成替换 | S7-09-006 | 项目所有者验收通过；不计入真实生成或播放样本 |
 
 ## 4. 必测路径
 
@@ -73,6 +74,7 @@
 | S7-09-003 | 2026-08-06 | Medium | Electron 使用 `hiddenInset` 标题栏时，经过缩放的 Renderer 顶部栏 `drag` 区域实机命中不稳定，窗口内容可以正常交互但无法可靠拖动窗口。 | 顶部空白区域应可移动窗口，档案和主题按钮仍可点击；第一次修复在经过 CSS transform 的页面内容内声明拖拽区域，实机仍无法稳定命中。 | Electron canvas 增加位于未变换 viewport 层的顶部中央拖拽带，避开左侧品牌/红绿灯和右侧状态、档案、主题控件；保留控件 `no-drag` 规则，浏览器/PWA 不受影响。 | `desktop-canvas.test.ts` 7 项通过；`0.0.153` 包验证、strict codesign、正常启动、session bootstrap 通过；macOS 实机顶部中央拖动操作复验期间窗口短暂离开 CUA 可见状态，随后恢复可见。 |
 | S7-09-005 | 2026-08-12 | High | 开发态 Local Service 占用首选端口 `49373` 且运行模式为 Live 时，Electron 只依据健康接口复用该服务，随后向其请求 `/radio` 得到 404。 | 正式桌面端只能复用同时提供同源 Renderer 的服务；API-only 开发服务必须被忽略，正式包应在可用备用端口启动自带服务。 | Service probe 在确认 `service=koradio` 与运行模式后，继续校验 `/radio` 为包含应用根节点的 HTML；不满足即不复用。 | `desktop-shell.test.ts` 覆盖可用 Renderer 与 API-only 开发服务；保持开发服务占用 `49373` 时，arm64 DMG package verifier、Electron smoke、strict codesign、Node/Python/runtime 与 Renderer 加载均通过。 |
 | S7-07-015 | 2026-08-14 | Medium | `PLAY NEXT` 成功后在对话卡片显示红色状态文案；空节目时手动点下一首直接返回，未消费临时点播；Settings、Library 与 Taste 的部分终态反馈只写入页面内状态。 | 成功排队应保持对话干净；无节目和有节目都应一致优先消费 `PLAY NEXT`；保存或导入应有明确成功/失败提示。 | Audio Engine 在无 Program 时先消费 `queuedPreview`；Radio 仅保留失败关联错误；共享短时提示覆盖 Settings、Library 与 Taste 的高频保存/导入操作。 | 新增空节目手动下一首单元回归；完整 `pnpm check` 通过（138 unit、61 contract、107 integration、43 component），项目所有者验收通过。 |
+| S7-09-006 | 2026-08-17 | Medium | 已安装应用的独立 updater cache 在候选包构建末段缺少 optional native dependency，导致自动更新失败并拒绝替换旧版。 | 可信远端更新应能完成候选构建与原位替换；实际固定入口安全保持旧版，未发生替换。 | 本轮以当前可信工作树重新完成 arm64 `0.0.179` 构建、包验证和严格签名校验，再保留旧版备份后替换固定入口；自动更新缓存缺失依赖问题留在 S7-07 稳定性试用中继续复现和收口。 | `0.0.179` metadata 精确绑定 `dbc654d`，包内 Node 24.18.0、Python 3.12.13 与 Qwen runtime 验证通过；替换前后 strict codesign 和重新启动通过。 |
 
 ## 6. 完成前复核
 

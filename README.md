@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1–S6 stage gates complete · S7-01/02/06/08 complete · S7-09 Electron shell migration in progress · UX-11 DJ conversation/curation/radio optimization accepted · UX-12 core experience and visual optimization accepted · DeepSeek planner integration implemented, real API smoke deferred · S7-07 stability trial in progress · external distribution deferred · production defaults to Live mode**
+> Status: **S1–S6 stage gates complete · S7-01/02/06/08 complete · S7-09 Electron shell migration in progress · UX-11/12/15/16 experience optimizations accepted · DeepSeek planner integration implemented, real API smoke deferred · S7-07 stability trial in progress · external distribution deferred · production defaults to Live mode**
 > Audience: AI Coding Agents、开发者、维护者  
 > Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Profile 级持久 DJ 对话与意图分流、单曲与 3～5 首策展推荐卡片、8～12 首节目生成、临时 DJ 点播队列、双声道 Radio 播放、按需 Qwen 朗读、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste Blueprint 重塑/反馈学习/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；Electron 主进程与 Production Server 默认使用真实 Provider，Development、Test、CI 与 `start:mock` 使用确定性 Mock Provider
 
@@ -81,6 +81,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [ ] S7-07 正在把本机入口收敛为唯一 `/Applications/Koradio.app`：每次从 Launchpad 打开先联网确认可信 `origin/main`，必要时本机构建、验证并原位替换；任何更新失败都不打开旧版；Electron 窗口不再依赖浏览器 PWA shim
 - [x] S7-09 Electron UI 紧凑窗口基础优化已验收：窗口策略限制为最小 `430 × 652px`；Radio 外层禁止滚动，队列、DJ 对话和 Library 本地音乐列表在卡片内独立滚动且隐藏滚动条；品牌与内容区左对齐并避让 macOS 原生按钮；验收记录见 [S7-09 Electron UI 优化验收](docs/project-management/s7-09-electron-ui-optimization-acceptance.md)
 - [x] S7-09-004 歌词、封面与启动体验优化已验收：Detail Sheet 紧凑布局、歌词累计高亮、NetEase 封面 HTTPS 规范化、图片失败占位、启动状态窗口和最小窗口档案卡片对齐均已完成；S7-07 稳定性试用仍按原计划进行
+- [x] UX-15/16 Detail、Taste 与反馈层级优化已验收：最窄 Detail 文本、波形与对话头像对齐已修复；Taste 宽窗口统计对齐、普通 Toast 顶部中央定位与常规对话框居中样式已统一，Detail Sheet 保持沉浸式例外
 - [x] S7-06 个人本机真实 Provider 闭环已通过：[S7-06 验收记录](docs/project-management/s7-06-real-provider-acceptance.md) 保留当时 Codex/NetEase/Apple TTS 历史证据；Apple TTS 已被 UX-10 的 Qwen3-TTS 实现取代
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
 - [x] 最小骨架 `dev`、`build` 与 `start` 已创建并验证
