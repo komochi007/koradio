@@ -138,6 +138,7 @@ describe("Electron desktop shell policy", () => {
       KORADIO_PROVIDER_MODE: "mock",
       KORADIO_TTS_HELPER_PATH: "/app/Resources/qwen-tts-helper/main.py",
       KORADIO_TTS_PYTHON_PATH: "/app/Resources/qwen-runtime/bin/python",
+      PYTHONDONTWRITEBYTECODE: "1",
     });
     expect(createServiceEnvironment("/app/Resources", 49374)).toMatchObject({
       KORADIO_PROVIDER_MODE: "live",

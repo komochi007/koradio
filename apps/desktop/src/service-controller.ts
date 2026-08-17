@@ -67,6 +67,7 @@ export function createServiceEnvironment(
     KORADIO_PORT: String(port),
     KORADIO_PROVIDER_MODE: options.providerMode ?? "live",
     KORADIO_STRICT_PORT: "false",
+    PYTHONDONTWRITEBYTECODE: "1",
   };
   const dataDirectory = options.smokeDataDirectory ?? source.KORADIO_DATA_DIR;
   if (dataDirectory !== undefined && dataDirectory.length > 0) {
