@@ -278,6 +278,17 @@ describe("S3-06 Program generation orchestration", () => {
       lyricStatus: "available" as const,
       playable: true,
     }));
+    const unmarkedCover: ProviderTrack = {
+      source: "netease",
+      sourceTrackId: "library-aware-unmarked-cover",
+      title: "Library Aware 126 Artist 126",
+      artist: "Cover Singer",
+      album: "Tribute Recording",
+      artworkUrl: null,
+      durationMs: 180_000,
+      lyricStatus: "available",
+      playable: true,
+    };
     const searchInvocations: string[] = [];
     const music: MusicProvider = {
       source: "netease",
@@ -301,7 +312,7 @@ describe("S3-06 Program generation orchestration", () => {
       search(keyword) {
         searchInvocations.push(keyword);
         return Promise.resolve({
-          items: keyword === "adjacent discovery" ? [providerTracks[125]] : [],
+          items: keyword === "adjacent discovery" ? [unmarkedCover, providerTracks[125]] : [],
         });
       },
     };
@@ -333,6 +344,7 @@ describe("S3-06 Program generation orchestration", () => {
             {
               kind: "discovery" as const,
               keyword: "adjacent discovery",
+              expectedArtist: "Artist 126",
               reason: "与库内锚点相邻的新歌",
             },
           ],

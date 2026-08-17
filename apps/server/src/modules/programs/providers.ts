@@ -80,6 +80,7 @@ export const codexTrackIntentSchema = z.union([
   z.strictObject({
     kind: z.literal("discovery"),
     keyword: z.string().trim().min(1).max(100),
+    expectedArtist: z.string().trim().min(1).max(300).optional(),
     reason: z.string().trim().min(1).max(500),
   }),
 ]);

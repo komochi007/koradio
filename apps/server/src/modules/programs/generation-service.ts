@@ -20,7 +20,7 @@ import {
 } from "@koradio/contracts";
 
 import type { LibraryService } from "../library/index.js";
-import { isNonCanonicalVersion } from "../library/track-version.js";
+import { isCanonicalOriginalCandidate, isNonCanonicalVersion } from "../library/track-version.js";
 import type { ProfilePreferencesService } from "../profile-preferences/index.js";
 import type { TasteService } from "../taste/index.js";
 import {
@@ -380,6 +380,7 @@ export function createProgramGenerationService(
     const searchAndResolve = async (
       keyword: string,
       includeLibraryCandidates = false,
+      expectedArtist?: string,
     ): Promise<boolean> => {
       const normalizedKeyword = keyword.trim().slice(0, 100).toLocaleLowerCase("en-US");
       if (normalizedKeyword.length === 0) {
@@ -394,7 +395,8 @@ export function createProgramGenerationService(
         for (const track of search.items) {
           if (
             failedTrackIds.has(track.id) ||
-            (!includeLibraryCandidates && libraryCandidates.has(track.id))
+            (!includeLibraryCandidates && libraryCandidates.has(track.id)) ||
+            (expectedArtist !== undefined && !isCanonicalOriginalCandidate(track, expectedArtist))
           ) {
             continue;
           }
@@ -439,11 +441,11 @@ export function createProgramGenerationService(
             continue;
           }
           if (!(await tryResolve(track))) {
-            await searchAndResolve(track.artist, true);
+            await searchAndResolve(track.artist, true, track.artist);
           }
           continue;
         }
-        await searchAndResolve(intent.keyword);
+        await searchAndResolve(intent.keyword, false, intent.expectedArtist);
       }
       if (resolved.length === targetTrackCount) break;
     }

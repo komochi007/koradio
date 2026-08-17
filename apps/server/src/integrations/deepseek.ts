@@ -245,7 +245,7 @@ function createMessages(
         instruction,
         outputSchema: schema,
         planningReserveGuidance:
-          "This overrides any earlier candidate-count suggestion: the supplied library spans the Profile's full candidate set, so choose across it rather than favoring recently imported tracks. Build as many distinct original-recording reserve intents as the 16-intent limit allows after the requested programme length.",
+          "This overrides any earlier candidate-count suggestion: the supplied library spans the Profile's full candidate set, so choose across it rather than favoring recently imported tracks. Build as many distinct original-recording reserve intents as the 16-intent limit allows after the requested programme length. Every discovery intent must set expectedArtist to the song's original primary artist; do not leave it out.",
         ...(context === undefined ? {} : { context }),
       }),
     },
