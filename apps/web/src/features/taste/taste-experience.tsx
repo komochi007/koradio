@@ -957,41 +957,43 @@ export function TasteExperience(props: TasteExperienceProps): ReactElement {
           />
         )}
         {confirmingBlueprint ? (
-          <section
-            className="taste-blueprint-confirm"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="taste-blueprint-confirm-title"
-          >
-            <p className="taste-blueprint-confirm__eyebrow">RESET TASTE LEARNING</p>
-            <h2 id="taste-blueprint-confirm-title">应用这份品味蓝图？</h2>
-            <p>
-              当前档案的人工标签、避雷和场景规则会被清空；旧反馈将保留在节目历史中，但不再影响 DJ
-              的品味学习。
-            </p>
-            <div>
-              <button
-                className="button button--ghost"
-                type="button"
-                disabled={blueprint.isPending}
-                onClick={() => {
-                  setConfirmingBlueprint(false);
-                }}
-              >
-                取消
-              </button>
-              <button
-                className="button button--primary"
-                type="button"
-                disabled={blueprint.isPending}
-                onClick={() => {
-                  blueprint.mutate();
-                }}
-              >
-                {blueprint.isPending ? "正在应用…" : "确认重塑"}
-              </button>
-            </div>
-          </section>
+          <div className="app-dialog-backdrop">
+            <section
+              className="app-dialog taste-blueprint-confirm"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="taste-blueprint-confirm-title"
+            >
+              <p className="taste-blueprint-confirm__eyebrow">RESET TASTE LEARNING</p>
+              <h2 id="taste-blueprint-confirm-title">应用这份品味蓝图？</h2>
+              <p>
+                当前档案的人工标签、避雷和场景规则会被清空；旧反馈将保留在节目历史中，但不再影响 DJ
+                的品味学习。
+              </p>
+              <div>
+                <button
+                  className="button button--ghost"
+                  type="button"
+                  disabled={blueprint.isPending}
+                  onClick={() => {
+                    setConfirmingBlueprint(false);
+                  }}
+                >
+                  取消
+                </button>
+                <button
+                  className="button button--primary"
+                  type="button"
+                  disabled={blueprint.isPending}
+                  onClick={() => {
+                    blueprint.mutate();
+                  }}
+                >
+                  {blueprint.isPending ? "正在应用…" : "确认重塑"}
+                </button>
+              </div>
+            </section>
+          </div>
         ) : null}
       </main>
       <PrimaryNavigation active="taste" onNavigate={props.navigate} />

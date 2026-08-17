@@ -23,6 +23,28 @@ interface OperationNoticeProps {
   onDismiss: () => void;
 }
 
+interface AppNoticeProps {
+  message: string;
+  tone: "success" | "error" | "info";
+  onDismiss: () => void;
+}
+
+export function AppNotice({ message, tone, onDismiss }: AppNoticeProps): ReactElement {
+  return (
+    <div
+      className={`app-notice app-notice--${tone}`}
+      role={tone === "error" ? "alert" : "status"}
+      aria-live={tone === "error" ? "assertive" : "polite"}
+    >
+      <span className="app-notice__indicator" aria-hidden="true" />
+      <span className="app-notice__message">{message}</span>
+      <button type="button" aria-label="关闭提示" onClick={onDismiss}>
+        ×
+      </button>
+    </div>
+  );
+}
+
 export function OperationNotice({ message, tone, onDismiss }: OperationNoticeProps): ReactElement {
   useEffect(() => {
     const timeout = window.setTimeout(onDismiss, 4500);
@@ -31,17 +53,7 @@ export function OperationNotice({ message, tone, onDismiss }: OperationNoticePro
     };
   }, [message, onDismiss]);
 
-  return (
-    <div
-      className={`operation-notice operation-notice--${tone}`}
-      role={tone === "error" ? "alert" : "status"}
-    >
-      <span>{message}</span>
-      <button type="button" aria-label="关闭提示" onClick={onDismiss}>
-        ×
-      </button>
-    </div>
-  );
+  return <AppNotice message={message} tone={tone} onDismiss={onDismiss} />;
 }
 
 export function Brand(): ReactElement {

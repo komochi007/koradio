@@ -1,49 +1,3 @@
-.feedback-toast {
-  position: fixed;
-  z-index: 1001;
-  top: 50%;
-  left: 50%;
-  display: flex;
-  width: min(420px, calc(100vw - 40px));
-  min-height: 64px;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  padding: 6px 8px 6px 16px;
-  border: 1px solid var(--kr-border);
-  border-radius: 18px;
-  color: var(--kr-text-secondary);
-  background: var(--kr-surface);
-  font:
-    600 12px/20px "SFMono-Regular",
-    "SF Mono",
-    Consolas,
-    monospace;
-  box-shadow: 0 18px 44px rgb(0 0 0 / 32%);
-  transform: translate(-50%, -50%);
-}
-
-.feedback-toast--success {
-  border-color: var(--kr-accent);
-}
-
-.feedback-toast--error {
-  color: var(--kr-error);
-}
-
-.feedback-toast button {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  color: inherit;
-  background: transparent;
-  font-size: 20px;
-}
-
 .program-feedback {
   display: flex;
   min-height: 160px;
@@ -78,10 +32,6 @@
 }
 
 @media (max-width: 767px) {
-  .feedback-toast {
-    justify-content: space-between;
-  }
-
   .program-feedback {
     align-items: stretch;
     flex-direction: column;

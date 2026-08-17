@@ -345,6 +345,15 @@ test("views, edits, validates and saves Taste overrides", async ({ browserName, 
       fullPage: false,
     });
     await page.setViewportSize({ width: 1440, height: 1200 });
+    const overviewAlignment = await page.locator(".taste-overview-card dl").evaluate((element) => {
+      const items = [...element.querySelectorAll("div")];
+      return {
+        headings: items.map((item) => item.querySelector("dt")?.getBoundingClientRect().top),
+        values: items.map((item) => item.querySelector("dd b")?.getBoundingClientRect().top),
+      };
+    });
+    expect(new Set(overviewAlignment.headings).size).toBe(1);
+    expect(new Set(overviewAlignment.values).size).toBe(1);
     await expect(page).toHaveScreenshot("taste-overview-desktop.png", {
       animations: "disabled",
       fullPage: false,
@@ -417,6 +426,17 @@ test("applies the taste blueprint only after explicit confirmation", async ({
   await page.getByRole("button", { name: "应用品味蓝图" }).click();
   const dialog = page.getByRole("dialog", { name: "应用这份品味蓝图？" });
   await expect(dialog).toContainText("旧反馈将保留在节目历史中");
+  const dialogPosition = await dialog.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      centerX: rect.left + rect.width / 2,
+      centerY: rect.top + rect.height / 2,
+      viewportX: window.innerWidth / 2,
+      viewportY: window.innerHeight / 2,
+    };
+  });
+  expect(dialogPosition.centerX).toBe(dialogPosition.viewportX);
+  expect(dialogPosition.centerY).toBe(dialogPosition.viewportY);
   await dialog.getByRole("button", { name: "确认重塑" }).click();
   await expect(page.getByText("基于 taste.md 的三张歌单分析")).toBeVisible();
   await expect(page.getByText("旋律优先", { exact: true })).toBeVisible();

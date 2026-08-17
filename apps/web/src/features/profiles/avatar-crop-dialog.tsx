@@ -64,9 +64,9 @@ export function AvatarCropDialog({ file, onCancel, onUse }: AvatarCropDialogProp
   }
 
   return (
-    <div className="avatar-crop-backdrop">
+    <div className="app-dialog-backdrop avatar-crop-backdrop">
       <section
-        className="avatar-crop-dialog"
+        className="app-dialog avatar-crop-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

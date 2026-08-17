@@ -30,7 +30,7 @@ import { applyTheme, updateProfilePreferences } from "../profile-preferences/ind
 import { resolveTrackAudio } from "../library/index.js";
 import { FeedbackNotice, useFeedback } from "../feedback/index.js";
 import { activateProgramHandoff, getProgramHandoff } from "../programs/index.js";
-import { Brand, PrimaryNavigation } from "../../shared/ui.js";
+import { AppNotice, Brand, PrimaryNavigation } from "../../shared/ui.js";
 import { KoradioAvatar } from "../../shared/avatar.js";
 import type { AppEventBus } from "../../shared/events.js";
 import { formatClockDuration } from "../../shared/format.js";
@@ -79,22 +79,14 @@ function TransientToast({
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
   return (
-    <p
-      className={`radio-toast${error ? " radio-toast--error" : ""}`}
-      role={error ? "alert" : "status"}
-    >
-      <span>{children}</span>
-      <button
-        type="button"
-        aria-label="关闭提示"
-        onClick={() => {
-          setVisible(false);
-          onDismiss?.();
-        }}
-      >
-        ×
-      </button>
-    </p>
+    <AppNotice
+      message={children}
+      tone={error ? "error" : "info"}
+      onDismiss={() => {
+        setVisible(false);
+        onDismiss?.();
+      }}
+    />
   );
 }
 

@@ -342,22 +342,7 @@
   top: 72px;
 }
 
-.program-delete-backdrop {
-  align-items: center;
-  background: rgb(0 0 0 / 68%);
-  display: flex;
-  inset: 0;
-  justify-content: center;
-  padding: 24px;
-  position: fixed;
-  z-index: 80;
-}
-
 .program-delete-dialog {
-  background: var(--surface-raised);
-  border: 1px solid var(--border-subtle);
-  border-radius: 20px;
-  box-shadow: 0 24px 72px rgb(0 0 0 / 42%);
   max-width: 440px;
   padding: 28px;
   width: 100%;

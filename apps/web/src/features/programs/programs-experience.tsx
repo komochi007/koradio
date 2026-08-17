@@ -529,11 +529,11 @@ function DeleteProgramDialog({
   program: Program;
 }): ReactElement {
   return (
-    <div className="program-delete-backdrop" role="presentation">
+    <div className="app-dialog-backdrop program-delete-backdrop" role="presentation">
       <section
         aria-labelledby="program-delete-title"
         aria-modal="true"
-        className="program-delete-dialog"
+        className="app-dialog program-delete-dialog"
         role="dialog"
       >
         <p>DELETE PROGRAM</p>

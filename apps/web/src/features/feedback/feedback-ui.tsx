@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 
+import { AppNotice } from "../../shared/ui.js";
 import { getLatestProgram } from "../programs/index.js";
 import type { AppEventBus } from "../../shared/events.js";
 import type { ServiceTransport } from "../../shared/transport.js";
@@ -15,18 +16,7 @@ export function FeedbackNotice({
   onDismiss: () => void;
 }): ReactElement | null {
   if (notice === undefined) return null;
-  return (
-    <div
-      className={`feedback-toast feedback-toast--${notice.tone}`}
-      role="status"
-      aria-live="polite"
-    >
-      <span>{notice.message}</span>
-      <button type="button" aria-label="关闭反馈提示" onClick={onDismiss}>
-        ×
-      </button>
-    </div>
-  );
+  return <AppNotice message={notice.message} tone={notice.tone} onDismiss={onDismiss} />;
 }
 
 export function CurrentProgramFeedback({

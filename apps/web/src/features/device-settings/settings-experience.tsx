@@ -443,9 +443,9 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
   return (
     <div className="app-surface settings-page">
       {privacyOpen ? (
-        <div className="settings-modal-backdrop">
+        <div className="app-dialog-backdrop settings-modal-backdrop">
           <section
-            className="settings-modal"
+            className="app-dialog settings-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="deepseek-privacy-title"
@@ -484,9 +484,9 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
         </div>
       ) : null}
       {deleteKeyConfirmOpen ? (
-        <div className="settings-modal-backdrop">
+        <div className="app-dialog-backdrop settings-modal-backdrop">
           <section
-            className="settings-modal"
+            className="app-dialog settings-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-deepseek-key-title"

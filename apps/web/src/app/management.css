@@ -406,23 +406,9 @@
   object-fit: cover;
 }
 
-.avatar-crop-backdrop {
-  position: fixed;
-  z-index: 1002;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgb(0 0 0 / 62%);
-}
-
 .avatar-crop-dialog {
   width: min(460px, 100%);
   padding: 28px;
-  border: 1px solid var(--kr-border-strong);
-  border-radius: 22px;
-  background: var(--kr-surface-elevated);
-  box-shadow: 0 24px 60px rgb(0 0 0 / 42%);
 }
 
 .avatar-crop-dialog h2,
@@ -1047,24 +1033,9 @@
   opacity: 0.5;
 }
 
-.settings-modal-backdrop {
-  position: fixed;
-  z-index: 20;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: color-mix(in srgb, var(--kr-bg) 72%, transparent);
-  backdrop-filter: blur(12px);
-}
-
 .settings-modal {
   width: min(560px, 100%);
   padding: 32px;
-  border: 1px solid var(--kr-border);
-  border-radius: 24px;
-  background: var(--kr-surface-elevated);
-  box-shadow: 0 24px 80px rgb(0 0 0 / 24%);
 }
 
 .settings-modal__eyebrow {
