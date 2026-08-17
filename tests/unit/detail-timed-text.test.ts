@@ -17,9 +17,9 @@ import {
 describe("Detail timed text", () => {
   it("splits DJ copy and estimates continuous sentence timing by readable length", () => {
     expect(splitDjSentences("先慢下来。\n然后，听见房间呼吸！最后一句")).toEqual([
-      "先慢下来。",
-      "然后，",
-      "听见房间呼吸！",
+      "先慢下来",
+      "然后",
+      "听见房间呼吸",
       "最后一句",
     ]);
     expect(splitDjSentences("这是一句没有自然停顿但确实很长的串讲文字需要分成两行阅读")).toEqual([
@@ -29,18 +29,23 @@ describe("Detail timed text", () => {
     const english =
       "Coming right up. We're keeping the groove crisp, the melodies bright and the energy comfortably below, accidentally dancing through a video call. Settle in and let the next stretch of work find its rhythm.";
     const englishLines = splitDjSentences(english);
-    expect(englishLines.join("").replace(/\s/gu, "")).toBe(english.replace(/\s/gu, ""));
+    expect(englishLines.join("").replace(/[\s,.]/gu, "")).toBe(english.replace(/[\s,.]/gu, ""));
     expect(englishLines).toEqual([
-      "Coming right up.",
-      "We're keeping the groove crisp,",
+      "Coming right up",
+      "We're keeping the groove crisp",
       "the melodies bright and the energy",
-      "comfortably below,",
+      "comfortably below",
       "accidentally dancing through a",
-      "video call.",
+      "video call",
       "Settle in and let the next stretch",
-      "of work find its rhythm.",
+      "of work find its rhythm",
     ]);
     expect(englishLines.every((line) => !/^[，。！？!?；;、,:：]/u.test(line))).toBe(true);
+    expect(splitDjSentences("。先让房间慢下来。，然后，听见呼吸！")).toEqual([
+      "先让房间慢下来",
+      "然后",
+      "听见呼吸",
+    ]);
     const lines = estimateDjTiming("短句。这里是一句更长的串讲。", 9_000);
     expect(lines).toHaveLength(2);
     expect(lines[0]?.startMs).toBe(0);
@@ -69,6 +74,20 @@ describe("Detail timed text", () => {
       "rest! ",
       "好。 ",
     ]);
+  });
+
+  it("keeps English highlight units complete while weighting their duration by readable length", () => {
+    const line = deriveTimedText(
+      [{ startMs: 0, endMs: 3_000, text: "short extraordinarilylongword final" }],
+      1_000,
+    )[0];
+    if (line === undefined) throw new Error("Expected a current timed line");
+    expect(deriveTimedTextUnits(line, 1_000).map((unit) => [unit.text, unit.state])).toEqual([
+      ["short ", "played"],
+      ["extraordinarilylongword ", "current"],
+      ["final", "upcoming"],
+    ]);
+    expect(deriveTimedTextUnits(line, 1_000)[1]?.startMs).toBe(455);
   });
 
   it("uses NetEase YRC word timestamps without estimating a word progression", () => {
@@ -117,7 +136,7 @@ describe("Detail timed text", () => {
       ["music ", "current"],
       ["now!", "upcoming"],
     ]);
-    const early = deriveTimedTextUnits(line, 2_000);
+    const early = deriveTimedTextUnits(line, 2_600);
     const late = deriveTimedTextUnits(line, 3_000);
     expect(early[1]?.progress).toBeGreaterThan(0);
     expect(late[1]?.progress).toBeGreaterThan(early[1]?.progress ?? 0);

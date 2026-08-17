@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ProgramDetail } from "@koradio/contracts";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { DetailSheet } from "../../apps/web/src/features/radio/detail-sheet.js";
@@ -157,6 +157,7 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 describe("Detail Sheet", () => {
@@ -326,12 +327,39 @@ describe("Detail Sheet", () => {
     );
     expect(
       screen
-        .getByText("先让声音替房间留一点呼吸。")
+        .getByText("先让声音替房间留一点呼吸")
         .closest("[aria-current]")
         ?.getAttribute("aria-current"),
     ).toBe("true");
     expect(screen.getByText("SPEAKING NOW")).toBeTruthy();
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it("interpolates DJ highlighting between browser audio position updates", () => {
+    let frame: FrameRequestCallback | undefined;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frame = callback;
+      return 1;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+    const now = vi.spyOn(performance, "now").mockReturnValue(0);
+    renderDetail({ audio: { ...snapshot(0), positionMs: 0 } });
+    expect(
+      screen
+        .getByText("今晚不必急着找到答案")
+        .closest("[aria-current]")
+        ?.getAttribute("aria-current"),
+    ).toBe("true");
+
+    now.mockReturnValue(4_000);
+    act(() => frame?.(4_000));
+
+    expect(
+      screen
+        .getByText("先让声音替房间留一点呼吸")
+        .closest("[aria-current]")
+        ?.getAttribute("aria-current"),
+    ).toBe("true");
   });
 
   it("traps focus, closes with Escape and never pauses playback while closing", async () => {

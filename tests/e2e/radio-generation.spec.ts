@@ -158,9 +158,11 @@ async function ensureProfile(page: Page): Promise<void> {
 async function mockRadio(
   page: Page,
   options: {
+    assistantContent?: string;
     generation?: boolean;
     program?: boolean;
     theme?: "dark" | "light";
+    turnContent?: string;
   },
 ): Promise<void> {
   await page.route(/\/api\/v1\/profiles$/, (route) =>
@@ -243,7 +245,7 @@ async function mockRadio(
             id: "00000000-0000-4000-8000-000000000081",
             profileId: profile.id,
             role: "assistant",
-            content: "我来把这一段听感接起来。",
+            content: options.assistantContent ?? "我来把这一段听感接起来。",
             trackId: null,
             createdAt: "2026-07-17T08:00:00.000Z",
           },
@@ -289,9 +291,9 @@ async function mockRadio(
   if (options.generation === true) {
     await page
       .getByRole("textbox", { name: "告诉 DJ 当前场景" })
-      .fill("今晚写东西，安静但不要太困");
+      .fill(options.turnContent ?? "今晚写东西，安静但不要太困");
     await page.getByRole("button", { name: "发送给 DJ" }).click();
-    await expect(page.getByText("Searching for tracks that fit the room.")).toBeVisible();
+    await expect(page.getByText("Searching for tracks that fit the room.").first()).toBeVisible();
   }
   await page.locator(".radio-time__clock").evaluate((element) => {
     element.textContent = "22:47";
@@ -349,6 +351,43 @@ test("Radio playing state matches the frozen light theme", async ({ browserName,
     animations: "disabled",
     fullPage: false,
   });
+});
+
+test("Radio conversation aligns both long-message avatars to their bubble tops", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 430, height: 652 });
+  await mockRadio(page, {
+    assistantContent:
+      "我会先把这一段空间留给呼吸，再用一首温和但不失节奏的歌慢慢把注意力带回你正在做的事情。",
+    generation: true,
+    turnContent:
+      "今天上午的工作节奏有点散，我想要一些能够让我重新专注、又不会把情绪推得太满的音乐。",
+  });
+  await expect(
+    page.getByText(
+      "我会先把这一段空间留给呼吸，再用一首温和但不失节奏的歌慢慢把注意力带回你正在做的事情。",
+    ),
+  ).toBeVisible();
+  const metrics = await page.evaluate(() => {
+    const user = Array.from(document.querySelectorAll<HTMLElement>(".radio-message--user")).at(-1);
+    const dj = Array.from(document.querySelectorAll<HTMLElement>(".radio-message--dj")).at(-1);
+    const userAvatar = user?.querySelector<HTMLElement>(".koradio-avatar");
+    const userBubble = user?.querySelector<HTMLElement>(".radio-user-bubble");
+    const djAvatar = dj?.querySelector<HTMLElement>(".koradio-avatar");
+    const djBubble = dj?.querySelector<HTMLElement>(".radio-dj-bubble");
+    if (!userAvatar || !userBubble || !djAvatar || !djBubble) {
+      throw new Error("Expected long conversation bubbles and avatars");
+    }
+    return {
+      djAvatarTop: djAvatar.getBoundingClientRect().top,
+      djBubbleTop: djBubble.getBoundingClientRect().top,
+      userAvatarTop: userAvatar.getBoundingClientRect().top,
+      userBubbleTop: userBubble.getBoundingClientRect().top,
+    };
+  });
+  expect(metrics.userAvatarTop).toBeCloseTo(metrics.userBubbleTop, 0);
+  expect(metrics.djAvatarTop).toBeCloseTo(metrics.djBubbleTop, 0);
 });
 
 test("Radio queue collapse reflows the DJ area without leaving a gap", async ({

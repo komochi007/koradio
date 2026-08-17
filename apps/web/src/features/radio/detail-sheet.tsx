@@ -156,6 +156,43 @@ function focusableElements(dialog: HTMLElement): HTMLElement[] {
   return Array.from(dialog.querySelectorAll<HTMLElement>("[data-detail-focus]:not(:disabled)"));
 }
 
+function useInterpolatedPlaybackPosition(
+  positionMs: number,
+  durationMs: number,
+  active: boolean,
+): number {
+  const sourceRef = useRef({ positionMs, receivedAt: 0 });
+  const [interpolatedPositionMs, setInterpolatedPositionMs] = useState(positionMs);
+
+  useEffect(() => {
+    sourceRef.current = { positionMs, receivedAt: performance.now() };
+    setInterpolatedPositionMs(positionMs);
+  }, [positionMs]);
+
+  useEffect(() => {
+    if (!active) return;
+    let frame = 0;
+    const sync = (): void => {
+      const source = sourceRef.current;
+      const next = Math.min(
+        durationMs,
+        Math.max(
+          source.positionMs,
+          Math.round(source.positionMs + performance.now() - source.receivedAt),
+        ),
+      );
+      setInterpolatedPositionMs((current) => (current === next ? current : next));
+      frame = window.requestAnimationFrame(sync);
+    };
+    frame = window.requestAnimationFrame(sync);
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [active, durationMs]);
+
+  return interpolatedPositionMs;
+}
+
 function TimedLines({
   lines,
   positionMs,
@@ -255,6 +292,11 @@ export function DetailSheet({
     ? (audio.voiceDurationMs ?? audio.durationMs)
     : audio.durationMs;
   const scriptPositionMs = audio.voiceActive ? (audio.voicePositionMs ?? 0) : audio.positionMs;
+  const displayedScriptPositionMs = useInterpolatedPlaybackPosition(
+    scriptPositionMs,
+    scriptDurationMs,
+    speaking && audio.state === "playing",
+  );
   const previewingTrack = audio.preview?.kind === "track" ? audio.preview : undefined;
   const trackDurationMs = previewingTrack?.durationMs ?? audio.durationMs;
   const trackPositionMs = previewingTrack?.positionMs ?? audio.positionMs;
@@ -271,7 +313,7 @@ export function DetailSheet({
     if (speaking) {
       return deriveTimedText(
         estimateDjTiming(script.text, Math.max(1, scriptDurationMs)),
-        scriptPositionMs,
+        displayedScriptPositionMs,
       );
     }
     if (lyrics.data === undefined || lyrics.data.status === "unavailable") return [];
@@ -282,7 +324,7 @@ export function DetailSheet({
     lyrics.data,
     script,
     scriptDurationMs,
-    scriptPositionMs,
+    displayedScriptPositionMs,
     speaking,
     trackDurationMs,
     trackPositionMs,
@@ -449,7 +491,7 @@ export function DetailSheet({
                 ) : (
                   <TimedLines
                     lines={timedLines}
-                    positionMs={scriptPositionMs}
+                    positionMs={displayedScriptPositionMs}
                     scrollContainerRef={copyRef}
                     speaking
                   />

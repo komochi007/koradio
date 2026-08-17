@@ -146,6 +146,7 @@ async function openDetail(
   page: Page,
   options: {
     lyricStatus?: "available" | "unavailable";
+    lyricContent?: string;
     mode: "speaking" | "lyrics";
     playback?: boolean;
     scriptText?: string;
@@ -193,7 +194,7 @@ async function openDetail(
           : {
               trackId,
               status: "available",
-              content: timedLyrics,
+              content: options.lyricContent ?? timedLyrics,
             },
     }),
   );
@@ -258,7 +259,11 @@ async function openDetail(
   await expect(page.getByRole("dialog", { name: "After Hours, Soft Focus" })).toBeVisible();
   await expect(page.getByRole("button", { name: "关闭节目详情，播放继续" })).toBeFocused();
   if (options.mode === "lyrics" && options.lyricStatus !== "unavailable") {
-    await expect(page.getByText(lyricLines[0])).toBeVisible();
+    await expect(
+      page.getByText(
+        options.lyricContent?.replace(/^\[\d{2}:\d{2}\.\d{2}\]/u, "") ?? lyricLines[0],
+      ),
+    ).toBeVisible();
   }
 }
 
@@ -283,7 +288,7 @@ test("Detail shows estimated DJ timing while the DJ segment is speaking", async 
   await openDetail(page, { mode: "speaking" });
   await expect(page.getByText("SPEAKING NOW")).toBeVisible();
   await expect(page.getByRole("article", { name: "DJ 串讲词" })).toContainText(
-    "先让声音替房间留一点呼吸。",
+    "先让声音替房间留一点呼吸",
   );
 });
 
@@ -302,20 +307,53 @@ test("Detail keeps English DJ copy whole and inside the compact card", async ({ 
   const lines = copy.locator(".detail-copy__line p");
   await expect(lines).toHaveCount(8);
   await expect(lines).toHaveText([
-    "Coming right up.",
-    "We're keeping the groove crisp,",
+    "Coming right up",
+    "We're keeping the groove crisp",
     "the melodies bright and the energy",
-    "comfortably below,",
+    "comfortably below",
     "accidentally dancing through a",
-    "video call.",
+    "video call",
     "Settle in and let the next stretch",
-    "of work find its rhythm.",
+    "of work find its rhythm",
   ]);
   expect(
     await lines.evaluateAll((elements) =>
       elements.every((element) => element.scrollWidth <= element.clientWidth),
     ),
   ).toBe(true);
+});
+
+test("Detail keeps the enlarged narrow-window lyric inside its card without splitting words", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 430, height: 652 });
+  await openDetail(page, {
+    mode: "lyrics",
+    playback: false,
+    lyricContent: "[00:00.00]But then again I don't remember you at all",
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.electronCanvas = "true";
+  });
+  const metrics = await page.locator(".detail-copy__line--current").evaluate((line) => {
+    const scroller = line.closest<HTMLElement>(".detail-copy__scroller");
+    if (scroller === null) throw new Error("Expected Detail lyric scroller");
+    const lineRect = line.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+    const style = getComputedStyle(line);
+    return {
+      lineRight: lineRect.right,
+      overflowWrap: style.overflowWrap,
+      scrollerContentRight:
+        scrollerRect.right - Number.parseFloat(getComputedStyle(scroller).paddingRight),
+      text: line.textContent,
+      wordBreak: style.wordBreak,
+    };
+  });
+  expect(metrics.text).toBe("But then again I don't remember you at all");
+  expect(metrics.overflowWrap).toBe("normal");
+  expect(metrics.wordBreak).toBe("normal");
+  expect(metrics.lineRight).toBeLessThanOrEqual(metrics.scrollerContentRight + 0.5);
 });
 
 test("Detail keeps long lyrics scrollable, hides scrollbars and centers the current line", async ({
@@ -568,6 +606,7 @@ test("Detail keeps Electron top controls aligned at the reference viewport", asy
     const track = document.querySelector<HTMLElement>(".detail-track");
     const close = document.querySelector<HTMLElement>(".detail-close");
     const copy = document.querySelector<HTMLElement>(".detail-copy");
+    const waveform = document.querySelector<HTMLElement>(".detail-waveform");
     const trackProgress = document.querySelector<HTMLElement>(".detail-track-progress");
     const play = document.querySelector<HTMLElement>(".detail-play");
     const progress = document.querySelector<HTMLElement>(".detail-program-progress");
@@ -577,6 +616,7 @@ test("Detail keeps Electron top controls aligned at the reference viewport", asy
       track === null ||
       close === null ||
       copy === null ||
+      waveform === null ||
       trackProgress === null ||
       play === null ||
       progress === null
@@ -587,6 +627,7 @@ test("Detail keeps Electron top controls aligned at the reference viewport", asy
     const titleRect = title.getBoundingClientRect();
     const closeRect = close.getBoundingClientRect();
     const copyRect = copy.getBoundingClientRect();
+    const waveformRect = waveform.getBoundingClientRect();
     const playRect = play.getBoundingClientRect();
     const progressRect = progress.getBoundingClientRect();
     const titleStyle = getComputedStyle(title);
@@ -610,6 +651,8 @@ test("Detail keeps Electron top controls aligned at the reference viewport", asy
       titleFontSize: Number.parseFloat(titleStyle.fontSize),
       trackFontSize: Number.parseFloat(trackStyle.fontSize),
       trackProgressHeight: trackProgress.getBoundingClientRect().height,
+      waveformLeft: waveformRect.left,
+      waveformRight: waveformRect.right,
     };
   });
   expect(metrics.statusLeft).toBeCloseTo(metrics.titleLeft, 0);
@@ -625,6 +668,8 @@ test("Detail keeps Electron top controls aligned at the reference viewport", asy
   expect(metrics.trackFontSize).toBeLessThanOrEqual(16);
   expect(metrics.trackProgressHeight).toBe(20);
   expect(metrics.copyHeight).toBeGreaterThan(800);
+  expect(metrics.waveformLeft).toBe(0);
+  expect(metrics.waveformRight).toBe(960);
 });
 
 for (const mode of ["speaking", "lyrics"] as const) {

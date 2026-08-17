@@ -318,7 +318,7 @@
 
 .radio-message {
   display: grid;
-  align-items: end;
+  align-items: start;
   gap: 10px;
 }
 

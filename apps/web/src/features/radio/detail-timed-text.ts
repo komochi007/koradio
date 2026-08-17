@@ -186,7 +186,10 @@ export function splitDjSentences(value: string): string[] {
     const sentence = chunk.trim();
     if (sentence.length === 0) return [];
     const natural = sentence.split(/(?<=[，、：,;:])\s*/u).filter(Boolean);
-    return natural.flatMap(splitDjLine);
+    return natural
+      .map((part) => part.replace(/^[，。！？!?；;、,.:：]+|[，。！？!?；;、,.:：]+$/gu, "").trim())
+      .filter(Boolean)
+      .flatMap(splitDjLine);
   });
 }
 
