@@ -326,7 +326,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 - 路由为 `chat` → 系统返回普通助手回复，不访问音乐搜索或节目生成；路由为 `clarify` → 系统提出一个最小澄清问题，等待用户继续回答。
 - 路由为 `single_track` → 系统按明确约束解析一首可播放歌曲，返回含推荐理由、`PLAY NOW` 与 `PLAY NEXT` 的卡片，不替换当前 Program。
 - 路由为 `recommendations` → 系统返回 3～5 首已完成音频解析的歌曲卡片；“最推荐哪首”只能从最近一次推荐列表中选择，不能新造一首未在列表内的歌曲。
-- 路由为 `program` → 系统读取 `EffectiveTaste`、近 20 期节目歌曲、当前时间、`ProfilePreferences`、最近对话和最多 120 首可播放 Live 音乐库摘要，创建默认 8 首、可明确指定为 8～12 首的异步节目任务。
+- 路由为 `program` → 系统读取 `EffectiveTaste`、近 20 期节目歌曲、当前时间、`ProfilePreferences`、最近对话和最多 1,000 首可播放 Live 音乐库摘要（覆盖个人完整候选库），创建默认 8 首、可明确指定为 8～12 首的异步节目任务。
 - Planner 返回多于目标数量的有序候选 → Backend 依次执行 Profile ownership、可播放性、原始歌词语言、近 10 期精确曲目和本期艺人去重校验，并最多补选两轮；少于目标数量时整次失败，不提交残缺节目。
 - 每期选择 1～2 首 featured track 生成 45～90 秒深讲，其余开场、转场和结束语保持克制。可核验的背景事实仅来自非阻断音乐事实 Provider 并显示来源；取不到来源时只做音乐性、歌词主题和场景分析。
 - Qwen3-TTS 可用且生成成功 → Program 以 `voice-overlay` 模式保存 DJ 音频；Audio Engine 在音乐播放中叠加串讲并 duck 到 28%，而不是把每段语音当成独立歌曲顺序播放。TTS 失败时保留完整文字 DJ，歌曲继续播放。
@@ -914,7 +914,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 |------|------|----------|----------|----------|
 | 档案管理 | 创建、读取、选择、更新本地档案 | profile 字段 | 当前 profile | 本地目录不可写时阻止保存 |
 | Radio turn | 调用活动 Codex 或 DeepSeek 路由并回复 | 用户消息、最近 50 个 turn、`EffectiveTaste`、当前节目摘要 | `chat/clarify/single_track/program` 决策与助手消息 | 失败时保留消息和旧节目并允许重试 |
-| 节目规划 | 调用活动 Codex 或 DeepSeek 生成节目计划 | 明确节目需求、`EffectiveTaste`、近 20 期歌曲、时间、偏好、最多 120 首库内摘要与 8～12 首目标 | 超额有序 `trackIntents`、featured tracks 与结构化 scripts | 约束或补选后不足目标时保留旧节目，不提交残缺结果 |
+| 节目规划 | 调用活动 Codex 或 DeepSeek 生成节目计划 | 明确节目需求、`EffectiveTaste`、近 20 期歌曲、时间、偏好、最多 1,000 首完整候选库摘要与 8～12 首目标 | 最多 16 个有序原版 `trackIntents`、featured tracks 与结构化 scripts | 约束或补选后不足目标时保留旧节目，并显示中文人声、原版筛选或音频可播性的具体原因 |
 | 音乐事实增强 | 查询 MusicBrainz/Wikimedia 等可信来源 | featured track 的歌曲、艺人和专辑元数据 | 有来源 URL 的短事实与归因 | 网络、限流或无匹配时只使用无事实的音乐性/主题分析 |
 | 意图解析与音乐搜索 | 通过 Library application API 解析库内 ID，或调用网易云 API 搜索探索歌曲和播放链接 | 有序 library/discovery intent | 稳定去重的歌曲元数据、播放 URL | 单 intent 失败时跳过；全部失败时保留旧节目 |
 | TTS 生成 | 调用持久化 bundled Python/MLX helper，以固定 Qwen3-TTS 8-bit 模型生成完整 WAV | 完整 DJ 文案、语言、声音风格 | 受控音频引用、时长；无 marker 时估算时间 | 失败时保留完整文字 DJ |

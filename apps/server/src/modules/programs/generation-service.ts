@@ -302,6 +302,9 @@ export function createProgramGenerationService(
     );
     const chineseOnly = /中文歌|华语歌|国语歌|粤语歌/u.test(scenarioText);
     const normalizedScenario = scenarioText.toLocaleLowerCase("en-US");
+    let rejectedChineseVocal = 0;
+    let rejectedNonCanonicalVersion = 0;
+    let failedAudioResolution = 0;
     let trackDegraded = false;
 
     const isExplicitTrack = (track: MusicTrack): boolean => {
@@ -335,6 +338,7 @@ export function createProgramGenerationService(
       const explicitArtist = artistKey.length > 0 && normalizedScenario.includes(artistKey);
       const explicitTrack = isExplicitTrack(track);
       if (discovery && !explicitTrack && isAlternativeVersion(track)) {
+        rejectedNonCanonicalVersion += 1;
         trackDegraded = true;
         return false;
       }
@@ -346,6 +350,7 @@ export function createProgramGenerationService(
         return false;
       }
       if (!(await isChineseVocal(track))) {
+        rejectedChineseVocal += 1;
         trackDegraded = true;
         return false;
       }
@@ -366,6 +371,7 @@ export function createProgramGenerationService(
           throw new GenerationAbortedError();
         }
         failedTrackIds.add(track.id);
+        failedAudioResolution += 1;
         trackDegraded = true;
         return false;
       }
@@ -408,8 +414,14 @@ export function createProgramGenerationService(
     const intentRounds = strictTrackCount
       ? [
           plan.trackIntents.slice(0, targetTrackCount),
-          plan.trackIntents.slice(targetTrackCount, targetTrackCount + 2),
-          plan.trackIntents.slice(targetTrackCount + 2, targetTrackCount + 4),
+          ...Array.from(
+            { length: Math.ceil(Math.max(0, plan.trackIntents.length - targetTrackCount) / 4) },
+            (_, index) =>
+              plan.trackIntents.slice(
+                targetTrackCount + index * 4,
+                targetTrackCount + (index + 1) * 4,
+              ),
+          ),
         ]
       : [plan.trackIntents];
     for (const intents of intentRounds) {
@@ -422,6 +434,7 @@ export function createProgramGenerationService(
             continue;
           }
           if (isAlternativeVersion(track) && !isExplicitTrack(track)) {
+            rejectedNonCanonicalVersion += 1;
             trackDegraded = true;
             continue;
           }
@@ -438,11 +451,26 @@ export function createProgramGenerationService(
     if (trackDegraded) {
       publishDegraded(snapshot, "track", "PROGRAM_TRACK_UNAVAILABLE");
     }
+    const insufficientTracksCode = (): string => {
+      if (chineseOnly && rejectedChineseVocal > 0) {
+        return "PROGRAM_GENERATION_INSUFFICIENT_CHINESE_TRACKS";
+      }
+      if (rejectedNonCanonicalVersion > 0) {
+        return "PROGRAM_GENERATION_INSUFFICIENT_CANONICAL_TRACKS";
+      }
+      if (failedAudioResolution > 0) {
+        return "PROGRAM_GENERATION_INSUFFICIENT_PLAYABLE_AUDIO";
+      }
+      return "PROGRAM_GENERATION_INSUFFICIENT_TRACKS";
+    };
     if (resolved.length === 0) {
+      if (chineseOnly && rejectedChineseVocal > 0) {
+        throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_CHINESE_TRACKS");
+      }
       throw new GenerationPipelineError("PROGRAM_GENERATION_NO_PLAYABLE_TRACKS");
     }
     if (strictTrackCount && resolved.length !== targetTrackCount) {
-      throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_TRACKS");
+      throw new GenerationPipelineError(insufficientTracksCode());
     }
     publish(snapshot.jobId, (sequence, occurredAt) =>
       generationTracksResolvedEventSchema.parse({

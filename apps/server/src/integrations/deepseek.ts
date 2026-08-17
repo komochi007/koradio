@@ -161,7 +161,7 @@ function validatePlan(
     throw new DeepseekAdapterError("response_invalid", "dj_language_mismatch");
   }
   const libraryTrackIds = new Set(context.library.tracks.map((track) => track.trackId));
-  if (parsedPlan.data.trackIntents.length > context.library.maximumTracks + 4) {
+  if (parsedPlan.data.trackIntents.length > 16) {
     throw new DeepseekAdapterError("response_invalid", "candidate_overflow");
   }
   if (
@@ -244,6 +244,8 @@ function createMessages(
       content: JSON.stringify({
         instruction,
         outputSchema: schema,
+        planningReserveGuidance:
+          "This overrides any earlier candidate-count suggestion: the supplied library spans the Profile's full candidate set, so choose across it rather than favoring recently imported tracks. Build as many distinct original-recording reserve intents as the 16-intent limit allows after the requested programme length.",
         ...(context === undefined ? {} : { context }),
       }),
     },

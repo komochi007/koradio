@@ -40,7 +40,7 @@ export const codexPlanningContextSchema = z
     tasteBlueprint: tasteBlueprintSchema.nullable().default(null),
     history: z.array(programHistoryContextSchema).max(20),
     library: z.strictObject({
-      tracks: z.array(libraryTrackContextSchema).max(500),
+      tracks: z.array(libraryTrackContextSchema).max(1_000),
       maximumTracks: z.number().int().min(1).max(12),
       preferredLibraryTrackCount: z.number().int().min(0).max(12),
     }),

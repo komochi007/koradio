@@ -141,6 +141,27 @@ export function transcriptIsPinnedToEnd(
 }
 
 function failureCopy(code: string): { message: string; settings: boolean; title: string } {
+  if (code === "PROGRAM_GENERATION_INSUFFICIENT_CHINESE_TRACKS") {
+    return {
+      title: "CHINESE ORIGINALS INSUFFICIENT",
+      message: "可播放的中文原版人声不足，DJ 已保留原唱与版本筛选。请换个场景，或补充更多中文歌。",
+      settings: false,
+    };
+  }
+  if (code === "PROGRAM_GENERATION_INSUFFICIENT_CANONICAL_TRACKS") {
+    return {
+      title: "ORIGINAL RECORDINGS INSUFFICIENT",
+      message: "翻唱、现场和变速版已被排除，剩余原版歌曲不足以组成完整节目。",
+      settings: false,
+    };
+  }
+  if (code === "PROGRAM_GENERATION_INSUFFICIENT_PLAYABLE_AUDIO") {
+    return {
+      title: "PLAYABLE AUDIO INSUFFICIENT",
+      message: "有些候选歌曲暂时无法播放，DJ 没有用其他版本补位。请稍后重试。",
+      settings: false,
+    };
+  }
   if (
     code === "PROGRAM_GENERATION_NO_PLAYABLE_TRACKS" ||
     code === "PROGRAM_GENERATION_INSUFFICIENT_TRACKS"

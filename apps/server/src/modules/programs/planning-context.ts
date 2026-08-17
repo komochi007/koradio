@@ -12,13 +12,18 @@ export interface PlanningContextDependencies {
   taste: Pick<TasteService, "get">;
 }
 
+const planningLibraryCandidateLimit = 1_000;
+
 export function createPlanningContext(
   dependencies: PlanningContextDependencies,
   profileId: string,
   scenarioText: string,
   targetTrackCount: number,
 ): CodexPlanningContext {
-  const libraryTracks = dependencies.library.candidateTracks(profileId, 120);
+  const libraryTracks = dependencies.library.candidateTracks(
+    profileId,
+    planningLibraryCandidateLimit,
+  );
   const taste = dependencies.taste.get(profileId);
   return codexPlanningContextSchema.parse({
     scenarioText,

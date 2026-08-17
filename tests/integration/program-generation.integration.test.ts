@@ -267,8 +267,8 @@ describe("S3-06 Program generation orchestration", () => {
     await closeHarness(harness);
   });
 
-  it("provides the bounded library context and resolves the default five-track 4/1 plan in order", async () => {
-    const providerTracks = Array.from({ length: 6 }, (_, index) => ({
+  it("provides the full library context and resolves the default five-track 4/1 plan in order", async () => {
+    const providerTracks = Array.from({ length: 126 }, (_, index) => ({
       source: "netease" as const,
       sourceTrackId: `library-aware-${String(index + 1)}`,
       title: `Library Aware ${String(index + 1)}`,
@@ -289,7 +289,7 @@ describe("S3-06 Program generation orchestration", () => {
           source: "netease",
           sourcePlaylistId: playlistRef,
           title: "Library Aware",
-          tracks: providerTracks.slice(0, 5),
+          tracks: providerTracks.slice(0, 125),
         });
       },
       resolveAudio(sourceTrackId) {
@@ -301,7 +301,7 @@ describe("S3-06 Program generation orchestration", () => {
       search(keyword) {
         searchInvocations.push(keyword);
         return Promise.resolve({
-          items: keyword === "adjacent discovery" ? [providerTracks[5]] : [],
+          items: keyword === "adjacent discovery" ? [providerTracks[125]] : [],
         });
       },
     };
@@ -357,10 +357,10 @@ describe("S3-06 Program generation orchestration", () => {
       maximumTracks: 5,
       preferredLibraryTrackCount: 4,
     });
-    expect(capturedContext?.library.tracks).toHaveLength(5);
+    expect(capturedContext?.library.tracks).toHaveLength(125);
     expect(detail.tracks.map((track) => track.title)).toEqual([
       ...(capturedContext?.library.tracks.slice(0, 4).map((track) => track.title) ?? []),
-      "Library Aware 6",
+      "Library Aware 126",
     ]);
     expect(searchInvocations).toEqual(["adjacent discovery"]);
     await closeHarness(harness);
@@ -1116,7 +1116,7 @@ describe("S3-06 Program generation REST and reconnect snapshot", () => {
     await harness.generation.waitForIdle();
     expect(harness.generation.get(harness.profile.id, second.jobId)).toMatchObject({
       status: "failed",
-      errorCode: "PROGRAM_GENERATION_INSUFFICIENT_TRACKS",
+      errorCode: "PROGRAM_GENERATION_INSUFFICIENT_CHINESE_TRACKS",
     });
     await closeHarness(harness);
 
