@@ -108,13 +108,9 @@ function updateMenuBarMenu(): void {
 function createMenuBar(): void {
   if (menuBar !== undefined) return;
   const iconPath = app.isPackaged
-    ? resolve(process.resourcesPath, "app/apps/web/dist/icons/koradio-192.png")
-    : resolve(desktopDirectory, "../../web/public/icons/koradio-192.png");
-  const icon = nativeImage.createFromPath(iconPath).resize({
-    height: 18,
-    quality: "best",
-    width: 18,
-  });
+    ? resolve(process.resourcesPath, "app/apps/web/dist/icons/koradio-menu-bar-Template.png")
+    : resolve(desktopDirectory, "../../web/public/icons/koradio-menu-bar-Template.png");
+  const icon = nativeImage.createFromPath(iconPath);
   menuBar = new Tray(icon);
   menuBar.setToolTip("Koradio");
   updateMenuBarMenu();
