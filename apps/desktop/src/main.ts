@@ -1,6 +1,7 @@
-import { app, BrowserWindow, dialog, session } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, session, Tray } from "electron";
 import { dirname, resolve } from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 import {
   createServiceController,
@@ -17,6 +18,13 @@ import {
   rendererContentSecurityPolicy,
 } from "./window-policy.js";
 import { startupPagePrefix, startupPageUrl, startupRetryUrl } from "./startup-page.js";
+import {
+  emptyMenuBarPlayback,
+  menuBarStatus,
+  parseMenuBarPlayback,
+  type MenuBarCommand,
+  type MenuBarPlayback,
+} from "./menu-bar.js";
 
 const smokeMode = process.argv.includes("--smoke");
 const smokeUserDataDirectory = process.env.KORADIO_DESKTOP_SMOKE_USER_DATA_DIR;
@@ -33,6 +41,87 @@ let rendererSecurityInstalled = false;
 let startupAttempt: Promise<void> | undefined;
 let startupNavigationActive = true;
 let startupRetry: (() => void) | undefined;
+let menuBar: Tray | undefined;
+let menuBarPlayback: MenuBarPlayback = emptyMenuBarPlayback;
+
+const desktopDirectory = dirname(fileURLToPath(import.meta.url));
+
+function sendMenuBarCommand(command: MenuBarCommand): void {
+  const window = mainWindow;
+  if (window === undefined || window.isDestroyed()) return;
+  window.webContents.send("koradio:menu-bar-command", command);
+}
+
+function showMainWindow(): void {
+  const window = mainWindow;
+  if (window === undefined || window.isDestroyed()) return;
+  if (window.isMinimized()) window.restore();
+  window.show();
+  window.focus();
+}
+
+function updateMenuBarMenu(): void {
+  const tray = menuBar;
+  if (tray === undefined) return;
+  const playback = menuBarPlayback;
+  const title = playback.title ?? "暂无正在播放";
+  const artist = playback.artist;
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: menuBarStatus(playback), enabled: false },
+      { label: title, enabled: false },
+      ...(artist === undefined ? [] : [{ label: artist, enabled: false }]),
+      { type: "separator" },
+      {
+        label: "上一首",
+        enabled: playback.canPrevious,
+        click: () => {
+          sendMenuBarCommand("previous");
+        },
+      },
+      {
+        label: playback.state === "playing" ? "暂停" : "播放",
+        enabled: playback.canToggle,
+        click: () => {
+          sendMenuBarCommand("toggle");
+        },
+      },
+      {
+        label: "下一首",
+        enabled: playback.canNext,
+        click: () => {
+          sendMenuBarCommand("next");
+        },
+      },
+      { type: "separator" },
+      { label: "显示 Koradio", click: showMainWindow },
+      {
+        label: "退出 Koradio",
+        click: () => {
+          app.quit();
+        },
+      },
+    ]),
+  );
+}
+
+function createMenuBar(): void {
+  if (menuBar !== undefined) return;
+  const icon = nativeImage.createFromDataURL(
+    `data:image/svg+xml;base64,${Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none"><g stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M24 2.5 43.5 13.7v25.1L36 43.1M12 43.1 4.5 38.8V13.7L24 2.5"/><path d="M15.5 33.5a12 12 0 1 1 17 0"/><circle cx="24" cy="20.25" r="3.25"/><path d="m24 23.5-7.2 18.1L24 47l7.2-5.4L24 23.5M20.6 37.8h6.8"/></g></svg>',
+    ).toString("base64")}`,
+  );
+  icon.setTemplateImage(true);
+  menuBar = new Tray(icon);
+  menuBar.setToolTip("Koradio");
+  updateMenuBarMenu();
+}
+
+ipcMain.on("koradio:menu-bar-playback", (_event, playback: unknown) => {
+  menuBarPlayback = parseMenuBarPlayback(playback);
+  updateMenuBarMenu();
+});
 
 async function verifyPlannerReadiness(origin: string): Promise<void> {
   const bootstrap = await fetch(`${origin}/api/v1/session/bootstrap`, {
@@ -163,6 +252,7 @@ function createMainWindow(): BrowserWindow {
       devTools: !app.isPackaged && !smokeMode,
       nodeIntegration: false,
       sandbox: true,
+      preload: resolve(desktopDirectory, "preload.js"),
       webSecurity: true,
       webviewTag: false,
     },
@@ -300,6 +390,7 @@ async function runStartupAttempt(window: BrowserWindow): Promise<void> {
       startupNavigationActive = false;
       installRendererSecurity(window, new URL(rendererUrl).origin);
       await loadRenderer(window, rendererUrl);
+      createMenuBar();
       startupRetry = undefined;
       if (smokeMode) {
         await runRendererSmoke(window, expectedOrigin);

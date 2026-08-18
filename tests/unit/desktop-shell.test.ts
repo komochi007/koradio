@@ -25,6 +25,11 @@ import {
   rendererContentSecurityPolicy,
 } from "../../apps/desktop/src/window-policy.js";
 import {
+  emptyMenuBarPlayback,
+  menuBarStatus,
+  parseMenuBarPlayback,
+} from "../../apps/desktop/src/menu-bar.js";
+import {
   startupPagePrefix,
   startupPageUrl,
   startupRetryUrl,
@@ -48,6 +53,37 @@ function createServiceProbeFetch(renderer: Response): typeof fetch {
 }
 
 describe("Electron desktop shell policy", () => {
+  it("accepts only bounded menu bar playback state", () => {
+    expect(
+      parseMenuBarPlayback({
+        artist: "Andrew Prahlow",
+        canNext: true,
+        canPrevious: true,
+        canToggle: true,
+        state: "playing",
+        title: "Outer Wilds",
+      }),
+    ).toEqual({
+      artist: "Andrew Prahlow",
+      canNext: true,
+      canPrevious: true,
+      canToggle: true,
+      state: "playing",
+      title: "Outer Wilds",
+    });
+    expect(parseMenuBarPlayback({ state: "unknown", title: "x".repeat(200) })).toEqual({
+      ...emptyMenuBarPlayback,
+      title: "x".repeat(160),
+    });
+    expect(parseMenuBarPlayback(null)).toEqual(emptyMenuBarPlayback);
+  });
+
+  it("maps playback states to concise native menu status", () => {
+    expect(menuBarStatus({ ...emptyMenuBarPlayback, state: "playing" })).toBe("● ON AIR");
+    expect(menuBarStatus({ ...emptyMenuBarPlayback, state: "paused" })).toBe("已暂停");
+    expect(menuBarStatus({ ...emptyMenuBarPlayback, state: "idle" })).toBe("暂无正在播放");
+  });
+
   it("enforces the accepted minimum desktop window", () => {
     expect({ height: minimumWindowHeight, width: minimumWindowWidth }).toEqual({
       height: 652,

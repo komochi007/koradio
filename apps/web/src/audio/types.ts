@@ -29,6 +29,7 @@ export interface AudioEngineSnapshot {
   profileId: string | undefined;
   programId: string | undefined;
   currentItem: PlaybackTimelineItem | undefined;
+  currentTrack?: MusicTrack | undefined;
   currentIndex: number;
   itemCount: number;
   positionMs: number;

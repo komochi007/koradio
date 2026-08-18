@@ -1428,6 +1428,54 @@ describe("Audio Engine", () => {
     });
   });
 
+  it("exposes the current track for desktop playback surfaces", async () => {
+    const audio = new FakeAudio();
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+
+    await engine.loadProgram(program, { autoplay: false });
+    expect(engine.getSnapshot().currentTrack).toMatchObject({ title: "First", artist: "Artist" });
+
+    await engine.previewAudio({
+      durationMs: 20_000,
+      kind: "track",
+      previewId: program.tracks[1]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      track: program.tracks[1],
+    });
+    expect(engine.getSnapshot().currentTrack).toMatchObject({ title: "Second", artist: "Artist" });
+
+    await engine.next();
+    expect(engine.getSnapshot().preview).toBeUndefined();
+    expect(engine.getSnapshot().currentTrack).toMatchObject({ title: "First" });
+  });
+
+  it("syncs an unloaded program and stops an active preview through transport controls", async () => {
+    const audio = new FakeAudio();
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+
+    await engine.syncProgram?.(program);
+    expect(engine.getSnapshot()).toMatchObject({ programId, state: "paused" });
+    await engine.previewAudio({
+      durationMs: 20_000,
+      kind: "track",
+      previewId: program.tracks[1]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      track: program.tracks[1],
+    });
+    await engine.previous();
+    expect(engine.getSnapshot().preview).toBeUndefined();
+  });
+
   it("provides client and server React snapshots", () => {
     let value = { ownership: "active", state: "ready" } as AudioEngineSnapshot;
     const listeners = new Set<() => void>();

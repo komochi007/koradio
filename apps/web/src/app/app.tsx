@@ -35,6 +35,7 @@ import { ConnectingPage, OfflinePage, OfflineSettingsPage, OnlineShellPage } fro
 import { createAppQueryClient, QueryClientProvider } from "./query-client.js";
 import { useAppRouter } from "./router.js";
 import { useServiceConnection } from "./use-service-connection.js";
+import { useDesktopMenuBar } from "../shared/desktop-menu-bar.js";
 
 interface AppProps {
   audioEngine?: AudioEngineFacade;
@@ -110,6 +111,7 @@ function AppComposition({
   const currentTheme = currentProfile.data?.current?.preferences.themeMode;
   const activeProfileId = currentProfile.data?.current?.profile.id;
   const audio = useAudioSnapshot(audioEngine);
+  useDesktopMenuBar(audio, audioEngine);
   const handoff = useQuery({
     queryKey: ["program-handoff", activeProfileId],
     queryFn: () => {

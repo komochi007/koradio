@@ -251,7 +251,16 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   }
 
   function update(next: Partial<AudioEngineSnapshot>): void {
-    snapshot = { ...snapshot, ...next };
+    const nextSnapshot = { ...snapshot, ...next };
+    const item = nextSnapshot.currentItem;
+    snapshot = {
+      ...nextSnapshot,
+      currentTrack:
+        nextSnapshot.preview?.track ??
+        (item?.kind === "track"
+          ? program?.tracks.find((track) => track.id === item.trackId)
+          : undefined),
+    };
     publish();
   }
 
