@@ -215,7 +215,8 @@ async function update() {
     KORADIO_PNPM_ENTRY: pnpmEntry,
   };
   try {
-    await run(updaterNode, [pnpmEntry, "install", "--frozen-lockfile", "--force"], {
+    await rm(join(sourceDirectory, "node_modules"), { force: true, recursive: true });
+    await run(updaterNode, [pnpmEntry, "install", "--frozen-lockfile"], {
       cwd: sourceDirectory,
       env: buildEnvironment,
     });

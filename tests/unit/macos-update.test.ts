@@ -42,15 +42,20 @@ describe("macOS Personal Local Preview updater", () => {
     );
   });
 
-  it("强制刷新更新器缓存的锁定依赖，再构建候选包", async () => {
+  it("重建更新器缓存的锁定依赖，再构建候选包", async () => {
     const updateScript = await readFile(
       fileURLToPath(new URL("../../scripts/release/update-macos.mjs", import.meta.url)),
       "utf8",
     );
     expect(
       updateScript.indexOf(
-        'await run(updaterNode, [pnpmEntry, "install", "--frozen-lockfile", "--force"]',
+        'await rm(join(sourceDirectory, "node_modules"), { force: true, recursive: true })',
       ),
+    ).toBeLessThan(
+      updateScript.indexOf('await run(updaterNode, [pnpmEntry, "install", "--frozen-lockfile"]'),
+    );
+    expect(
+      updateScript.indexOf('await run(updaterNode, [pnpmEntry, "install", "--frozen-lockfile"]'),
     ).toBeLessThan(
       updateScript.indexOf("await run(\n      updaterNode,\n      [\n        buildScript,"),
     );
