@@ -392,7 +392,6 @@ async function runStartupAttempt(window: BrowserWindow): Promise<void> {
       startupNavigationActive = false;
       installRendererSecurity(window, new URL(rendererUrl).origin);
       await loadRenderer(window, rendererUrl);
-      createMenuBar();
       startupRetry = undefined;
       if (smokeMode) {
         await runRendererSmoke(window, expectedOrigin);
@@ -442,6 +441,7 @@ async function runStartupAttempt(window: BrowserWindow): Promise<void> {
 async function startApplication(): Promise<void> {
   await app.whenReady();
   const window = createMainWindow();
+  createMenuBar();
   await loadStartupPage(window);
   startupRetry = () => {
     void runStartupAttempt(window);

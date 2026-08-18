@@ -21,7 +21,7 @@ S7-09 要求把桌面外壳迁移到 Electron，同时保持 REST、WebSocket、
 - 使用 `http://127.0.0.1:<port>/radio` 加载现有 Web Renderer，不引入 `file://`、自定义协议或第二套 Renderer。
 - 使用 Electron 43.2.0、`@electron/packager` 20.0.2 和 `@electron/osx-sign` 2.5.0；macOS arm64、ad-hoc hardened runtime、`asar: false`。
 - 保留 Bundle ID `app.koradio.launcher`、固定 `/Applications/Koradio.app`、现有图标资源名和可见 Dock/Launchpad 行为。
-- 产品窗口加载成功后，在 macOS 菜单栏显示 Koradio 品牌 PNG 图标；点击打开原生菜单，展示当前播放状态、曲名/艺人、上一首、播放/暂停、下一首、显示窗口和退出。
+- 启动状态窗口创建后，在 macOS 菜单栏显示 Koradio 品牌 PNG 图标；点击打开原生菜单，展示当前播放状态、曲名/艺人、上一首、播放/暂停、下一首、显示窗口和退出。
 - 在 metadata `schemaVersion: 1` 下增加可选 `shell: "electron"` 与 `electronVersion`，旧 Native metadata 仍可解析，新包验证器要求 Electron 标识。
 
 ### 不包含
@@ -67,7 +67,7 @@ S7-09 要求把桌面外壳迁移到 Electron，同时保持 REST、WebSocket、
 
 - 正常启动：单实例锁 → 启动前更新检查 → 检测并复用 `49373–49383` 的 Koradio 服务，或启动包内 Node 服务 → health ready → 创建唯一 `960 × 1600` content-size、`hiddenInset`、`#090a0c` 窗口并加载 `/radio`。
 - 退出：关闭主窗口即退出 Electron，只停止当前 Electron 自己启动的服务；复用的外部服务不终止。
-- 菜单栏：仅在应用运行且产品 Renderer 成功加载后显示；点击打开系统原生菜单。主进程只接收受限播放展示状态并转发三种控制命令，播放事实与命令执行仍归 Web Renderer 的 AudioEngine；关闭主窗口或退出后销毁图标，不保留后台播放。
+- 菜单栏：启动状态窗口创建后显示；点击打开系统原生菜单。主进程只接收受限播放展示状态并转发三种控制命令，播放事实与命令执行仍归 Web Renderer 的 AudioEngine；关闭主窗口或退出后销毁图标，不保留后台播放。
 - 更新：不使用 Electron `autoUpdater`，继续调用现有 updater；更新结果为 `current` 或 `updated`，更新失败 fail-closed。
 - 打包：首版 `asar: false`，server deploy 依赖在 Electron app 内保持可重定位；应用 Bundle ID、固定安装路径和图标名保持不变。
 
