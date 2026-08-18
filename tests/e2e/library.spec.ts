@@ -62,7 +62,12 @@ function wav(durationMs: number): Buffer {
 
 async function mockLibraryWorkspace(
   page: Page,
-  options: { netease?: "available" | "unavailable"; searchFails?: boolean } = {},
+  options: {
+    longLibrary?: boolean;
+    netease?: "available" | "unavailable";
+    nextPageDelayMs?: number;
+    searchFails?: boolean;
+  } = {},
 ): Promise<void> {
   let importReads = 0;
   await page.route("**/api/v1/health", (route) =>
@@ -87,6 +92,11 @@ async function mockLibraryWorkspace(
   );
   await page.route("**/api/v1/profiles/*/library?*", async (route) => {
     const cursor = new URL(route.request().url()).searchParams.get("cursor");
+    if (cursor === "next" && options.nextPageDelayMs !== undefined) {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, options.nextPageDelayMs);
+      });
+    }
     await route.fulfill({
       json:
         cursor === "next"
@@ -102,15 +112,13 @@ async function mockLibraryWorkspace(
               demoCount: 2,
             }
           : {
-              items: [
-                {
-                  track: tracks[0],
-                  addedAt: "2026-07-19T08:00:00.000Z",
-                  playlistSourceId: null,
-                },
-              ],
-              totalCount: 2,
-              demoCount: 2,
+              items: (options.longLibrary ? tracks : [tracks[0]]).map((track, index) => ({
+                track,
+                addedAt: `2026-07-19T08:0${String(index)}:00.000Z`,
+                playlistSourceId: null,
+              })),
+              totalCount: options.longLibrary ? 10 : 2,
+              demoCount: options.longLibrary ? 10 : 2,
               nextCursor: "next",
             },
     });
@@ -344,4 +352,28 @@ test("keeps Library scrolling inside the standalone desktop canvas without a scr
   expect(metrics.trackList.overflowY).toBe("auto");
   expect(metrics.trackList.scrollbarWidth).toBe("none");
   await expect(page.locator(".primary-nav")).toBeVisible();
+});
+
+test("keeps lower Library cards still while loading the next local music page", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "滚动布局在 Chromium 中回归");
+  await enableStandaloneDesktopPwa(page);
+  await page.setViewportSize({ width: 560, height: 600 });
+  await mockLibraryWorkspace(page, { longLibrary: true, nextPageDelayMs: 300 });
+  await page.goto(`${appOrigin}/library`);
+
+  const list = page.locator(".library-track-list");
+  const importer = page.locator(".library-import");
+  await expect(list).toBeVisible();
+  const before = await importer.evaluate((element) => element.getBoundingClientRect().top);
+  await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    element.dispatchEvent(new Event("scroll"));
+  });
+  await expect(page.getByText("正在加载更多音乐")).toBeVisible();
+  const during = await importer.evaluate((element) => element.getBoundingClientRect().top);
+
+  expect(during).toBe(before);
 });

@@ -513,7 +513,10 @@ export function LibraryExperience(props: LibraryExperienceProps): ReactElement {
           </p>
         ) : null}
 
-        <section className="library-results" aria-labelledby="library-results-title">
+        <section
+          className={`library-results${showingSearch ? "" : " library-results--local"}`}
+          aria-labelledby="library-results-title"
+        >
           <h2 id="library-results-title">
             {showingSearch ? `搜索结果 · ${String(searchTracks.length)}` : "本地音乐"}
           </h2>
