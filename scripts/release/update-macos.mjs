@@ -208,7 +208,17 @@ async function update() {
   );
   const buildScript = join(sourceDirectory, "scripts/release/build-macos.mjs");
   const verifyScript = join(sourceDirectory, "scripts/release/verify-macos-package.mjs");
+  const buildEnvironment = {
+    ...process.env,
+    COREPACK_HOME: join(cacheDirectory, "corepack"),
+    KORADIO_PACKAGING_CACHE_DIRECTORY: join(cacheDirectory, "packaging"),
+    KORADIO_PNPM_ENTRY: pnpmEntry,
+  };
   try {
+    await run(updaterNode, [pnpmEntry, "install", "--frozen-lockfile", "--force"], {
+      cwd: sourceDirectory,
+      env: buildEnvironment,
+    });
     await run(
       updaterNode,
       [
@@ -226,12 +236,7 @@ async function update() {
       ],
       {
         cwd: sourceDirectory,
-        env: {
-          ...process.env,
-          COREPACK_HOME: join(cacheDirectory, "corepack"),
-          KORADIO_PACKAGING_CACHE_DIRECTORY: join(cacheDirectory, "packaging"),
-          KORADIO_PNPM_ENTRY: pnpmEntry,
-        },
+        env: buildEnvironment,
       },
     );
     const candidate = join(buildDirectory, `Koradio-${version}-arm64.app`);

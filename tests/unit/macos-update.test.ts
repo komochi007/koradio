@@ -42,6 +42,20 @@ describe("macOS Personal Local Preview updater", () => {
     );
   });
 
+  it("强制刷新更新器缓存的锁定依赖，再构建候选包", async () => {
+    const updateScript = await readFile(
+      fileURLToPath(new URL("../../scripts/release/update-macos.mjs", import.meta.url)),
+      "utf8",
+    );
+    expect(
+      updateScript.indexOf(
+        'await run(updaterNode, [pnpmEntry, "install", "--frozen-lockfile", "--force"]',
+      ),
+    ).toBeLessThan(
+      updateScript.indexOf("await run(\n      updaterNode,\n      [\n        buildScript,"),
+    );
+  });
+
   it("accepts only pinned build provenance", () => {
     expect(parseBuildMetadata(metadata)).toEqual(metadata);
     expect(
