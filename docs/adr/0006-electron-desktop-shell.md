@@ -21,7 +21,7 @@ S7-09 要求把桌面外壳迁移到 Electron，同时保持 REST、WebSocket、
 - 使用 `http://127.0.0.1:<port>/radio` 加载现有 Web Renderer，不引入 `file://`、自定义协议或第二套 Renderer。
 - 使用 Electron 43.2.0、`@electron/packager` 20.0.2 和 `@electron/osx-sign` 2.5.0；macOS arm64、ad-hoc hardened runtime、`asar: false`。
 - 保留 Bundle ID `app.koradio.launcher`、固定 `/Applications/Koradio.app`、现有图标资源名和可见 Dock/Launchpad 行为。
-- 产品窗口加载成功后，在 macOS 菜单栏显示 Koradio 品牌 Template Icon；点击打开原生菜单，展示当前播放状态、曲名/艺人、上一首、播放/暂停、下一首、显示窗口和退出。
+- 产品窗口加载成功后，在 macOS 菜单栏显示 Koradio 品牌 PNG 图标；点击打开原生菜单，展示当前播放状态、曲名/艺人、上一首、播放/暂停、下一首、显示窗口和退出。
 - 在 metadata `schemaVersion: 1` 下增加可选 `shell: "electron"` 与 `electronVersion`，旧 Native metadata 仍可解析，新包验证器要求 Electron 标识。
 
 ### 不包含

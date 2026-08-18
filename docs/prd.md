@@ -46,7 +46,7 @@
 - **包含**：
   - 本地 Web/PWA 竖版电台界面。
   - Personal Local Preview 的唯一 macOS 桌面入口与启动前自动更新：固定 `/Applications/Koradio.app`，从可信 `origin/main` 在本机完成构建、验证和原位替换后再打开独立应用窗口。
-  - macOS 菜单栏快捷控制：使用 Koradio 品牌 Template Icon 和系统原生菜单展示播放状态、曲目与快捷播放控制；不改变关闭即退出的窗口语义。
+  - macOS 菜单栏快捷控制：使用 Koradio 品牌 PNG 图标和系统原生菜单展示播放状态、曲目与快捷播放控制；不改变关闭即退出的窗口语义。
   - Node.js 本地服务中枢。
   - 可切换 AI 编排：Codex 通过本机 CLI，或 DeepSeek 通过固定官方 Chat Completions endpoint，读取用户档案、`EffectiveTaste`、历史与有界音乐库，生成节目计划、输出结构化播放指令和 DJ 串讲。
   - 本地服务内置的网易云 Provider：通过 TypeScript `linuxapi` 适配器完成音乐搜索、歌曲信息、播放链接和歌词获取，v1 不要求用户填写网易云地址或密钥。
