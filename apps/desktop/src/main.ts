@@ -109,7 +109,7 @@ function createMenuBar(): void {
   if (menuBar !== undefined) return;
   const icon = nativeImage.createFromDataURL(
     `data:image/svg+xml;base64,${Buffer.from(
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none"><g stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M24 2.5 43.5 13.7v25.1L36 43.1M12 43.1 4.5 38.8V13.7L24 2.5"/><path d="M15.5 33.5a12 12 0 1 1 17 0"/><circle cx="24" cy="20.25" r="3.25"/><path d="m24 23.5-7.2 18.1L24 47l7.2-5.4L24 23.5M20.6 37.8h6.8"/></g></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48" fill="none"><g stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M24 2.5 43.5 13.7v25.1L36 43.1M12 43.1 4.5 38.8V13.7L24 2.5"/><path d="M15.5 33.5a12 12 0 1 1 17 0"/><circle cx="24" cy="20.25" r="3.25"/><path d="m24 23.5-7.2 18.1L24 47l7.2-5.4L24 23.5M20.6 37.8h6.8"/></g></svg>',
     ).toString("base64")}`,
   );
   icon.setTemplateImage(true);
