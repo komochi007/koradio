@@ -121,6 +121,11 @@ ipcMain.on("koradio:menu-bar-playback", (_event, playback: unknown) => {
   updateMenuBarMenu();
 });
 
+ipcMain.on("koradio:menu-bar-ready", (event) => {
+  if (mainWindow?.webContents.id !== event.sender.id) return;
+  event.sender.send("koradio:menu-bar-request-playback");
+});
+
 async function verifyPlannerReadiness(origin: string): Promise<void> {
   const bootstrap = await fetch(`${origin}/api/v1/session/bootstrap`, {
     headers: { Origin: origin },

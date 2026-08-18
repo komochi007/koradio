@@ -14,6 +14,7 @@ interface MenuBarPlayback {
 }
 
 interface KoradioDesktopBridge {
+  onMenuBarPlaybackRequested(listener: () => void): () => void;
   onMenuBarCommand(listener: (command: MenuBarCommand) => void): () => void;
   publishMenuBarPlayback(playback: MenuBarPlayback): void;
 }
@@ -51,7 +52,11 @@ export function useDesktopMenuBar(
   useEffect(() => {
     const bridge = window.koradioDesktop;
     if (bridge === undefined) return;
-    bridge.publishMenuBarPlayback(playback);
+    const publish = (): void => {
+      bridge.publishMenuBarPlayback(playback);
+    };
+    publish();
+    return bridge.onMenuBarPlaybackRequested(publish);
   }, [playback]);
 
   useEffect(() => {
