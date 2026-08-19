@@ -126,25 +126,6 @@ ipcMain.on("koradio:menu-bar-ready", (event) => {
   event.sender.send("koradio:menu-bar-request-playback");
 });
 
-async function verifyPlannerReadiness(origin: string): Promise<void> {
-  const bootstrap = await fetch(`${origin}/api/v1/session/bootstrap`, {
-    headers: { Origin: origin },
-    method: "POST",
-  });
-  if (!bootstrap.ok) throw new Error("Koradio session bootstrap failed");
-  const session = (await bootstrap.json()) as { accessToken?: unknown };
-  if (typeof session.accessToken !== "string" || session.accessToken.length === 0) {
-    throw new Error("Koradio session bootstrap returned an invalid token");
-  }
-  const readiness = await fetch(`${origin}/api/v1/device-settings/planner-test`, {
-    headers: { Authorization: `Bearer ${session.accessToken}`, Origin: origin },
-    method: "POST",
-  });
-  if (!readiness.ok) {
-    throw new Error("活动 AI 大脑尚未通过完整节目规划检测，请在 Settings 修复后重试。");
-  }
-}
-
 function applicationBundlePath(): string {
   return resolve(dirname(process.execPath), "../..");
 }
@@ -383,8 +364,7 @@ async function runStartupAttempt(window: BrowserWindow): Promise<void> {
         expectedOrigin = developmentOrigin();
       }
 
-      await updateStartupStatus("正在验证 AI 大脑", "正在执行完整节目规划检测");
-      await verifyPlannerReadiness(expectedOrigin);
+      await updateStartupStatus("正在检查本地服务", "正在加载已验证的 AI 大脑配置");
 
       const rendererUrl = app.isPackaged
         ? `${expectedOrigin}/radio`

@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../../apps/server/src/bootstrap/app.js";
 import type { RuntimeConfig } from "../../apps/server/src/bootstrap/config.js";
 import { recordDataRootRestartFailure } from "../../apps/server/src/modules/device-settings/data-root-migration.js";
+import type { ProgramPlannerProvider } from "../../apps/server/src/modules/programs/providers.js";
 import type { SecretStore } from "../../apps/server/src/platform/secrets/index.js";
 import {
   readActiveDataRoot,
@@ -299,6 +300,49 @@ describe("S2-05 settings, health and data root foundation", () => {
     });
   });
 
+  it("uses a provider connectivity check when switching an active planner", async () => {
+    let planCalls = 0;
+    let testCalls = 0;
+    const plannerProvider = {
+      plan: () => {
+        planCalls += 1;
+        return Promise.resolve({});
+      },
+      test: () => {
+        testCalls += 1;
+        return Promise.resolve();
+      },
+    } as ProgramPlannerProvider & { test: (options: { correlationId: string }) => Promise<void> };
+    const context = await createTestApp({
+      plannerProvider,
+    });
+    const session = await bootstrapSession(context.app);
+    const headers = authorizedHeaders(session);
+    const profileId = await createProfile(
+      context.app,
+      headers,
+      "connectivity-switch-profile",
+      "Connectivity",
+    );
+    await context.app.inject({
+      method: "PUT",
+      url: "/api/v1/profiles/current",
+      headers,
+      payload: { profileId },
+    });
+    const response = await context.app.inject({
+      method: "PATCH",
+      url: "/api/v1/device-settings",
+      headers,
+      payload: { deepseekPrivacyNoticeAccepted: true, plannerProvider: "deepseek" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(testCalls).toBe(1);
+    expect(planCalls).toBe(0);
+    expect(deviceSettingsSchema.parse(response.json<unknown>()).plannerProvider).toBe("deepseek");
+  });
+
   it("rejects a planner that answers a lightweight check but cannot form a complete program", async () => {
     const context = await createTestApp({
       plannerProvider: { plan: () => Promise.resolve({}) },
@@ -325,6 +369,42 @@ describe("S2-05 settings, health and data root foundation", () => {
 
     expect(response.statusCode).toBe(422);
     expect(response.json()).toMatchObject({ code: "PLANNER_TEST_FAILED" });
+  });
+
+  it("does not activate a changed active planner setting before its contract test passes", async () => {
+    const context = await createTestApp({
+      plannerProvider: { plan: () => Promise.resolve({}) },
+    });
+    const session = await bootstrapSession(context.app);
+    const headers = authorizedHeaders(session);
+    const profileId = await createProfile(
+      context.app,
+      headers,
+      "planner-switch-profile",
+      "Planner",
+    );
+    await context.app.inject({
+      method: "PUT",
+      url: "/api/v1/profiles/current",
+      headers,
+      payload: { profileId },
+    });
+
+    const response = await context.app.inject({
+      method: "PATCH",
+      url: "/api/v1/device-settings",
+      headers,
+      payload: { codexCommand: "/opt/koradio/bin/codex" },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({ code: "DEVICE_SETTINGS_PLANNER_TEST_FAILED" });
+    const settings = await context.app.inject({
+      method: "GET",
+      url: "/api/v1/device-settings",
+      headers,
+    });
+    expect(deviceSettingsSchema.parse(settings.json<unknown>()).codexCommand).toBeNull();
   });
 
   it("keeps device settings separate from profile preferences", async () => {

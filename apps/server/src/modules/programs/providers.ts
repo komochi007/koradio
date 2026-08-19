@@ -2,6 +2,7 @@ import {
   djLanguageSchema,
   djVoiceStyleSchema,
   effectiveTasteSchema,
+  programListeningIntentSchema,
   tasteBlueprintSchema,
   occurredAtSchema,
   trackIdSchema,
@@ -36,6 +37,7 @@ export const libraryTrackContextSchema = z.strictObject({
 export const codexPlanningContextSchema = z
   .strictObject({
     scenarioText: z.string().trim().min(1).max(500),
+    listeningIntent: programListeningIntentSchema.nullable().default(null),
     effectiveTaste: effectiveTasteSchema,
     tasteBlueprint: tasteBlueprintSchema.nullable().default(null),
     history: z.array(programHistoryContextSchema).max(20),
@@ -88,36 +90,72 @@ export const codexTrackIntentSchema = z.union([
   }),
 ]);
 
-export const codexProgramPlanOutputSchema = z.strictObject({
+const codexProgramPlanBaseShape = {
   programTitle: z.string().trim().min(1).max(200),
   scenarioSummary: z.string().trim().min(1).max(500),
   djLanguage: djLanguageSchema,
   djPersona: djVoiceStyleSchema,
   djScripts: z.array(codexDjScriptSchema).min(1).max(20),
-  trackIntents: z.array(codexTrackIntentSchema).min(1).max(16),
   playlistIntent: z.strictObject({
     energy: z.string().trim().min(1).max(100),
     mood: z.string().trim().min(1).max(100),
     avoid: z.array(z.string().trim().min(1).max(120)).max(20),
   }),
+};
+
+const codexResponseTrackIntentSchema = z.union([
+  z.strictObject({
+    kind: z.literal("library"),
+    trackId: trackIdSchema,
+    reason: z.string().trim().min(1).max(500),
+  }),
+  z.strictObject({
+    kind: z.literal("discovery"),
+    keyword: z.string().trim().min(1).max(100),
+    expectedArtist: z.string().trim().min(1).max(300).nullable(),
+    reason: z.string().trim().min(1).max(500),
+  }),
+]);
+
+export const codexProgramPlanOutputSchema = z.strictObject({
+  ...codexProgramPlanBaseShape,
+  trackIntents: z.array(codexResponseTrackIntentSchema).min(1).max(16),
 });
 
-export const codexProgramPlanSchema = codexProgramPlanOutputSchema.superRefine((plan, context) => {
-  if (!plan.djScripts.some((script) => script.type === "intro")) {
-    context.addIssue({
-      code: "custom",
-      message: "At least one intro DJ script is required",
-      path: ["djScripts"],
-    });
-  }
-  if (plan.djScripts.some((script) => script.language !== plan.djLanguage)) {
-    context.addIssue({
-      code: "custom",
-      message: "DJ script languages must match the plan language",
-      path: ["djScripts"],
-    });
-  }
-});
+export const codexProgramPlanSchema = z
+  .strictObject({
+    ...codexProgramPlanBaseShape,
+    trackIntents: z.array(codexTrackIntentSchema).min(1).max(16),
+  })
+  .superRefine((plan, context) => {
+    if (!plan.djScripts.some((script) => script.type === "intro")) {
+      context.addIssue({
+        code: "custom",
+        message: "At least one intro DJ script is required",
+        path: ["djScripts"],
+      });
+    }
+    if (plan.djScripts.some((script) => script.language !== plan.djLanguage)) {
+      context.addIssue({
+        code: "custom",
+        message: "DJ script languages must match the plan language",
+        path: ["djScripts"],
+      });
+    }
+  });
+
+export function normalizeCodexProgramPlan(value: unknown): CodexProgramPlan {
+  const parsed = codexProgramPlanOutputSchema.safeParse(value);
+  if (!parsed.success) throw new Error("Codex program plan response is invalid");
+  return codexProgramPlanSchema.parse({
+    ...parsed.data,
+    trackIntents: parsed.data.trackIntents.map((intent) =>
+      intent.kind === "discovery" && intent.expectedArtist === null
+        ? { kind: intent.kind, keyword: intent.keyword, reason: intent.reason }
+        : intent,
+    ),
+  });
+}
 
 export const ttsMarkerSchema = z.strictObject({
   startMs: z.number().int().nonnegative(),

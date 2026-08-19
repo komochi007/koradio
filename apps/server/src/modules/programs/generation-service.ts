@@ -20,7 +20,14 @@ import {
 } from "@koradio/contracts";
 
 import type { LibraryService } from "../library/index.js";
-import { isCanonicalOriginalCandidate, isNonCanonicalVersion } from "../library/track-version.js";
+import {
+  hasInstrumentalMarker,
+  hasNonCanonicalVersionMarker,
+  isCanonicalOriginalCandidate,
+  isNonCanonicalVersion,
+  matchesTrackRequest,
+  sortCanonicalCandidates,
+} from "../library/track-version.js";
 import type { ProfilePreferencesService } from "../profile-preferences/index.js";
 import type { TasteService } from "../taste/index.js";
 import {
@@ -287,6 +294,7 @@ export function createProgramGenerationService(
     targetTrackCount: number,
     minimumLibraryTrackCount: number,
     scenarioText: string,
+    listeningIntent: GenerateProgramCommand["listeningIntent"],
     lyricsCache: Map<string, TrackLyrics>,
     signal: AbortSignal,
   ): Promise<Array<{ audio: AudioResolution; track: MusicTrack }>> {
@@ -296,12 +304,15 @@ export function createProgramGenerationService(
     const failedTrackIds = new Set<string>();
     const selectedTrackIds = new Set<string>();
     const selectedArtists = new Set<string>();
+    const searchCache = new Map<string, Promise<MusicTrack[]>>();
     const recentTrackIds = new Set(
       options.programs
         .list(snapshot.profileId, undefined, 10)
         .items.flatMap((program) => program.trackIds),
     );
-    const chineseOnly = /中文歌|华语歌|国语歌|粤语歌/u.test(scenarioText);
+    const chineseOnly =
+      listeningIntent?.languageConstraint === "chinese-vocal" ||
+      /中文歌|华语歌|国语歌|粤语歌/u.test(scenarioText);
     const normalizedScenario = scenarioText.toLocaleLowerCase("en-US");
     let rejectedChineseVocal = 0;
     let rejectedNonCanonicalVersion = 0;
@@ -318,6 +329,7 @@ export function createProgramGenerationService(
 
     const isChineseVocal = async (track: MusicTrack): Promise<boolean> => {
       if (!chineseOnly) return true;
+      if (hasInstrumentalMarker(`${track.title}\n${track.album}`)) return false;
       try {
         const cached = lyricsCache.get(track.id);
         const lyrics =
@@ -325,16 +337,26 @@ export function createProgramGenerationService(
         lyricsCache.set(track.id, lyrics);
         if (lyrics.content === null) return false;
         const original = lyrics.originalContent ?? lyrics.content;
-        const normalized = original.replace(/\[[^\]]+\]/gu, "").replace(/[\s\p{P}\p{S}\d]/gu, "");
-        if (normalized.length === 0) return false;
+        const lyricLines = original
+          .split(/\r?\n/u)
+          .map((line) => line.replace(/\[[^\]]+\]/gu, "").replace(/[\s\p{P}\p{S}\d]/gu, ""))
+          .filter((line) => Array.from(line).length >= 2);
+        const normalized = lyricLines.join("");
+        const characters = Array.from(normalized);
+        if (characters.length < 24 || lyricLines.length < 2) return false;
         const han = normalized.match(/\p{Script=Han}/gu)?.length ?? 0;
-        return han / Array.from(normalized).length >= 0.6;
+        const kana = normalized.match(/[\p{Script=Hiragana}\p{Script=Katakana}]/gu)?.length ?? 0;
+        return han / characters.length >= 0.6 && kana / characters.length < 0.05;
       } catch {
         return false;
       }
     };
 
-    const tryResolve = async (track: MusicTrack, discovery = false): Promise<boolean> => {
+    const tryResolve = async (
+      track: MusicTrack,
+      discovery = false,
+      forced = false,
+    ): Promise<boolean> => {
       if (selectedTrackIds.has(track.id)) {
         return false;
       }
@@ -356,8 +378,9 @@ export function createProgramGenerationService(
         return false;
       }
       if (
-        (!explicitTrack && recentTrackIds.has(track.id)) ||
-        (!explicitArtist && selectedArtists.has(artistKey))
+        !forced &&
+        ((!explicitTrack && recentTrackIds.has(track.id)) ||
+          (!explicitArtist && selectedArtists.has(artistKey)))
       ) {
         trackDegraded = true;
         return false;
@@ -390,41 +413,83 @@ export function createProgramGenerationService(
       }
     };
 
+    const searchCandidates = (keyword: string): Promise<MusicTrack[]> => {
+      const normalizedKeyword = keyword.trim().slice(0, 100).toLocaleLowerCase("en-US");
+      if (normalizedKeyword.length === 0) {
+        return Promise.resolve([]);
+      }
+      const cached = searchCache.get(normalizedKeyword);
+      if (cached !== undefined) return cached;
+      const request = withAbort(
+        () => options.library.search(keyword.trim().slice(0, 100), signal),
+        signal,
+      )
+        .then((search) => {
+          assertActive(snapshot.jobId, signal);
+          return sortCanonicalCandidates(search.items, keyword);
+        })
+        .catch((error: unknown) => {
+          if (signal.aborted || error instanceof GenerationAbortedError) {
+            throw error;
+          }
+          trackDegraded = true;
+          return [];
+        });
+      searchCache.set(normalizedKeyword, request);
+      return request;
+    };
+
     const searchAndResolve = async (
       keyword: string,
       includeLibraryCandidates = false,
       expectedArtist?: string,
     ): Promise<boolean> => {
-      const normalizedKeyword = keyword.trim().slice(0, 100).toLocaleLowerCase("en-US");
-      if (normalizedKeyword.length === 0) {
-        return false;
+      for (const track of await searchCandidates(keyword)) {
+        if (
+          failedTrackIds.has(track.id) ||
+          (!includeLibraryCandidates && libraryCandidates.has(track.id)) ||
+          (expectedArtist !== undefined && !isCanonicalOriginalCandidate(track, expectedArtist))
+        ) {
+          continue;
+        }
+        if (await tryResolve(track, true)) {
+          return true;
+        }
       }
+      return false;
+    };
+
+    if (listeningIntent?.anchorTrack !== null && listeningIntent?.anchorTrack !== undefined) {
+      const anchor = listeningIntent.anchorTrack;
+      const explicitlyRequestedNonCanonicalAnchor = hasNonCanonicalVersionMarker(anchor.title);
       try {
-        const search = await withAbort(
-          () => options.library.search(keyword.trim().slice(0, 100), signal),
-          signal,
+        const libraryMatches = libraryTracks.filter((track) =>
+          matchesTrackRequest(track, anchor.title, anchor.artist),
         );
-        assertActive(snapshot.jobId, signal);
-        for (const track of search.items) {
-          if (
-            failedTrackIds.has(track.id) ||
-            (!includeLibraryCandidates && libraryCandidates.has(track.id)) ||
-            (expectedArtist !== undefined && !isCanonicalOriginalCandidate(track, expectedArtist))
-          ) {
-            continue;
-          }
-          if (await tryResolve(track, true)) {
-            return true;
-          }
+        const search = await searchCandidates(
+          `${anchor.title}${anchor.artist === null ? "" : ` ${anchor.artist}`}`,
+        );
+        const candidates = sortCanonicalCandidates(
+          [...libraryMatches, ...search].filter(
+            (track, index, items) =>
+              items.findIndex((candidate) => candidate.id === track.id) === index &&
+              matchesTrackRequest(track, anchor.title, anchor.artist) &&
+              (explicitlyRequestedNonCanonicalAnchor || !isNonCanonicalVersion(track)),
+          ),
+          anchor.title,
+        );
+        const selected = candidates[0];
+        if (selected === undefined || !(await tryResolve(selected, false, true))) {
+          throw new GenerationPipelineError("PROGRAM_GENERATION_ANCHOR_TRACK_UNAVAILABLE");
         }
       } catch (error) {
         if (signal.aborted || error instanceof GenerationAbortedError) {
           throw new GenerationAbortedError();
         }
-        trackDegraded = true;
+        if (error instanceof GenerationPipelineError) throw error;
+        throw new GenerationPipelineError("PROGRAM_GENERATION_ANCHOR_TRACK_UNAVAILABLE");
       }
-      return false;
-    };
+    }
 
     const intentRounds = strictTrackCount
       ? [
@@ -440,6 +505,11 @@ export function createProgramGenerationService(
         ]
       : [plan.trackIntents];
     for (const intents of intentRounds) {
+      await Promise.all(
+        intents
+          .filter((intent) => intent.kind === "discovery")
+          .map((intent) => searchCandidates(intent.keyword)),
+      );
       for (const intent of intents) {
         if (resolved.length === targetTrackCount) break;
         if (intent.kind === "library") {
@@ -458,7 +528,7 @@ export function createProgramGenerationService(
           }
           continue;
         }
-        await searchAndResolve(intent.keyword, false, intent.expectedArtist);
+        await searchAndResolve(intent.keyword, false, intent.expectedArtist ?? undefined);
       }
       if (resolved.length === targetTrackCount) break;
     }
@@ -596,7 +666,10 @@ export function createProgramGenerationService(
       }
     }
 
-    let ttsDegraded = false;
+    if (playableScriptIndexes.size > 0 && options.tts === undefined) {
+      publishDegraded(snapshot, "tts", "PROGRAM_TTS_UNAVAILABLE");
+      throw new GenerationPipelineError("PROGRAM_GENERATION_TTS_UNAVAILABLE");
+    }
     const djScripts: Array<DjScriptSegment & { durationMs: number | null }> = [];
     for (const [index, script] of scripts.entries()) {
       let ttsAudioRef: string | null = null;
@@ -626,10 +699,9 @@ export function createProgramGenerationService(
           if (signal.aborted || error instanceof GenerationAbortedError) {
             throw new GenerationAbortedError();
           }
-          ttsDegraded = true;
+          publishDegraded(snapshot, "tts", "PROGRAM_TTS_UNAVAILABLE");
+          throw new GenerationPipelineError("PROGRAM_GENERATION_TTS_UNAVAILABLE");
         }
-      } else if (playableScriptIndexes.has(index)) {
-        ttsDegraded = true;
       }
       djScripts.push({
         id: randomId(),
@@ -650,10 +722,6 @@ export function createProgramGenerationService(
         durationMs,
       });
     }
-    if (ttsDegraded) {
-      publishDegraded(snapshot, "tts", "PROGRAM_TTS_UNAVAILABLE");
-    }
-
     const timeline: unknown[] = [];
     const addDj = (segment: (typeof djScripts)[number]) => {
       if (segment.ttsAudioRef !== null && segment.durationMs !== null) {
@@ -749,6 +817,8 @@ export function createProgramGenerationService(
       snapshot.profileId,
       command.scenarioText,
       targetTrackCount,
+      command.listeningIntent ?? null,
+      libraryTracks,
     );
     let rawPlan: unknown;
     try {
@@ -811,6 +881,7 @@ export function createProgramGenerationService(
       targetTrackCount,
       context.library.minimumLibraryTrackCount,
       command.scenarioText,
+      command.listeningIntent,
       lyricsCache,
       signal,
     );

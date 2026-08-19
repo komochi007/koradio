@@ -105,7 +105,7 @@ describe("S7-06 live provider composition", () => {
     });
     expect(services.items.find((item) => item.service === "tts")).toMatchObject({
       status: "degraded",
-      redactedSummary: "Qwen3-TTS local model is unavailable; text DJ fallback is enabled",
+      redactedSummary: "Qwen3-TTS local model is unavailable; new programmes cannot be submitted",
     });
     expect(JSON.stringify({ health, services })).not.toContain(config.dataRoot);
   });

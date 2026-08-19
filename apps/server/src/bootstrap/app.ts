@@ -376,7 +376,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     },
     planner:
       options.plannerProvider === undefined && options.codexProvider === undefined
-        ? runtimeProviders.planner
+        ? (target) => runtimeProviders.plannerFor(target ?? deviceSettings.get())
         : () => (options.plannerProvider ?? options.codexProvider) as ProgramPlannerProvider,
     profileId: async () => (await profileContext.getCurrent()).current?.profile.id ?? null,
   });

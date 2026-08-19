@@ -3,7 +3,9 @@ import { randomUUID } from "node:crypto";
 import {
   radioConversationSchema,
   radioTurnSchema,
+  programListeningIntentSchema,
   type CreateRadioTurnCommand,
+  type ProgramListeningIntent,
   type RadioConversation,
   type RadioTurn,
 } from "@koradio/contracts";
@@ -12,6 +14,7 @@ import type { LibraryService } from "../library/index.js";
 import {
   hasNonCanonicalVersionMarker,
   isCanonicalOriginalCandidate,
+  sortCanonicalCandidates,
 } from "../library/track-version.js";
 import {
   requestedProgramTrackCount,
@@ -31,6 +34,7 @@ export class RadioTurnUnavailableError extends Error {}
 export function isHighConfidenceProgramRequest(content: string): boolean {
   const normalized = content.trim();
   if (/(?:一首|一曲|单曲|这首|这支)/u.test(normalized)) return false;
+  if (isAnchorProgramRequest(normalized)) return true;
   if (isRecommendationRequest(normalized)) return false;
   if (
     /(?:歌单|节目|音乐清单|歌单列表|[二三四五六七八九十百\d]+\s*首|几首|多首)/u.test(normalized)
@@ -56,6 +60,63 @@ export function isRecommendationRequest(content: string): boolean {
   return /(?:还有|其他|类似|再(?:推荐|来)).{0,16}(?:歌|歌曲|音乐|推荐)|(?:歌|歌曲|音乐).{0,12}(?:推荐|类似)/u.test(
     content.trim(),
   );
+}
+
+export function isAnchorProgramRequest(content: string): boolean {
+  const normalized = content.trim();
+  const programCue = /(?:歌单|节目|音乐清单|歌单列表|[二三四五六七八九十百\d]+\s*首)/u.test(
+    normalized,
+  );
+  const anchorCue = /(?:围绕|基于|以.+为(?:主|核心|锚点)|参考|相似于|类似于)/u.test(normalized);
+  return programCue && anchorCue && !/(?:一首|一曲|单曲)/u.test(normalized);
+}
+
+export function parseAnchorTrack(content: string): ProgramListeningIntent["anchorTrack"] {
+  const quoted = /[《「“"]([^》」”"]{1,120})[》」”"]/u.exec(content)?.[1]?.trim();
+  const unquoted =
+    /(?:围绕|基于|参考|相似于|类似于)\s*(?:歌曲|歌)?\s*([^，。！？,!?\n]{1,100}?)(?:这首歌|这首|这支歌|规划|歌单|节目|推荐|相似|类似|$)/u
+      .exec(content)?.[1]
+      ?.trim();
+  const raw = (quoted ?? unquoted)?.replace(/^(?:某首|一首|特定的?)\s*/u, "").trim();
+  if (
+    raw === undefined ||
+    raw.length < 2 ||
+    /(?:某首|特定歌曲|这首歌$)/u.test(raw) ||
+    /^(?:华语|中文|国语|粤语|普通话|闽南|音乐|歌曲|歌单|节目)(?:歌|歌曲|音乐|歌单|节目)?$/u.test(
+      raw,
+    )
+  ) {
+    return null;
+  }
+  const parts = raw.split(/\s+(?:-|—|\/|\\)\s+|\s+by\s+/iu).map((part) => part.trim());
+  const title = parts[0]?.replace(/(?:这首歌|这首|这支歌)$/u, "").trim();
+  if (title === undefined || title.length < 2) return null;
+  return { title, artist: parts[1] === undefined || parts[1].length === 0 ? null : parts[1] };
+}
+
+export function parseProgramListeningIntent(content: string): ProgramListeningIntent {
+  const dimensionPatterns: Array<[ProgramListeningIntent["similarityDimensions"][number], RegExp]> =
+    [
+      ["melody", /旋律|曲调|和声/u],
+      ["arrangement", /编曲|配器|制作/u],
+      ["timbre", /音色|声线|嗓音/u],
+      ["emotion", /情绪|氛围|感觉|情感/u],
+      ["rhythm", /节奏|律动|鼓点/u],
+      ["era", /年代|时期|时代/u],
+    ];
+  const requestedDimensions = dimensionPatterns
+    .map(([dimension, pattern]) => ({ dimension, index: content.search(pattern) }))
+    .filter(({ index }) => index >= 0)
+    .sort((left, right) => left.index - right.index)
+    .map(({ dimension }) => dimension);
+  return programListeningIntentSchema.parse({
+    anchorTrack: parseAnchorTrack(content),
+    similarityDimensions:
+      requestedDimensions.length > 0
+        ? requestedDimensions
+        : dimensionPatterns.map(([dimension]) => dimension),
+    languageConstraint: /华语|中文|国语|粤语|普通话|闽南/u.test(content) ? "chinese-vocal" : "any",
+  });
 }
 
 function requestedRecommendationCount(content: string): number | undefined {
@@ -141,37 +202,43 @@ export function createRadioService(options: CreateRadioServiceOptions) {
           },
         ]),
       });
-      const assistant =
-        typeof options.assistant === "function" ? options.assistant() : options.assistant;
-      const output = radioAssistantOutputSchema.safeParse(
-        await assistant.respond(context, { correlationId: randomId() }),
-      );
-      if (!output.success) throw new RadioTurnUnavailableError();
       const requestedTrackCount = requestedProgramTrackCount(command.content);
       const recommendationCount = requestedRecommendationCount(command.content);
       const recommendationArtist = requestedRecommendationArtist(command.content);
       const recommendationRequest = isRecommendationRequest(command.content);
-      const response =
+      const anchorProgramRequest = isAnchorProgramRequest(command.content);
+      const listeningIntent = parseProgramListeningIntent(command.content);
+      const invalidTrackCount =
         requestedTrackCount !== null &&
         recommendationCount === undefined &&
-        (requestedTrackCount < 8 || requestedTrackCount > 12)
+        (requestedTrackCount < 8 || requestedTrackCount > 12);
+      const deterministicProgram =
+        recommendationCount === undefined &&
+        (anchorProgramRequest ||
+          (!recommendationRequest && isHighConfidenceProgramRequest(command.content)));
+      const response = invalidTrackCount
+        ? {
+            decision: "clarify" as const,
+            reply: "一档完整节目可以安排 8–12 首歌。你希望我做 8、9、10、11 还是 12 首？",
+            musicQuery: null,
+            musicQueries: [],
+          }
+        : deterministicProgram
           ? {
-              decision: "clarify" as const,
-              reply: "一档完整节目可以安排 8–12 首歌。你希望我做 8、9、10、11 还是 12 首？",
+              decision: "program" as const,
+              reply: programAcknowledgement(command.content),
               musicQuery: null,
               musicQueries: [],
             }
-          : !recommendationRequest &&
-              recommendationCount === undefined &&
-              isHighConfidenceProgramRequest(command.content) &&
-              output.data.decision !== "program"
-            ? {
-                decision: "program" as const,
-                reply: programAcknowledgement(command.content),
-                musicQuery: null,
-                musicQueries: [],
-              }
-            : output.data;
+          : await (async () => {
+              const assistant =
+                typeof options.assistant === "function" ? options.assistant() : options.assistant;
+              const output = radioAssistantOutputSchema.safeParse(
+                await assistant.respond(context, { correlationId: randomId() }),
+              );
+              if (!output.success) throw new RadioTurnUnavailableError();
+              return output.data;
+            })();
       let track = null;
       const recommendedTracks: NonNullable<RadioTurn["recommendedTracks"]> = [];
       let programJobId: string | null = null;
@@ -194,25 +261,31 @@ export function createRadioService(options: CreateRadioServiceOptions) {
         } else if (response.musicQuery !== null) {
           const result = await options.library.search(response.musicQuery);
           track =
-            result.items.find(
-              (candidate) =>
-                candidate.playable &&
-                (explicitlyRequestedNonCanonicalVersion ||
-                  isCanonicalOriginalCandidate(candidate, response.musicQuery ?? "")),
-            ) ?? null;
+            sortCanonicalCandidates(
+              result.items.filter(
+                (candidate) =>
+                  candidate.playable &&
+                  (explicitlyRequestedNonCanonicalVersion ||
+                    isCanonicalOriginalCandidate(candidate, response.musicQuery ?? "")),
+              ),
+              response.musicQuery,
+            )[0] ?? null;
         }
         if (track === null) throw new RadioTurnUnavailableError();
       } else if (response.decision === "recommendations") {
         const seen = new Set<string>();
         for (const query of response.musicQueries.slice(0, 5)) {
-          const candidates = (await options.library.search(query)).items.filter(
-            (item) =>
-              item.playable &&
-              !seen.has(item.id) &&
-              (explicitlyRequestedNonCanonicalVersion ||
-                isCanonicalOriginalCandidate(item, query)) &&
-              (recommendationArtist === undefined ||
-                item.artist.toLowerCase().includes(recommendationArtist)),
+          const candidates = sortCanonicalCandidates(
+            (await options.library.search(query)).items.filter(
+              (item) =>
+                item.playable &&
+                !seen.has(item.id) &&
+                (explicitlyRequestedNonCanonicalVersion ||
+                  isCanonicalOriginalCandidate(item, query)) &&
+                (recommendationArtist === undefined ||
+                  item.artist.toLowerCase().includes(recommendationArtist)),
+            ),
+            query,
           );
           const candidate = (
             await Promise.all(
@@ -234,7 +307,7 @@ export function createRadioService(options: CreateRadioServiceOptions) {
       } else if (response.decision === "program") {
         programJobId = options.programs.start(
           profileId,
-          { scenarioText: command.content },
+          { scenarioText: command.content, listeningIntent },
           `radio:${idempotencyKey}`,
         ).jobId;
       }

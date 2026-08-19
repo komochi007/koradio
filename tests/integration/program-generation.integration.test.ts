@@ -1079,6 +1079,28 @@ describe("S3-06 Program generation REST and reconnect snapshot", () => {
     const providerTracks: ProviderTrack[] = [
       {
         source: "netease",
+        sourceTrackId: "instrumental-track",
+        title: "Like A Star (Piano Version)",
+        artist: "Instrumental Artist",
+        album: "Fixture",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "available",
+        playable: true,
+      },
+      {
+        source: "netease",
+        sourceTrackId: "japanese-track",
+        title: "桜の季節",
+        artist: "Japanese Artist",
+        album: "Fixture",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "available",
+        playable: true,
+      },
+      {
+        source: "netease",
         sourceTrackId: "english-track",
         title: "English Track",
         artist: "English Artist",
@@ -1121,11 +1143,17 @@ describe("S3-06 Program generation REST and reconnect snapshot", () => {
                 content: "Only English words are present here",
                 originalContent: "Only English words are present here",
               }
-            : {
-                status: "available" as const,
-                content: "山河之间的风吹过夜晚我们继续向前走",
-                originalContent: "山河之间的风吹过夜晚我们继续向前走",
-              },
+            : sourceTrackId === "japanese-track"
+              ? {
+                  status: "available" as const,
+                  content: "さくらの風が吹く夜に\n心は遠くへ歩いていく",
+                  originalContent: "さくらの風が吹く夜に\n心は遠くへ歩いていく",
+                }
+              : {
+                  status: "available" as const,
+                  content: "山河之间的风吹过夜晚\n我们继续向前走到天亮\n让心慢慢亮起来",
+                  originalContent: "山河之间的风吹过夜晚\n我们继续向前走到天亮\n让心慢慢亮起来",
+                },
         );
       },
       resolveAudio(sourceTrackId) {

@@ -13,6 +13,8 @@ const audio: AudioEngineSnapshot = {
     durationMs: 226_000,
     id: "00000000-0000-4000-8000-000000000501",
     kind: "track",
+    position: 1,
+    resolvedAudioRef: "https://media.example.test/take-me-away.mp3",
     trackId: "00000000-0000-4000-8000-000000000502",
   },
   currentTrack: {
@@ -20,6 +22,12 @@ const audio: AudioEngineSnapshot = {
     artist: "Daniel Caesar",
     durationMs: 226_000,
     id: "00000000-0000-4000-8000-000000000502",
+    artworkUrl: null,
+    lyricStatus: "unknown",
+    originMode: "mock",
+    playable: true,
+    source: "netease",
+    sourceTrackId: "desktop-menu-bar-track",
     title: "Take Me Away",
   },
   durationMs: 226_000,
@@ -49,7 +57,7 @@ describe("Desktop menu bar", () => {
     let requestPlayback: (() => void) | undefined;
     window.koradioDesktop = {
       onMenuBarCommand: vi.fn(() => () => undefined),
-      onMenuBarPlaybackRequested: vi.fn((listener) => {
+      onMenuBarPlaybackRequested: vi.fn((listener: () => void) => {
         requestPlayback = listener;
         return () => undefined;
       }),

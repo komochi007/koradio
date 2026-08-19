@@ -15,6 +15,24 @@ import { djLanguageSchema } from "./preferences.js";
 
 export const programStatusSchema = z.enum(["ready", "completed"]);
 export const programPlaybackModeSchema = z.enum(["sequential", "voice-overlay"]);
+export const listeningSimilarityDimensionSchema = z.enum([
+  "melody",
+  "arrangement",
+  "timbre",
+  "emotion",
+  "rhythm",
+  "era",
+]);
+export const programListeningIntentSchema = z.strictObject({
+  anchorTrack: z
+    .strictObject({
+      title: z.string().trim().min(1).max(300),
+      artist: z.string().trim().min(1).max(300).nullable(),
+    })
+    .nullable(),
+  similarityDimensions: z.array(listeningSimilarityDimensionSchema).min(1).max(6),
+  languageConstraint: z.enum(["any", "chinese-vocal"]),
+});
 export const djCitationSchema = z.strictObject({
   id: z.uuid(),
   title: z.string().trim().min(1).max(300),
@@ -90,6 +108,7 @@ export const deleteProgramResponseSchema = z.strictObject({
 });
 export const generateProgramCommandSchema = z.strictObject({
   scenarioText: z.string().trim().min(1).max(500),
+  listeningIntent: programListeningIntentSchema.optional(),
 });
 export const playbackStatusSchema = z.enum(["playing", "paused", "completed", "failed"]);
 export const playbackCheckpointSchema = z.strictObject({
@@ -118,5 +137,7 @@ export type CurrentProgramResponse = z.infer<typeof currentProgramResponseSchema
 export type ProgramHandoffResponse = z.infer<typeof programHandoffResponseSchema>;
 export type DeleteProgramResponse = z.infer<typeof deleteProgramResponseSchema>;
 export type GenerateProgramCommand = z.infer<typeof generateProgramCommandSchema>;
+export type ProgramListeningIntent = z.infer<typeof programListeningIntentSchema>;
+export type ListeningSimilarityDimension = z.infer<typeof listeningSimilarityDimensionSchema>;
 export type PlaybackCheckpoint = z.infer<typeof playbackCheckpointSchema>;
 export type SavePlaybackCheckpointCommand = z.infer<typeof savePlaybackCheckpointCommandSchema>;

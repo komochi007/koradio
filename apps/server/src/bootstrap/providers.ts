@@ -13,6 +13,7 @@ import type { DeepseekCredentialService } from "../modules/device-settings/deeps
 import type { DeviceSettingsService } from "../modules/device-settings/index.js";
 import { createMockMusicProvider, type MusicProvider } from "../modules/library/index.js";
 import type { ProgramPlannerProvider } from "../modules/programs/index.js";
+import type { PlannerReadinessTarget } from "../modules/programs/readiness-service.js";
 import type { RadioAssistantProvider } from "../modules/radio/index.js";
 import type { LocalFileStore } from "../platform/files/index.js";
 import type { SafeLogger } from "../platform/logging/index.js";
@@ -21,6 +22,7 @@ import type { RuntimeConfig } from "./config.js";
 
 export interface RuntimeProviders {
   planner: () => ProgramPlannerProvider;
+  plannerFor(target: PlannerReadinessTarget): ProgramPlannerProvider;
   radioAssistant: () => RadioAssistantProvider;
   music: MusicProvider;
   tts: ClosableTtsProvider;
@@ -52,6 +54,7 @@ export function createRuntimeProviders(options: CreateRuntimeProvidersOptions): 
     const assistant = createMockCodexProvider();
     return {
       planner: () => assistant,
+      plannerFor: () => assistant,
       radioAssistant: () => assistant,
       music: createMockMusicProvider(),
       tts: {
@@ -72,20 +75,28 @@ export function createRuntimeProviders(options: CreateRuntimeProvidersOptions): 
           pythonPath: options.config.ttsPythonPath,
           runtimeDirectory: options.config.dataRoot,
         });
-  const codex = createCodexAdapter({
-    command: () => options.deviceSettings.get().codexCommand ?? "",
-    ...(options.logger === undefined ? {} : { logger: options.logger }),
-    runtimeDirectory: options.config.dataRoot,
-  });
-  const deepseek = createDeepseekAdapter({
-    apiKey: () => options.deepseekCredentials.get(),
-    ...(options.logger === undefined ? {} : { logger: options.logger }),
-    model: () => options.deviceSettings.get().deepseekModel,
-  });
+  const createCodex = (target: PlannerReadinessTarget) =>
+    createCodexAdapter({
+      command: target.codexCommand ?? "",
+      ...(options.logger === undefined ? {} : { logger: options.logger }),
+      runtimeDirectory: options.config.dataRoot,
+    });
+  const createDeepseek = (target: PlannerReadinessTarget) =>
+    createDeepseekAdapter({
+      apiKey: () => options.deepseekCredentials.get(),
+      ...(options.logger === undefined ? {} : { logger: options.logger }),
+      model: target.deepseekModel,
+    });
+  const plannerFor = (target: PlannerReadinessTarget): ProgramPlannerProvider =>
+    target.plannerProvider === "deepseek" ? createDeepseek(target) : createCodex(target);
+  const planner = (): ProgramPlannerProvider => plannerFor(options.deviceSettings.get());
   return {
-    planner: () => (options.deviceSettings.get().plannerProvider === "deepseek" ? deepseek : codex),
-    radioAssistant: () =>
-      options.deviceSettings.get().plannerProvider === "deepseek" ? deepseek : codex,
+    planner,
+    plannerFor,
+    radioAssistant: () => {
+      const target = options.deviceSettings.get();
+      return target.plannerProvider === "deepseek" ? createDeepseek(target) : createCodex(target);
+    },
     music: createNetEaseAdapter(),
     tts,
     close: () => tts.close(),

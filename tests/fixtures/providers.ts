@@ -2,6 +2,7 @@ export const providerCorrelationId = "10000000-0000-4000-8000-000000000001";
 
 export const codexPlanningContextFixture = {
   scenarioText: "今晚写东西，想要安静但不死板的 BGM",
+  listeningIntent: null,
   effectiveTaste: {
     profileId: "20000000-0000-4000-8000-000000000001",
     projectionVersion: 2,
@@ -66,6 +67,7 @@ export const codexProgramPlanFixture = {
     {
       kind: "discovery",
       keyword: "Space Song Beach House",
+      expectedArtist: "Beach House",
       reason: "温柔、低刺激，适合夜间写作开场",
     },
   ],

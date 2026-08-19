@@ -23,6 +23,7 @@ import {
 } from "../../modules/device-settings/index.js";
 import {
   PlannerReadinessError,
+  type PlannerReadinessTarget,
   type PlannerReadinessService,
 } from "../../modules/programs/index.js";
 import { SecretStoreError } from "../../platform/secrets/index.js";
@@ -152,7 +153,7 @@ export function createHealthSettingsRoutes(options: {
         .status(status.state === "ready" ? 200 : 202)
         .send(ttsModelStatusSchema.parse(status));
     });
-    app.patch("/api/v1/device-settings", (request, reply) => {
+    app.patch("/api/v1/device-settings", async (request, reply) => {
       const parsed = updateDeviceSettingsRequestSchema.safeParse({ body: request.body });
       if (!parsed.success) {
         return sendApiError(
@@ -164,6 +165,60 @@ export function createHealthSettingsRoutes(options: {
         );
       }
       try {
+        const current = options.deviceSettings.get();
+        const candidate: PlannerReadinessTarget = {
+          plannerProvider: parsed.data.body.plannerProvider ?? current.plannerProvider,
+          codexCommand: parsed.data.body.codexCommand ?? current.codexCommand,
+          deepseekModel: parsed.data.body.deepseekModel ?? current.deepseekModel,
+        };
+        const activePlannerChanged =
+          candidate.plannerProvider !== current.plannerProvider ||
+          (candidate.plannerProvider === "codex" &&
+            candidate.codexCommand !== current.codexCommand) ||
+          (candidate.plannerProvider === "deepseek" &&
+            candidate.deepseekModel !== current.deepseekModel);
+        if (activePlannerChanged) {
+          try {
+            await options.plannerReadiness.check(candidate, "connectivity");
+          } catch (error) {
+            if (error instanceof PlannerReadinessError) {
+              const statusCode =
+                error.code === "unauthorized"
+                  ? 401
+                  : error.code === "payment_required"
+                    ? 402
+                    : error.code === "rate_limited"
+                      ? 429
+                      : error.code === "configuration_invalid" || error.code === "response_invalid"
+                        ? 422
+                        : error.code === "timeout"
+                          ? 504
+                          : 503;
+              const message =
+                error.code === "configuration_invalid"
+                  ? "AI 大脑配置无效，设置未生效"
+                  : error.code === "response_invalid"
+                    ? "AI 大脑未通过节目规划契约检测，设置未生效"
+                    : error.code === "unauthorized"
+                      ? "AI 大脑未通过认证，设置未生效"
+                      : error.code === "payment_required"
+                        ? "AI 大脑账户不可用，设置未生效"
+                        : error.code === "rate_limited"
+                          ? "AI 大脑当前受限，请稍后重试"
+                          : error.code === "timeout"
+                            ? "AI 大脑检测超时，设置未生效"
+                            : "AI 大脑暂时不可用，设置未生效";
+              return await sendApiError(
+                reply,
+                statusCode,
+                "DEVICE_SETTINGS_PLANNER_TEST_FAILED",
+                message,
+                error.code === "timeout" || statusCode >= 500,
+              );
+            }
+            throw error;
+          }
+        }
         return options.deviceSettings.update(parsed.data.body);
       } catch (error) {
         if (error instanceof DeepseekPrivacyNoticeRequiredError) {

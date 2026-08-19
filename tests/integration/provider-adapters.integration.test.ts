@@ -18,6 +18,7 @@ import {
   type ProviderProcessInvocation,
   type ProviderProcessRunner,
   type DeepseekFetcher,
+  type DeepseekRequestInit,
   type TtsHelperClient,
   type TtsModelService,
 } from "../../apps/server/src/integrations/index.js";
@@ -188,6 +189,43 @@ describe("Codex adapter", () => {
     expect(outputSchema).toContain('"anyOf"');
     expect(outputSchema).not.toContain('"oneOf"');
     expect(outputSchema).not.toContain('"musicQueries"');
+    const outputSchemaObject = JSON.parse(outputSchema) as {
+      properties: {
+        trackIntents: {
+          items: {
+            anyOf: Array<{ properties?: { kind?: { const?: string } }; required?: string[] }>;
+          };
+        };
+      };
+    };
+    const discoverySchema = outputSchemaObject.properties.trackIntents.items.anyOf.find(
+      (candidate) => candidate.properties?.kind?.const === "discovery",
+    );
+    expect(discoverySchema?.required).toContain("expectedArtist");
+  });
+
+  it("classifies response schema rejection as configuration failure without retrying", async () => {
+    const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-schema-rejection-"));
+    let invocationCount = 0;
+    const adapter = createCodexAdapter({
+      command: "codex",
+      resolveExecutable: () => Promise.resolve("/trusted/codex"),
+      runner: () => {
+        invocationCount += 1;
+        return Promise.resolve({
+          exitCode: 1,
+          stderr:
+            "invalid_request_error: Invalid schema for response_format 'codex_output_schema'. Missing expectedArtist.",
+          stdout: "",
+        });
+      },
+      runtimeDirectory,
+    });
+
+    await expect(
+      adapter.plan(codexPlanningContextFixture, { correlationId: providerCorrelationId }),
+    ).rejects.toMatchObject({ code: "configuration_invalid" });
+    expect(invocationCount).toBe(1);
   });
 
   it("rejects a library intent whose id is absent from the bounded context", async () => {
@@ -369,6 +407,33 @@ describe("Codex adapter", () => {
 });
 
 describe("DeepSeek adapter", () => {
+  it("uses a small non-thinking request for connectivity checks", async () => {
+    const invocations: Array<{ init: DeepseekRequestInit }> = [];
+    const adapter = createDeepseekAdapter({
+      apiKey: "sk-test",
+      fetcher: (_input, init) => {
+        invocations.push({ init });
+        return Promise.resolve(
+          jsonResponse({
+            choices: [{ finish_reason: "stop", message: { content: '{"ok":true}' } }],
+          }),
+        );
+      },
+      model: "deepseek-v4-flash",
+    });
+
+    await adapter.test({ correlationId: providerCorrelationId });
+
+    const body = JSON.parse(invocations[0]?.init.body ?? "{}") as {
+      max_tokens?: number;
+      thinking?: { type: string };
+      messages?: Array<{ content: string }>;
+    };
+    expect(body.max_tokens).toBe(256);
+    expect(body.thinking).toEqual({ type: "disabled" });
+    expect(body.messages?.[1]?.content).toBe('{"ok":true}');
+  });
+
   it("uses the fixed endpoint, bearer key, JSON output and thinking mode", async () => {
     const invocations: Array<{
       input: string;

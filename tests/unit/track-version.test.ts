@@ -4,6 +4,7 @@ import {
   hasNonCanonicalVersionMarker,
   isCanonicalOriginalCandidate,
   isNonCanonicalVersion,
+  sortCanonicalCandidates,
 } from "../../apps/server/src/modules/library/track-version.js";
 
 describe("track version selection", () => {
@@ -39,5 +40,14 @@ describe("track version selection", () => {
 
   it("recognizes an explicitly named non-canonical version", () => {
     expect(hasNonCanonicalVersionMarker("播放 Space Song 的加速版")).toBe(true);
+    expect(hasNonCanonicalVersionMarker("Like A Star (Piano Version)")).toBe(true);
+  });
+
+  it("prefers the plain canonical title when a source appends release metadata", () => {
+    const candidates = [
+      { ...original, title: '半句再见 (From "At Café 6" / Main Theme Song)' },
+      { ...original, title: "半句再见" },
+    ];
+    expect(sortCanonicalCandidates(candidates, "半句再见")[0]?.title).toBe("半句再见");
   });
 });

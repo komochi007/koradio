@@ -125,7 +125,7 @@ function generationCopy(stage: ProgramGenerationStage | undefined): string {
     planning: "Reading your taste and shaping the session.",
     resolving_tracks: "Searching for tracks that fit the room.",
     enriching_tracks: "Checking audio and lyrics for the queue.",
-    synthesizing_dj: "Preparing the opening voice when available.",
+    synthesizing_dj: "Preparing the complete DJ voice track.",
     committing: "Putting the final session on air.",
     completed: "Your new session is almost on air.",
   };
@@ -167,6 +167,22 @@ function failureCopy(code: string): { message: string; settings: boolean; title:
       title: "PLAYABLE AUDIO INSUFFICIENT",
       message: "有些候选歌曲暂时无法播放，DJ 没有用其他版本补位。请稍后重试。",
       settings: false,
+    };
+  }
+  if (code === "PROGRAM_GENERATION_ANCHOR_TRACK_UNAVAILABLE") {
+    return {
+      title: "ANCHOR TRACK NOT FOUND",
+      message:
+        "没有找到这首歌的可播放原版，节目没有用不确定的版本替代。请补充歌手或换一首锚点歌曲。",
+      settings: false,
+    };
+  }
+  if (code === "PROGRAM_GENERATION_TTS_UNAVAILABLE") {
+    return {
+      title: "DJ VOICE ENGINE UNAVAILABLE",
+      message:
+        "DJ 语音服务尚未就绪，因此没有提交不完整的节目。请前往 Settings 完成语音模型配置后重试。",
+      settings: true,
     };
   }
   if (

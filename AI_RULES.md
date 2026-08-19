@@ -58,11 +58,10 @@
 - **MUST** 通过 Port 接口调用 Planner（Codex/DeepSeek）、Music、TTS、Repository、Secret Store 与 File Store。
 - **MUST** 将 Provider response 归一化后再进入 Application 或公共 contract。
 - **MUST** 为异步生成任务提供 job ID、取消、超时、幂等和可恢复 snapshot。
-- **MUST** 在 TTS 不可用时保留文字 DJ，并继续可播放节目。
-- **MUST** 将活动 Planner（Codex 或 DeepSeek）与网易云视为节目生成核心依赖，将 TTS 视为可选增强；未选中的 Planner 不得影响活动健康状态。
+- **MUST** 将活动 Planner（Codex 或 DeepSeek）、网易云与 TTS 视为完整节目生成依赖；未选中的 Planner 不得影响活动健康状态。
 - **MUST** 在 v1 通过 bundled Python/MLX helper 调用固定 revision 的本地 `Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit`；模型只允许由用户在 Settings 明确触发首次下载，**MUST NOT** 使用云 TTS、上传 DJ 文本或请求 Personal Voice 权限。
 - **MUST** 用参数数组启动持久化 TTS helper，通过结构化 stdin 传递 DJ 文本并校验 stdout、完整音频和时长；**MUST NOT** 把 DJ 文本、voice payload 或输出路径拼接进 shell command。
-- **MUST** 固定中文 `Serena`、英文 `Ryan`，并确保试听与节目合成都使用可理解的完整句子；模型、helper 或音色不可用、输出非法、取消或超时时必须稳定降级为完整文字 DJ。
+- **MUST** 固定中文 `Serena`、英文 `Ryan`，并确保试听与节目合成都使用可理解的完整句子；模型、helper 或音色不可用、输出非法、取消或超时时必须稳定失败本次新节目并保留旧节目。
 - **MUST** 在新节目完整提交前继续播放旧节目；失败保持旧节目不变，成功后保存旧 checkpoint、停止旧时间线并原子切换。
 - **MUST** 先将 Radio 输入路由为 `chat`、`clarify`、`single_track`、`recommendations` 或 `program`；明确单曲和 3～5 首推荐可触发音乐解析，完整节目仅接受明确节目/歌单或 8～12 首需求。
 - **MUST** 让完整节目目标严格处于 8～12 首，默认 8 首；解析与补选后少于目标数量时必须失败并保持旧节目。
@@ -212,7 +211,7 @@
 - **MUST** 为 Audio Engine 的 play、pause、seek、切段、checkpoint 和 media error 编写确定性测试。
 - **MUST** 为关键 UI 状态、键盘操作、Focus、aria 与 Reduce Motion 编写组件测试。
 - **MUST** 为档案创建、首次配置、节目生成、播放、反馈和失败恢复建立核心 E2E。
-- **MUST** 覆盖 Codex/DeepSeek invalid output、DeepSeek key 缺失与隐私确认、Provider 切换生效时机、搜歌为空、TTS 降级、歌词缺失、单曲失败、反馈回滚与事件重连。
+- **MUST** 覆盖 Codex/DeepSeek invalid output、DeepSeek key 缺失与隐私确认、Provider 切换生效时机、搜歌为空、TTS 阻断、歌词缺失、单曲失败、反馈回滚与事件重连。
 - **MUST** 覆盖 OS 默认数据目录、迁移成功/回滚、播放中生成、Profile 切换、双标签接管、反馈撤销和 TasteProjection 重建不覆盖 overrides。
 - **MUST** 在 Unit 与 Integration 测试中替换真实 Provider，保持测试可重复且不消耗外部额度；真实 DeepSeek smoke 只能作为受控本机手动验证，不得进入 CI。
 - **MUST** 为每个 bug fix 添加能在修复前失败、修复后通过的 regression test。

@@ -60,7 +60,7 @@ export function createHealthService(options: CreateHealthServiceOptions): Health
             ? mockMode
               ? "Qwen3-TTS is available in mock mode"
               : "Qwen3-TTS local model is ready for live personal preview"
-            : "Qwen3-TTS local model is unavailable; text DJ fallback is enabled",
+            : "Qwen3-TTS local model is unavailable; new programmes cannot be submitted",
         },
       ],
     });

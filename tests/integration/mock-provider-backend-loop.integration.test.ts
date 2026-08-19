@@ -537,7 +537,7 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
     await closeHarness(harness);
   });
 
-  it("degrades failed tracks, missing lyrics and unavailable TTS to a text-only playable Program", async () => {
+  it("fails without TTS and keeps the previous Program unchanged", async () => {
     const harness = await createHarness({
       codex: createFixtureCodexProvider({
         ...s3GenerationPlanFixture,
@@ -561,7 +561,11 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
     );
     await harness.generation.waitForIdle();
     const terminal = harness.generation.get(harness.profile.id, started.jobId);
-    expect(terminal).toMatchObject({ status: "succeeded", stage: "completed", sequence: 7 });
+    expect(terminal).toMatchObject({
+      status: "failed",
+      errorCode: "PROGRAM_GENERATION_TTS_UNAVAILABLE",
+      sequence: 5,
+    });
     const degraded = harness.events.filter((event) => event.eventType === "generation.degraded");
     expect(degraded.map((event) => event.payload)).toEqual([
       {
@@ -580,18 +584,13 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
         code: "PROGRAM_TTS_UNAVAILABLE",
       },
     ]);
-    expect(harness.events.map((event) => event.sequence)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    const detail = harness.programs.get(harness.profile.id, terminal.programId ?? "");
-    expect(detail.program.trackIds).toHaveLength(1);
-    expect(detail.djScripts).toEqual([
-      expect.objectContaining({ type: "intro", ttsAudioRef: null }),
-    ]);
-    expect(detail.timeline.map((item) => item.kind)).toEqual(["track"]);
+    expect(harness.events.map((event) => event.sequence)).toEqual([1, 2, 3, 4, 5]);
+    expect(terminal.programId).toBeUndefined();
     expect(readProgramSnapshot(harness.database.client)).toEqual({
-      programs: 1,
-      tracks: 1,
-      scripts: 1,
-      timeline: 1,
+      programs: 0,
+      tracks: 0,
+      scripts: 0,
+      timeline: 0,
     });
     await closeHarness(harness);
   });

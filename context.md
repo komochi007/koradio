@@ -22,7 +22,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - **UX-12 已完成并验收**：Audio Engine 跨页面播放稳定性、DJ 临时点播在播放器/Detail/歌词/波形中的实时同步、平滑歌词跟随与自然短句串讲、Radio 控件反馈、3～5 首 DJ 策展推荐与 8～12 首节目分流均已通过 Live 人工验收；点播不改写节目历史或持久队列。推荐追问不升级为节目，活动规划与待切换节目可跨页面及重启恢复，其他一级页面提供回到 Radio 的轻量状态入口。
 
 ```text
-场景 → 规划 → 搜歌 → 可选 TTS → 节目与队列 → 播放 → 反馈 → 品味投影 → 下一次规划
+场景 → 规划 → 搜歌 → 全部 TTS → 节目与队列 → 播放 → 反馈 → 品味投影 → 下一次规划
 ```
 
 ## 3. 当前事实与目标状态
@@ -47,7 +47,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - Library 通过 MusicProvider Port 接收不可信输出并严格归一化为稳定 source identity；搜索、歌词和短期播放解析使用有界 TTL 缓存，播放直链不进入 SQLite，异步歌单导入按完整曲目 ID 清单补齐元数据并在短事务内写入全部可解析歌曲、封面 URL 与可播放状态。
 - Feedback 以 `(profileId, idempotencyKey)` 去重，在同一短事务内追加事实并按内部 replay order 重建 TasteProjection；skip 不自动推断为不喜欢。TasteOverrides 独立版本化，EffectiveTaste 在读取时保序合并且不单独持久化。
 - Programs 通过 Library 公开 API 解析曲目元数据、通过 Playback 公开事务写入 Port 原子提交 Program、ordered track refs、DJ segments 与 timeline；已有节目时新 Program 进入持久 ProgramHandoff，只有当前曲自然结束或用户显式切换才成为 CurrentProgram；production Feedback composition 使用真实 Programs owner 校验节目目标。
-- Programs application 以持久 Job 元数据和内存 executor 编排活动 Planner（Codex 或 DeepSeek）、Music、可信事实源与可选 TTS；真实生成、桌面启动和 Settings 检测共用规划上下文构造：通过 Library Port 获取当前 Profile 最多 1,000 首可播放库内摘要，覆盖个人完整候选库，并结合近 20 期历史、偏好和 `EffectiveTaste` 强制默认约 70% 库内曲目。Planner 输出先校验库内下限，遗漏时 Backend 从完整候选库补位；仅明确“只探索新歌”允许零库内曲目。检测只发起不落库的 8 首节目骨架请求；完整节目默认 8 首、可指定 8～12 首，Planner 最多提供 16 个原版候选，Backend 依序解析全部备用候选；精确曲目近期去重、默认同艺人一首，点名歌曲/艺人/特殊版本可覆盖；“中文歌”要求原始歌词汉字占比至少 60%，无法验证即排除。候选不足会明确区分库内曲目、中文人声、原版筛选与音频可播性原因。DeepSeek 首次结构化输出无效或截断时，只在原 Provider 内以精简契约重试一次，绝不自动切换 Codex。每个 generation job 启动时快照 Provider/model，Settings 切换只影响下一次生成。
+- Programs application 以持久 Job 元数据和内存 executor 编排活动 Planner（Codex 或 DeepSeek）、Music、可信事实源与 Qwen3-TTS；Radio 先把用户输入归一化为结构化听歌意图，Settings Provider 切换先做轻量连接与认证检测，手动“测试连接”和真实生成再执行完整规划契约，桌面启动只读取活动 Provider 配置与本地服务状态，不重复执行完整节目规划。规划通过 Library Port 获取当前 Profile 最多 1,000 首可播放库内摘要，覆盖个人完整候选库，并结合近 20 期历史、偏好和 `EffectiveTaste` 强制默认约 70% 库内曲目。Planner 输出先校验库内下限，遗漏时 Backend 从完整候选库补位；仅明确“只探索新歌”允许零库内曲目。完整节目默认 8 首、可指定 8～12 首，Planner 最多提供 16 个原版候选，Backend 依序解析全部备用候选；精确曲目近期去重、默认同艺人一首，点名歌曲/艺人/特殊版本可覆盖；明确“围绕某首歌规划歌单/节目”时锚点歌曲为第一首，并按旋律、编曲、音色、情绪、节奏和年代等维度规划相似曲目。“华语/中文歌”要求可验证的中文主唱歌词，拒绝纯音乐、短制作信息、日文假名主导和无法验证的候选。候选不足会明确区分库内曲目、中文人声、原版筛选与音频可播性原因。全部 DJ TTS 成功后才提交新节目，失败则保留旧节目。DeepSeek 首次结构化输出无效或截断时，只在原 Provider 内以精简契约重试一次，绝不自动切换 Codex。每个 generation job 启动时快照 Provider/model，Settings 切换只影响下一次生成，完整规划失败时保留旧节目。
 - 固定 Provider fixtures 已验收 Radio 对话分流、单曲与节目边界、默认/指定数量、两轮补选、中文歌词、同艺人与点名覆盖、近 10 期去重不足时整档失败、MusicBrainz/Wikimedia 来源、Qwen 朗读、双声道叠播与失败保护；DeepSeek adapter 使用脱敏 HTTP fixtures 覆盖 JSON Output/Thinking、错误映射、一次重试和 reasoning 丢弃；常规质量门不调用真实 Provider。
 - S7-06 曾在 macOS 15.7.3 arm64 验证 Codex/NetEase/Apple TTS 闭环；该 TTS 实现已被 UX-10 取代，失败保护与 Mock/fixture 回归边界继续有效。
 - S6-01 使用固定故障 fixtures、数据库快照和 Chromium/Firefox 产品 E2E 证明生成阻断保留旧 Program/Audio、局部依赖失败确定降级、反馈失败回滚且不中断播放、媒体失败稳定收敛；生成状态同时丢弃低于当前 sequence 的迟到 REST Snapshot，避免覆盖较新 WebSocket 阶段或终态。
@@ -69,7 +69,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - Browser Audio Engine 拥有唯一 `HTMLAudio` 实例。
 - REST 承载查询与命令，WebSocket 推送任务和领域事件。
 - SQLite 保存结构化事实，File Store 保存媒体与缓存。
-- Codex、DeepSeek、网易云通过 Backend Adapter 接入；DeepSeek 使用固定官方 endpoint、Bearer key、JSON Output 与 Thinking Mode，key 只在 macOS Keychain；NetEase v1 Adapter 在 Backend 内用 TypeScript 实现最小 `linuxapi` 协议，不调用官方 CLI、不引入 .NET；可选 TTS 由 Backend TTS Port 调用 bundled Python/MLX helper 与固定 revision 的 Qwen3-TTS 8-bit 本地模型。
+- Codex、DeepSeek、网易云通过 Backend Adapter 接入；DeepSeek 使用固定官方 endpoint、Bearer key、JSON Output 与 Thinking Mode，key 只在 macOS Keychain；NetEase v1 Adapter 在 Backend 内用 TypeScript 实现最小 `linuxapi` 协议，不调用官方 CLI、不引入 .NET；TTS 由 Backend TTS Port 调用 bundled Python/MLX helper 与固定 revision 的 Qwen3-TTS 8-bit 本地模型，新节目提交前必须全部成功。
 - 服务默认只在 loopback 提供本地访问；目标 Development 为 Vite `127.0.0.1:5173` + Local Service `127.0.0.1:49373`，目标 Production 为同源 Local Service 首选 `49373` 并仅允许 `49373-49383` 有界 fallback。
 
 ## 4. 产品范围
@@ -135,7 +135,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 
 ### 节目生成
 
-`Radio submit → Programs job → bounded Profile library context → Codex ordered track intents → Library-owned intent resolution → optional TTS → transactional Program/segments/timeline commit → WebSocket event → old checkpoint/stop → Audio Engine atomic switch`
+`Radio submit → structured listening intent → Programs job → bounded Profile library context → Codex ordered track intents → Library-owned intent resolution → all DJ TTS → transactional Program/segments/timeline commit → WebSocket event → old checkpoint/stop → Audio Engine atomic switch`
 
 ### 播放
 
@@ -158,7 +158,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 
 局部降级：
 
-- TTS 失败 → 文字 DJ，歌曲继续。
+- TTS 失败 → 本次新节目不提交，旧节目继续。
 - 歌词失败 → 无歌词状态，播放继续。
 - 无分句时间戳 → 近似高亮。
 - 单曲失败 → 标记失败并尝试下一首。

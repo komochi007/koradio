@@ -33,10 +33,10 @@
 | 指标 | 当前状态 | 目标状态 |
 |------|----------|----------|
 | 场景点歌闭环 | 当前无产品实现 | 在活动 Planner（Codex 或 DeepSeek）与网易云可用时，提交合法场景后生成至少 1 首可播放歌曲和 1 段开场文字；新节目提交成功后原子切换并开始播放 |
-| 首次启动 | 当前无配置流程 | 首次启动自动选择可写的 OS 应用数据目录；用户可完成 Codex 配置，或在确认 DeepSeek 隐私提示后保存 Keychain API key 并选择模型；桌面入口在打开 Radio 前以活动 AI 大脑执行一次完整节目骨架检测，未通过时停留在 Settings 修复状态 |
+| 首次启动 | 当前无配置流程 | 首次启动自动选择可写的 OS 应用数据目录；用户可完成 Codex 配置，或在确认 DeepSeek 隐私提示后保存 Keychain API key 并选择模型；切换 Provider 时先做轻量连接与认证检测，手动“测试连接”再执行完整规划契约检测，正常启动不重复执行完整节目规划 |
 | 桌面入口与更新 | 迁移前存在 Native launcher 与浏览器 PWA 重复入口 | Launchpad 只保留固定路径的品牌圆角 `Koradio.app`；Electron 主进程每次正常打开先联网检查可信 `origin/main`，只有当前提交完成本机构建与 Electron 包装验证后才加载 `http://127.0.0.1:<port>/radio`，检查或更新失败时不得继续打开旧版 |
 | 菜单栏快捷控制 | 播放控制只能在主窗口内操作 | 启动状态窗口创建后显示 Koradio 品牌模板 PNG 菜单栏图标；原生菜单展示当前状态、曲名和艺人，并提供上一首、播放/暂停、下一首、显示窗口和退出。关闭主窗口即退出，图标随之消失，不后台常驻。 |
-| DJ 串讲降级 | 当前无串讲 | TTS 缺失、无效或超时时仍保存文字 DJ，时间线不创建伪音频项，歌曲可继续播放 |
+| DJ 串讲完整性 | 当前无串讲 | 新节目必须在全部 DJ TTS 音频生成成功后才提交；TTS 缺失、无效或超时则本次生成失败并保留旧节目，不创建不完整的新节目 |
 | 推荐反馈沉淀 | 当前无反馈记录 | 喜欢、取消喜欢、不喜欢、取消不喜欢、节目收藏、取消收藏和跳过均追加显式事件；常规自动品味重建不覆盖人工规则，显式应用品味蓝图按其确认语义重塑 |
 | 异常可恢复性 | 当前无错误处理 | 完全离线、生成失败、Profile 切换、数据迁移失败和多标签接管均有确定结果，不破坏既有节目、旧数据或人工设置 |
 | 视觉基线一致性 | VDA-17 已冻结 | VDA-17 HTML 主源与 60 张 `960 × 1600px` 正式基线持续通过复渲染校验；语义修正不产生像素差异 |
@@ -50,9 +50,9 @@
   - Node.js 本地服务中枢。
   - 可切换 AI 编排：Codex 通过本机 CLI，或 DeepSeek 通过固定官方 Chat Completions endpoint，读取用户档案、`EffectiveTaste`、历史与有界音乐库，生成节目计划、输出结构化播放指令和 DJ 串讲。
   - 本地服务内置的网易云 Provider：通过 TypeScript `linuxapi` 适配器完成音乐搜索、歌曲信息、播放链接和歌词获取，v1 不要求用户填写网易云地址或密钥。
-  - 可选 Qwen3-TTS：由 bundled Python/MLX helper 调用固定 revision 的 8-bit 本地模型；中文固定 `Serena`、英文固定 `Ryan`，模型由用户首次下载，不可用时降级为完整文字 DJ。
+  - Qwen3-TTS：由 bundled Python/MLX helper 调用固定 revision 的 8-bit 本地模型；中文固定 `Serena`、英文固定 `Ryan`，模型由用户首次下载；新节目提交要求全部 DJ 音频就绪。
   - 本地多档案：用户档案、品味标签、播放历史和反馈；活动 Planner、Codex 命令、DeepSeek 模型/Keychain 凭据与数据目录属于设备级配置，网易云与 TTS 属于设备级运行时能力。
-  - Radio 主播放页：顶部品牌区、时间/ON AIR、播放器、队列、DJ 状态栏、DJ 对话区、底部输入的单列固定顺序；DJ 对话支持单曲与最多 5 首策展卡片的临时点播，不改写节目历史或持久队列。
+  - Radio 主播放页：顶部品牌区、时间/ON AIR、播放器、队列、DJ 状态栏、DJ 对话区、底部输入的单列固定顺序；DJ 对话支持单曲与最多 5 首策展卡片的临时点播，不改写节目历史或持久队列；围绕指定歌曲规划歌单时进入完整 8 首节目流程。
   - DJ 状态栏详情态：全屏沉浸节目界面、深色声波区、浅色节目面、AI 串讲词、歌词、歌曲进度和节目整体进度。
   - 昼夜模式：夜间和日间都按冷调高级电台风格完整设计。
   - AI DJ 人格与语言：英式电台主持人气质，支持中文或英文串讲。
@@ -150,7 +150,7 @@ Radio 主播放页和 Radio Detail Sheet 尽量使用英文状态词，例如 `O
 | 一级 | Library | 音乐库和歌单来源管理 | 底部胶囊导航 Library、Radio 队列空状态入口 | 搜索歌曲、导入歌单、查看候选歌曲 |
 | 一级 | Taste | 个人音乐品味档案 | 底部胶囊导航 Taste、Profile 完成后入口 | 查看和编辑风格标签、喜欢/避雷规则、场景偏好 |
 | 一级 | Programs/History | 节目单与播放历史 | 底部胶囊导航 Programs、Radio 播放完成入口 | 查看历史节目、重播串讲、复用场景 |
-| 一级 | Settings | 本地服务、设备配置、数据目录与 Profile 偏好 | 底部胶囊导航 Settings、异常提示入口 | AI 大脑选择、Codex 命令路径、DeepSeek 模型与 Keychain 密钥状态、内置网易云 Provider 健康状态、可选 TTS、受控数据目录迁移、主题和 DJ 偏好 |
+| 一级 | Settings | 本地服务、设备配置、数据目录与 Profile 偏好 | 底部胶囊导航 Settings、异常提示入口 | AI 大脑选择、Codex 命令路径、DeepSeek 模型与 Keychain 密钥状态、内置网易云 Provider 健康状态、TTS 能力、受控数据目录迁移、主题和 DJ 偏好 |
 | 二级详情态 | Radio Detail Sheet | 当前节目沉浸详情 | 用户点击 Radio 页 DJ 状态栏 | 波形、AI 串讲词、歌词、歌曲进度、节目整体进度、单一播放/暂停 |
 
 ### 2. 页面职责说明
@@ -164,7 +164,7 @@ Radio 主播放页和 Radio Detail Sheet 尽量使用英文状态词，例如 `O
 | Taste | 管理个人音乐品味 | 品味标签、避雷规则、场景规则、反馈摘要、编辑按钮 | “播放和反馈后会在这里形成你的音乐品味” | 档案读取失败时提示重新选择档案 |
 | Programs/History | 回看和复用历史节目 | 节目卡片、播放记录、DJ 文案、重播按钮、复用场景按钮 | “还没有节目，去 Radio 生成第一段电台” | 历史音频文件缺失时保留文本并提示无法重播音频 |
 | Settings | 配置本地运行依赖和当前 Profile 偏好 | 本地服务状态、AI 大脑选择、Codex 路径、DeepSeek 模型/密钥状态与隐私提示、内置网易云 Provider 状态、Qwen3-TTS 模型状态与下载进度、数据目录、主题模式、DJ 语言、DJ 声音风格、测试与迁移入口 | “完成一个 AI 大脑配置并确认音乐服务可用后即可开始播放” | Provider、密钥、模型下载或 helper 超时、迁移或配置保存失败时显示具体原因；完全离线时只读 |
-| Radio Detail Sheet | 沉浸查看当前节目 | 全屏沉浸节目界面、顶部状态、全宽动态波形、纯白节目面 `#FFFFFF`、节目标题、简洁当前歌曲、歌曲进度、`#F5F3F6` 串讲词/歌词卡片、节目整体进度、关闭按钮；DJ 段串讲为主，歌曲段歌词为主 | `No live session yet` | 歌词缺失、TTS 失败、播放失败时显示降级内容 |
+| Radio Detail Sheet | 沉浸查看当前节目 | 全屏沉浸节目界面、顶部状态、全宽动态波形、纯白节目面 `#FFFFFF`、节目标题、简洁当前歌曲、歌曲进度、`#F5F3F6` 串讲词/歌词卡片、节目整体进度、关闭按钮；DJ 段串讲为主，歌曲段歌词为主 | `No live session yet` | 历史歌词/音频缺失显示兼容内容；新节目 TTS 失败在提交前阻断 |
 
 ### 3. Radio 主播放页布局规则
 
@@ -320,7 +320,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 **功能描述**
 
-用户可在 Radio 主播放页底部输入框与 DJ 持续交流。系统先通过设备 Settings 选定的 Codex 或 DeepSeek 判断本轮属于闲聊、需要澄清、单曲、3～5 首推荐还是完整节目；只有明确说出“节目、歌单、8～12 首、重新规划”或“替换当前节目”才创建完整节目。`还有哪些`、`类似的`、`再推荐一些`、`有没有其他推荐`默认只返回点播推荐，不得改写当前节目。
+用户可在 Radio 主播放页底部输入框与 DJ 持续交流。系统先通过设备 Settings 选定的 Codex 或 DeepSeek 判断本轮属于闲聊、需要澄清、单曲、3～5 首推荐还是完整节目；“围绕某首歌规划歌单/节目”进入默认 8 首完整节目，并将原曲作为第一首，随后按结构化相似维度策划。纯粹的“还有哪些”或“再推荐一些”才默认只返回点播推荐，不得改写当前节目。
 
 **用户操作路径、界面元素、交互逻辑、数据变化**
 
@@ -331,7 +331,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 - 路由为 `program` → 系统读取 `EffectiveTaste`、近 20 期节目歌曲、当前时间、`ProfilePreferences`、最近对话和最多 1,000 首可播放 Live 音乐库摘要（覆盖个人完整候选库），创建默认 8 首、可明确指定为 8～12 首的异步节目任务。
 - Planner 返回多于目标数量的有序候选 → Backend 依次执行 Profile ownership、可播放性、原始歌词语言、近 10 期精确曲目和本期艺人去重校验，并最多补选两轮；少于目标数量时整次失败，不提交残缺节目。
 - 每期选择 1～2 首 featured track 生成 45～90 秒深讲，其余开场、转场和结束语保持克制。可核验的背景事实仅来自非阻断音乐事实 Provider 并显示来源；取不到来源时只做音乐性、歌词主题和场景分析。
-- Qwen3-TTS 可用且生成成功 → Program 以 `voice-overlay` 模式保存 DJ 音频；Audio Engine 在音乐播放中叠加串讲并 duck 到 28%，而不是把每段语音当成独立歌曲顺序播放。TTS 失败时保留完整文字 DJ，歌曲继续播放。
+- Qwen3-TTS 可用且全部生成成功 → Program 以 `voice-overlay` 模式保存 DJ 音频；Audio Engine 在音乐播放中叠加串讲并 duck 到 28%，而不是把每段语音当成独立歌曲顺序播放。任一 TTS 失败时本次新节目不提交，旧节目继续播放。
 - 当前已有节目时，旧节目在新节目生成期间继续播放；生成成功后新节目以持久的“待切换节目”保存，Radio 显示曲目数、首曲和 `SWITCH NOW`，默认在当前歌曲自然结束后原子切换。用户明确点 `SWITCH NOW` 才立即切换；生成失败时保持旧节目不变。切出 Radio 或重启后，活动任务和待切换节目都从持久状态恢复。
 - 数据变化：每轮写入 Profile-owned `RadioMessage` 与 `RadioTurn`；单曲和多首推荐卡片只引用既有或归一化歌曲，临时点播快照只保存在 Browser Audio Engine；`PLAY NEXT` 无论手动下一首还是自然结束都先播放该临时点播，结束后回到原节目的下一项；空节目时手动下一首直接播放该点播。成功入队不向对话流追加状态或红色注释，只有解析或播放失败才显示卡片关联错误。只有完整节目成功时新增 `Program`、`DjScriptSegment`、`DjCitation`、`MusicTrack` 与已提交的 `PlaybackTimeline`；已有当前节目时同时写入 `ProgramHandoff`，直到切换。每个 Profile 最多保留最近 50 个 turn（100 条消息），清空需二次确认。
 
@@ -392,10 +392,10 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 路由或 Planner 失败 | 活动 Codex 或 DeepSeek 返回错误或非结构化结果 | 保留用户消息和上下文，允许重试；不自动切换另一个 AI 大脑 | “AI 大脑没有完成这次回应，点击重试” |
 | Planner 超时 | 活动 Provider 超出请求时限 | 中断请求，释放输入框 | “规划时间太久了，请重试或缩短描述” |
 | 候选不足或违反硬约束 | 库内 ID 非本 Profile、不可播放、语言不符、近 10 期重复、本期艺人重复或探索失败 | 最多补选两轮；仍少于目标数量时整次失败，不发布 2～3 首残缺节目 | “这次没能凑齐符合要求的歌曲，旧节目会继续播放” |
-| TTS 失败 | TTS 45 秒超时或返回错误 | 保留文字 DJ，跳过语音串讲 | “语音合成失败，本次先用文字 DJ” |
+| TTS 失败 | TTS 45 秒超时或返回错误 | 本次新节目不提交，保留旧节目 | “语音合成失败，请修复后重试” |
 | 播放链接失效 | 歌曲 URL 不可播放 | 跳过该曲并尝试下一首 | “这首暂时不能播放，已切到下一首” |
 | 缺少核心配置 | 未配置 Codex，或 DeepSeek 未确认隐私/未配置 Keychain key | 阻止生成并跳转 Settings | “请先完成 AI 大脑配置” |
-| Qwen3-TTS 不可用 | 设备不支持、模型未安装或损坏、helper 不可用或能力检查失败 | 直接使用完整文字 DJ，不阻止生成 | “本地语音不可用，本次使用文字 DJ” |
+| Qwen3-TTS 不可用 | 设备不支持、模型未安装或损坏、helper 不可用或能力检查失败 | 阻止本次新节目提交，保留旧节目 | “本地语音不可用，请修复后重试” |
 
 ### 功能 3：播放控制与队列管理
 
@@ -615,9 +615,10 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 - 用户点击“下载本地语音模型” → 系统从固定 revision 下载约 1.84 GiB 模型并显示进度 → 校验完成后原子启用；用户离开页面不终止下载，应用退出会安全中止并清理 partial。
 - 用户选择 `Theme Mode` 为 `Dark`、`Light` 或 `System` → 系统立即预览主题并保存偏好 → 用户看到 Radio 主播放页和详情页按对应昼夜视觉基准切换。
 - 用户选择 `DJ Language` 为中文或英文 → 系统保存串讲语言偏好 → 用户下一次生成节目时听到对应语言的 DJ 串讲。
-- 用户选择 `DJ Voice Style` 为 `Natural Radio` → 系统将该声音风格传给 Codex 编排上下文；中文通过 `Serena`、英文通过 `Ryan` 合成自然电台口吻，模型不可用时降级为完整文字 DJ。
-- 用户点击“测试连接” → 系统使用当前档案的偏好、`EffectiveTaste`、最近节目历史和可播放库内曲目摘要，向活动 Planner 发起一次不落库的 8 首完整节目骨架检测，并检查内置网易云 Provider、Qwen runtime 与模型状态 → 用户看到每项成功或失败；健康摘要只反映活动 Planner，不把未选中的 AI 大脑标为核心故障。
-- 用户查看服务检测结果 → 系统汇总可用服务数量并展开失败项修复建议 → 用户看到 `3 OF 4 SERVICES AVAILABLE` 或对应数量、TTS 降级说明、返回 Radio 和修改配置按钮。
+- 用户选择 `DJ Voice Style` 为 `Natural Radio` → 系统将该声音风格传给 Codex 编排上下文；中文通过 `Serena`、英文通过 `Ryan` 合成自然电台口吻；新节目要求对应 TTS 全部成功。
+- 用户点击“测试连接” → 系统使用当前档案的偏好、`EffectiveTaste`、最近节目历史和可播放库内曲目摘要，向活动 Provider 发起一次不落库的真实规划契约检测，并检查内置网易云 Provider、Qwen runtime 与模型状态 → 失败时显示具体原因。
+- 用户切换 AI 大脑或模型 → 系统向候选 Provider 发起一次轻量连接与认证检测；检测通过才保存并启用该 Provider，失败时保留当前 Provider 并显示具体原因；下一次节目生成仍执行完整规划契约校验，失败则保留旧节目。
+- 用户查看服务检测结果 → 系统汇总可用服务数量并展开失败项修复建议 → 用户看到各项能力状态、TTS 修复说明、返回 Radio 和修改配置按钮。
 - 用户在 Settings 发起数据目录迁移 → 系统创建幂等异步迁移任务：验证目标为空且可写，暂停生成和播放，保存 checkpoint，备份并复制校验，原子切换 bootstrap 配置后重启服务；失败时回滚到旧目录，旧数据永不自动删除。
 - 数据变化：非敏感设备配置写入 `DeviceSettings`，DeepSeek key 只存在 OS Keychain，档案偏好写入 `ProfilePreferences`；`ServiceHealth` 仅是运行时快照。原始 Planner 输出、reasoning 和未脱敏诊断不得进入播放历史、SQLite 或普通日志。
 
@@ -630,7 +631,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
   ├─ 本地服务未连接 → 显示 OFFLINE 异常页 → 重试或进入只读 Settings
   ├─ 活动 Planner 与网易云可用 → Radio 可生成节目
   │      ├─ Qwen3-TTS 模型就绪 → 中文 Serena / 英文 Ryan 生成语音 DJ
-  │      └─ 原生 helper、匹配语音缺失或合成失败 → 文字 DJ 降级
+  │      └─ 原生 helper、匹配语音缺失或合成失败 → 阻止新节目提交并提示修复
   ├─ 用户切换 Theme Mode → 立即预览昼夜主题 → 保存偏好
   ├─ 用户切换 DJ Language → 下次生成节目使用对应语言
   ├─ 用户切换 DJ Voice Style → 下次 TTS 使用对应声音风格
@@ -692,8 +693,8 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | DeepSeek 数据提示未确认 | 用户首次启用 DeepSeek 未确认隐私提示 | 阻止启用并保留原 AI 大脑 | “确认 DeepSeek 数据出站提示后才能启用” |
 | DeepSeek key 操作失败 | Keychain 不可用、拒绝访问或写入失败 | 不改变已保存 key 状态和活动 Planner | “DeepSeek 密钥未能保存，请检查系统钥匙串权限” |
 | 内置网易云 Provider 不可用 | 健康检查失败或 15 秒超时 | 标记运行时不可用并允许重试，不展示地址或密钥表单 | “网易云服务暂不可用，无法搜索歌曲” |
-| Qwen3-TTS 不可用 | 设备不支持、模型缺失或损坏、helper 缺失、合成错误或 45 秒超时 | 允许完整文字 DJ 降级，不调用云 TTS | “本地语音不可用，将仅显示文字串讲” |
-| Qwen 模型下载失败 | 网络、磁盘空间或 SHA-256 校验失败 | 删除应用拥有的 partial，保留未安装状态并允许重试 | “模型下载失败，可稍后重试；文字 DJ 不受影响” |
+| Qwen3-TTS 不可用 | 设备不支持、模型缺失或损坏、helper 缺失、合成错误或 45 秒超时 | 阻止本次新节目提交，保留旧节目 | “本地语音不可用，请修复后重试” |
+| Qwen 模型下载失败 | 网络、磁盘空间或 SHA-256 校验失败 | 删除应用拥有的 partial，保留未安装状态并允许重试；已有节目不受影响 | “模型下载失败，可稍后重试；新节目暂不可用” |
 | 模型下载时迁移数据目录 | 用户在下载过程中发起迁移 | 返回冲突并保持现有目录 | “请等待模型下载完成后再迁移数据目录” |
 | 数据路径不可写 | 保存配置或历史失败 | 阻止相关写入 | “请选择可写的数据目录” |
 | 数据目录迁移失败 | 目标验证、复制校验、原子切换或重启失败 | 回滚 bootstrap 配置并恢复旧目录；旧数据保留 | “迁移未完成，已继续使用原数据目录” |
@@ -919,7 +920,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 节目规划 | 调用活动 Codex 或 DeepSeek 生成节目计划 | 明确节目需求、`EffectiveTaste`、近 20 期歌曲、时间、偏好、最多 1,000 首完整候选库摘要与 8～12 首目标 | 最多 16 个有序原版 `trackIntents`、featured tracks 与结构化 scripts | 约束或补选后不足目标时保留旧节目，并显示中文人声、原版筛选或音频可播性的具体原因 |
 | 音乐事实增强 | 查询 MusicBrainz/Wikimedia 等可信来源 | featured track 的歌曲、艺人和专辑元数据 | 有来源 URL 的短事实与归因 | 网络、限流或无匹配时只使用无事实的音乐性/主题分析 |
 | 意图解析与音乐搜索 | 通过 Library application API 解析库内 ID，或调用网易云 API 搜索探索歌曲和播放链接 | 有序 library/discovery intent | 稳定去重的歌曲元数据、播放 URL | 单 intent 失败时跳过；全部失败时保留旧节目 |
-| TTS 生成 | 调用持久化 bundled Python/MLX helper，以固定 Qwen3-TTS 8-bit 模型生成完整 WAV | 完整 DJ 文案、语言、声音风格 | 受控音频引用、时长；无 marker 时估算时间 | 失败时保留完整文字 DJ |
+| TTS 生成 | 调用持久化 bundled Python/MLX helper，以固定 Qwen3-TTS 8-bit 模型生成完整 WAV | 完整 DJ 文案、语言、声音风格 | 受控音频引用、时长；无 marker 时估算时间 | 任一段失败则本次节目不提交 |
 | 时间线构建 | 将节目转换为可播放判别联合并确定顺序 | program plan | `PlaybackTimelineItem[]` | 单曲失败时 Browser Audio Engine 跳到下一项 |
 | 播放 checkpoint | 在状态边界保存可恢复的低频播放快照 | program、timeline item、position、`leaseEpoch` | `PlaybackCheckpoint` | 保存失败不影响当前 Browser Audio Engine 播放；旧 epoch 写入被拒绝 |
 | 历史记录 | 保存节目、播放、反馈 | program、track、feedback | history record | 保存失败时提示但不中断播放 |
@@ -939,7 +940,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | Program | id、profileId、scenarioText、title、status、trackIds、originMode、playbackMode、createdAt | 保存一次电台节目；新节目使用 `voice-overlay`，旧数据缺失时按 `sequential` 读取 |
 | CurrentProgram | profileId、programId?、updatedAt | 保存每个 Profile 的当前节目指针；空指针不得回退到历史第一条 |
 | ProgramHandoff | profileId、programId、createdAt | 保存每个 Profile 最多一档已就绪、尚未切换的新节目；生成成功不覆盖已有 `CurrentProgram` |
-| DjScriptSegment | id、programId、type、language、text、displayText、estimatedTiming、ttsAudioRef?、citations? | 保存开场、转场、结束语；1～2 个 featured segment 可含可信来源，文字降级仍保留在这里 |
+| DjScriptSegment | id、programId、type、language、text、displayText、estimatedTiming、ttsAudioRef?、citations? | 保存开场、转场、结束语；1～2 个 featured segment 可含可信来源；旧数据的文字串讲保持兼容 |
 | DjCitation | id、segmentId、title、url、provider | 保存串讲实际使用的来源链接与展示归因，不保存大段外部原文 |
 | RadioMessage / RadioTurn | id、profileId、role、content、decision、trackId?、createdAt | 保存 Profile 级持续对话、意图决策和可选单曲引用；每个 Profile 最多保留最近 50 个 turn |
 | PlaybackTimelineItem | `dj`：id、segmentId、audioRef、duration；或 `track`：id、trackId、resolvedAudioRef、duration | 有音频的判别联合；文字 DJ 不创建伪 item |
@@ -1029,10 +1030,10 @@ Planner 输出必须遵守以下规则：
 - 每次节目至少输出 `intro`；仅在风格明显切换、featured track 或结束时输出 `segue` 或 `outro`。每期选择 1～2 首 featured track 深讲 45～90 秒，其余串讲保持短促，不输出每首歌固定口播。
 - 背景故事、发行事实或人物事实只能引用输入中带稳定 fact ID 的可信来源；输出只引用 fact ID，由 Backend 写入真实 URL。无来源时只描述歌曲氛围、音乐性、歌词主题和用户场景。
 - `displayText` 为旧数据和接口兼容字段；新节目提交时必须与 `text` 逐字一致。TTS、Radio、Detail 和节目历史统一使用完整 `text`。
-- TTS 无分句时间戳时，`estimatedTiming` 必须为 `true`，前端按文本长度进行近似高亮。
+- TTS 无分句时间戳时，`estimatedTiming` 必须为 `true`，前端按文本长度进行近似高亮；时间戳缺失不影响提交，音频本身必须成功。
 - `trackIntents` 必须是播放顺序；`library` intent 只能引用 planning context 中存在的当前 Profile 曲目 ID，`discovery` intent 每个关键词只代表一个探索位置。
 - 完整节目目标严格为 8～12 首，默认 8 首；Planner 应输出不超过 16 个候选 intent。默认节目以当前 Profile 完整可播放音乐库为范围，必须先满足约 70% 的库内曲目下限，其余位置可用于探索；只有明确“只探索新歌”才将库内下限设为零，“只听库内”则将下限提升为当前可用库内曲目数与目标数量的较小值。
-- Backend 对候选执行当前 Profile ownership、可播放性、近 10 期精确曲目、本期同艺人最多一首与显式语言校验；用户明确点名歌曲或艺人时才可覆盖对应去重规则。Planner 未满足库内下限时，Backend 必须从完整库内候选中补齐，仍不足时整次失败。明确“中文歌”仅接受原始歌词中汉字占可识别歌词字符至少 60% 的中文人声歌曲，无法验证时拒绝。
+- Backend 对候选执行当前 Profile ownership、可播放性、近 10 期精确曲目、本期同艺人最多一首与显式语言校验；用户明确点名歌曲或艺人时才可覆盖对应去重规则。Planner 未满足库内下限时，Backend 必须从完整库内候选中补齐，仍不足时整次失败。明确“华语/中文歌”仅接受可验证的中文主唱歌词，拒绝纯音乐、短制作信息、日文假名主导和无法验证的候选。
 - 库内 intent 非法、重复、不可播放或探索失败时最多向 Planner 补选两轮；仍少于目标数量时整次失败，不得提交残缺节目或跨 Profile 随机补位。
 
 解析失败时，本地服务不得保存或回显原始正文。日志只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据；前端统一收到“AI 大脑没有完成节目规划，点击重试”，不可解析内容不得进入节目、历史或日志正文。DeepSeek 的 reasoning content 同样不进入节目、历史或日志正文。

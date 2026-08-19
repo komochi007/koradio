@@ -14,11 +14,11 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台，由 Electron 桌�
 ### System boundaries
 
 - **Client**：界面、HTMLAudio、实时播放进度和短生命周期交互状态。
-- **Desktop shell**：Electron 主进程负责单实例、启动前更新、Local Service 生命周期、窗口、菜单栏原生快捷菜单和 Renderer 安全策略；不拥有播放或业务事实。
+- **Desktop shell**：Electron 主进程负责单实例、启动前更新、Local Service 生命周期、窗口、菜单栏原生快捷菜单和 Renderer 安全策略；启动只读取已验证 Provider 状态，不重复执行完整节目规划，不拥有播放或业务事实。
 - **Local Service**：业务规则、任务编排、持久化、外部服务访问和事件发布。
 - **Device**：SQLite、音频缓存、头像与日志只保存在本机。
 - **External**：Codex 本地进程、DeepSeek Chat Completions 与网易云均为不可信、可失败依赖，只允许 Backend Adapter 访问；DeepSeek endpoint 固定且 API key 来自 OS Credential Store。
-- **Local TTS**：Qwen3-TTS 8-bit 模型与 bundled Python/MLX helper 是可选本机能力；模型下载、helper 和音频输出均视为可失败 I/O，Local Service 只能通过 TTS Port 调用。
+- **Local TTS**：Qwen3-TTS 8-bit 模型与 bundled Python/MLX helper 是本机节目完整性依赖；模型下载、helper 和音频输出均视为可失败 I/O，Local Service 只能通过 TTS Port 调用，全部节目 DJ 音频成功后才允许提交新节目。
 - **Profile**：档案用于数据分区和上下文选择，不是身份认证或安全边界。
 | Concern | Authoritative owner | Persistence |
 |---|---|---|
@@ -64,7 +64,7 @@ flowchart LR
 
 ### Packaging and delivery
 
-- macOS 包装采用 Electron 主进程 + 现有 Web Renderer + bundled Node Local Service + bundled Python/MLX TTS runtime；Electron 主进程只负责进程生命周期、活动 Planner 完整骨架检测、窗口、菜单栏原生快捷菜单和加载同源 origin，不成为播放或业务事实源。菜单栏在启动状态窗口创建后出现，Renderer 经 context-isolated preload 发布受限的展示状态并接收上一首、播放/暂停、下一首命令；主进程不获得 AudioEngine、Provider、Session 或业务数据访问。`app.whenReady()` 后先显示仅包含本地静态内容的启动状态窗口，状态页只通过私有重试通道与主进程交互；Planner 未通过检测时只加载同源 Settings 修复页，不打开 Radio。
+- macOS 包装采用 Electron 主进程 + 现有 Web Renderer + bundled Node Local Service + bundled Python/MLX TTS runtime；Electron 主进程只负责进程生命周期、窗口、菜单栏原生快捷菜单和加载同源 origin，不成为播放或业务事实源。菜单栏在启动状态窗口创建后出现，Renderer 经 context-isolated preload 发布受限的展示状态并接收上一首、播放/暂停、下一首命令；主进程不获得 AudioEngine、Provider、Session 或业务数据访问。`app.whenReady()` 后先显示仅包含本地静态内容的启动状态窗口，状态页只通过私有重试通道与主进程交互；启动阶段只等待本地服务和 Renderer，不重复执行完整节目规划。
 - Personal Local Preview 只允许 `/Applications/Koradio.app` 作为 Launchpad 桌面入口，并使用同一品牌圆角图标；不安装第二个 PWA shim。Electron 窗口只加载 `http://127.0.0.1:<port>/radio`，不创建普通网页标签。
 - 每次正常桌面打开都先从固定 HTTPS 仓库检查 `origin/main`。更新器在应用拥有的缓存目录维护独立源码副本，不修改开发工作树；只有精确远端提交完成 frozen install、production build、ad-hoc strict codesign、Electron 包结构与 smoke 后，才原位替换固定应用路径并重新启动。
 - 更新行为是 fail-closed：远端检查、源码同步、构建、验证或替换任一步失败时保留已安装 app、用户数据与回滚副本，但不得启动已知旧版本或打开产品页面；失败期间保留本地启动状态窗口并允许完整重试。旧 app 只允许以非 `.app` 目录保留在非应用位置，避免被 Launch Services、Launchpad 或 Dock 注册为入口。
@@ -183,14 +183,14 @@ sequenceDiagram
 | Active Planner error / invalid JSON | End job, retain scenario, expose retry; never auto-switch Provider | Blocked |
 | Track intent unavailable | Skip invalid/foreign library IDs, duplicates, unplayable audio, non-canonical versions and failed discovery intents in order; never randomly fill from another Profile, and do not create an empty program if all intents fail | Blocked |
 | Data path / transaction error | Roll back creation | Blocked |
-| TTS failure | Persist text segment without audio | Continue |
+| TTS failure | Fail the new generation before commit | Retain old Program |
 | Lyrics failure | Set unavailable lyric status | Continue |
 | Track playback failure | Mark runtime failure, advance queue | Continue if possible |
 | Feedback write failure | Reject mutation, revert optimistic UI | Playback continues |
 
-阻断失败不得改变正在播放的旧节目。文字降级 DJ 只保留在 Program segment；只有取得真实音频引用的 `dj` segment 才进入 PlaybackTimeline。
+阻断失败不得改变正在播放的旧节目。新的完整节目必须为每个可播出的 DJ segment 取得真实音频引用；TTS 不可用时任务失败，不提交半成品节目。
 
-Radio turn 持久化用户消息、路由决策、助手消息和可选单曲或最多 5 首推荐引用；每个 Profile 只保留最近 50 个 turn。只有明确节目、歌单、8～12 首、重新规划或替换当前节目的请求能创建 generation job；“其他、类似、再推荐”等追问固定为推荐，不得被 Provider 或本地兜底升级为节目。Radio context 带入当前节目标题、场景与曲目摘要，使推荐有明确参照；追问“最推荐哪首”只能引用最近一次推荐列表。单曲与多首推荐解析出的歌曲可被 Browser Audio Engine 作为临时 DJ 点播播放，点播快照不写入 Program、播放历史或持久队列；`PLAY NEXT` 在手动和自然切歌路径都优先消费，结束后恢复原节目队列；空节目时手动下一首直接消费该点播。成功入队不改变对话时间线，只有失败写入卡片关联错误。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，活动 Job 可由 REST Snapshot 在 Radio 重新挂载时恢复。完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。活动 Planner 在桌面启动和 Settings 测试时都从当前 Profile 的偏好、`EffectiveTaste`、最近 20 期历史和最多 1,000 首可播放曲目摘要（覆盖个人完整候选库）构造同一份不落库的 8 首节目骨架 context，验证真实结构化输出；该检测不切换 Provider、不写入 Program、历史或日志正文。Programs 不直接读取 Library 表：它通过同一 Library application Port 获取上述当前 Profile 曲目摘要，按活动 Planner 最多 16 个有序原版 intent 解析所有备用候选；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败并区分中文人声、原版筛选或音频可播性原因。已有当前节目时，成功生成的新 Program 与 `program_handoff` 在同一事务提交，旧 `current_program` 保持不变；Audio Engine 只在当前曲自然结束时调用原子 activate 命令，或响应用户的显式立即切换。DeepSeek 首次结构化输出无效或被截断时，仅在同一 Provider 内以精简的合法计划契约重试一次；generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
+Radio turn 持久化用户消息、路由决策、助手消息和可选单曲或最多 5 首推荐引用；每个 Profile 只保留最近 50 个 turn。只有明确节目、歌单、8～12 首、重新规划或替换当前节目的请求能创建 generation job；“其他、类似、再推荐”等追问固定为推荐，不得被 Provider 或本地兜底升级为节目。Radio context 带入当前节目标题、场景与曲目摘要，使推荐有明确参照；追问“最推荐哪首”只能引用最近一次推荐列表。单曲与多首推荐解析出的歌曲可被 Browser Audio Engine 作为临时 DJ 点播播放，点播快照不写入 Program、播放历史或持久队列；`PLAY NEXT` 在手动和自然切歌路径都优先消费，结束后恢复原节目队列；空节目时手动下一首直接消费该点播。成功入队不改变对话时间线，只有失败写入卡片关联错误。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，活动 Job 可由 REST Snapshot 在 Radio 重新挂载时恢复。完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Settings 的 Provider 切换先执行轻量连接与认证检测；手动“测试连接”和真正节目生成再从当前 Profile 的偏好、`EffectiveTaste`、最近 20 期历史和最多 1,000 首可播放曲目摘要（覆盖个人完整候选库）构造不落库的 8 首节目骨架 context，验证真实结构化输出。该检测不切换 Provider、不写入 Program、历史或日志正文。Programs 不直接读取 Library 表：它通过同一 Library application Port 获取上述当前 Profile 曲目摘要，按活动 Planner 最多 16 个有序原版 intent 解析所有备用候选；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败并区分中文人声、原版筛选或音频可播性原因。已有当前节目时，成功生成的新 Program 与 `program_handoff` 在同一事务提交，旧 `current_program` 保持不变；Audio Engine 只在当前曲自然结束时调用原子 activate 命令，或响应用户的显式立即切换。DeepSeek 首次结构化输出无效或被截断时，仅在同一 Provider 内以精简的合法计划契约重试一次；generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
 
 反馈记忆流：`TasteBlueprint 应用 → feedback learning baseline → UI intent → explicit FeedbackEvent → TasteProjection → TasteBlueprint + TasteOverrides → Planner context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。
@@ -212,8 +212,7 @@ stateDiagram-v2
     Planning --> Resolving: plan validated
     Resolving --> Synthesizing: tracks found
     Synthesizing --> Ready: timeline committed
-    Ready --> Speaking: DJ audio exists
-    Ready --> Playing: text-only DJ
+    Ready --> Speaking: all DJ audio exists
     Speaking --> Playing: segment ended
     Playing --> Paused: pause
     Paused --> Playing: resume
@@ -521,7 +520,7 @@ scripts/
 | TD-13 | DeviceSettings / ProfilePreferences split | 配置 owner 与 Profile 隔离一致 | 路由、表与迁移任务分属明确 owner |
 | TD-14 | Discriminated playback timeline | 不把文字降级伪装成音频 | 只有带 audio ref 的 DJ 段进入时间线 |
 | TD-15 | Development dual process, production same origin | 保留 Vite HMR，同时让生产安全边界保持单一 loopback origin | 需要精确 Origin allowlist、端口冲突处理和 WebSocket 首消息认证 |
-| TD-16 | Qwen3-TTS 8-bit via bundled Python/MLX helper | 获得更自然的本地语音并保持零 API 调用费 | 仅支持 macOS 15+ arm64，需要约 450 MiB runtime、1.84 GiB 首次模型下载、进程 deadline 和文字降级 |
+| TD-16 | Qwen3-TTS 8-bit via bundled Python/MLX helper | 获得更自然的本地语音并保持零 API 调用费 | 仅支持 macOS 15+ arm64，需要约 450 MiB runtime、1.84 GiB 首次模型下载、进程 deadline；新节目要求全部语音成功，失败保留旧节目 |
 | TD-17 | Built-in TypeScript NetEase `linuxapi` adapter | Personal Local Preview 不依赖官方 CLI、C# 二进制或 .NET 运行时 | 协议变化与公开发布合规必须在 S3/S7 持续验证 |
 | TD-18 | Personal Local Preview 启动前从 `origin/main` 本机构建更新 | 固定唯一桌面入口，同时保证每次打开都先确认源码最新且不公开分发 ad-hoc 产物 | 启动依赖网络和本机构建工具；更新失败时 fail-closed，不提供离线启动旧版 |
 ## 19. Known Tradeoffs
@@ -534,7 +533,7 @@ scripts/
 - Provider ports 降低耦合，也可能隐藏供应商专属能力。
 - OS credential store 更安全，但跨平台与 headless 环境复杂。
 - 本地档案首用成本低，但不提供同机用户的机密隔离。
-- TTS 文本降级保证连续性，同时削弱语音电台体验。
+- 新节目 TTS 失败时保留旧节目，避免提交缺少语音的半成品；历史缺失音频仍可显示已有文字。
 ## 20. Future Architecture Evolution
 
 演进由可观察触发条件驱动，不因预想功能提前增加抽象。

@@ -1,5 +1,5 @@
 import { codexPlanningContextSchema, type CodexPlanningContext } from "./providers.js";
-import type { MusicTrack } from "@koradio/contracts";
+import type { MusicTrack, ProgramListeningIntent } from "@koradio/contracts";
 import type { ProfilePreferencesService } from "../profile-preferences/index.js";
 import type { TasteService } from "../taste/index.js";
 import type { ProgramService } from "./service.js";
@@ -34,11 +34,12 @@ export function createPlanningContext(
   profileId: string,
   scenarioText: string,
   targetTrackCount: number,
+  listeningIntent: ProgramListeningIntent | null = null,
+  prefetchedLibraryTracks?: MusicTrack[],
 ): CodexPlanningContext {
-  const libraryTracks = dependencies.library.candidateTracks(
-    profileId,
-    planningLibraryCandidateLimit,
-  );
+  const libraryTracks =
+    prefetchedLibraryTracks ??
+    dependencies.library.candidateTracks(profileId, planningLibraryCandidateLimit);
   const taste = dependencies.taste.get(profileId);
   const preferredLibraryTrackCount = Math.min(
     libraryTracks.length,
@@ -46,6 +47,7 @@ export function createPlanningContext(
   );
   return codexPlanningContextSchema.parse({
     scenarioText,
+    listeningIntent,
     effectiveTaste: taste.effective,
     tasteBlueprint: taste.blueprint,
     history: dependencies.programs.list(profileId, undefined, 20).items.map((program) => ({
