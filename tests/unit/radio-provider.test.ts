@@ -8,6 +8,7 @@ import {
   isAnchorProgramRequest,
   parseAnchorTrack,
   parseProgramListeningIntent,
+  programAcknowledgement,
 } from "../../apps/server/src/modules/radio/service.js";
 
 describe("UX-11 mock Radio intent routing", () => {
@@ -115,6 +116,25 @@ describe("UX-11 mock Radio intent routing", () => {
       vocalMode: "vocal-only",
       genreHints: ["pop"],
     });
+  });
+
+  it("keeps deterministic programme routing while tailoring its acknowledgement to the request", () => {
+    const rainyChinese = programAcknowledgement(
+      "帮我规划一档适合雨天听的华语歌单，情绪偏抒情或柔和一点的",
+      parseProgramListeningIntent("帮我规划一档适合雨天听的华语歌单，情绪偏抒情或柔和一点的"),
+      0,
+    );
+    const westernPop = programAcknowledgement(
+      "规划一档欧美流行歌单，不要纯音乐",
+      parseProgramListeningIntent("规划一档欧美流行歌单，不要纯音乐"),
+      0,
+    );
+
+    expect(rainyChinese).toContain("雨天");
+    expect(rainyChinese).toContain("华语人声");
+    expect(westernPop).toContain("欧美流行人声");
+    expect(westernPop).not.toBe(rainyChinese);
+    expect(westernPop).not.toContain("收到，我会围绕");
   });
 
   it("reuses the original scenario when the user asks to retry", async () => {

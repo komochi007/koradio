@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1–S6 stage gates complete · S7-01/02/06/08 complete · S7-09 Electron shell migration in progress · UX-11/12/15/16/17/18/19/20 experience optimizations accepted · DeepSeek planner integration implemented, real API smoke deferred · S7-07 stability trial in progress · external distribution deferred · production defaults to Live mode**
+> Status: **S1–S6 stage gates complete · S7-01/02/06/08 complete · S7-09 Electron shell migration in progress · UX-11/12/15/16/17/18/19/20/21 experience optimizations accepted · DeepSeek planner integration implemented, real API smoke deferred · S7-07 stability trial in progress · external distribution deferred · production defaults to Live mode**
 > Audience: AI Coding Agents、开发者、维护者  
 > Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Profile 级持久 DJ 对话与意图分流、单曲与 3～5 首策展推荐卡片、8～12 首节目生成、临时 DJ 点播队列、双声道 Radio 播放、按需 Qwen 朗读、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste Blueprint 重塑/反馈学习/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；Electron 主进程与 Production Server 默认使用真实 Provider，Development、Test、CI 与 `start:mock` 使用确定性 Mock Provider
 
@@ -14,7 +14,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 
 ```text
 对话输入
-  → Radio 先路由为闲聊、澄清、单曲、3～5 首推荐或完整节目；“其他/类似/再推荐”始终保持为推荐，只有明确节目需求才生成节目
+  → Radio 先路由为闲聊、澄清、单曲、3～5 首推荐或完整节目；明确节目需求由本地确定性路由立即启动任务，并按场景、听歌意图和对话轮次给出自然且有变化的开场；“其他/类似/再推荐”始终保持为推荐
   → 单曲与推荐以临时 DJ 点播卡片提供立即播放或下一首播放；搜索时优先原唱录音室原版并排除翻唱、Cover、现场、混音与变速版，除非用户明确点名；手动与自然下一首一致优先消费临时点播，空节目时手动下一首也可直接播放，成功排队不插入对话红字，不改写节目历史或持久队列
   → 完整节目将当前 Profile 最多 1,000 首可播放库内曲目摘要（覆盖个人完整候选库）、EffectiveTaste、可选 TasteBlueprint 与近 20 期历史交给活动 Planner（Codex 或 DeepSeek）；用户明确的语言、地区与人声/纯音乐要求进入结构化听歌意图并作为硬约束
   → 活动 Planner 生成有序 library/discovery 选曲意图与 DJ 串讲

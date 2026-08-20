@@ -314,7 +314,8 @@ describe("UX-11 Radio conversation", () => {
       ).json<unknown>(),
     );
     expect(naturalProgram.decision).toBe("program");
-    expect(naturalProgram.assistantMessage.content).toContain("策划一档完整节目");
+    expect(naturalProgram.assistantMessage.content).not.toContain("收到，我会围绕");
+    expect(naturalProgram.assistantMessage.content).toContain("秋日");
     expect(naturalProgram.programJobId).not.toBeNull();
 
     const scenarioProgram = radioTurnSchema.parse(
