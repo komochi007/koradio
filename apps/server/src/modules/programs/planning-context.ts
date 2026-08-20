@@ -3,6 +3,7 @@ import type { MusicTrack, ProgramListeningIntent } from "@koradio/contracts";
 import type { ProfilePreferencesService } from "../profile-preferences/index.js";
 import type { TasteService } from "../taste/index.js";
 import type { ProgramService } from "./service.js";
+import { isPotentiallyEligibleTrack } from "./track-eligibility.js";
 
 export interface PlanningContextDependencies {
   library: { candidateTracks(profileId: string, limit: number): MusicTrack[] };
@@ -18,15 +19,20 @@ function minimumLibraryTrackCount(
   scenarioText: string,
   preferredCount: number,
   targetTrackCount: number,
+  listeningIntent: ProgramListeningIntent | null,
+  libraryTracks: MusicTrack[],
 ): number {
   const normalized = scenarioText.toLocaleLowerCase("en-US");
   if (/(?:只探索|只要新歌|全部探索|only\s*(?:new|discovery|explore))/iu.test(normalized)) {
     return 0;
   }
-  if (/(?:只听库内|只用库内|全部库内|only\s*library)/iu.test(normalized)) {
-    return targetTrackCount;
-  }
-  return preferredCount;
+  const requestedMinimum = /(?:只听库内|只用库内|全部库内|only\s*library)/iu.test(normalized)
+    ? targetTrackCount
+    : preferredCount;
+  const eligibleLibraryCount = libraryTracks.filter((track) =>
+    isPotentiallyEligibleTrack(track, listeningIntent, scenarioText),
+  ).length;
+  return Math.min(requestedMinimum, eligibleLibraryCount);
 }
 
 export function createPlanningContext(
@@ -68,7 +74,13 @@ export function createPlanningContext(
       preferredLibraryTrackCount,
       minimumLibraryTrackCount: Math.min(
         libraryTracks.length,
-        minimumLibraryTrackCount(scenarioText, preferredLibraryTrackCount, targetTrackCount),
+        minimumLibraryTrackCount(
+          scenarioText,
+          preferredLibraryTrackCount,
+          targetTrackCount,
+          listeningIntent,
+          libraryTracks,
+        ),
       ),
     },
     currentTime: dependencies.now().toISOString(),

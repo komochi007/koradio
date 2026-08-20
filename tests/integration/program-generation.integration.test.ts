@@ -1245,4 +1245,151 @@ describe("S3-06 Program generation REST and reconnect snapshot", () => {
     expect(explicitDetail.tracks.filter((track) => track.artist === "同一歌手")).toHaveLength(2);
     await closeHarness(explicitHarness);
   });
+
+  it("keeps western vocal requests free of instrumental and East Asian tracks", async () => {
+    const providerTracks: ProviderTrack[] = [
+      {
+        source: "netease",
+        sourceTrackId: "mixed-piano",
+        title: "Midnight Signal (Piano Version)",
+        artist: "English Artist",
+        album: "Fixture",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "available",
+        playable: true,
+      },
+      {
+        source: "netease",
+        sourceTrackId: "mixed-korean",
+        title: "Foreign ~ k o r e a n ~",
+        artist: "DEAN",
+        album: "Fixture",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "available",
+        playable: true,
+      },
+      {
+        source: "netease",
+        sourceTrackId: "mixed-chinese",
+        title: "枫桥雨",
+        artist: "英复光",
+        album: "Fixture",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "available",
+        playable: true,
+      },
+      {
+        source: "netease",
+        sourceTrackId: "mixed-japanese",
+        title: "日暮里",
+        artist: "JINBAO",
+        album: "Fixture",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "available",
+        playable: true,
+      },
+      ...Array.from({ length: 8 }, (_, index): ProviderTrack => ({
+        source: "netease",
+        sourceTrackId: `mixed-western-${String(index)}`,
+        title: `Western Track ${String(index)}`,
+        artist: `Western Artist ${String(index)}`,
+        album: "Fixture",
+        artworkUrl: null,
+        durationMs: 180_000 + index * 1_000,
+        lyricStatus: "available",
+        playable: true,
+      })),
+    ];
+    const music: MusicProvider = {
+      source: "netease",
+      search() {
+        return Promise.resolve({ items: providerTracks });
+      },
+      importPlaylist() {
+        return Promise.resolve({
+          source: "netease",
+          sourcePlaylistId: "mixed-fixture",
+          title: "Mixed Fixture",
+          tracks: providerTracks,
+        });
+      },
+      getLyrics(sourceTrackId) {
+        if (sourceTrackId === "mixed-piano") {
+          return Promise.resolve({ status: "unavailable" as const, content: null });
+        }
+        if (sourceTrackId === "mixed-korean") {
+          return Promise.resolve({
+            status: "available" as const,
+            content: "이 밤에 너와 함께 걸어가며 마음을 노래해",
+          });
+        }
+        if (sourceTrackId === "mixed-chinese") {
+          return Promise.resolve({
+            status: "available" as const,
+            content: "山河之间的风吹过夜晚我们继续向前走到天亮",
+          });
+        }
+        if (sourceTrackId === "mixed-japanese") {
+          return Promise.resolve({
+            status: "available" as const,
+            content: "さくらの風が吹く夜に心は遠くへ歩いていく",
+          });
+        }
+        return Promise.resolve({
+          status: "available" as const,
+          content: "Only English words are present here tonight",
+        });
+      },
+      resolveAudio(sourceTrackId) {
+        const index = providerTracks.findIndex((track) => track.sourceTrackId === sourceTrackId);
+        return Promise.resolve({
+          resolvedAudioRef: `media/00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}.wav`,
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        });
+      },
+    };
+    const codex: CodexProvider = {
+      plan(context) {
+        const parsed = codexPlanningContextSchema.parse(context);
+        return Promise.resolve({
+          programTitle: "Western Vocal Fixture",
+          scenarioSummary: parsed.scenarioText,
+          djLanguage: parsed.preferences.djLanguage,
+          djPersona: parsed.preferences.djVoiceStyle,
+          djScripts: [
+            {
+              type: "intro",
+              language: parsed.preferences.djLanguage,
+              text: "开始一段欧美人声节目。",
+              displayText: "开始一段欧美人声节目。",
+              estimatedTiming: true,
+            },
+          ],
+          trackIntents: Array.from({ length: 12 }, (_, index) => ({
+            kind: "discovery" as const,
+            keyword: `mixed ${String(index)}`,
+            reason: "验证统一候选资格校验",
+          })),
+          playlistIntent: { energy: "中", mood: "明亮", avoid: [] },
+        });
+      },
+    };
+    const harness = await createHarness(codex, 5_000, createMockTtsProvider(), music, null);
+    const started = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "规划一档欧美流行歌单，不要纯音乐" },
+      "western-vocal-001",
+    );
+    await harness.generation.waitForIdle();
+    const snapshot = harness.generation.get(harness.profile.id, started.jobId);
+    expect(snapshot.status).toBe("succeeded");
+    const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
+    expect(detail.tracks).toHaveLength(8);
+    expect(detail.tracks.every((track) => track.artist.startsWith("Western Artist"))).toBe(true);
+    await closeHarness(harness);
+  });
 });

@@ -3,9 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   radioConversationSchema,
   radioTurnSchema,
-  programListeningIntentSchema,
   type CreateRadioTurnCommand,
-  type ProgramListeningIntent,
   type RadioConversation,
   type RadioTurn,
 } from "@koradio/contracts";
@@ -17,7 +15,10 @@ import {
   sortCanonicalCandidates,
 } from "../library/track-version.js";
 import {
+  isProgramRetryRequest,
+  parseProgramListeningIntent,
   requestedProgramTrackCount,
+  resolveRetryScenario,
   type ProgramGenerationService,
   type ProgramService,
 } from "../programs/index.js";
@@ -30,6 +31,12 @@ import type { RadioTurnRepository } from "./persistence.js";
 
 export class RadioTurnNotFoundError extends Error {}
 export class RadioTurnUnavailableError extends Error {}
+
+export {
+  isProgramRetryRequest,
+  parseAnchorTrack,
+  parseProgramListeningIntent,
+} from "../programs/index.js";
 
 export function isHighConfidenceProgramRequest(content: string): boolean {
   const normalized = content.trim();
@@ -69,54 +76,6 @@ export function isAnchorProgramRequest(content: string): boolean {
   );
   const anchorCue = /(?:围绕|基于|以.+为(?:主|核心|锚点)|参考|相似于|类似于)/u.test(normalized);
   return programCue && anchorCue && !/(?:一首|一曲|单曲)/u.test(normalized);
-}
-
-export function parseAnchorTrack(content: string): ProgramListeningIntent["anchorTrack"] {
-  const quoted = /[《「“"]([^》」”"]{1,120})[》」”"]/u.exec(content)?.[1]?.trim();
-  const unquoted =
-    /(?:围绕|基于|参考|相似于|类似于)\s*(?:歌曲|歌)?\s*([^，。！？,!?\n]{1,100}?)(?:这首歌|这首|这支歌|规划|歌单|节目|推荐|相似|类似|$)/u
-      .exec(content)?.[1]
-      ?.trim();
-  const raw = (quoted ?? unquoted)?.replace(/^(?:某首|一首|特定的?)\s*/u, "").trim();
-  if (
-    raw === undefined ||
-    raw.length < 2 ||
-    /(?:某首|特定歌曲|这首歌$)/u.test(raw) ||
-    /^(?:华语|中文|国语|粤语|普通话|闽南|音乐|歌曲|歌单|节目)(?:歌|歌曲|音乐|歌单|节目)?$/u.test(
-      raw,
-    )
-  ) {
-    return null;
-  }
-  const parts = raw.split(/\s+(?:-|—|\/|\\)\s+|\s+by\s+/iu).map((part) => part.trim());
-  const title = parts[0]?.replace(/(?:这首歌|这首|这支歌)$/u, "").trim();
-  if (title === undefined || title.length < 2) return null;
-  return { title, artist: parts[1] === undefined || parts[1].length === 0 ? null : parts[1] };
-}
-
-export function parseProgramListeningIntent(content: string): ProgramListeningIntent {
-  const dimensionPatterns: Array<[ProgramListeningIntent["similarityDimensions"][number], RegExp]> =
-    [
-      ["melody", /旋律|曲调|和声/u],
-      ["arrangement", /编曲|配器|制作/u],
-      ["timbre", /音色|声线|嗓音/u],
-      ["emotion", /情绪|氛围|感觉|情感/u],
-      ["rhythm", /节奏|律动|鼓点/u],
-      ["era", /年代|时期|时代/u],
-    ];
-  const requestedDimensions = dimensionPatterns
-    .map(([dimension, pattern]) => ({ dimension, index: content.search(pattern) }))
-    .filter(({ index }) => index >= 0)
-    .sort((left, right) => left.index - right.index)
-    .map(({ dimension }) => dimension);
-  return programListeningIntentSchema.parse({
-    anchorTrack: parseAnchorTrack(content),
-    similarityDimensions:
-      requestedDimensions.length > 0
-        ? requestedDimensions
-        : dimensionPatterns.map(([dimension]) => dimension),
-    languageConstraint: /华语|中文|国语|粤语|普通话|闽南/u.test(content) ? "chinese-vocal" : "any",
-  });
 }
 
 function requestedRecommendationCount(content: string): number | undefined {
@@ -202,43 +161,55 @@ export function createRadioService(options: CreateRadioServiceOptions) {
           },
         ]),
       });
-      const requestedTrackCount = requestedProgramTrackCount(command.content);
+      const retryRequest = isProgramRetryRequest(command.content);
+      const resolvedScenarioText = resolveRetryScenario(command.content, recent);
+      const scenarioText = resolvedScenarioText ?? command.content;
+      const retryUnavailable = retryRequest && resolvedScenarioText === undefined;
+      const requestedTrackCount = requestedProgramTrackCount(scenarioText);
       const recommendationCount = requestedRecommendationCount(command.content);
       const recommendationArtist = requestedRecommendationArtist(command.content);
       const recommendationRequest = isRecommendationRequest(command.content);
-      const anchorProgramRequest = isAnchorProgramRequest(command.content);
-      const listeningIntent = parseProgramListeningIntent(command.content);
+      const anchorProgramRequest = isAnchorProgramRequest(scenarioText);
+      const listeningIntent = parseProgramListeningIntent(scenarioText);
       const invalidTrackCount =
         requestedTrackCount !== null &&
         recommendationCount === undefined &&
         (requestedTrackCount < 8 || requestedTrackCount > 12);
       const deterministicProgram =
         recommendationCount === undefined &&
-        (anchorProgramRequest ||
+        (retryRequest ||
+          anchorProgramRequest ||
           (!recommendationRequest && isHighConfidenceProgramRequest(command.content)));
-      const response = invalidTrackCount
+      const response = retryUnavailable
         ? {
             decision: "clarify" as const,
-            reply: "一档完整节目可以安排 8–12 首歌。你希望我做 8、9、10、11 还是 12 首？",
+            reply: "我没有找到可以重试的上一档节目条件，请重新告诉我想听什么。",
             musicQuery: null,
             musicQueries: [],
           }
-        : deterministicProgram
+        : invalidTrackCount
           ? {
-              decision: "program" as const,
-              reply: programAcknowledgement(command.content),
+              decision: "clarify" as const,
+              reply: "一档完整节目可以安排 8–12 首歌。你希望我做 8、9、10、11 还是 12 首？",
               musicQuery: null,
               musicQueries: [],
             }
-          : await (async () => {
-              const assistant =
-                typeof options.assistant === "function" ? options.assistant() : options.assistant;
-              const output = radioAssistantOutputSchema.safeParse(
-                await assistant.respond(context, { correlationId: randomId() }),
-              );
-              if (!output.success) throw new RadioTurnUnavailableError();
-              return output.data;
-            })();
+          : deterministicProgram
+            ? {
+                decision: "program" as const,
+                reply: programAcknowledgement(scenarioText),
+                musicQuery: null,
+                musicQueries: [],
+              }
+            : await (async () => {
+                const assistant =
+                  typeof options.assistant === "function" ? options.assistant() : options.assistant;
+                const output = radioAssistantOutputSchema.safeParse(
+                  await assistant.respond(context, { correlationId: randomId() }),
+                );
+                if (!output.success) throw new RadioTurnUnavailableError();
+                return output.data;
+              })();
       let track = null;
       const recommendedTracks: NonNullable<RadioTurn["recommendedTracks"]> = [];
       let programJobId: string | null = null;
@@ -307,7 +278,7 @@ export function createRadioService(options: CreateRadioServiceOptions) {
       } else if (response.decision === "program") {
         programJobId = options.programs.start(
           profileId,
-          { scenarioText: command.content, listeningIntent },
+          { scenarioText, listeningIntent },
           `radio:${idempotencyKey}`,
         ).jobId;
       }

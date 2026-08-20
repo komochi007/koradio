@@ -23,6 +23,23 @@ export interface PendingRadioTurn {
   status: "pending" | "failed";
 }
 
+function isRetryScenario(content: string): boolean {
+  return /^(?:重试(?:一下|一次)?|再试(?:一下|一次)?|重新(?:规划|来一次?)|按刚才(?:的条件)?(?:重来|再来)|继续刚才的条件)$/iu.test(
+    content.trim(),
+  );
+}
+
+function scenarioForTurn(turn: RadioTurn, turns: readonly RadioTurn[]): string {
+  if (!isRetryScenario(turn.userMessage.content)) return turn.userMessage.content;
+  return (
+    [...turns]
+      .filter((candidate) => candidate.decision === "program")
+      .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+      .map((candidate) => candidate.userMessage.content)
+      .find((content) => !isRetryScenario(content)) ?? turn.userMessage.content
+  );
+}
+
 interface UseRadioProgramOptions {
   eventBus: AppEventBus;
   initialDraft: string | undefined;
@@ -63,10 +80,9 @@ export function useRadioProgram({
   useEffect(() => {
     const active = activeGeneration.data?.active;
     if (active === null || active === undefined || generation.active !== undefined) return;
-    const turn = [...(conversation.data?.turns ?? [])]
-      .reverse()
-      .find((candidate) => candidate.programJobId === active.jobId);
-    const scenarioText = turn?.userMessage.content ?? "正在准备一档新节目";
+    const turns = conversation.data?.turns ?? [];
+    const turn = [...turns].reverse().find((candidate) => candidate.programJobId === active.jobId);
+    const scenarioText = turn === undefined ? "正在准备一档新节目" : scenarioForTurn(turn, turns);
     setPendingScenario(scenarioText);
     dispatch({ type: "generation.accepted", jobId: active.jobId, scenarioText });
   }, [activeGeneration.data?.active, conversation.data?.turns, generation.active]);
@@ -194,8 +210,14 @@ export function useRadioProgram({
         (current) => ({ turns: [...(current?.turns ?? []), turn].slice(-50) }),
       );
       if (turn.decision === "program" && turn.programJobId !== null) {
-        setPendingScenario(content);
-        dispatch({ type: "generation.accepted", jobId: turn.programJobId, scenarioText: content });
+        const currentTurns =
+          queryClient.getQueryData<{ turns: RadioTurn[] }>(["radio-conversation", profileId])
+            ?.turns ?? [];
+        const scenarioText = isRetryScenario(content)
+          ? scenarioForTurn(turn, currentTurns)
+          : content;
+        setPendingScenario(scenarioText);
+        dispatch({ type: "generation.accepted", jobId: turn.programJobId, scenarioText });
       }
     },
     onError(error, content) {

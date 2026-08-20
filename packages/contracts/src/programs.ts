@@ -23,6 +23,22 @@ export const listeningSimilarityDimensionSchema = z.enum([
   "rhythm",
   "era",
 ]);
+export const programLanguageScopeSchema = z.enum([
+  "any",
+  "chinese",
+  "english",
+  "japanese",
+  "korean",
+  "western-languages",
+]);
+export const programRegionScopeSchema = z.enum([
+  "any",
+  "western",
+  "greater-china",
+  "japan",
+  "korea",
+]);
+export const programVocalModeSchema = z.enum(["any", "vocal-only", "instrumental-only"]);
 export const programListeningIntentSchema = z.strictObject({
   anchorTrack: z
     .strictObject({
@@ -32,6 +48,10 @@ export const programListeningIntentSchema = z.strictObject({
     .nullable(),
   similarityDimensions: z.array(listeningSimilarityDimensionSchema).min(1).max(6),
   languageConstraint: z.enum(["any", "chinese-vocal"]),
+  languageScope: programLanguageScopeSchema.default("any"),
+  regionScope: programRegionScopeSchema.default("any"),
+  vocalMode: programVocalModeSchema.default("any"),
+  genreHints: z.array(z.string().trim().min(1).max(40)).max(4).default([]),
 });
 export const djCitationSchema = z.strictObject({
   id: z.uuid(),
@@ -139,5 +159,8 @@ export type DeleteProgramResponse = z.infer<typeof deleteProgramResponseSchema>;
 export type GenerateProgramCommand = z.infer<typeof generateProgramCommandSchema>;
 export type ProgramListeningIntent = z.infer<typeof programListeningIntentSchema>;
 export type ListeningSimilarityDimension = z.infer<typeof listeningSimilarityDimensionSchema>;
+export type ProgramLanguageScope = z.infer<typeof programLanguageScopeSchema>;
+export type ProgramRegionScope = z.infer<typeof programRegionScopeSchema>;
+export type ProgramVocalMode = z.infer<typeof programVocalModeSchema>;
 export type PlaybackCheckpoint = z.infer<typeof playbackCheckpointSchema>;
 export type SavePlaybackCheckpointCommand = z.infer<typeof savePlaybackCheckpointCommandSchema>;

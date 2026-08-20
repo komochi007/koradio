@@ -155,6 +155,37 @@ function failureCopy(code: string): { message: string; settings: boolean; title:
       settings: false,
     };
   }
+  if (code === "PROGRAM_GENERATION_INSUFFICIENT_WESTERN_VOCAL_TRACKS") {
+    return {
+      title: "WESTERN VOCAL TRACKS INSUFFICIENT",
+      message:
+        "符合欧美范围且有人声的可播放歌曲不足，DJ 没有混入其他语种或纯音乐。请补充曲库，或放宽地区与人声限制。",
+      settings: false,
+    };
+  }
+  if (code === "PROGRAM_GENERATION_INSUFFICIENT_WESTERN_TRACKS") {
+    return {
+      title: "WESTERN TRACKS INSUFFICIENT",
+      message:
+        "符合欧美范围的可播放歌曲不足，DJ 没有用其他地区歌曲补位。请补充曲库或放宽地区限制。",
+      settings: false,
+    };
+  }
+  if (code === "PROGRAM_GENERATION_INSUFFICIENT_VOCAL_TRACKS") {
+    return {
+      title: "VOCAL TRACKS INSUFFICIENT",
+      message:
+        "符合人声要求的可播放歌曲不足，纯音乐和无法确认歌词的歌曲已被排除。请补充曲库或放宽限制。",
+      settings: false,
+    };
+  }
+  if (code === "PROGRAM_GENERATION_INSUFFICIENT_LANGUAGE_TRACKS") {
+    return {
+      title: "LANGUAGE TRACKS INSUFFICIENT",
+      message: "符合指定语种的可播放歌曲不足，DJ 没有用其他语种补位。请补充曲库或调整语种要求。",
+      settings: false,
+    };
+  }
   if (code === "PROGRAM_GENERATION_INSUFFICIENT_CANONICAL_TRACKS") {
     return {
       title: "ORIGINAL RECORDINGS INSUFFICIENT",

@@ -21,7 +21,6 @@ import {
 
 import type { LibraryService } from "../library/index.js";
 import {
-  hasInstrumentalMarker,
   hasNonCanonicalVersionMarker,
   isCanonicalOriginalCandidate,
   isNonCanonicalVersion,
@@ -38,7 +37,9 @@ import {
   type ProgramPlannerProvider,
   type TtsProvider,
 } from "./providers.js";
+import { normalizeProgramListeningIntent } from "./listening-intent.js";
 import { createPlanningContext } from "./planning-context.js";
+import { isPotentiallyEligibleTrack, trackEligibilityFailureReason } from "./track-eligibility.js";
 import type { ProgramGenerationRepository } from "./generation-persistence.js";
 import type { ProgramService } from "./service.js";
 import type { MusicFact, MusicFactProvider } from "./music-facts.js";
@@ -310,11 +311,15 @@ export function createProgramGenerationService(
         .list(snapshot.profileId, undefined, 10)
         .items.flatMap((program) => program.trackIds),
     );
-    const chineseOnly =
-      listeningIntent?.languageConstraint === "chinese-vocal" ||
-      /中文歌|华语歌|国语歌|粤语歌/u.test(scenarioText);
+    const normalizedListeningIntent = normalizeProgramListeningIntent(
+      scenarioText,
+      listeningIntent,
+    );
     const normalizedScenario = scenarioText.toLocaleLowerCase("en-US");
-    let rejectedChineseVocal = 0;
+    let rejectedInstrumental = 0;
+    let rejectedLanguage = 0;
+    let rejectedRegion = 0;
+    let rejectedLyrics = 0;
     let rejectedNonCanonicalVersion = 0;
     let failedAudioResolution = 0;
     let trackDegraded = false;
@@ -327,27 +332,50 @@ export function createProgramGenerationService(
     const resolvedLibraryTrackCount = (): number =>
       resolved.filter(({ track }) => libraryCandidates.has(track.id)).length;
 
-    const isChineseVocal = async (track: MusicTrack): Promise<boolean> => {
-      if (!chineseOnly) return true;
-      if (hasInstrumentalMarker(`${track.title}\n${track.album}`)) return false;
+    const isEligible = async (track: MusicTrack): Promise<boolean> => {
+      if (!isPotentiallyEligibleTrack(track, normalizedListeningIntent, scenarioText)) {
+        const reason = trackEligibilityFailureReason(
+          track,
+          normalizedListeningIntent,
+          scenarioText,
+        );
+        if (reason === "instrumental") rejectedInstrumental += 1;
+        else if (reason === "language") rejectedLanguage += 1;
+        else if (reason === "region") rejectedRegion += 1;
+        else if (reason === "lyrics") rejectedLyrics += 1;
+        trackDegraded = true;
+        return false;
+      }
+      if (
+        normalizedListeningIntent.vocalMode === "any" &&
+        normalizedListeningIntent.languageScope === "any" &&
+        normalizedListeningIntent.regionScope === "any"
+      ) {
+        return true;
+      }
       try {
         const cached = lyricsCache.get(track.id);
         const lyrics =
           cached ?? (await withAbort(() => options.library.getLyrics(track.id, signal), signal));
         lyricsCache.set(track.id, lyrics);
-        if (lyrics.content === null) return false;
-        const original = lyrics.originalContent ?? lyrics.content;
-        const lyricLines = original
-          .split(/\r?\n/u)
-          .map((line) => line.replace(/\[[^\]]+\]/gu, "").replace(/[\s\p{P}\p{S}\d]/gu, ""))
-          .filter((line) => Array.from(line).length >= 2);
-        const normalized = lyricLines.join("");
-        const characters = Array.from(normalized);
-        if (characters.length < 24 || lyricLines.length < 2) return false;
-        const han = normalized.match(/\p{Script=Han}/gu)?.length ?? 0;
-        const kana = normalized.match(/[\p{Script=Hiragana}\p{Script=Katakana}]/gu)?.length ?? 0;
-        return han / characters.length >= 0.6 && kana / characters.length < 0.05;
+        const reason = trackEligibilityFailureReason(
+          track,
+          normalizedListeningIntent,
+          scenarioText,
+          lyrics,
+        );
+        if (reason === "instrumental") rejectedInstrumental += 1;
+        else if (reason === "language") rejectedLanguage += 1;
+        else if (reason === "region") rejectedRegion += 1;
+        else if (reason === "lyrics") rejectedLyrics += 1;
+        if (reason !== null) {
+          trackDegraded = true;
+          return false;
+        }
+        return true;
       } catch {
+        rejectedLyrics += 1;
+        trackDegraded = true;
         return false;
       }
     };
@@ -385,9 +413,7 @@ export function createProgramGenerationService(
         trackDegraded = true;
         return false;
       }
-      if (!(await isChineseVocal(track))) {
-        rejectedChineseVocal += 1;
-        trackDegraded = true;
+      if (!(await isEligible(track))) {
         return false;
       }
       if (!track.playable) {
@@ -555,8 +581,36 @@ export function createProgramGenerationService(
       if (resolvedLibraryTrackCount() < minimumLibraryTrackCount) {
         return "PROGRAM_GENERATION_INSUFFICIENT_LIBRARY_TRACKS";
       }
-      if (chineseOnly && rejectedChineseVocal > 0) {
+      if (
+        normalizedListeningIntent.languageScope === "chinese" &&
+        rejectedLanguage + rejectedLyrics > 0
+      ) {
         return "PROGRAM_GENERATION_INSUFFICIENT_CHINESE_TRACKS";
+      }
+      if (
+        normalizedListeningIntent.regionScope === "western" &&
+        normalizedListeningIntent.vocalMode === "vocal-only" &&
+        rejectedRegion + rejectedInstrumental + rejectedLyrics > 0
+      ) {
+        return "PROGRAM_GENERATION_INSUFFICIENT_WESTERN_VOCAL_TRACKS";
+      }
+      if (
+        normalizedListeningIntent.regionScope === "western" &&
+        rejectedRegion + rejectedLyrics > 0
+      ) {
+        return "PROGRAM_GENERATION_INSUFFICIENT_WESTERN_TRACKS";
+      }
+      if (
+        normalizedListeningIntent.vocalMode === "vocal-only" &&
+        rejectedLyrics + rejectedInstrumental > 0
+      ) {
+        return "PROGRAM_GENERATION_INSUFFICIENT_VOCAL_TRACKS";
+      }
+      if (
+        normalizedListeningIntent.languageScope !== "any" &&
+        rejectedLanguage + rejectedLyrics > 0
+      ) {
+        return "PROGRAM_GENERATION_INSUFFICIENT_LANGUAGE_TRACKS";
       }
       if (rejectedNonCanonicalVersion > 0) {
         return "PROGRAM_GENERATION_INSUFFICIENT_CANONICAL_TRACKS";
@@ -570,8 +624,30 @@ export function createProgramGenerationService(
       if (minimumLibraryTrackCount > 0 && resolvedLibraryTrackCount() < minimumLibraryTrackCount) {
         throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_LIBRARY_TRACKS");
       }
-      if (chineseOnly && rejectedChineseVocal > 0) {
+      if (
+        normalizedListeningIntent.languageScope === "chinese" &&
+        rejectedLanguage + rejectedLyrics > 0
+      ) {
         throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_CHINESE_TRACKS");
+      }
+      if (
+        normalizedListeningIntent.regionScope === "western" &&
+        normalizedListeningIntent.vocalMode === "vocal-only" &&
+        rejectedRegion + rejectedInstrumental + rejectedLyrics > 0
+      ) {
+        throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_WESTERN_VOCAL_TRACKS");
+      }
+      if (
+        normalizedListeningIntent.regionScope === "western" &&
+        rejectedRegion + rejectedLyrics > 0
+      ) {
+        throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_WESTERN_TRACKS");
+      }
+      if (
+        normalizedListeningIntent.vocalMode === "vocal-only" &&
+        rejectedLyrics + rejectedInstrumental > 0
+      ) {
+        throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_VOCAL_TRACKS");
       }
       throw new GenerationPipelineError("PROGRAM_GENERATION_NO_PLAYABLE_TRACKS");
     }
@@ -806,6 +882,10 @@ export function createProgramGenerationService(
       ? (requestedTrackCount ?? configuredTrackCount)
       : configuredTrackCount;
     const libraryTracks = options.library.candidateTracks(snapshot.profileId, 1_000);
+    const listeningIntent = normalizeProgramListeningIntent(
+      command.scenarioText,
+      command.listeningIntent,
+    );
     const context = createPlanningContext(
       {
         library: options.library,
@@ -817,7 +897,7 @@ export function createProgramGenerationService(
       snapshot.profileId,
       command.scenarioText,
       targetTrackCount,
-      command.listeningIntent ?? null,
+      listeningIntent,
       libraryTracks,
     );
     let rawPlan: unknown;
@@ -881,7 +961,7 @@ export function createProgramGenerationService(
       targetTrackCount,
       context.library.minimumLibraryTrackCount,
       command.scenarioText,
-      command.listeningIntent,
+      listeningIntent,
       lyricsCache,
       signal,
     );

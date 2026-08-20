@@ -106,13 +106,14 @@ flowchart LR
 - **Transport**：认证、DTO、状态码和事件连接；**Application**：用例、事务、取消、超时、重试和降级。
 - **Domain**：稳定规则，不依赖框架；**Ports**：Application 消费的 repository/provider 接口。
 - **Adapters/Persistence**：翻译第三方协议与 I/O，不向上泄露供应商结构。
+- 节目规划在 Application/Domain 边界由两个共享纯模块收口：`listening-intent` 将 Radio 文本和重试上下文归一为锚点、语言/地区、人声模式与类型提示；`track-eligibility` 在库内、搜索、锚点和补选路径执行同一套可播放性、歌词脚本、语言/地区和纯音乐硬校验。Provider 只能提供候选，不能放宽这些规则。
 ## 5. Feature Module Structure
 
 | Feature | Owns | Consumes | Produces | Must not own |
 |---|---|---|---|---|
 | Profiles | 档案 CRUD、profile context、受控 `avatarRef` 与 `djAvatarRef` | ProfilePreferences | Profile DTO | 登录身份、播放状态、任意头像路径/URL |
-| Radio | Profile 级对话、意图路由、澄清与单曲推荐 | Programs、Library/Planner/TTS ports、Playback | Radio turn snapshot、Generate command | Provider 协议、HTMLAudio、Program 持久化 |
-| Programs | 生成任务、节目、DJ 段、引用、历史 | EffectiveTaste、TasteBlueprint、Library application ports、Planner/Music/TTS/Fact ports | Program、PlaybackTimeline、events | HTMLAudio 状态、Library owner 表、Radio 对话 |
+| Radio | Profile 级对话、意图路由、澄清与单曲推荐、重试场景解析 | Programs、Library/Planner/TTS ports、Playback | Radio turn snapshot、Generate command | Provider 协议、HTMLAudio、Program 持久化 |
+| Programs | 生成任务、结构化听歌意图、节目、DJ 段、引用、历史与候选资格校验 | EffectiveTaste、TasteBlueprint、Library application ports、Planner/Music/TTS/Fact ports | Program、PlaybackTimeline、events | HTMLAudio 状态、Library owner 表、Radio 对话 |
 | Playback | 时间线规则、低频 checkpoint | Program timeline | Playback snapshot | 实时进度、UI Sheet |
 | Library | 搜索、导入、候选池 | MusicProvider | NormalizedTrack | 推荐与播放控制 |
 | Taste | Profile 级蓝图、自动 projection、人工 overrides、EffectiveTaste | Feedback | Taste context | Provider response、覆盖人工规则 |
@@ -150,7 +151,7 @@ sequenceDiagram
     A->>P: Validate context and start job
     P-->>W: 202 + jobId
     Note over W,X: Existing program keeps playing while generation runs
-    P->>M: Read up to 500 playable Profile library summaries
+    P->>M: Read up to 1,000 playable Profile library summaries
     M-->>P: Bounded library context
     P->>S: Resolve Provider snapshot from DeviceSettings
     S->>C: Plan with EffectiveTaste, optional TasteBlueprint, history, time, preferences and library context
@@ -181,7 +182,7 @@ sequenceDiagram
 | Failure | Boundary behavior | Result |
 |---|---|---|
 | Active Planner error / invalid JSON | End job, retain scenario, expose retry; never auto-switch Provider | Blocked |
-| Track intent unavailable | Skip invalid/foreign library IDs, duplicates, unplayable audio, non-canonical versions and failed discovery intents in order; never randomly fill from another Profile, and do not create an empty program if all intents fail | Blocked |
+| Track intent unavailable | Skip invalid/foreign library IDs, duplicates, unplayable audio, non-canonical versions, wrong language/region, instrumental tracks in vocal-only mode and failed discovery intents in order; never randomly fill from another Profile, and do not create an empty program if all intents fail | Blocked |
 | Data path / transaction error | Roll back creation | Blocked |
 | TTS failure | Fail the new generation before commit | Retain old Program |
 | Lyrics failure | Set unavailable lyric status | Continue |
@@ -190,7 +191,7 @@ sequenceDiagram
 
 阻断失败不得改变正在播放的旧节目。新的完整节目必须为每个可播出的 DJ segment 取得真实音频引用；TTS 不可用时任务失败，不提交半成品节目。
 
-Radio turn 持久化用户消息、路由决策、助手消息和可选单曲或最多 5 首推荐引用；每个 Profile 只保留最近 50 个 turn。只有明确节目、歌单、8～12 首、重新规划或替换当前节目的请求能创建 generation job；“其他、类似、再推荐”等追问固定为推荐，不得被 Provider 或本地兜底升级为节目。Radio context 带入当前节目标题、场景与曲目摘要，使推荐有明确参照；追问“最推荐哪首”只能引用最近一次推荐列表。单曲与多首推荐解析出的歌曲可被 Browser Audio Engine 作为临时 DJ 点播播放，点播快照不写入 Program、播放历史或持久队列；`PLAY NEXT` 在手动和自然切歌路径都优先消费，结束后恢复原节目队列；空节目时手动下一首直接消费该点播。成功入队不改变对话时间线，只有失败写入卡片关联错误。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，活动 Job 可由 REST Snapshot 在 Radio 重新挂载时恢复。完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Settings 的 Provider 切换先执行轻量连接与认证检测；手动“测试连接”和真正节目生成再从当前 Profile 的偏好、`EffectiveTaste`、最近 20 期历史和最多 1,000 首可播放曲目摘要（覆盖个人完整候选库）构造不落库的 8 首节目骨架 context，验证真实结构化输出。该检测不切换 Provider、不写入 Program、历史或日志正文。Programs 不直接读取 Library 表：它通过同一 Library application Port 获取上述当前 Profile 曲目摘要，按活动 Planner 最多 16 个有序原版 intent 解析所有备用候选；目标严格为 8～12 首、默认 8 首，显式约束优先，补选后不足即失败并区分中文人声、原版筛选或音频可播性原因。已有当前节目时，成功生成的新 Program 与 `program_handoff` 在同一事务提交，旧 `current_program` 保持不变；Audio Engine 只在当前曲自然结束时调用原子 activate 命令，或响应用户的显式立即切换。DeepSeek 首次结构化输出无效或被截断时，仅在同一 Provider 内以精简的合法计划契约重试一次；generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
+Radio turn 持久化用户消息、路由决策、助手消息和可选单曲或最多 5 首推荐引用；每个 Profile 只保留最近 50 个 turn。只有明确节目、歌单、8～12 首、重新规划或替换当前节目的请求能创建 generation job；“其他、类似、再推荐”等追问固定为推荐，不得被 Provider 或本地兜底升级为节目。Radio context 带入当前节目标题、场景与曲目摘要，使推荐有明确参照；追问“最推荐哪首”只能引用最近一次推荐列表。单曲与多首推荐解析出的歌曲可被 Browser Audio Engine 作为临时 DJ 点播播放，点播快照不写入 Program、播放历史或持久队列；`PLAY NEXT` 在手动和自然切歌路径都优先消费，结束后恢复原节目队列；空节目时手动下一首直接消费该点播。成功入队不改变对话时间线，只有失败写入卡片关联错误。完整节目 Job 只持久化 `profileId`、幂等键、阶段、状态、事件序列和最终 `programId`，活动 Job 可由 REST Snapshot 在 Radio 重新挂载时恢复。完整 Taste 与有界 Library context 在 Program 原子提交前只存在于内存。Settings 的 Provider 切换先执行轻量连接与认证检测；手动“测试连接”和真正节目生成再从当前 Profile 的偏好、`EffectiveTaste`、最近 20 期历史和最多 1,000 首可播放曲目摘要（覆盖个人完整候选库）构造不落库的 8 首节目骨架 context，验证真实结构化输出。该检测不切换 Provider、不写入 Program、历史或日志正文。Programs 不直接读取 Library 表：它通过同一 Library application Port 获取上述当前 Profile 曲目摘要，按活动 Planner 最多 16 个有序原版 intent 解析所有备用候选；目标严格为 8～12 首、默认 8 首，显式语言/地区/人声约束优先，补选后不足即失败并区分库内曲目、语言/地区、人声、原版筛选或音频可播性原因。语言脚本不明或歌词不可验证时，受约束的人声节目拒绝该候选；Taste 的语言比例只在场景未指定范围时作为软排序。已有当前节目时，成功生成的新 Program 与 `program_handoff` 在同一事务提交，旧 `current_program` 保持不变；Audio Engine 只在当前曲自然结束时调用原子 activate 命令，或响应用户的显式立即切换。DeepSeek 首次结构化输出无效或被截断时，仅在同一 Provider 内以精简的合法计划契约重试一次；generation job 启动时快照 Planner 与模型，Settings 切换只影响下一次生成；服务崩溃或重启时，遗留的 `queued` / `running` Job 收敛为 `PROGRAM_GENERATION_INTERRUPTED`。Audio Engine facade 统一拥有 music/voice 双通道，语音开始时在 350ms 内将音乐降至 28%，语音结束或异常时在 650ms 内恢复。
 
 反馈记忆流：`TasteBlueprint 应用 → feedback learning baseline → UI intent → explicit FeedbackEvent → TasteProjection → TasteBlueprint + TasteOverrides → Planner context`。
 历史事实不得因聚合规则变化而被重写；TasteProjection 必须可重建，TasteOverrides 不得被重建覆盖。
