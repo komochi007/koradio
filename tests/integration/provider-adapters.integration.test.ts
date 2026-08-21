@@ -204,6 +204,52 @@ describe("Codex adapter", () => {
     expect(discoverySchema?.required).toContain("expectedArtist");
   });
 
+  it("emits a Codex-compatible required list for every radio-turn object property", async () => {
+    const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-radio-schema-"));
+    const invocations: ProviderProcessInvocation[] = [];
+    const adapter = createCodexAdapter({
+      command: "codex",
+      resolveExecutable: () => Promise.resolve("/trusted/codex"),
+      runner: (invocation) => {
+        invocations.push(invocation);
+        return Promise.resolve({
+          exitCode: 0,
+          stderr: "",
+          stdout: codexJsonl({
+            decision: "chat",
+            reply: "下午好，今天想聊点什么？",
+            musicQuery: null,
+            musicQueries: [],
+            listeningIntent: null,
+          }),
+        });
+      },
+      runtimeDirectory,
+    });
+
+    await expect(
+      adapter.respond(
+        { content: "下午好", currentProgram: null, recentMessages: [] },
+        { correlationId: providerCorrelationId },
+      ),
+    ).resolves.toMatchObject({ decision: "chat" });
+
+    const invocation = invocations[0];
+    const schemaPath = invocation?.args.at(invocation.args.indexOf("--output-schema") + 1);
+    const outputSchema = JSON.parse(await readFile(schemaPath ?? "", "utf8")) as {
+      properties: {
+        listeningIntent: {
+          anyOf: Array<{ properties?: Record<string, unknown>; required?: string[] }>;
+        };
+      };
+    };
+    const listeningIntentSchema = outputSchema.properties.listeningIntent.anyOf[0];
+    expect(listeningIntentSchema?.required).toEqual(
+      expect.arrayContaining(Object.keys(listeningIntentSchema?.properties ?? {})),
+    );
+    expect(listeningIntentSchema?.required).toContain("targetTrackCount");
+  });
+
   it("classifies response schema rejection as configuration failure without retrying", async () => {
     const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-schema-rejection-"));
     let invocationCount = 0;

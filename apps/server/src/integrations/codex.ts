@@ -123,13 +123,30 @@ function parsePlan(finalMessage: string): CodexProgramPlan {
   }
 }
 
+function normalizeCodexOutputSchema(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeCodexOutputSchema(item));
+  }
+  if (typeof value !== "object" || value === null) {
+    return value;
+  }
+  const normalized = Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [key, normalizeCodexOutputSchema(item)]),
+  );
+  const properties = normalized.properties;
+  if (typeof properties === "object" && properties !== null && !Array.isArray(properties)) {
+    normalized.required = Object.keys(properties);
+  }
+  return normalized;
+}
+
 async function ensureOutputSchema(
   runtimeDirectory: string,
   name = "program-plan",
   schema: z.ZodType = codexProgramPlanOutputSchema,
 ): Promise<string> {
   const directory = resolve(runtimeDirectory);
-  const contents = `${JSON.stringify(z.toJSONSchema(schema), null, 2)}\n`;
+  const contents = `${JSON.stringify(normalizeCodexOutputSchema(z.toJSONSchema(schema)), null, 2)}\n`;
   const fingerprint = createHash("sha256").update(contents).digest("hex").slice(0, 16);
   const schemaPath = join(directory, `codex-${name}-${fingerprint}.schema.json`);
   await mkdir(directory, { mode: 0o700, recursive: true });

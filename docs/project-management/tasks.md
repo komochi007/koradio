@@ -58,7 +58,7 @@ AI 执行任务时按固定顺序操作：
 | S5 P1 全量功能 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S6 集成、质量与安全加固 | 5 | 0 | 0 | 0 | 0 | 5 |
 | S7 macOS 本机运行与后置发布工程 | 4 | 3 | 3 | 0 | 0 | 10 |
-| UX 个人本机使用体验优化 | 22 | 0 | 0 | 0 | 0 | 22 |
+| UX 个人本机使用体验优化 | 23 | 0 | 0 | 0 | 0 | 23 |
 | S8 全量外部测试与 Release Candidate | 0 | 4 | 0 | 0 | 0 | 4 |
 | S9 v1.0 发布与稳定期 | 0 | 4 | 0 | 0 | 0 | 4 |
 
@@ -200,6 +200,7 @@ AI 执行任务时按固定顺序操作：
 | `UX-21` 恢复 DJ 节目开场的个性化表达 | 已完成 | High | 修复明确节目请求被固定客服式开场覆盖、无法体现用户场景与听歌约束的问题。 | UX-20 | 项目所有者验收截图与 Radio 服务分流实现。 | 保留本地确定性节目路由、立即创建任务和既有规划约束；不新增 AI 调用、不修改 Planner、Provider、公开契约或前端。 | 开场根据场景、语言/地区/人声/类型或锚点意图生成，并以对话轮次稳定轮换句式；不同节目需求不再重复“收到，我会围绕……”模板。 | Radio 本地开场生成、单元/集成回归与本行引用的上下文文档。 | Radio 单元/集成 8 项、typecheck、lint、format、生产构建通过；项目所有者本地 Electron 开发版人工验收通过。 | 项目所有者 / 当前工作区 | 无。 |
 | `UX-22` 稳定 DeepSeek 规划与 DJ 语音失败诊断 | 已完成 | Critical | 修复 DeepSeek Flash 正式规划默认启用高强度思考而长时间失败，以及 Qwen TTS 文本长度边界不一致却被误报为“服务未就绪”的问题。 | UX-21 | 项目所有者复现的 DeepSeek/Codex Live 失败记录、Settings 检测行为、TTS helper 输入限制。 | 保持活动 Planner、旧节目失败保护、6 分钟生成预算、用户数据、模型安装和公开 REST/WS 协议不变；不自动切换 Provider 或删除本地模型/数据。 | DeepSeek Flash 正式规划显式关闭 thinking 并限制输出预算；DJ 脚本和 TTS 命令不超过 helper 的 500 字符输入上限；语音超时、无效输出、存储与配置错误可区分显示；Settings 只将完整 Planner 检测称为“测试节目规划”，不把模型状态伪装为完整 TTS 合成测试；TTS helper 不得污染已签名 app runtime。 | DeepSeek/TTS Provider、节目生成服务、Settings/Radio 文案、专项单元/集成/组件测试与本行记录。 | 受影响 57 项、完整 unit 157、integration 117、component 45、typecheck、lint、format、Node 24.18.0 production build 均通过；`0.0.200` arm64 Electron 中 Codex 完整生成 8 首并播放 Qwen DJ 语音；`0.0.202` 中 DeepSeek Flash 完整 Planner 检测约 30 秒成功、随后完整生成 8 首含 DJ 语音的新节目，生成后 strict codesign 仍通过。 | Codex / 项目所有者 | 无。 |
 | `UX-23` 对齐最小窗口 Settings 服务状态轨道 | 已完成 | Medium | 修复最小窗口下服务状态与操作文本未共享稳定右侧对齐规则的问题，并精简规划检测按钮文案。 | UX-22 | 项目所有者截图与现有 Settings 响应式布局。 | 只调整服务状态列表的窄屏 CSS、Planner 按钮文案和对应回归；不改变服务检测、规划调用、TTS、数据或其他 Settings 行为。 | 服务名称跨两行居中；每行状态和操作按钮在固定右侧轨道内水平居中且边界一致；Planner 操作显示“测试”。 | Settings 响应式 CSS、Settings UI 与 component/Chromium 几何回归。 | Settings component 14 项、typecheck、lint、format 通过；Chromium 430 × 652px 几何回归确认四行状态/操作共用 112px 右侧轨道。 | Codex / 项目所有者 | 无。 |
+| `UX-24` 修复 Codex DJ 对话结构化输出 | 已完成 | Critical | 修复 Codex 设置检测通过但实际 DJ 对话因严格 JSON Schema 被拒绝的问题。 | UX-23 | 项目所有者复现截图、Codex CLI 严格 Schema 错误与现有 Adapter。 | 只调整 Codex 内部输出 Schema 序列化和回归；不修改用户数据、公开 Contracts、Planner 选择、DeepSeek 配置或播放流程。 | Codex 对话 Schema 的每个对象属性均列入 `required`；普通闲聊可返回有效 `chat`；设置中的规划检测保持原行为。 | Codex Adapter、Provider adapter 集成测试与本机 Electron 热更新。 | Node 24.18.0 下集成、类型、lint、format、production build 通过；真实 Codex “下午好”返回 `chat`；arm64 包验证并覆盖安装 `/Applications/Koradio.app`。 | Codex / 项目所有者 | 无。 |
 
 ### S8｜全量外部测试与 Release Candidate
 
