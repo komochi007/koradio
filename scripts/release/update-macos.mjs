@@ -216,7 +216,7 @@ async function update() {
   };
   try {
     await rm(join(sourceDirectory, "node_modules"), { force: true, recursive: true });
-    await run(updaterNode, [pnpmEntry, "install", "--frozen-lockfile"], {
+    await run(updaterNode, [pnpmEntry, "install", "--force", "--frozen-lockfile"], {
       cwd: sourceDirectory,
       env: buildEnvironment,
     });

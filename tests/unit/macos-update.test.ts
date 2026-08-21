@@ -52,10 +52,14 @@ describe("macOS Personal Local Preview updater", () => {
         'await rm(join(sourceDirectory, "node_modules"), { force: true, recursive: true })',
       ),
     ).toBeLessThan(
-      updateScript.indexOf('await run(updaterNode, [pnpmEntry, "install", "--frozen-lockfile"]'),
+      updateScript.indexOf(
+        'await run(updaterNode, [pnpmEntry, "install", "--force", "--frozen-lockfile"]',
+      ),
     );
     expect(
-      updateScript.indexOf('await run(updaterNode, [pnpmEntry, "install", "--frozen-lockfile"]'),
+      updateScript.indexOf(
+        'await run(updaterNode, [pnpmEntry, "install", "--force", "--frozen-lockfile"]',
+      ),
     ).toBeLessThan(
       updateScript.indexOf("await run(\n      updaterNode,\n      [\n        buildScript,"),
     );
