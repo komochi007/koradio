@@ -318,6 +318,37 @@ test("keeps Settings selectors and profile controls aligned to their shared righ
   }
 
   await page.setViewportSize({ width: 430, height: 652 });
+  await page.goto(`${appOrigin}/settings`);
+  await expect(page.locator(".service-list li")).toHaveCount(4);
+  const serviceMetrics = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll<HTMLElement>(".service-list li")];
+    return rows.map((row) => {
+      const status = row.querySelector<HTMLElement>(".service-status");
+      const action = row.querySelector<HTMLButtonElement>("button");
+      if (status === null || action === null) {
+        throw new Error("Service status alignment metrics are unavailable");
+      }
+      const statusRect = status.getBoundingClientRect();
+      const actionRect = action.getBoundingClientRect();
+      return {
+        actionLeft: actionRect.left,
+        actionRight: actionRect.right,
+        centerDelta: Math.abs(
+          statusRect.left + statusRect.width / 2 - (actionRect.left + actionRect.width / 2),
+        ),
+        statusLeft: statusRect.left,
+        statusRight: statusRect.right,
+      };
+    });
+  });
+  expect(serviceMetrics).toHaveLength(4);
+  for (const metrics of serviceMetrics) {
+    expect(metrics.centerDelta).toBeLessThanOrEqual(1);
+    expect(metrics.statusLeft).toBeCloseTo(metrics.actionLeft, 0);
+    expect(metrics.statusRight).toBeCloseTo(metrics.actionRight, 0);
+  }
+
+  await page.setViewportSize({ width: 430, height: 652 });
   await page.goto(`${appOrigin}/radio`);
   await page.getByRole("button", { name: "切换档案" }).click();
   await expect(page.getByRole("heading", { name: "选择你的电台档案" })).toBeVisible();

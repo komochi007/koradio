@@ -576,7 +576,7 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                     }
                   }}
                 >
-                  {item.service === "planner" ? "测试节目规划" : "查看"}
+                  {item.service === "planner" ? "测试" : "查看"}
                 </button>
               </li>
             ))}
