@@ -384,7 +384,10 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
   const plannerTest = useMutation({
     mutationFn: () => testPlanner(props.transport),
     onSuccess: () => {
-      setSaveNotice({ message: "活动 AI 大脑连接检测成功。", tone: "success" });
+      setSaveNotice({
+        message: "活动 AI 大脑节目规划检测成功；DJ 语音会在生成时单独验证。",
+        tone: "success",
+      });
     },
     onError: () => {
       setSaveNotice({
@@ -573,7 +576,7 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
                     }
                   }}
                 >
-                  {item.service === "planner" || item.service === "tts" ? "Test" : "查看"}
+                  {item.service === "planner" ? "测试节目规划" : "查看"}
                 </button>
               </li>
             ))}
@@ -706,6 +709,7 @@ export function SettingsExperience(props: SettingsExperienceProps): ReactElement
             <div className="provider-readonly tts-model-card">
               <span>Qwen3-TTS 8-bit</span>
               <strong>{modelStatusLabel(ttsModel.data)}</strong>
+              <small>模型状态不等同于一档节目的完整语音合成测试。</small>
               {ttsModel.data?.state === "downloading" ? (
                 <progress
                   aria-label="Qwen3-TTS 模型下载进度"

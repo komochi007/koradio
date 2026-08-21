@@ -71,8 +71,8 @@ export const codexPlanningContextSchema = z
 export const codexDjScriptSchema = z.strictObject({
   type: z.enum(["intro", "segue", "outro"]),
   language: djLanguageSchema,
-  text: z.string().trim().min(1).max(5000),
-  displayText: z.string().trim().min(1).max(5000),
+  text: z.string().trim().min(1).max(500),
+  displayText: z.string().trim().min(1).max(500),
   estimatedTiming: z.boolean(),
 });
 
@@ -164,7 +164,7 @@ export const ttsMarkerSchema = z.strictObject({
 });
 
 export const ttsSynthesisCommandSchema = z.strictObject({
-  text: z.string().trim().min(1).max(5000),
+  text: z.string().trim().min(1).max(500),
   language: djLanguageSchema,
   voiceIdentifier: z.string().trim().min(1).max(200).optional(),
   voiceStyle: djVoiceStyleSchema,

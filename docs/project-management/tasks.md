@@ -13,7 +13,7 @@
 |---|---|
 | 当前工程阶段 | S7 Personal Local Preview 核心闭环已完成；S7-09 Electron 外壳迁移与个人本机稳定性试用进行中，公开分发工程等待项目所有者重新授权 |
 | 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06`、`S5-01`～`S5-04`、`S6-01`～`S6-05`、`S7-01`、`S7-02`、`S7-06`、`S7-08`、`AI-01`、`UX-01`～`UX-21`（含 `UX-12-01`、`UX-17-01`） |
-| 当前活动任务 | `S7-07`、`S7-09` |
+| 当前活动任务 | `S7-07`、`S7-09`、`UX-22` |
 | 初始下一任务 | `S7-07` 个人本机稳定性试用；`S7-03`～`S7-05` 仅在授权外部分发后启动 |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
@@ -198,6 +198,7 @@ AI 执行任务时按固定顺序操作：
 | `UX-19` 强制默认节目库内比例 | 已完成 | Critical | 修复 Planner 将默认节目几乎全部选为探索歌曲的问题。 | UX-18 | 项目所有者确认的近期节目观察与全场景全库优先决策。 | 不改变公开 API、数据库、原唱/版本筛选、8～12 首目标或旧节目失败保护；仅明确“只探索新歌”可取消库内下限。 | 默认节目先满足约 70% 的库内下限；Planner 输出不足时被拒绝重试，仍遗漏时 Backend 从完整库内候选补位；无法满足则给出具体失败原因并保留旧节目。 | Programs planning context、Codex/DeepSeek adapter 校验与提示、候选解析、Radio 失败文案、权威文档与回归测试。 | typecheck、Provider adapter 与 Program generation 回归（含 Planner 全探索时的全库补位）、全量质量门、桌面更新与当前 Profile Live 回归。 | Codex / 项目所有者确认 | 全库超过 1,000 首时当前版本仍受契约上限约束；库内可播放歌曲不足时节目会失败而不以探索曲静默替代。 |
 | `UX-20` 强化 DJ 语言、地区与人声意图约束 | 已完成 | Critical | 修复用户明确指定华语/欧美语种、地区或“不要纯音乐”时，Planner 与候选解析仍混入其他语种或纯音乐的问题，并让指定歌曲与重试语义可继承。 | UX-19 | 项目所有者确认的节目规划截图、语言混入/纯音乐复现、锚点歌曲与重试需求；`docs/prd.md`、`docs/user-flow.md`、`architecture.md`、`context.md`。 | 不改变 8～12 首目标、约 70% 库内下限、原唱/版本筛选、DeepSeek/Codex 切换、旧节目失败保护或公开 REST/WS 结构；只强化结构化听歌意图、候选资格校验、Provider 提示、错误诊断与 Radio 重试上下文。 | 明确语言/地区/人声要求进入 `languageScope`、`regionScope`、`vocalMode` 并在库内、搜索、锚点和补选路径统一执行；“华语/中文”不混入非中文或纯音乐，“欧美流行且不要纯音乐”不混入其他东亚语种或纯音乐；围绕指定歌曲时锚点置首；“重试一下/再试一次”继承最近一次非重试节目场景；候选不足保留旧节目并显示具体原因。 | `packages/contracts/src/programs.ts`、`apps/server/src/modules/programs/listening-intent.ts`、`track-eligibility.ts`、Programs/Radio/Provider、Radio UI、回归测试及本行引用的权威文档。 | Unit 31 文件/156 用例、Contract 7 文件/61 用例、Integration 17 文件/116 用例、Component 9 文件/45 用例、typecheck、lint、format、build 均通过；arm64 Electron 包验证与项目所有者本机人工验收通过。 | 项目所有者 / 当前工作区 | 无；真实 DeepSeek API smoke 仍按 `AI-01` 需要受控凭据，未纳入常规质量门。 |
 | `UX-21` 恢复 DJ 节目开场的个性化表达 | 已完成 | High | 修复明确节目请求被固定客服式开场覆盖、无法体现用户场景与听歌约束的问题。 | UX-20 | 项目所有者验收截图与 Radio 服务分流实现。 | 保留本地确定性节目路由、立即创建任务和既有规划约束；不新增 AI 调用、不修改 Planner、Provider、公开契约或前端。 | 开场根据场景、语言/地区/人声/类型或锚点意图生成，并以对话轮次稳定轮换句式；不同节目需求不再重复“收到，我会围绕……”模板。 | Radio 本地开场生成、单元/集成回归与本行引用的上下文文档。 | Radio 单元/集成 8 项、typecheck、lint、format、生产构建通过；项目所有者本地 Electron 开发版人工验收通过。 | 项目所有者 / 当前工作区 | 无。 |
+| `UX-22` 稳定 DeepSeek 规划与 DJ 语音失败诊断 | 进行中 | Critical | 修复 DeepSeek Flash 正式规划默认启用高强度思考而长时间失败，以及 Qwen TTS 文本长度边界不一致却被误报为“服务未就绪”的问题。 | UX-21 | 项目所有者复现的 DeepSeek/Codex Live 失败记录、Settings 检测行为、TTS helper 输入限制。 | 保持活动 Planner、旧节目失败保护、6 分钟生成预算、用户数据、模型安装和公开 REST/WS 协议不变；不自动切换 Provider 或删除本地模型/数据。 | DeepSeek Flash 正式规划显式关闭 thinking 并限制输出预算；DJ 脚本和 TTS 命令不超过 helper 的 500 字符输入上限；语音超时、无效输出、存储与配置错误可区分显示；Settings 只将完整 Planner 检测称为“测试节目规划”，不把模型状态伪装为完整 TTS 合成测试。 | DeepSeek/TTS Provider、节目生成服务、Settings/Radio 文案、专项单元/集成/组件测试与本行记录。 | 受影响 57 项、完整 unit 157、integration 117、component 45、typecheck、lint、format、Node 24.18.0 production build 均通过；真实 DeepSeek 与打包应用验收待项目所有者在 Live 环境确认。 | Codex / 项目所有者 | 真实 DeepSeek 调用产生可控费用；已安装 app 的更新器会清理其独立缓存的 `node_modules`，需项目所有者确认后才执行。 |
 
 ### S8｜全量外部测试与 Release Candidate
 

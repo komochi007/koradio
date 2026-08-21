@@ -29,6 +29,18 @@ describe("Provider ports and deterministic mocks", () => {
         djScripts: [{ ...codexProgramPlanFixture.djScripts[0], language: "en-GB" }],
       }),
     ).toThrow();
+    expect(() =>
+      codexProgramPlanSchema.parse({
+        ...codexProgramPlanFixture,
+        djScripts: [
+          {
+            ...codexProgramPlanFixture.djScripts[0],
+            text: "x".repeat(501),
+            displayText: "x".repeat(501),
+          },
+        ],
+      }),
+    ).toThrow();
   });
 
   it("returns repeatable normalized Codex and TTS mock results", async () => {

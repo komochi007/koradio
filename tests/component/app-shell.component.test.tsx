@@ -672,16 +672,9 @@ describe("App Shell", () => {
     expect(await screen.findByRole("heading", { name: "设置" })).toBeTruthy();
     expect(screen.getByLabelText<HTMLInputElement>("DeepSeek API key").value).toBe("");
     expect(screen.getByLabelText("DeepSeek API key").getAttribute("type")).toBe("password");
-    const testButtons = await screen.findAllByRole("button", { name: "Test" });
-    expect(testButtons).toHaveLength(2);
-    const ttsTestButton = testButtons.at(1);
-    if (ttsTestButton === undefined) {
-      throw new Error("Expected a TTS test button");
-    }
-    fireEvent.click(ttsTestButton);
-
-    expect(await screen.findByText("3 OF 4 SERVICES AVAILABLE")).toBeTruthy();
-    expect(screen.getByText(/你仍然可以生成和播放节目/)).toBeTruthy();
+    const testButtons = await screen.findAllByRole("button", { name: "测试节目规划" });
+    expect(testButtons).toHaveLength(1);
+    expect(await screen.findByText("3 SERVICES ONLINE")).toBeTruthy();
     expect(screen.queryByText("NOT CONFIGURED")).toBeNull();
   });
 

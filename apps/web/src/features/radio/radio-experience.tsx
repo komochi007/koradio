@@ -208,11 +208,45 @@ function failureCopy(code: string): { message: string; settings: boolean; title:
       settings: false,
     };
   }
+  if (code === "PROGRAM_GENERATION_TTS_TIMEOUT") {
+    return {
+      title: "DJ VOICE ENGINE TIMED OUT",
+      message:
+        "DJ 语音合成超时，模型已安装也可能发生。节目没有提交，旧节目会继续播放；请直接重试。",
+      settings: false,
+    };
+  }
+  if (code === "PROGRAM_GENERATION_TTS_OUTPUT_INVALID") {
+    return {
+      title: "DJ VOICE OUTPUT INVALID",
+      message:
+        "DJ 语音引擎返回了无效音频，节目没有提交。请重试；若持续发生，请在 Settings 查看语音模型状态。",
+      settings: true,
+    };
+  }
+  if (code === "PROGRAM_GENERATION_TTS_STORAGE_UNAVAILABLE") {
+    return {
+      title: "DJ VOICE STORAGE UNAVAILABLE",
+      message:
+        "DJ 语音已生成但无法安全写入本地数据目录，节目没有提交。请检查 Settings 中的数据目录后重试。",
+      settings: true,
+    };
+  }
+  if (
+    code === "PROGRAM_GENERATION_TTS_VOICE_UNAVAILABLE" ||
+    code === "PROGRAM_GENERATION_TTS_CONFIGURATION_INVALID"
+  ) {
+    return {
+      title: "DJ VOICE CONFIGURATION NEEDED",
+      message: "DJ 语音配置不可用，节目没有提交。请在 Settings 检查本地语音模型与运行环境。",
+      settings: true,
+    };
+  }
   if (code === "PROGRAM_GENERATION_TTS_UNAVAILABLE") {
     return {
       title: "DJ VOICE ENGINE UNAVAILABLE",
       message:
-        "DJ 语音服务尚未就绪，因此没有提交不完整的节目。请前往 Settings 完成语音模型配置后重试。",
+        "DJ 语音引擎当前不可用，因此没有提交不完整的节目。请在 Settings 检查本地语音模型后重试。",
       settings: true,
     };
   }

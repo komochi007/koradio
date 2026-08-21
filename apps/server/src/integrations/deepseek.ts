@@ -18,7 +18,7 @@ import { z } from "zod";
 
 const deepseekEndpoint = "https://api.deepseek.com/chat/completions";
 const defaultDeepseekTimeoutMs = 90_000;
-const defaultDeepseekPlanningMaxTokens = 12_288;
+const defaultDeepseekPlanningMaxTokens = 4_096;
 
 const deepseekCompletionSchema = z.looseObject({
   choices: z
@@ -390,6 +390,7 @@ export function createDeepseekAdapter(
             createMessages(parsedContext.data, attempt > 0),
             normalizeCallOptions(parsedOptions.data),
             defaultDeepseekPlanningMaxTokens,
+            "disabled",
           );
           const choice = completion.choices[0];
           if (choice === undefined) {

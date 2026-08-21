@@ -789,6 +789,33 @@ describe("S3-06 Program generation orchestration", () => {
     await closeHarness(harness);
   });
 
+  it("keeps the previous Program and reports the precise TTS failure", async () => {
+    const tts: TtsProvider = {
+      synthesize() {
+        return Promise.reject(Object.assign(new Error("timeout"), { code: "timeout" }));
+      },
+    };
+    const harness = await createHarness(createMockCodexProvider(), 5_000, tts);
+    const started = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "验证 DJ 语音超时" },
+      "generation-tts-timeout-001",
+    );
+
+    await harness.generation.waitForIdle();
+
+    expect(harness.generation.get(harness.profile.id, started.jobId)).toMatchObject({
+      status: "failed",
+      errorCode: "PROGRAM_GENERATION_TTS_TIMEOUT",
+    });
+    expect(harness.events.at(-1)).toMatchObject({
+      eventType: "generation.degraded",
+      payload: { capability: "tts", code: "PROGRAM_GENERATION_TTS_TIMEOUT" },
+    });
+    expect(harness.programs.list(harness.profile.id).items).toEqual([]);
+    await closeHarness(harness);
+  });
+
   it("cancels active work and discards late provider results and events", async () => {
     const called = deferred<undefined>();
     const result = deferred<unknown>();

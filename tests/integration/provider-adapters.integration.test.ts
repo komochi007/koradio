@@ -434,7 +434,7 @@ describe("DeepSeek adapter", () => {
     expect(body.messages?.[1]?.content).toBe('{"ok":true}');
   });
 
-  it("uses the fixed endpoint, bearer key, JSON output and thinking mode", async () => {
+  it("uses the fixed endpoint, bearer key and non-thinking JSON output for planning", async () => {
     const invocations: Array<{
       input: string;
       init: { body: string; headers: Record<string, string> };
@@ -474,10 +474,10 @@ describe("DeepSeek adapter", () => {
       response_format?: { type: string };
       thinking?: { type: string };
     };
-    expect(body.max_tokens).toBe(12_288);
+    expect(body.max_tokens).toBe(4_096);
     expect(body.model).toBe("deepseek-v4-pro");
     expect(body.response_format).toEqual({ type: "json_object" });
-    expect(body.thinking).toEqual({ type: "enabled" });
+    expect(body.thinking).toEqual({ type: "disabled" });
     const prompt = body.messages?.map((message) => message.content).join(" ") ?? "";
     expect(prompt).toContain("EffectiveTaste");
     expect(prompt).toContain("different primary artist");

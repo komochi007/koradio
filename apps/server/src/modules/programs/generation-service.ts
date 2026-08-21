@@ -126,7 +126,7 @@ const chineseTrackCounts = new Map([
   ["十二", 12],
 ]);
 
-const maximumDeepCommentaryCharacters = 340;
+const maximumDeepCommentaryCharacters = 120;
 
 function trimCommentary(value: string): string {
   const characters = Array.from(value.trim());
@@ -142,12 +142,25 @@ function deepCommentaryFor(
   const factText = trimCommentary(facts.map((fact) => fact.fact).join(" "));
   if (language === "zh-CN") {
     return trimCommentary(
-      `${track.title} 先把旋律向上推开，再在句尾收住；节奏不急着给出答案，留白让呼吸停在拍点之间。${track.artist} 的声音与伴奏没有争抢中心，情绪藏在音色、力度和距离感里。${factText.length === 0 ? "没有可靠来源时，我们不补写幕后传闻，只谈这段录音里真正听得见的细节。" : factText} 在这一刻听它，可以留意一次换气、鼓点的轻重或重复旋律里细小的变化；那正是它能把当前情绪带向下一首歌的原因。`,
+      `${track.title} 把旋律向上推开，再在句尾收住；${track.artist} 的声音和节奏留出了一点呼吸。${factText.length === 0 ? "此刻不补写传闻，只听见鼓点和换气里的细节。" : factText}`,
     );
   }
   return trimCommentary(
-    `${track.title} lets the melody rise, then draws it back at the end of each phrase. The rhythm leaves space rather than rushing to resolve, while ${track.artist}'s voice and the arrangement share the centre. ${factText || "There is no reliable source for a backstage story here, so we stay with what the recording itself reveals."} Listen for one breath, a change in drum weight, or a small shift inside a repeated phrase; those details let this track carry the room into the next one.`,
+    `${track.title} lets the melody rise, then draws it back. ${track.artist}'s voice and the rhythm leave room to breathe. ${factText || "No backstage story is needed here; listen for the drum weight and the small shifts inside the phrase."}`,
   );
+}
+
+function ttsFailureCode(error: unknown): string {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+  if (code === "timeout") return "PROGRAM_GENERATION_TTS_TIMEOUT";
+  if (code === "output_invalid") return "PROGRAM_GENERATION_TTS_OUTPUT_INVALID";
+  if (code === "storage_unavailable") return "PROGRAM_GENERATION_TTS_STORAGE_UNAVAILABLE";
+  if (code === "voice_unavailable") return "PROGRAM_GENERATION_TTS_VOICE_UNAVAILABLE";
+  if (code === "configuration_invalid") return "PROGRAM_GENERATION_TTS_CONFIGURATION_INVALID";
+  return "PROGRAM_GENERATION_TTS_UNAVAILABLE";
 }
 
 export function requestedProgramTrackCount(scenarioText: string): number | null {
@@ -775,8 +788,9 @@ export function createProgramGenerationService(
           if (signal.aborted || error instanceof GenerationAbortedError) {
             throw new GenerationAbortedError();
           }
-          publishDegraded(snapshot, "tts", "PROGRAM_TTS_UNAVAILABLE");
-          throw new GenerationPipelineError("PROGRAM_GENERATION_TTS_UNAVAILABLE");
+          const code = ttsFailureCode(error);
+          publishDegraded(snapshot, "tts", code);
+          throw new GenerationPipelineError(code);
         }
       }
       djScripts.push({
