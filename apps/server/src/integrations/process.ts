@@ -60,6 +60,7 @@ const providerEnvironmentKeys = [
   "LC_ALL",
   "NO_PROXY",
   "PATH",
+  "PYTHONDONTWRITEBYTECODE",
   "SSL_CERT_DIR",
   "SSL_CERT_FILE",
   "TMPDIR",
