@@ -10,7 +10,7 @@
 ## 1. System Overview
 
 Koradio 是运行在单台设备上的私人 AI 音乐电台，由 Electron 桌面壳、现有 Web Renderer 与本地 Node.js 服务组成。
-系统读取当前档案的 `EffectiveTaste`、可选 `TasteBlueprint` 与历史，通过设备级选择的 Codex 或 DeepSeek Planner 规划节目；蓝图提供软性的特征级选歌、歌曲语言比例、版本选择与串联依据，不改变节目层确定性约束。默认节目从当前 Profile 最多 1,000 首可播放库内曲目组成的完整候选范围中，强制至少约 70% 为库内曲目；Planner 校验与 Backend 全库补位共同保证该下限，只有明确“只探索新歌”才允许零库内曲目。语言比例是未指定语言时的长期近似目标；原唱与录音室原版优先则由后端统一执行，默认过滤翻唱、Cover、现场、混音、伴奏及加速/降速等变速版本，只有明确点名才可覆盖。系统经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled Python/MLX helper 调用 Qwen3-TTS 8-bit 本地模型生成 DJ 语音。
+系统读取当前档案的 `EffectiveTaste`、可选 `TasteBlueprint` 与历史，通过设备级选择的 Codex 或 DeepSeek Planner 规划节目；蓝图提供软性的特征级选歌、歌曲语言比例、版本选择与串联依据，不改变节目层确定性约束。默认节目从当前 Profile 最多 1,000 首可播放库内曲目组成的完整候选范围中按库内/库外各半规划，奇数时库外多一首；符合硬约束的库内候选不足时由库外补足，显式单一来源请求则严格失败。语言比例是未指定语言时的长期近似目标；原唱与录音室原版优先则由后端统一执行，默认过滤翻唱、Cover、现场、混音、伴奏及加速/降速等变速版本，只有明确点名才可覆盖。系统经本地服务内置的 TypeScript 网易云 `linuxapi` 适配器解析歌曲，并可通过 bundled Python/MLX helper 调用 Qwen3-TTS 8-bit 本地模型生成 DJ 语音。
 ### System boundaries
 
 - **Client**：界面、HTMLAudio、实时播放进度和短生命周期交互状态。
@@ -106,7 +106,7 @@ flowchart LR
 - **Transport**：认证、DTO、状态码和事件连接；**Application**：用例、事务、取消、超时、重试和降级。
 - **Domain**：稳定规则，不依赖框架；**Ports**：Application 消费的 repository/provider 接口。
 - **Adapters/Persistence**：翻译第三方协议与 I/O，不向上泄露供应商结构。
-- 节目规划在 Application/Domain 边界由两个共享纯模块收口：`listening-intent` 将 Radio 文本和重试上下文归一为锚点、语言/地区、人声模式与类型提示；`track-eligibility` 在库内、搜索、锚点和补选路径执行同一套可播放性、歌词脚本、语言/地区和纯音乐硬校验。Provider 只能提供候选，不能放宽这些规则。
+- 节目规划在 Application/Domain 边界由两个共享纯模块收口：`listening-intent` 将 Radio 文本和重试上下文归一为锚点、语言/地区、人声模式、来源、年代、场景、情绪和能量；`track-eligibility` 在库内、搜索、锚点和补选路径执行同一套可播放性、原始发行年代、歌词实质性、语言/地区和纯音乐硬校验。Provider 只能提供候选，不能放宽这些规则。
 ## 5. Feature Module Structure
 
 | Feature | Owns | Consumes | Produces | Must not own |
