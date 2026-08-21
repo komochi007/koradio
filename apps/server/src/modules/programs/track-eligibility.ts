@@ -13,12 +13,28 @@ import { normalizeProgramListeningIntent } from "./listening-intent.js";
 export type TrackLyricLanguage =
   "chinese" | "english" | "japanese" | "korean" | "western-languages" | "unknown";
 
-export type TrackEligibilityReason = "playable" | "instrumental" | "language" | "region" | "lyrics";
+export type TrackEligibilityReason =
+  "playable" | "instrumental" | "language" | "region" | "lyrics" | "era" | "artist";
 
 function normalizedLyricText(lyrics: TrackLyrics): string {
   return (lyrics.originalContent ?? lyrics.content ?? "")
     .replace(/\[[^\]]+\]/gu, "")
     .replace(/[\s\p{P}\p{S}\d]/gu, "");
+}
+
+function hasSubstantiveLyrics(lyrics: TrackLyrics): boolean {
+  const raw = lyrics.originalContent ?? lyrics.content ?? "";
+  const contentLines = raw
+    .split(/\r?\n/u)
+    .map((line) => line.replace(/\[[^\]]+\]/gu, "").trim())
+    .filter(
+      (line) =>
+        line.length >= 4 &&
+        !/(?:作词|作曲|编曲|制作人|演奏|演唱|录音|混音|母带|词\s*[:：]|曲\s*[:：]|lyrics?\s*[:：]|composer\s*[:：]|arranged?\s*[:：]|produced?\s*[:：]|vocals?\s*[:：])/iu.test(
+          line,
+        ),
+    );
+  return contentLines.length >= 1 && Array.from(contentLines.join("")).length >= 8;
 }
 
 function hasEastAsianScript(value: string): boolean {
@@ -60,8 +76,23 @@ export function isPotentiallyEligibleTrack(
   scenarioText: string,
 ): boolean {
   if (!track.playable) return false;
+  const normalized = normalizeProgramListeningIntent(scenarioText, intent);
   const { languageScope, regionScope, vocalMode } = intentScopes(intent, scenarioText);
   const trackText = `${track.title}\n${track.artist}\n${track.album}`;
+  if (
+    normalized.excludedArtists.some((artist) =>
+      track.artist.toLocaleLowerCase("en-US").includes(artist.toLocaleLowerCase("en-US")),
+    )
+  )
+    return false;
+  if (
+    normalized.releaseYearRange !== null &&
+    (track.releaseYear === null ||
+      track.releaseYear === undefined ||
+      track.releaseYear < normalized.releaseYearRange.from ||
+      track.releaseYear > normalized.releaseYearRange.to)
+  )
+    return false;
   if (vocalMode === "vocal-only" && hasInstrumentalMarker(trackText)) return false;
   if (vocalMode === "instrumental-only" && !hasInstrumentalMarker(trackText)) return false;
   if (
@@ -100,8 +131,23 @@ export function trackEligibilityFailureReason(
   lyrics?: TrackLyrics,
 ): TrackEligibilityReason | null {
   if (!track.playable) return "playable";
+  const normalized = normalizeProgramListeningIntent(scenarioText, intent);
   const { languageScope, regionScope, vocalMode } = intentScopes(intent, scenarioText);
   const trackText = `${track.title}\n${track.artist}\n${track.album}`;
+  if (
+    normalized.excludedArtists.some((artist) =>
+      track.artist.toLocaleLowerCase("en-US").includes(artist.toLocaleLowerCase("en-US")),
+    )
+  )
+    return "artist";
+  if (
+    normalized.releaseYearRange !== null &&
+    (track.releaseYear === null ||
+      track.releaseYear === undefined ||
+      track.releaseYear < normalized.releaseYearRange.from ||
+      track.releaseYear > normalized.releaseYearRange.to)
+  )
+    return "era";
   if (vocalMode === "vocal-only" && hasInstrumentalMarker(trackText)) return "instrumental";
   if (vocalMode === "instrumental-only" && !hasInstrumentalMarker(trackText)) return "instrumental";
   if (
@@ -113,6 +159,7 @@ export function trackEligibilityFailureReason(
   }
   if (vocalMode === "vocal-only" || languageScope !== "any" || regionScope !== "any") {
     if (lyrics === undefined || lyrics.content === null) return "lyrics";
+    if (vocalMode === "vocal-only" && !hasSubstantiveLyrics(lyrics)) return "lyrics";
     const lyricLanguage = classifyTrackLyrics(lyrics);
     if (vocalMode === "vocal-only" && lyricLanguage === "unknown") return "lyrics";
     if (regionScope === "western" && lyricLanguage !== "western-languages") return "region";

@@ -4,7 +4,6 @@ import {
   radioConversationSchema,
   radioTurnSchema,
   type CreateRadioTurnCommand,
-  type ProgramListeningIntent,
   type RadioConversation,
   type RadioTurn,
 } from "@koradio/contracts";
@@ -92,75 +91,6 @@ function requestedRecommendationArtist(content: string): string | undefined {
     content,
   );
   return match?.[1]?.trim().toLowerCase();
-}
-
-function acknowledgementFocus(intent: ProgramListeningIntent): string {
-  if (intent.anchorTrack !== null)
-    return `《${intent.anchorTrack.title}》的${intent.similarityDimensions.join("、")}线索`;
-  if (intent.regionScope === "western" && intent.genreHints.includes("pop")) return "欧美流行人声";
-  if (intent.regionScope === "western") return "欧美语种人声";
-  if (intent.languageScope === "chinese") return "华语人声";
-  if (intent.languageScope === "japanese") return "日语歌曲";
-  if (intent.languageScope === "korean") return "韩语歌曲";
-  if (intent.vocalMode === "instrumental-only") return "纯音乐";
-  if (intent.vocalMode === "vocal-only") return "有人声的歌曲";
-  return "你要的场景和氛围";
-}
-
-function acknowledgementScene(content: string): string {
-  if (/雨天|下雨/u.test(content)) return "雨天就把声音放近一点";
-  if (/秋日|秋天/u.test(content)) return "秋日的晴光适合留在旋律里";
-  if (/夜晚|晚上|睡前/u.test(content)) return "夜里适合留一点呼吸感";
-  if (/通勤/u.test(content)) return "通勤路上需要一点恰好的推力";
-  if (/写作|写东西|阅读|学习|工作/u.test(content)) return "这一段先留住专注的空间";
-  if (/抒情|柔和|温柔|安静|放松/u.test(content)) return "这一段不用急着把情绪推高";
-  return "我先把你要的听感定住";
-}
-
-function acknowledgementVariant(content: string, recentTurnCount: number): number {
-  return (
-    Array.from(content).reduce(
-      (total, character) => total + (character.codePointAt(0) ?? 0),
-      recentTurnCount,
-    ) % 3
-  );
-}
-
-function replyForVariant(
-  replies: readonly [string, string, string],
-  content: string,
-  recentTurnCount: number,
-): string {
-  return replies[acknowledgementVariant(content, recentTurnCount)] ?? replies[0];
-}
-
-export function programAcknowledgement(
-  content: string,
-  intent: ProgramListeningIntent,
-  recentTurnCount: number,
-): string {
-  const focus = acknowledgementFocus(intent);
-  if (/\p{Script=Han}/u.test(content)) {
-    const scene = acknowledgementScene(content);
-    return replyForVariant(
-      [
-        `好，${scene}。这档会以${focus}为线索，把情绪和节奏慢慢接起来。`,
-        `${scene}；我会沿着${focus}铺开这一段听感。`,
-        `这就对上了：${scene}。我会先定住${focus}的方向，再让整档节目自然展开。`,
-      ],
-      content,
-      recentTurnCount,
-    );
-  }
-  return replyForVariant(
-    [
-      "That gives us a clear starting point. I’ll shape the programme around the mood you described and let the pacing breathe.",
-      "Nice direction — I’ll keep the atmosphere in focus and build the programme with a natural arc.",
-      "I’ve got the feel of it. I’ll set the tone first, then let the programme unfold at its own pace.",
-    ],
-    content,
-    recentTurnCount,
-  );
 }
 
 export interface CreateRadioServiceOptions {
@@ -254,22 +184,23 @@ export function createRadioService(options: CreateRadioServiceOptions) {
               musicQuery: null,
               musicQueries: [],
             }
-          : deterministicProgram
-            ? {
-                decision: "program" as const,
-                reply: programAcknowledgement(scenarioText, listeningIntent, recent.length),
-                musicQuery: null,
-                musicQueries: [],
+          : await (async () => {
+              const assistant =
+                typeof options.assistant === "function" ? options.assistant() : options.assistant;
+              const output = radioAssistantOutputSchema.safeParse(
+                await assistant.respond(context, { correlationId: randomId() }),
+              );
+              if (!output.success) throw new RadioTurnUnavailableError();
+              if (deterministicProgram && output.data.decision !== "program") {
+                return {
+                  ...output.data,
+                  decision: "program" as const,
+                  musicQuery: null,
+                  musicQueries: [],
+                };
               }
-            : await (async () => {
-                const assistant =
-                  typeof options.assistant === "function" ? options.assistant() : options.assistant;
-                const output = radioAssistantOutputSchema.safeParse(
-                  await assistant.respond(context, { correlationId: randomId() }),
-                );
-                if (!output.success) throw new RadioTurnUnavailableError();
-                return output.data;
-              })();
+              return output.data;
+            })();
       let track = null;
       const recommendedTracks: NonNullable<RadioTurn["recommendedTracks"]> = [];
       let programJobId: string | null = null;
@@ -338,7 +269,7 @@ export function createRadioService(options: CreateRadioServiceOptions) {
       } else if (response.decision === "program") {
         programJobId = options.programs.start(
           profileId,
-          { scenarioText, listeningIntent },
+          { scenarioText, listeningIntent: response.listeningIntent ?? listeningIntent },
           `radio:${idempotencyKey}`,
         ).jobId;
       }

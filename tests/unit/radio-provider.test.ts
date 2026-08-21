@@ -8,7 +8,6 @@ import {
   isAnchorProgramRequest,
   parseAnchorTrack,
   parseProgramListeningIntent,
-  programAcknowledgement,
 } from "../../apps/server/src/modules/radio/service.js";
 
 describe("UX-11 mock Radio intent routing", () => {
@@ -38,10 +37,14 @@ describe("UX-11 mock Radio intent routing", () => {
       title: "半句再见",
       artist: null,
     });
+    expect(parseAnchorTrack("最好包含张震岳的《搬家》以及类似的歌曲")).toEqual({
+      title: "搬家",
+      artist: "张震岳",
+    });
     expect(parseAnchorTrack("围绕华语歌曲规划一档歌单")).toBeNull();
     expect(
       parseProgramListeningIntent("围绕《半句再见》规划一档华语相似歌单，重点关注旋律和音色"),
-    ).toEqual({
+    ).toMatchObject({
       anchorTrack: { title: "半句再见", artist: null },
       similarityDimensions: ["melody", "timbre"],
       languageConstraint: "chinese-vocal",
@@ -57,7 +60,12 @@ describe("UX-11 mock Radio intent routing", () => {
     const service = createRadioService({
       assistant: {
         respond() {
-          throw new Error("deterministic program requests must not call the assistant");
+          return Promise.resolve({
+            decision: "program",
+            reply: "我会把这一段听感慢慢接起来。",
+            musicQuery: null,
+            musicQueries: [],
+          });
         },
       },
       currentProgram: { current: () => null },
@@ -95,7 +103,7 @@ describe("UX-11 mock Radio intent routing", () => {
     );
 
     expect(turn.decision).toBe("program");
-    expect(capturedCommand).toEqual({
+    expect(capturedCommand).toMatchObject({
       scenarioText: "围绕《Space Song》规划一档相似歌单",
       listeningIntent: {
         anchorTrack: { title: "Space Song", artist: null },
@@ -116,25 +124,6 @@ describe("UX-11 mock Radio intent routing", () => {
       vocalMode: "vocal-only",
       genreHints: ["pop"],
     });
-  });
-
-  it("keeps deterministic programme routing while tailoring its acknowledgement to the request", () => {
-    const rainyChinese = programAcknowledgement(
-      "帮我规划一档适合雨天听的华语歌单，情绪偏抒情或柔和一点的",
-      parseProgramListeningIntent("帮我规划一档适合雨天听的华语歌单，情绪偏抒情或柔和一点的"),
-      0,
-    );
-    const westernPop = programAcknowledgement(
-      "规划一档欧美流行歌单，不要纯音乐",
-      parseProgramListeningIntent("规划一档欧美流行歌单，不要纯音乐"),
-      0,
-    );
-
-    expect(rainyChinese).toContain("雨天");
-    expect(rainyChinese).toContain("华语人声");
-    expect(westernPop).toContain("欧美流行人声");
-    expect(westernPop).not.toBe(rainyChinese);
-    expect(westernPop).not.toContain("收到，我会围绕");
   });
 
   it("reuses the original scenario when the user asks to retry", async () => {
@@ -167,7 +156,12 @@ describe("UX-11 mock Radio intent routing", () => {
     const service = createRadioService({
       assistant: {
         respond() {
-          throw new Error("retry should not call the assistant");
+          return Promise.resolve({
+            decision: "program",
+            reply: "我会按刚才的方向重新整理。",
+            musicQuery: null,
+            musicQueries: [],
+          });
         },
       },
       currentProgram: { current: () => null },

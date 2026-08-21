@@ -1,4 +1,4 @@
-import { radioTurnDecisionSchema } from "@koradio/contracts";
+import { programListeningIntentSchema, radioTurnDecisionSchema } from "@koradio/contracts";
 import { z } from "zod";
 
 import { providerCallOptionsSchema, type ProviderCallOptions } from "../programs/index.js";
@@ -34,6 +34,7 @@ export const radioAssistantOutputSchema = z.strictObject({
   reply: z.string().trim().min(1).max(5000),
   musicQuery: z.string().trim().min(1).max(100).nullable(),
   musicQueries: z.array(z.string().trim().min(1).max(100)).max(5).default([]),
+  listeningIntent: programListeningIntentSchema.nullable().default(null),
 });
 
 export interface RadioAssistantProvider {

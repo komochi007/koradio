@@ -15,24 +15,27 @@ export interface PlanningContextDependencies {
 
 const planningLibraryCandidateLimit = 1_000;
 
-function minimumLibraryTrackCount(
+function sourceTrackCounts(
   scenarioText: string,
-  preferredCount: number,
   targetTrackCount: number,
   listeningIntent: ProgramListeningIntent | null,
   libraryTracks: MusicTrack[],
-): number {
-  const normalized = scenarioText.toLocaleLowerCase("en-US");
-  if (/(?:只探索|只要新歌|全部探索|only\s*(?:new|discovery|explore))/iu.test(normalized)) {
-    return 0;
-  }
-  const requestedMinimum = /(?:只听库内|只用库内|全部库内|only\s*library)/iu.test(normalized)
-    ? targetTrackCount
-    : preferredCount;
+): { library: number; discovery: number } {
+  const sourceMode = listeningIntent?.sourceMode ?? "balanced";
+  const requestedLibrary =
+    sourceMode === "library-only"
+      ? targetTrackCount
+      : sourceMode === "discovery-only"
+        ? 0
+        : Math.floor(targetTrackCount / 2);
   const eligibleLibraryCount = libraryTracks.filter((track) =>
     isPotentiallyEligibleTrack(track, listeningIntent, scenarioText),
   ).length;
-  return Math.min(requestedMinimum, eligibleLibraryCount);
+  const library = Math.min(requestedLibrary, eligibleLibraryCount);
+  return {
+    library,
+    discovery: sourceMode === "library-only" ? 0 : targetTrackCount - library,
+  };
 }
 
 export function createPlanningContext(
@@ -47,9 +50,11 @@ export function createPlanningContext(
     prefetchedLibraryTracks ??
     dependencies.library.candidateTracks(profileId, planningLibraryCandidateLimit);
   const taste = dependencies.taste.get(profileId);
-  const preferredLibraryTrackCount = Math.min(
-    libraryTracks.length,
-    Math.round(targetTrackCount * 0.7),
+  const sourceCounts = sourceTrackCounts(
+    scenarioText,
+    targetTrackCount,
+    listeningIntent,
+    libraryTracks,
   );
   return codexPlanningContextSchema.parse({
     scenarioText,
@@ -71,17 +76,9 @@ export function createPlanningContext(
         durationMs: track.durationMs,
       })),
       maximumTracks: targetTrackCount,
-      preferredLibraryTrackCount,
-      minimumLibraryTrackCount: Math.min(
-        libraryTracks.length,
-        minimumLibraryTrackCount(
-          scenarioText,
-          preferredLibraryTrackCount,
-          targetTrackCount,
-          listeningIntent,
-          libraryTracks,
-        ),
-      ),
+      preferredLibraryTrackCount: sourceCounts.library,
+      minimumLibraryTrackCount: sourceCounts.library,
+      requiredDiscoveryTrackCount: sourceCounts.discovery,
     },
     currentTime: dependencies.now().toISOString(),
     preferences: {

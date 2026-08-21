@@ -36,6 +36,7 @@ export const codexPlanningContextFixture = {
     maximumTracks: 5,
     preferredLibraryTrackCount: 1,
     minimumLibraryTrackCount: 1,
+    requiredDiscoveryTrackCount: 0,
   },
   currentTime: "2026-07-17T20:00:00.000Z",
   preferences: {

@@ -25,6 +25,60 @@ function requestedGenreHints(content: string): string[] {
   return hints;
 }
 
+function releaseYearRange(content: string): ProgramListeningIntent["releaseYearRange"] {
+  const decade = /(?:^|\D)((?:19|20)\d0)\s*年代/u.exec(content)?.[1];
+  if (decade !== undefined) {
+    const from = Number.parseInt(decade, 10);
+    return { from, to: from + 9 };
+  }
+  const range = /(19\d{2}|20\d{2})\s*(?:到|至|-|—)\s*(19\d{2}|20\d{2})/u.exec(content);
+  if (range?.[1] !== undefined && range[2] !== undefined) {
+    return { from: Number.parseInt(range[1], 10), to: Number.parseInt(range[2], 10) };
+  }
+  return null;
+}
+
+function energyTarget(content: string): ProgramListeningIntent["energyTarget"] {
+  if (/(?:中高能量|中高强度|明快有劲|活力)/u.test(content)) return "mid-high";
+  if (/(?:中低能量|低中能量|不太激烈|柔和)/u.test(content)) return "low-mid";
+  if (/(?:高能量|高强度|热烈|亢奋)/u.test(content)) return "high";
+  if (/(?:低能量|安静|放松|睡前)/u.test(content)) return "low";
+  if (/(?:中等能量|适中)/u.test(content)) return "mid";
+  return null;
+}
+
+function sourceMode(content: string): ProgramListeningIntent["sourceMode"] {
+  if (/(?:只听库内|只用库内|全部库内|only\s*library)/iu.test(content)) return "library-only";
+  if (/(?:只探索|只要新歌|全部探索|only\s*(?:new|discovery|explore))/iu.test(content)) {
+    return "discovery-only";
+  }
+  return "balanced";
+}
+
+function sceneHints(content: string): string[] {
+  const values = [
+    [/(?:晴朗|晴天|阳光)/u, "晴朗"],
+    [/(?:阴雨|雨天|下雨)/u, "阴雨"],
+    [/(?:秋日|秋天)/u, "秋日"],
+    [/(?:午后|下午)/u, "午后"],
+    [/(?:写作|写东西|工作|办公)/u, "工作"],
+    [/(?:阅读|看书)/u, "阅读"],
+    [/(?:放松|休息)/u, "放松"],
+  ] as const;
+  return values.filter(([pattern]) => pattern.test(content)).map(([, value]) => value);
+}
+
+function moodHints(content: string): string[] {
+  const values = [
+    [/(?:轻快|轻盈)/u, "轻快"],
+    [/(?:明亮|晴朗)/u, "明亮"],
+    [/(?:灵动|俏皮)/u, "灵动"],
+    [/(?:柔和|温柔)/u, "柔和"],
+    [/(?:律动|groove)/iu, "律动"],
+  ] as const;
+  return values.filter(([pattern]) => pattern.test(content)).map(([, value]) => value);
+}
+
 export function isProgramRetryRequest(content: string): boolean {
   return retryPattern.test(content.trim());
 }
@@ -49,7 +103,17 @@ export function parseAnchorTrack(content: string): ProgramListeningIntent["ancho
   const parts = raw.split(/\s+(?:-|—|\/|\\)\s+|\s+by\s+/iu).map((part) => part.trim());
   const title = parts[0]?.replace(/(?:这首歌|这首|这支歌)$/u, "").trim();
   if (title === undefined || title.length < 2) return null;
-  return { title, artist: parts[1] === undefined || parts[1].length === 0 ? null : parts[1] };
+  const namedArtist =
+    quoted === undefined
+      ? undefined
+      : new RegExp(`([^，。！？!?\\n]{2,80})的[《「“"]${quoted}[》」”"]`, "u")
+          .exec(content)?.[1]
+          ?.replace(/^(?:最好|请|想要|希望)?(?:包含|收录|加入|放入)?/u, "")
+          .trim();
+  return {
+    title,
+    artist: parts[1] === undefined || parts[1].length === 0 ? (namedArtist ?? null) : parts[1],
+  };
 }
 
 export function parseProgramListeningIntent(content: string): ProgramListeningIntent {
@@ -112,6 +176,13 @@ export function parseProgramListeningIntent(content: string): ProgramListeningIn
     regionScope,
     vocalMode,
     genreHints: requestedGenreHints(content),
+    sourceMode: sourceMode(content),
+    requiredArtists: [],
+    excludedArtists: [],
+    releaseYearRange: releaseYearRange(content),
+    sceneHints: sceneHints(content),
+    moodHints: moodHints(content),
+    energyTarget: energyTarget(content),
   });
 }
 
@@ -123,19 +194,20 @@ export function normalizeProgramListeningIntent(
     listeningIntent ?? parseProgramListeningIntent(scenarioText),
   );
   const inferred = parseProgramListeningIntent(scenarioText);
+  const languageScope =
+    parsed.languageScope !== "any"
+      ? parsed.languageScope
+      : parsed.languageConstraint === "chinese-vocal"
+        ? "chinese"
+        : inferred.languageScope;
   return programListeningIntentSchema.parse({
     ...parsed,
-    languageScope:
-      parsed.languageScope !== "any"
-        ? parsed.languageScope
-        : parsed.languageConstraint === "chinese-vocal"
-          ? "chinese"
-          : inferred.languageScope,
+    languageScope,
     regionScope: parsed.regionScope !== "any" ? parsed.regionScope : inferred.regionScope,
     vocalMode:
-      parsed.vocalMode !== "any"
-        ? parsed.vocalMode
-        : parsed.languageConstraint === "chinese-vocal"
+      parsed.vocalMode === "instrumental-only"
+        ? "instrumental-only"
+        : languageScope !== "any"
           ? "vocal-only"
           : inferred.vocalMode,
     genreHints: parsed.genreHints.length > 0 ? parsed.genreHints : inferred.genreHints,

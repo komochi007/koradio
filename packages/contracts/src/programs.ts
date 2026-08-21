@@ -39,6 +39,8 @@ export const programRegionScopeSchema = z.enum([
   "korea",
 ]);
 export const programVocalModeSchema = z.enum(["any", "vocal-only", "instrumental-only"]);
+export const programSourceModeSchema = z.enum(["balanced", "library-only", "discovery-only"]);
+export const programEnergyTargetSchema = z.enum(["low", "low-mid", "mid", "mid-high", "high"]);
 export const programListeningIntentSchema = z.strictObject({
   anchorTrack: z
     .strictObject({
@@ -52,6 +54,22 @@ export const programListeningIntentSchema = z.strictObject({
   regionScope: programRegionScopeSchema.default("any"),
   vocalMode: programVocalModeSchema.default("any"),
   genreHints: z.array(z.string().trim().min(1).max(40)).max(4).default([]),
+  sourceMode: programSourceModeSchema.default("balanced"),
+  targetTrackCount: z.number().int().min(8).max(12).optional(),
+  requiredArtists: z.array(z.string().trim().min(1).max(300)).max(6).default([]),
+  excludedArtists: z.array(z.string().trim().min(1).max(300)).max(12).default([]),
+  releaseYearRange: z
+    .strictObject({
+      from: z.number().int().min(1900).max(2100),
+      to: z.number().int().min(1900).max(2100),
+    })
+    .refine((value) => value.from <= value.to)
+    .nullable()
+    .default(null),
+  dominantLanguageShare: z.number().min(0.5).max(1).default(0.75),
+  sceneHints: z.array(z.string().trim().min(1).max(120)).max(6).default([]),
+  moodHints: z.array(z.string().trim().min(1).max(80)).max(6).default([]),
+  energyTarget: programEnergyTargetSchema.nullable().default(null),
 });
 export const djCitationSchema = z.strictObject({
   id: z.uuid(),
@@ -162,5 +180,7 @@ export type ListeningSimilarityDimension = z.infer<typeof listeningSimilarityDim
 export type ProgramLanguageScope = z.infer<typeof programLanguageScopeSchema>;
 export type ProgramRegionScope = z.infer<typeof programRegionScopeSchema>;
 export type ProgramVocalMode = z.infer<typeof programVocalModeSchema>;
+export type ProgramSourceMode = z.infer<typeof programSourceModeSchema>;
+export type ProgramEnergyTarget = z.infer<typeof programEnergyTargetSchema>;
 export type PlaybackCheckpoint = z.infer<typeof playbackCheckpointSchema>;
 export type SavePlaybackCheckpointCommand = z.infer<typeof savePlaybackCheckpointCommandSchema>;

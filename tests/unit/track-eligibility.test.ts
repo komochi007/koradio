@@ -11,7 +11,7 @@ import { parseProgramListeningIntent } from "../../apps/server/src/modules/progr
 const scenarioText = "规划一档欧美流行歌单，不要纯音乐";
 const intent = parseProgramListeningIntent(scenarioText);
 
-function track(title: string, artist: string, album = "Fixture") {
+function track(title: string, artist: string, album = "Fixture", releaseYear?: number) {
   return musicTrackSchema.parse({
     id: `00000000-0000-4000-8000-${String(title.length).padStart(12, "0")}`,
     source: "netease",
@@ -24,6 +24,7 @@ function track(title: string, artist: string, album = "Fixture") {
     lyricStatus: "available",
     playable: true,
     originMode: "mock",
+    releaseYear: releaseYear ?? null,
   });
 }
 
@@ -58,5 +59,35 @@ describe("track eligibility", () => {
     const instrumental = track("Midnight Signal (Piano Version)", "English Artist");
     expect(isPotentiallyEligibleTrack(instrumental, intent, scenarioText)).toBe(false);
     expect(trackEligibilityFailureReason(instrumental, intent, scenarioText)).toBe("instrumental");
+  });
+
+  it("treats named language requests as vocal-only and rejects credit-only theme tracks", () => {
+    const chineseScenario = "规划一档华语歌单";
+    const chineseIntent = parseProgramListeningIntent(chineseScenario);
+    const theme = track("Merry Christmas Mr. Lawrence Main Theme", "坂本龙一");
+
+    expect(chineseIntent.vocalMode).toBe("vocal-only");
+    expect(
+      trackEligibilityFailureReason(
+        theme,
+        chineseIntent,
+        chineseScenario,
+        lyrics("作曲：坂本龙一\n编曲：坂本龙一\n演奏：坂本龙一"),
+      ),
+    ).toBe("lyrics");
+  });
+
+  it("rejects tracks outside an explicitly requested original release period", () => {
+    const periodScenario = "规划一档 1990 年代的华语歌单";
+    const periodIntent = parseProgramListeningIntent(periodScenario);
+
+    expect(
+      trackEligibilityFailureReason(
+        track("旧日回声", "测试歌手", "Fixture", 2003),
+        periodIntent,
+        periodScenario,
+        lyrics("在旧街灯下我们慢慢走过漫长的夜晚"),
+      ),
+    ).toBe("era");
   });
 });

@@ -34,6 +34,7 @@ import {
   profileSchema,
   programDetailSchema,
   programGenerationSnapshotSchema,
+  programListeningIntentSchema,
   programListResponseSchema,
   programSchema,
   savePlaybackCheckpointCommandSchema,
@@ -339,6 +340,26 @@ describe("v1 resource and command contracts", () => {
     expect(generateProgramCommandSchema.parse({ scenarioText: "夜晚写作" })).toEqual({
       scenarioText: "夜晚写作",
     });
+    expect(
+      programListeningIntentSchema.parse({
+        anchorTrack: null,
+        similarityDimensions: ["emotion"],
+        languageConstraint: "any",
+      }),
+    ).toMatchObject({
+      sourceMode: "balanced",
+      dominantLanguageShare: 0.75,
+      releaseYearRange: null,
+      energyTarget: null,
+    });
+    expect(
+      programListeningIntentSchema.safeParse({
+        anchorTrack: null,
+        similarityDimensions: ["emotion"],
+        languageConstraint: "any",
+        releaseYearRange: { from: 2000, to: 1999 },
+      }).success,
+    ).toBe(false);
     expect(playbackCheckpointSchema.parse(checkpoint)).toEqual(checkpoint);
     expect(
       savePlaybackCheckpointCommandSchema.parse({

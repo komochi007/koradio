@@ -307,6 +307,7 @@ export function createProgramGenerationService(
     libraryTracks: MusicTrack[],
     targetTrackCount: number,
     minimumLibraryTrackCount: number,
+    requiredDiscoveryTrackCount: number,
     scenarioText: string,
     listeningIntent: GenerateProgramCommand["listeningIntent"],
     lyricsCache: Map<string, TrackLyrics>,
@@ -322,7 +323,11 @@ export function createProgramGenerationService(
     const recentTrackIds = new Set(
       options.programs
         .list(snapshot.profileId, undefined, 10)
-        .items.flatMap((program) => program.trackIds),
+        .items.filter(
+          (program, index) =>
+            index < 3 || Date.parse(program.createdAt) >= now().getTime() - 24 * 60 * 60_000,
+        )
+        .flatMap((program) => program.trackIds),
     );
     const normalizedListeningIntent = normalizeProgramListeningIntent(
       scenarioText,
@@ -344,6 +349,7 @@ export function createProgramGenerationService(
 
     const resolvedLibraryTrackCount = (): number =>
       resolved.filter(({ track }) => libraryCandidates.has(track.id)).length;
+    const resolvedDiscoveryTrackCount = (): number => resolved.length - resolvedLibraryTrackCount();
 
     const isEligible = async (track: MusicTrack): Promise<boolean> => {
       if (!isPotentiallyEligibleTrack(track, normalizedListeningIntent, scenarioText)) {
@@ -404,6 +410,18 @@ export function createProgramGenerationService(
       const artistKey = track.artist.trim().toLocaleLowerCase("en-US");
       const explicitArtist = artistKey.length > 0 && normalizedScenario.includes(artistKey);
       const explicitTrack = isExplicitTrack(track);
+      if (!forced && normalizedListeningIntent.sourceMode === "library-only" && discovery)
+        return false;
+      if (!forced && normalizedListeningIntent.sourceMode === "discovery-only" && !discovery)
+        return false;
+      if (
+        !forced &&
+        normalizedListeningIntent.sourceMode === "balanced" &&
+        !discovery &&
+        resolvedLibraryTrackCount() >= minimumLibraryTrackCount
+      ) {
+        return false;
+      }
       if (
         discovery &&
         resolvedLibraryTrackCount() < minimumLibraryTrackCount &&
@@ -666,7 +684,9 @@ export function createProgramGenerationService(
     }
     if (
       (strictTrackCount && resolved.length !== targetTrackCount) ||
-      resolvedLibraryTrackCount() < minimumLibraryTrackCount
+      resolvedLibraryTrackCount() < minimumLibraryTrackCount ||
+      (normalizedListeningIntent.sourceMode === "discovery-only" &&
+        resolvedDiscoveryTrackCount() < requiredDiscoveryTrackCount)
     ) {
       throw new GenerationPipelineError(insufficientTracksCode());
     }
@@ -892,14 +912,14 @@ export function createProgramGenerationService(
     ) {
       throw new GenerationPipelineError("PROGRAM_GENERATION_TRACK_COUNT_OUT_OF_RANGE");
     }
-    const targetTrackCount = strictTrackCount
-      ? (requestedTrackCount ?? configuredTrackCount)
-      : configuredTrackCount;
     const libraryTracks = options.library.candidateTracks(snapshot.profileId, 1_000);
     const listeningIntent = normalizeProgramListeningIntent(
       command.scenarioText,
       command.listeningIntent,
     );
+    const targetTrackCount = strictTrackCount
+      ? (requestedTrackCount ?? listeningIntent.targetTrackCount ?? configuredTrackCount)
+      : configuredTrackCount;
     const context = createPlanningContext(
       {
         library: options.library,
@@ -974,6 +994,7 @@ export function createProgramGenerationService(
       libraryTracks,
       targetTrackCount,
       context.library.minimumLibraryTrackCount,
+      context.library.requiredDiscoveryTrackCount,
       command.scenarioText,
       listeningIntent,
       lyricsCache,

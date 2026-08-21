@@ -176,6 +176,7 @@ describe("S3-06 Program generation orchestration", () => {
       maximumTracks: 5,
       preferredLibraryTrackCount: 0,
       minimumLibraryTrackCount: 0,
+      requiredDiscoveryTrackCount: 5,
     });
 
     const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
@@ -371,15 +372,13 @@ describe("S3-06 Program generation orchestration", () => {
 
     expect(capturedContext?.library).toMatchObject({
       maximumTracks: 5,
-      preferredLibraryTrackCount: 4,
-      minimumLibraryTrackCount: 4,
+      preferredLibraryTrackCount: 2,
+      minimumLibraryTrackCount: 2,
     });
     expect(capturedContext?.library.tracks).toHaveLength(125);
     expect(detail.tracks.map((track) => track.title).sort()).toEqual([
       "Library Aware 121",
       "Library Aware 122",
-      "Library Aware 123",
-      "Library Aware 124",
       "Library Aware 126",
     ]);
     expect(searchInvocations).toEqual(["adjacent discovery"]);

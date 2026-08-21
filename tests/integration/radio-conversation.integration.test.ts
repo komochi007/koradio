@@ -195,6 +195,13 @@ describe("UX-11 Radio conversation", () => {
             musicQuery: null,
           });
         }
+        if (content.includes("秋日")) {
+          return Promise.resolve({
+            decision: "program",
+            reply: "晴朗的秋日午后，旋律可以轻一点，也亮一点。",
+            musicQuery: null,
+          });
+        }
         return Promise.resolve({
           decision: "chat",
           reply: "我在，继续说吧。",

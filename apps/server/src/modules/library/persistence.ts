@@ -26,6 +26,7 @@ interface MusicTrackRow {
   title: string;
   artist: string;
   album: string;
+  release_year: number | null;
   artwork_url: string | null;
   duration_ms: number;
   lyric_status: "available" | "untimed" | "unavailable";
@@ -46,6 +47,7 @@ const libraryItemRowSchema: z.ZodType<LibraryItemRow> = z.object({
   title: z.string(),
   artist: z.string(),
   album: z.string(),
+  release_year: z.number().nullable(),
   artwork_url: z.string().nullable(),
   duration_ms: z.number(),
   lyric_status: z.enum(["available", "untimed", "unavailable"]),
@@ -152,6 +154,7 @@ function mapTrack(row: MusicTrackRow): MusicTrack {
     title: row.title,
     artist: row.artist,
     album: row.album,
+    releaseYear: row.release_year,
     artworkUrl: normalizeArtworkUrl(row.artwork_url),
     durationMs: row.duration_ms,
     lyricStatus:
@@ -199,18 +202,19 @@ function decodeCursor(cursor: string | undefined): number {
 
 export function createLibraryRepository(client: DatabaseSync): LibraryRepository {
   const trackColumns = `
-    id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, lyrics_queried, playable, origin_mode
+    id, source, source_track_id, title, artist, album, release_year, artwork_url, duration_ms, lyric_status, lyrics_queried, playable, origin_mode
   `;
   const findTrack = client.prepare(`SELECT ${trackColumns} FROM music_track WHERE id = ?`);
   const upsertTrack = client.prepare(`
     INSERT INTO music_track (
-      id, source, source_track_id, title, artist, album, artwork_url, duration_ms, lyric_status, lyrics_queried, playable, origin_mode, created_at, updated_at
+      id, source, source_track_id, title, artist, album, release_year, artwork_url, duration_ms, lyric_status, lyrics_queried, playable, origin_mode, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(source, source_track_id) DO UPDATE SET
       title = excluded.title,
       artist = excluded.artist,
       album = excluded.album,
+      release_year = COALESCE(excluded.release_year, music_track.release_year),
       artwork_url = excluded.artwork_url,
       duration_ms = excluded.duration_ms,
       lyric_status = CASE
@@ -380,6 +384,7 @@ export function createLibraryRepository(client: DatabaseSync): LibraryRepository
       track.title,
       track.artist,
       track.album,
+      track.releaseYear ?? null,
       track.artworkUrl,
       track.durationMs,
       track.lyricStatus === "unknown" ? "unavailable" : track.lyricStatus,

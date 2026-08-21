@@ -29,7 +29,9 @@ const trackSchema = z.object({
   al: z.object({
     name: z.string().trim().max(300),
     picUrl: z.url().nullable().optional(),
+    publishTime: z.number().int().nonnegative().optional(),
   }),
+  publishTime: z.number().int().nonnegative().optional(),
   dt: z.number().int().positive(),
   fee: z.number().int().optional(),
   privilege: z.object({ st: z.number().int() }).optional(),
@@ -113,6 +115,12 @@ function providerTrack(track: z.infer<typeof trackSchema>): ProviderTrack {
     title: track.name,
     artist: artists.length === 0 ? "Unknown Artist" : artists.join(" / "),
     album: track.al.name.length === 0 ? "Unknown Album" : track.al.name,
+    releaseYear: (() => {
+      const publishedAt = track.publishTime ?? track.al.publishTime;
+      if (publishedAt === undefined || publishedAt === 0) return null;
+      const year = new Date(publishedAt).getUTCFullYear();
+      return year >= 1900 && year <= 2100 ? year : null;
+    })(),
     artworkUrl: track.al.picUrl ?? null,
     durationMs: track.dt,
     lyricStatus: "unknown",

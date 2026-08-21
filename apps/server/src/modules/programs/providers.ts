@@ -46,6 +46,7 @@ export const codexPlanningContextSchema = z
       maximumTracks: z.number().int().min(1).max(12),
       preferredLibraryTrackCount: z.number().int().min(0).max(12),
       minimumLibraryTrackCount: z.number().int().min(0).max(12),
+      requiredDiscoveryTrackCount: z.number().int().min(0).max(12).default(0),
     }),
     currentTime: occurredAtSchema,
     preferences: z.strictObject({
@@ -58,7 +59,9 @@ export const codexPlanningContextSchema = z
       context.library.preferredLibraryTrackCount > context.library.maximumTracks ||
       context.library.preferredLibraryTrackCount > context.library.tracks.length ||
       context.library.minimumLibraryTrackCount > context.library.maximumTracks ||
-      context.library.minimumLibraryTrackCount > context.library.tracks.length
+      context.library.minimumLibraryTrackCount > context.library.tracks.length ||
+      context.library.minimumLibraryTrackCount + context.library.requiredDiscoveryTrackCount >
+        context.library.maximumTracks
     ) {
       refinement.addIssue({
         code: "custom",

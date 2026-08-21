@@ -254,7 +254,7 @@ function createMessages(
         instruction,
         outputSchema: schema,
         planningReserveGuidance:
-          "This overrides any earlier candidate-count suggestion: the supplied library spans the Profile's full candidate set, so choose across it rather than favoring recently imported tracks. Build as many distinct original-recording reserve intents as the 16-intent limit allows after the requested programme length. Every discovery intent must set expectedArtist to the song's original primary artist; do not leave it out.",
+          "The library context gives the exact source quota: use exactly minimumLibraryTrackCount library intents and requiredDiscoveryTrackCount discovery intents for the programme whenever both sources are available. If eligible library tracks are insufficient, use discovery to fill the remaining positions. Build distinct original-recording reserve intents up to the 16-intent limit. Every discovery intent must set expectedArtist to the song's original primary artist.",
         ...(context === undefined ? {} : { context }),
       }),
     },
@@ -444,7 +444,7 @@ export function createDeepseekAdapter(
             role: "user",
             content: JSON.stringify({
               instruction:
-                "Return decision, reply, musicQuery, and musicQueries matching the schema. musicQuery must be non-null only for single_track; musicQueries must contain five items only for recommendations. Reply naturally and concisely in the user's language, with a concrete reference to the newest message rather than a reusable acknowledgement.",
+                "Return decision, reply, musicQuery, musicQueries, and listeningIntent matching the schema. For program, write a concise natural acknowledgement grounded in the newest request and populate listeningIntent with its hard constraints, scene, mood, energy, source mode, anchor and 8-12 target count. For every other decision use listeningIntent null. musicQuery must be non-null only for single_track; musicQueries must contain five items only for recommendations. Never use a reusable acknowledgement.",
               outputSchema: z.toJSONSchema(radioAssistantOutputSchema),
               context: parsedContext.data,
             }),
