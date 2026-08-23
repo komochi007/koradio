@@ -699,6 +699,40 @@ describe("TTS adapter", () => {
     await adapter.close();
   });
 
+  it("restarts a timed-out helper once before failing the DJ segment", async () => {
+    const dataRoot = await mkdtemp(join(tmpdir(), "koradio-tts-retry-"));
+    const fileStore = createLocalFileStore({ dataRoot });
+    let attempts = 0;
+    const adapter = createTtsAdapter({
+      client: {
+        synthesize() {
+          attempts += 1;
+          if (attempts === 1) return Promise.reject(new TtsHelperClientError("timeout"));
+          return Promise.resolve({ ...ttsSynthesisFixture, markers: [] });
+        },
+        close: () => Promise.resolve(),
+      },
+      fileStore,
+      helperPath: "/trusted/tts-helper",
+      modelService: readyModel,
+      pythonPath: "/trusted/python",
+      runtimeDirectory: dataRoot,
+    });
+
+    await expect(
+      adapter.synthesize(
+        {
+          text: "等待一次恢复后继续播报。",
+          language: "zh-CN",
+          voiceStyle: "natural-radio",
+        },
+        { correlationId: providerCorrelationId },
+      ),
+    ).resolves.toMatchObject({ durationMs: ttsSynthesisFixture.durationMs });
+    expect(attempts).toBe(2);
+    await adapter.close();
+  });
+
   it("rejects unavailable models, invalid audio and timeout with safe stable errors", async () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "koradio-tts-failure-"));
     const fileStore = createLocalFileStore({ dataRoot });

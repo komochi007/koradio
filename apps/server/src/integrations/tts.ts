@@ -154,6 +154,17 @@ function mapHelperError(error: TtsHelperClientError): TtsAdapterError {
   );
 }
 
+function canRetryHelperSynthesis(
+  error: unknown,
+  signal: AbortSignal | undefined,
+): error is TtsHelperClientError {
+  return (
+    signal?.aborted !== true &&
+    error instanceof TtsHelperClientError &&
+    (error.code === "timeout" || error.code === "helper_unavailable")
+  );
+}
+
 export type ClosableTtsProvider = TtsProvider & { close(): Promise<void> };
 
 export function createTtsAdapter(options: CreateTtsAdapterOptions): ClosableTtsProvider {
@@ -180,16 +191,26 @@ export function createTtsAdapter(options: CreateTtsAdapterOptions): ClosableTtsP
         if (options.modelService.getStatus().state !== "ready") {
           throw new TtsAdapterError("helper_unavailable");
         }
-        const synthesisResult = await client.synthesize(
-          {
-            language: parsedCommand.data.language,
-            text: parsedCommand.data.text,
-            voiceStyle: parsedCommand.data.voiceStyle,
-          },
-          {
+        const helperCommand = {
+          language: parsedCommand.data.language,
+          text: parsedCommand.data.text,
+          voiceStyle: parsedCommand.data.voiceStyle,
+        } as const;
+        let synthesisResult: Awaited<ReturnType<TtsHelperClient["synthesize"]>>;
+        try {
+          synthesisResult = await client.synthesize(helperCommand, {
             ...(callOptions.signal === undefined ? {} : { signal: callOptions.signal }),
-          },
-        );
+          });
+        } catch (error) {
+          if (!canRetryHelperSynthesis(error, callOptions.signal)) throw error;
+          options.logger?.warn("provider.tts.retrying", {
+            code: error.code,
+            correlationId: parsedOptions.data.correlationId,
+          });
+          synthesisResult = await client.synthesize(helperCommand, {
+            ...(callOptions.signal === undefined ? {} : { signal: callOptions.signal }),
+          });
+        }
         const synthesis = helperSynthesisSchema.safeParse(synthesisResult);
         if (!synthesis.success) {
           throw new TtsAdapterError("output_invalid");

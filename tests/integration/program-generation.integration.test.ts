@@ -1367,7 +1367,8 @@ describe("S3-06 Program generation REST and reconnect snapshot", () => {
         }
         return Promise.resolve({
           status: "available" as const,
-          content: "Only English words are present here tonight",
+          content:
+            "Only English words are present here tonight\nKeep the room warm\nStay here tonight",
         });
       },
       resolveAudio(sourceTrackId) {

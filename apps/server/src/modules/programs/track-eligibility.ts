@@ -16,29 +16,47 @@ export type TrackLyricLanguage =
 export type TrackEligibilityReason =
   "playable" | "instrumental" | "language" | "region" | "lyrics" | "era" | "artist";
 
+interface LyricLine {
+  text: string;
+  timed: boolean;
+}
+
+const lyricTimestampPrefix = /^(?:\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\])+\s*/u;
+const lyricCreditMarker =
+  /^(?:作词|作曲|编曲|制作人|演奏|演唱|录音|混音|母带|监制|出品|词|曲|lyrics?|composer|arranged?|produced?|vocals?|bpm|key|音名|调号|调式|beat\s*(?:说明|maker)|风格)\s*[:：]/iu;
+const instrumentalLyricMarker =
+  /(?:纯音乐\s*[，,。.]?\s*请欣赏|instrumental(?:\s+music)?\s*[，,。.]?\s*please\s+enjoy|type\s*beat|beat\s*maker)/iu;
+
+function substantiveLyricLines(lyrics: TrackLyrics): LyricLine[] {
+  const raw = lyrics.originalContent ?? lyrics.content ?? "";
+  return raw.split(/\r?\n/u).flatMap((rawLine) => {
+    const trimmed = rawLine.trim();
+    if (trimmed.length === 0 || /^\s*\{.*\}\s*$/u.test(trimmed)) return [];
+    const timed = lyricTimestampPrefix.test(trimmed);
+    const text = trimmed.replace(lyricTimestampPrefix, "").trim();
+    if (text.length < 4 || lyricCreditMarker.test(text) || instrumentalLyricMarker.test(text)) {
+      return [];
+    }
+    return [{ text, timed }];
+  });
+}
+
 function normalizedLyricText(lyrics: TrackLyrics): string {
-  return (lyrics.originalContent ?? lyrics.content ?? "")
-    .replace(/\[[^\]]+\]/gu, "")
+  return substantiveLyricLines(lyrics)
+    .map((line) => line.text)
+    .join("")
     .replace(/[\s\p{P}\p{S}\d]/gu, "");
 }
 
-function hasSubstantiveLyrics(lyrics: TrackLyrics): boolean {
-  const raw = lyrics.originalContent ?? lyrics.content ?? "";
-  const contentLines = raw
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter(
-      (line) =>
-        line.length >= 4 &&
-        !/(?:作词|作曲|编曲|制作人|演奏|演唱|录音|混音|母带|词\s*[:：]|曲\s*[:：]|lyrics?\s*[:：]|composer\s*[:：]|arranged?\s*[:：]|produced?\s*[:：]|vocals?\s*[:：])/iu.test(
-          line,
-        ) &&
-        !/(?:纯音乐\s*[，,。.]?\s*请欣赏|instrumental(?:\s+music)?\s*[，,。.]?\s*please\s+enjoy)/iu.test(
-          line,
-        ) &&
-        !/^\s*\{.*\}\s*$/u.test(line),
-    );
-  return contentLines.length >= 1 && Array.from(contentLines.join("")).length >= 8;
+function hasSubstantiveLyrics(track: MusicTrack, lyrics: TrackLyrics): boolean {
+  const lines = substantiveLyricLines(lyrics);
+  const timedLineCount = lines.filter((line) => line.timed).length;
+  const requiredLineCount =
+    timedLineCount === 0 ? 3 : Math.max(4, Math.ceil(track.durationMs / 18_000));
+  return (
+    lines.length >= requiredLineCount &&
+    Array.from(lines.map((line) => line.text).join("")).length >= requiredLineCount * 6
+  );
 }
 
 function hasEastAsianScript(value: string): boolean {
@@ -163,7 +181,7 @@ export function trackEligibilityFailureReason(
   }
   if (vocalMode === "vocal-only" || languageScope !== "any" || regionScope !== "any") {
     if (lyrics === undefined || lyrics.content === null) return "lyrics";
-    if (vocalMode === "vocal-only" && !hasSubstantiveLyrics(lyrics)) return "lyrics";
+    if (vocalMode === "vocal-only" && !hasSubstantiveLyrics(track, lyrics)) return "lyrics";
     const lyricLanguage = classifyTrackLyrics(lyrics);
     if (vocalMode === "vocal-only" && lyricLanguage === "unknown") return "lyrics";
     if (regionScope === "western" && lyricLanguage !== "western-languages") return "region";

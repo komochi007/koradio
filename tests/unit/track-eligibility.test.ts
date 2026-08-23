@@ -43,14 +43,19 @@ describe("track eligibility", () => {
     const korean = track("Foreign ~ k o r e a n ~", "DEAN");
     expect(isPotentiallyEligibleTrack(western, intent, scenarioText)).toBe(true);
     expect(
-      isTrackEligible(western, intent, scenarioText, lyrics("Only English words are present here")),
+      isTrackEligible(
+        western,
+        intent,
+        scenarioText,
+        lyrics("Only English words\nKeep the room warm\nStay here tonight"),
+      ),
     ).toBe(true);
     expect(
       trackEligibilityFailureReason(
         korean,
         intent,
         scenarioText,
-        lyrics("이 밤에 너와 함께 걸어가며 마음을 노래해"),
+        lyrics("이 밤에 너와 함께 걸어가며\n마음을 노래해\n새벽까지 머물러 줘"),
       ),
     ).toBe("region");
   });
@@ -103,6 +108,34 @@ describe("track eligibility", () => {
     ).toBe("lyrics");
   });
 
+  it("rejects beat metadata and sparse timed prose that cannot prove a singer", () => {
+    const chineseScenario = "规划一档华语歌单";
+    const chineseIntent = parseProgramListeningIntent(chineseScenario);
+    const typeBeat = track('"雪" - Richnomadic Type Beat', "YKFireVibes");
+    const windRises = track("随风起", "武士D");
+
+    expect(
+      trackEligibilityFailureReason(
+        typeBeat,
+        chineseIntent,
+        chineseScenario,
+        lyrics(
+          "风格：嘻哈说唱 Hip Hop/Rap\nBPM：119\nKEY：F Minor\nBeat说明：版权已售罄，仅供交流欣赏",
+        ),
+      ),
+    ).toBe("instrumental");
+    expect(
+      trackEligibilityFailureReason(
+        windRises,
+        chineseIntent,
+        chineseScenario,
+        lyrics(
+          "[00:03.459]监制：12k/Shawn\n[00:04.141]刀挂于檐下时，还在等待出鞘的弧光。\n[00:10.029]他盘坐晨昏，手总向左胯探去——那里只剩和服褶皱的重量。\n[00:30.000]风开始携带过去听不见的声音。\n[00:48.000]竹节生长时的崩裂，露水滚落叶片的轨迹。\n[01:07.000]他仍在等待一把未曾存在的刀。\n[01:22.000]暮色从屋檐慢慢流过。\n[01:49.000]风停了。",
+        ),
+      ),
+    ).toBe("lyrics");
+  });
+
   it("keeps a soundtrack theme when it has substantive sung lyrics", () => {
     const chineseScenario = "规划一档华语歌单";
     const chineseIntent = parseProgramListeningIntent(chineseScenario);
@@ -113,7 +146,7 @@ describe("track eligibility", () => {
         themeSong,
         chineseIntent,
         chineseScenario,
-        lyrics("穿过漫长夜色\n我听见你轻轻呼唤\n让明天在歌声里靠近"),
+        lyrics("穿过漫长夜色\n我听见你轻轻呼唤\n让明天在歌声里靠近\n让心跳成为新的方向"),
       ),
     ).toBeNull();
   });

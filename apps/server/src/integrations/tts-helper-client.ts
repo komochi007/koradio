@@ -83,7 +83,7 @@ interface PendingLine {
 export function createTtsHelperClient(options: CreateTtsHelperClientOptions): TtsHelperClient {
   const maximumOutputBytes = options.maximumOutputBytes ?? 35 * 1_048_576;
   const startupTimeoutMs = options.startupTimeoutMs ?? 30_000;
-  const timeoutMs = options.timeoutMs ?? 45_000;
+  const timeoutMs = options.timeoutMs ?? 75_000;
   let child: ChildProcessWithoutNullStreams | undefined;
   let startup: Promise<void> | undefined;
   let output = Buffer.alloc(0);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  hasInstrumentalMarker,
   hasNonCanonicalVersionMarker,
   isCanonicalOriginalCandidate,
   isNonCanonicalVersion,
@@ -41,6 +42,11 @@ describe("track version selection", () => {
   it("recognizes an explicitly named non-canonical version", () => {
     expect(hasNonCanonicalVersionMarker("播放 Space Song 的加速版")).toBe(true);
     expect(hasNonCanonicalVersionMarker("Like A Star (Piano Version)")).toBe(true);
+  });
+
+  it("recognizes beat production tracks as instrumental", () => {
+    expect(hasInstrumentalMarker('"雪" - Richnomadic Type Beat')).toBe(true);
+    expect(hasInstrumentalMarker("Beat Maker Session")).toBe(true);
   });
 
   it("prefers the plain canonical title when a source appends release metadata", () => {
