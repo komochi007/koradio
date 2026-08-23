@@ -65,6 +65,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] Feedback 与 Taste 记忆后端已实现：七类固定反馈按 Profile append-only 幂等写入，同事务按稳定 replay order 更新可重建 TasteProjection；人工 TasteOverrides 独立版本化并优先合并为只读 EffectiveTaste
 - [x] Programs 与 Playback 领域后端已实现：Program、ordered track refs、DJ segments 与判别式 timeline 单事务提交，文字 DJ 不伪造音频项；分页历史和详情按 Profile 隔离，checkpoint 校验 owner、位置、完成边界与 `leaseEpoch`
 - [x] UX-22 节目规划优化已验收：结构化意图覆盖来源、年代、场景、情绪、能量与锚点；默认库内/库外各半、奇数库外多一首，库内不足由库外补足，显式来源约束严格执行；Planner 按复杂度选择 8～12 首；最近 3 档或 24 小时硬去重，第 4～10 档强避重；指定华语、中文、欧美、英语、日语或韩语自动纯人声，主题配乐、纯音乐、短制作信息和无实质歌词候选被拒绝；DJ 首句与完整意图由活动 AI 大脑生成，失败时不创建节目任务
+- [x] UX-25 人声与 DJ 语音恢复优化已验收：指定语种/地区的候选必须同时通过器乐版本、Beat/制作元数据与有效歌词行密度校验；`Type Beat`、BPM/调式说明、稀疏时间轴散文和无法证明主唱的文本均不得补入节目。Qwen TTS 单段默认等待 75 秒，helper 超时或掉线后自动恢复并重试一次；第二次失败仍保留旧节目与明确失败码
 - [x] Mock Provider 后端闭环已验收：Radio 闲聊不触发节目，歧义追问，单曲卡片、3～5 首推荐卡片和 8～12 首节目分别执行；空库探索、两轮补选、近 10 期去重、同艺人与点名覆盖、中文歌词硬约束、MusicBrainz/Wikimedia 引用、搜索/音频失败、Codex 错误/非法计划、TTS 阻断、歌词降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
 - [x] Codex、DeepSeek、NetEase 与 TTS Provider adapters：Codex、NetEase、DeepSeek 和 Qwen TTS 的协议边界、Keychain、重试、响应校验与 Mock fixtures 已实现；真实 DeepSeek API smoke 仍需手动凭据，Production Server 与 Electron 主进程默认 Live，Development、Test 和 CI 默认 Mock

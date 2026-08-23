@@ -921,7 +921,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 节目规划 | 调用活动 Codex 或 DeepSeek 生成节目计划 | 明确节目需求、结构化听歌意图、`EffectiveTaste`、近 20 期歌曲、时间、偏好、最多 1,000 首完整候选库摘要与 8～12 首目标 | 最多 16 个有序原版 `trackIntents`、featured tracks 与结构化 scripts | 语言、地区、人声/纯音乐等硬约束或补选后不足目标时保留旧节目，并显示库内曲目、语言/地区、人声、原版筛选或音频可播性的具体原因 |
 | 音乐事实增强 | 查询 MusicBrainz/Wikimedia 等可信来源 | featured track 的歌曲、艺人和专辑元数据 | 有来源 URL 的短事实与归因 | 网络、限流或无匹配时只使用无事实的音乐性/主题分析 |
 | 意图解析与音乐搜索 | 通过 Library application API 解析库内 ID，或调用网易云 API 搜索探索歌曲和播放链接 | 有序 library/discovery intent | 稳定去重的歌曲元数据、播放 URL | 单 intent 失败时跳过；全部失败时保留旧节目 |
-| TTS 生成 | 调用持久化 bundled Python/MLX helper，以固定 Qwen3-TTS 8-bit 模型生成完整 WAV | 完整 DJ 文案、语言、声音风格 | 受控音频引用、时长；无 marker 时估算时间 | 任一段失败则本次节目不提交 |
+| TTS 生成 | 调用持久化 bundled Python/MLX helper，以固定 Qwen3-TTS 8-bit 模型生成完整 WAV | 完整 DJ 文案、语言、声音风格 | 受控音频引用、时长；无 marker 时估算时间 | 单段默认等待 75 秒，helper 超时或掉线后自动恢复并重试一次；第二次失败则本次节目不提交 |
 | 时间线构建 | 将节目转换为可播放判别联合并确定顺序 | program plan | `PlaybackTimelineItem[]` | 单曲失败时 Browser Audio Engine 跳到下一项 |
 | 播放 checkpoint | 在状态边界保存可恢复的低频播放快照 | program、timeline item、position、`leaseEpoch` | `PlaybackCheckpoint` | 保存失败不影响当前 Browser Audio Engine 播放；旧 epoch 写入被拒绝 |
 | 历史记录 | 保存节目、播放、反馈 | program、track、feedback | history record | 保存失败时提示但不中断播放 |
@@ -1035,7 +1035,7 @@ Planner 输出必须遵守以下规则：
 - TTS 无分句时间戳时，`estimatedTiming` 必须为 `true`，前端按文本长度进行近似高亮；时间戳缺失不影响提交，音频本身必须成功。
 - `trackIntents` 必须是播放顺序；`library` intent 只能引用 planning context 中存在的当前 Profile 曲目 ID，`discovery` intent 每个关键词只代表一个探索位置。
 - 完整节目目标严格为 8～12 首；简单场景默认 8 首，复杂条件、长活动或情绪弧线由 Planner 选择更多曲目。Planner 应输出不超过 16 个候选 intent。默认节目以当前 Profile 完整可播放音乐库为范围，库内/库外各半，奇数时库外多一首；库内硬约束候选不足时允许库外补足并提示，只有明确单一来源时严格失败。
-- Backend 对候选执行当前 Profile ownership、可播放性、原始发行年代、最近 3 档或过去 24 小时精确曲目硬去重、第 4～10 档强避重、本期同艺人最多一首与结构化语言/地区/人声校验；用户明确点名歌曲或艺人时才可覆盖对应去重规则。`languageScope`、`regionScope` 与 `vocalMode` 是不可放宽的硬约束，Taste 的长期语言比例只能在用户未指定范围时作为软性排序。指定华语、中文、欧美、英语、日语或韩语自动启用人声要求；仅接受可验证的实质主唱歌词，拒绝主题配乐、纯音乐、短制作信息和无法验证的候选。
+- Backend 对候选执行当前 Profile ownership、可播放性、原始发行年代、最近 3 档或过去 24 小时精确曲目硬去重、第 4～10 档强避重、本期同艺人最多一首与结构化语言/地区/人声校验；用户明确点名歌曲或艺人时才可覆盖对应去重规则。`languageScope`、`regionScope` 与 `vocalMode` 是不可放宽的硬约束，Taste 的长期语言比例只能在用户未指定范围时作为软性排序。指定华语、中文、欧美、英语、日语或韩语自动启用人声要求；仅接受可验证的实质主唱歌词，拒绝主题配乐、纯音乐、`Type Beat`、BPM/调式或制作信息、稀疏时间轴散文和无法验证的候选。
 - 库内 intent 非法、重复、不可播放或探索失败时最多向 Planner 补选两轮；仍少于目标数量时整次失败，不得提交残缺节目或跨 Profile 随机补位。
 
 解析失败时，本地服务不得保存或回显原始正文。日志只记录稳定错误码、correlation ID、schema 失败摘要和脱敏诊断元数据；前端统一收到“AI 大脑没有完成节目规划，点击重试”，不可解析内容不得进入节目、历史或日志正文。DeepSeek 的 reasoning content 同样不进入节目、历史或日志正文。
