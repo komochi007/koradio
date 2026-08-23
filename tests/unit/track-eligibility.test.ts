@@ -77,6 +77,47 @@ describe("track eligibility", () => {
     ).toBe("lyrics");
   });
 
+  it("rejects actual NetEase JSON credits and instrumental notice responses", () => {
+    const chineseScenario = "规划一档华语歌单";
+    const chineseIntent = parseProgramListeningIntent(chineseScenario);
+    const outerWilds = track("Outer Wilds", "Andrew Prahlow", "Original Soundtrack");
+    const pureImagination = track("pure imagination", "Rook1e / J'san");
+
+    expect(
+      trackEligibilityFailureReason(
+        outerWilds,
+        chineseIntent,
+        chineseScenario,
+        lyrics(
+          '{"t":0,"c":[{"tx":"作词: "},{"tx":"Andrew Prahlow"}]}\n{"t":1000,"c":[{"tx":"作曲: "},{"tx":"Andrew Prahlow"}]}\n{"t":2000,"c":[{"tx":"编曲: "},{"tx":"Andrew Prahlow"}]}\n[00:05.00]纯音乐，请欣赏',
+        ),
+      ),
+    ).toBe("lyrics");
+    expect(
+      trackEligibilityFailureReason(
+        pureImagination,
+        chineseIntent,
+        chineseScenario,
+        lyrics('{"t":0,"c":[{"tx":"作曲: "},{"tx":"Rook1e"}]}\n[00:05.00]纯音乐，请欣赏'),
+      ),
+    ).toBe("lyrics");
+  });
+
+  it("keeps a soundtrack theme when it has substantive sung lyrics", () => {
+    const chineseScenario = "规划一档华语歌单";
+    const chineseIntent = parseProgramListeningIntent(chineseScenario);
+    const themeSong = track("电影主题曲", "演唱者", "电影原声带");
+
+    expect(
+      trackEligibilityFailureReason(
+        themeSong,
+        chineseIntent,
+        chineseScenario,
+        lyrics("穿过漫长夜色\n我听见你轻轻呼唤\n让明天在歌声里靠近"),
+      ),
+    ).toBeNull();
+  });
+
   it("rejects tracks outside an explicitly requested original release period", () => {
     const periodScenario = "规划一档 1990 年代的华语歌单";
     const periodIntent = parseProgramListeningIntent(periodScenario);

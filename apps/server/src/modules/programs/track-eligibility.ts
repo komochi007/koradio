@@ -26,13 +26,17 @@ function hasSubstantiveLyrics(lyrics: TrackLyrics): boolean {
   const raw = lyrics.originalContent ?? lyrics.content ?? "";
   const contentLines = raw
     .split(/\r?\n/u)
-    .map((line) => line.replace(/\[[^\]]+\]/gu, "").trim())
+    .map((line) => line.trim())
     .filter(
       (line) =>
         line.length >= 4 &&
         !/(?:作词|作曲|编曲|制作人|演奏|演唱|录音|混音|母带|词\s*[:：]|曲\s*[:：]|lyrics?\s*[:：]|composer\s*[:：]|arranged?\s*[:：]|produced?\s*[:：]|vocals?\s*[:：])/iu.test(
           line,
-        ),
+        ) &&
+        !/(?:纯音乐\s*[，,。.]?\s*请欣赏|instrumental(?:\s+music)?\s*[，,。.]?\s*please\s+enjoy)/iu.test(
+          line,
+        ) &&
+        !/^\s*\{.*\}\s*$/u.test(line),
     );
   return contentLines.length >= 1 && Array.from(contentLines.join("")).length >= 8;
 }
