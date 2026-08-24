@@ -326,7 +326,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 
 - 用户发送任意文字 → 系统只短暂锁定本次发送并结合最近对话完成意图路由 → transcript 追加用户消息和本轮结果，旧节目与输入保持可用。
 - 路由为 `chat` → 系统返回普通助手回复，不访问音乐搜索或节目生成；路由为 `clarify` → 系统提出一个最小澄清问题，等待用户继续回答。
-- 路由为 `single_track` → 系统按明确约束解析一首可播放歌曲，返回含推荐理由、`PLAY NOW` 与 `PLAY NEXT` 的卡片，不替换当前 Program。
+- 路由为 `single_track` → 系统先按歌名、主艺人与版本标签筛选原唱录音室原版，再在 15 秒总预算内预解析最多 3 条同曲同艺人候选；仅验证到真实音频引用时返回含推荐理由、`PLAY NOW` 与 `PLAY NEXT` 的卡片，不替换当前 Program。网络、超时或限流等瞬态解析失败只自动重试一次；全部原版候选不可播时不返回播放卡片，明确说明未用翻唱、纯音乐或其他歌曲替代，并提供“重新获取 / 换一首”。
 - 路由为 `recommendations` → 系统返回 3～5 首已完成音频解析的歌曲卡片；“最推荐哪首”只能从最近一次推荐列表中选择，不能新造一首未在列表内的歌曲。
 - 路由为 `program` → 系统把用户场景归一为结构化听歌意图，再读取 `EffectiveTaste`、近 20 期节目歌曲、当前时间、`ProfilePreferences` 和最多 1,000 首可播放 Live 音乐库摘要（覆盖个人完整候选库），创建 8～12 首的异步节目任务；简单场景默认 8 首，复杂条件、长活动或情绪弧线由 Planner 选择更多曲目。最近对话只用于意图路由和重试场景继承，不作为未筛选的 Planner 候选。
 - 高置信节目请求由本地路由保底进入节目流程，但 DJ 首句和完整意图必须由活动 AI 大脑生成；AI 不可用或输出无效时不启动任务。结构化意图至少包含锚点歌曲、相似维度、`languageScope`、`regionScope`、`vocalMode`、来源、年代、场景、情绪、能量和类型提示。指定华语、中文、欧美、英语、日语或韩语时自动强制人声；“重试一下/再试一次”沿用最近一次非重试节目场景，找不到时先澄清。
@@ -334,7 +334,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 - 每期选择 1～2 首 featured track 生成 45～90 秒深讲，其余开场、转场和结束语保持克制。可核验的背景事实仅来自非阻断音乐事实 Provider 并显示来源；取不到来源时只做音乐性、歌词主题和场景分析。
 - Qwen3-TTS 可用且全部生成成功 → Program 以 `voice-overlay` 模式保存 DJ 音频；Audio Engine 在音乐播放中叠加串讲并 duck 到 28%，而不是把每段语音当成独立歌曲顺序播放。任一 TTS 失败时本次新节目不提交，旧节目继续播放。
 - 当前已有节目时，旧节目在新节目生成期间继续播放；生成成功后新节目以持久的“待切换节目”保存，Radio 显示曲目数、首曲和 `SWITCH NOW`，默认在当前歌曲自然结束后原子切换。用户明确点 `SWITCH NOW` 才立即切换；生成失败时保持旧节目不变。切出 Radio 或重启后，活动任务和待切换节目都从持久状态恢复。
-- 数据变化：每轮写入 Profile-owned `RadioMessage` 与 `RadioTurn`；单曲和多首推荐卡片只引用既有或归一化歌曲，临时点播快照只保存在 Browser Audio Engine；`PLAY NEXT` 无论手动下一首还是自然结束都先播放该临时点播，结束后回到原节目的下一项；空节目时手动下一首直接播放该点播。成功入队不向对话流追加状态或红色注释，只有解析或播放失败才显示卡片关联错误。只有完整节目成功时新增 `Program`、`DjScriptSegment`、`DjCitation`、`MusicTrack` 与已提交的 `PlaybackTimeline`；已有当前节目时同时写入 `ProgramHandoff`，直到切换。每个 Profile 最多保留最近 50 个 turn（100 条消息），清空需二次确认。
+- 数据变化：每轮写入 Profile-owned `RadioMessage` 与 `RadioTurn`；单曲和多首推荐卡片只引用既有或归一化且已通过音频解析的歌曲，临时点播快照只保存在 Browser Audio Engine；播放 URL 只存在于短期内存缓存，不写入 `RadioTurn`、SQLite、节目或历史。`PLAY NEXT` 无论手动下一首还是自然结束都先播放该临时点播，结束后回到原节目的下一项；空节目时手动下一首直接播放该点播。成功入队不向对话流追加状态或红色注释，只有解析或播放失败才显示卡片关联错误。单曲原版均不可播时持久化说明但不写入曲目引用。只有完整节目成功时新增 `Program`、`DjScriptSegment`、`DjCitation`、`MusicTrack` 与已提交的 `PlaybackTimeline`；已有当前节目时同时写入 `ProgramHandoff`，直到切换。每个 Profile 最多保留最近 50 个 turn（100 条消息），清空需二次确认。
 
 **用户流程**
 
@@ -346,7 +346,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
   └─ 输入有效 → 读取最近对话并路由
        ├─ chat → 追加助手回复
        ├─ clarify → 追加澄清问题并等待下一轮
-       ├─ single_track / recommendations → 解析可播放歌曲 → 返回 PLAY NOW / PLAY NEXT 卡片
+       ├─ single_track / recommendations → 解析并验证可播放歌曲 → 返回 PLAY NOW / PLAY NEXT 卡片；单曲原版均不可播则返回重新获取 / 换一首，不展示播放卡片
        └─ program → 创建 generation job，旧节目继续播放
               ├─ 8～12 首目标全部满足 → 事实增强 → TTS → 原子提交；已有节目时待当前曲自然结束再切换，也可 SWITCH NOW
               └─ 约束、补选、Planner 或资源失败 → 保留旧节目并提示重试
@@ -917,7 +917,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | 能力 | 说明 | 最小输入 | 最小输出 | 失败降级 |
 |------|------|----------|----------|----------|
 | 档案管理 | 创建、读取、选择、更新本地档案 | profile 字段 | 当前 profile | 本地目录不可写时阻止保存 |
-| Radio turn | 调用活动 Codex 或 DeepSeek 路由并回复 | 用户消息、最近 50 个 turn、`EffectiveTaste`、当前节目摘要 | `chat/clarify/single_track/program` 决策与助手消息 | 失败时保留消息和旧节目并允许重试 |
+| Radio turn | 调用活动 Codex 或 DeepSeek 路由并回复 | 用户消息、最近 50 个 turn、`EffectiveTaste`、当前节目摘要 | `chat/clarify/single_track/program` 决策与助手消息；单曲卡片仅包含已预检原版 | 无可播原版时保留说明与重试/换曲入口，不返回虚假播放卡片 |
 | 节目规划 | 调用活动 Codex 或 DeepSeek 生成节目计划 | 明确节目需求、结构化听歌意图、`EffectiveTaste`、近 20 期歌曲、时间、偏好、最多 1,000 首完整候选库摘要与 8～12 首目标 | 最多 16 个有序原版 `trackIntents`、featured tracks 与结构化 scripts | 语言、地区、人声/纯音乐等硬约束或补选后不足目标时保留旧节目，并显示库内曲目、语言/地区、人声、原版筛选或音频可播性的具体原因 |
 | 音乐事实增强 | 查询 MusicBrainz/Wikimedia 等可信来源 | featured track 的歌曲、艺人和专辑元数据 | 有来源 URL 的短事实与归因 | 网络、限流或无匹配时只使用无事实的音乐性/主题分析 |
 | 意图解析与音乐搜索 | 通过 Library application API 解析库内 ID，或调用网易云 API 搜索探索歌曲和播放链接 | 有序 library/discovery intent | 稳定去重的歌曲元数据、播放 URL | 单 intent 失败时跳过；全部失败时保留旧节目 |

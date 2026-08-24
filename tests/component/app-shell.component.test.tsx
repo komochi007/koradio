@@ -236,6 +236,7 @@ function createOnlineTransport(
     handoff?: ProgramDetail;
     latestProgram?: ProgramDetail;
     profiles?: Profile[];
+    singleTrackUnavailable?: boolean;
     ttsStatus?: "available" | "degraded" | "unavailable";
   } = {},
 ): ServiceTransport & { request: MockedFunction<ServiceTransport["request"]> } {
@@ -271,30 +272,55 @@ function createOnlineTransport(
       const command = parseRequestBody(init) as { content: string };
       return Promise.resolve(
         jsonResponse(
-          {
-            id: "00000000-0000-4000-8000-000000000075",
-            profileId: primaryProfile.id,
-            decision: "program",
-            userMessage: {
-              id: "00000000-0000-4000-8000-000000000076",
-              profileId: primaryProfile.id,
-              role: "user",
-              content: command.content,
-              trackId: null,
-              createdAt: "2026-07-17T08:00:00.000Z",
-            },
-            assistantMessage: {
-              id: "00000000-0000-4000-8000-000000000077",
-              profileId: primaryProfile.id,
-              role: "assistant",
-              content: "我来按这个场景准备一档节目。",
-              trackId: null,
-              createdAt: "2026-07-17T08:00:00.000Z",
-            },
-            track: null,
-            programJobId: "00000000-0000-4000-8000-000000000074",
-            createdAt: "2026-07-17T08:00:00.000Z",
-          },
+          options.singleTrackUnavailable
+            ? {
+                id: "00000000-0000-4000-8000-000000000075",
+                profileId: primaryProfile.id,
+                decision: "single_track",
+                userMessage: {
+                  id: "00000000-0000-4000-8000-000000000076",
+                  profileId: primaryProfile.id,
+                  role: "user",
+                  content: command.content,
+                  trackId: null,
+                  createdAt: "2026-07-17T08:00:00.000Z",
+                },
+                assistantMessage: {
+                  id: "00000000-0000-4000-8000-000000000077",
+                  profileId: primaryProfile.id,
+                  role: "assistant",
+                  content: "这首歌的原版音频当前不可用。",
+                  trackId: null,
+                  createdAt: "2026-07-17T08:00:00.000Z",
+                },
+                track: null,
+                programJobId: null,
+                createdAt: "2026-07-17T08:00:00.000Z",
+              }
+            : {
+                id: "00000000-0000-4000-8000-000000000075",
+                profileId: primaryProfile.id,
+                decision: "program",
+                userMessage: {
+                  id: "00000000-0000-4000-8000-000000000076",
+                  profileId: primaryProfile.id,
+                  role: "user",
+                  content: command.content,
+                  trackId: null,
+                  createdAt: "2026-07-17T08:00:00.000Z",
+                },
+                assistantMessage: {
+                  id: "00000000-0000-4000-8000-000000000077",
+                  profileId: primaryProfile.id,
+                  role: "assistant",
+                  content: "我来按这个场景准备一档节目。",
+                  trackId: null,
+                  createdAt: "2026-07-17T08:00:00.000Z",
+                },
+                track: null,
+                programJobId: "00000000-0000-4000-8000-000000000074",
+                createdAt: "2026-07-17T08:00:00.000Z",
+              },
           201,
         ),
       );
@@ -749,6 +775,29 @@ describe("App Shell", () => {
     );
     expect(generationCall?.[1]?.method).toBe("POST");
     expect(new Headers(generationCall?.[1]?.headers).has("Idempotency-Key")).toBe(true);
+  });
+
+  it("offers a retry or replacement instead of a false playable card for unavailable originals", async () => {
+    window.history.replaceState(null, "", "/radio");
+    const transport = createOnlineTransport({ singleTrackUnavailable: true });
+    render(<App audioEngine={createTestAudioEngine()} transport={transport} />);
+
+    const input = await screen.findByRole<HTMLInputElement>("textbox", {
+      name: "告诉 DJ 当前场景",
+    });
+    fireEvent.change(input, { target: { value: "我想听 Space Song" } });
+    fireEvent.click(screen.getByRole("button", { name: "发送给 DJ" }));
+
+    expect(await screen.findByText("原版音频暂不可用")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "PLAY NOW" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "换一首" }));
+    expect(input.value).toBe("换一首");
+    fireEvent.click(screen.getByRole("button", { name: "重新获取" }));
+    await waitFor(() => {
+      expect(
+        transport.request.mock.calls.filter(([path]) => path.endsWith("/radio-turns")),
+      ).toHaveLength(2);
+    });
   });
 
   it("keeps a prepared-program return link visible outside Radio", async () => {

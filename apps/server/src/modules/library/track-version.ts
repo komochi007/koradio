@@ -39,6 +39,21 @@ export function isCanonicalOriginalCandidate(
   return expectedArtist.length > 0 && normalizeForMatch(query).includes(expectedArtist);
 }
 
+export function matchesRequestedTrackQuery(
+  track: Pick<MusicTrack, "artist" | "title">,
+  query: string,
+): boolean {
+  const normalizedQuery = normalizeForMatch(query);
+  const title = normalizeForMatch(track.title);
+  const artist = normalizeForMatch(primaryArtist(track.artist));
+  return (
+    title.length > 0 &&
+    artist.length > 0 &&
+    normalizedQuery.includes(title) &&
+    normalizedQuery.includes(artist)
+  );
+}
+
 export function matchesTrackRequest(
   track: Pick<MusicTrack, "artist" | "title">,
   title: string,

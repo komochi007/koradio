@@ -645,6 +645,8 @@ function RadioDialogue({
   onConversationCleared,
   onHandoffActivate,
   onRetry,
+  onSingleTrackReplace,
+  onSingleTrackRetry,
   profileId,
   profile,
   program,
@@ -667,6 +669,8 @@ function RadioDialogue({
   onConversationCleared: () => void;
   onHandoffActivate: () => void;
   onRetry: (scenario?: string) => void;
+  onSingleTrackReplace: () => void;
+  onSingleTrackRetry: (content: string) => void;
   profileId: string;
   profile: Profile;
   program: ProgramDetail | null;
@@ -909,6 +913,26 @@ function RadioDialogue({
                         </p>
                       )}
                     </>
+                  )}
+                  {entry.turn.decision === "single_track" && entry.turn.track === null && (
+                    <article className="radio-track-card" role="status">
+                      <strong>原版音频暂不可用</strong>
+                      <span>DJ 没有用其他版本替代这首歌。</span>
+                      <div>
+                        <button
+                          type="button"
+                          disabled={turnPending}
+                          onClick={() => {
+                            onSingleTrackRetry(entry.turn.userMessage.content);
+                          }}
+                        >
+                          重新获取
+                        </button>
+                        <button type="button" disabled={turnPending} onClick={onSingleTrackReplace}>
+                          换一首
+                        </button>
+                      </div>
+                    </article>
                   )}
                   {(entry.turn.recommendedTracks ?? []).map((track) => (
                     <div key={track.id}>
@@ -1372,6 +1396,12 @@ export function RadioExperience({
               } else {
                 radio.submitScenario(scenario);
               }
+            }}
+            onSingleTrackReplace={() => {
+              radio.setDraft("换一首");
+            }}
+            onSingleTrackRetry={(content) => {
+              radio.submitScenario(content);
             }}
             profileId={current.profile.id}
             profile={current.profile}

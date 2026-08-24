@@ -21,6 +21,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - **Curated**：节目感、场景解释、结构化队列和 DJ 串讲。
 - **UX-12 已完成并验收**：Audio Engine 跨页面播放稳定性、DJ 临时点播在播放器/Detail/歌词/波形中的实时同步、平滑歌词跟随与自然短句串讲、Radio 控件反馈、3～5 首 DJ 策展推荐与 8～12 首节目分流均已通过 Live 人工验收；点播不改写节目历史或持久队列。推荐追问不升级为节目，活动规划与待切换节目可跨页面及重启恢复，其他一级页面提供回到 Radio 的轻量状态入口。
 - **UX-22/25 已完成并验收**：节目意图扩展为来源、年代、场景、情绪、能量与锚点等结构化条件；默认库内/库外各半、奇数库外多一首，库内不足由库外补足，显式来源约束严格执行。节目由 Planner 在 8～12 首间选择；最近 3 档或 24 小时内硬去重，第 4～10 档只强避重。指定华语、中文、欧美、英语、日语或韩语自动要求可验证主唱歌词：候选必须通过器乐版本、Beat/制作元数据与有效歌词行密度校验，`Type Beat`、BPM/调式说明、稀疏时间轴散文和无法证明主唱的文本均被拒绝。高置信节目请求由本地路由保底，但首句和完整意图均来自活动 AI 大脑，不再使用本地默认句式；AI 失败不启动节目。Qwen TTS 单段默认等待 75 秒，helper 超时或掉线后自动恢复并重试一次；第二次失败才保留旧节目并报告失败。
+- **UX-26 待验收**：指定单曲不以搜索元数据的 `playable` 直接承诺可播。Radio 先筛选原唱录音室原版，再在 15 秒总预算内依次预解析最多 3 条同曲同艺人原版候选；Library 对网络、超时、限流等瞬态解析失败只重试一次并短期缓存成功 URL。候选均不可播时，turn 保留说明和“重新获取 / 换一首”入口，不产生 `PLAY NOW` 卡片，也绝不静默替换为翻唱、纯音乐或其他歌曲。播放 URL 不持久化；安全日志只包含 source、sourceTrackId、稳定失败原因和尝试次数。
 
 ```text
 场景 → 规划 → 搜歌 → 全部 TTS → 节目与队列 → 播放 → 反馈 → 品味投影 → 下一次规划
@@ -45,7 +46,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - macOS Keychain adapter 使用 `/usr/bin/security -i` 从 stdin 接收十六进制 secret，不把明文写入 argv；受控 File Store 只生成 data root 内相对引用并限制扩展名、MIME、大小、来源与重定向；日志移除 token、key、敏感正文、凭据 URL 和用户路径。
 - `packages/contracts/src/` 已包含完整 v1 REST DTO/command、显式 `profileId`、幂等 request、异步 job、事件与错误 Zod schemas；health/session/events、Profiles、Library、Radio conversation/speech、Programs/Playback、生成受理/Snapshot、DeviceSettings、DeepSeek credential status、ProfilePreferences 和数据目录迁移已有后端实现。
 - Profiles 创建在单事务内建立 Profile、默认 ProfilePreferences 与由 onboarding genres/default scenario 初始化的 TasteOverrides；current Profile ID 与 active data root 共用原子 bootstrap runtime config，切换失败不会更新当前 context。
-- Library 通过 MusicProvider Port 接收不可信输出并严格归一化为稳定 source identity；搜索、歌词和短期播放解析使用有界 TTL 缓存，播放直链不进入 SQLite，异步歌单导入按完整曲目 ID 清单补齐元数据并在短事务内写入全部可解析歌曲、封面 URL 与可播放状态。
+- Library 通过 MusicProvider Port 接收不可信输出并严格归一化为稳定 source identity；搜索、歌词和短期播放解析使用有界 TTL 缓存，播放解析对瞬态失败只重试一次，播放直链不进入 SQLite，异步歌单导入按完整曲目 ID 清单补齐元数据并在短事务内写入全部可解析歌曲、封面 URL 与可播放状态。
 - Feedback 以 `(profileId, idempotencyKey)` 去重，在同一短事务内追加事实并按内部 replay order 重建 TasteProjection；skip 不自动推断为不喜欢。TasteOverrides 独立版本化，EffectiveTaste 在读取时保序合并且不单独持久化。
 - Programs 通过 Library 公开 API 解析曲目元数据、通过 Playback 公开事务写入 Port 原子提交 Program、ordered track refs、DJ segments 与 timeline；已有节目时新 Program 进入持久 ProgramHandoff，只有当前曲自然结束或用户显式切换才成为 CurrentProgram；production Feedback composition 使用真实 Programs owner 校验节目目标。
 - Programs application 以持久 Job 元数据和内存 executor 编排活动 Planner（Codex 或 DeepSeek）、Music、可信事实源与 Qwen3-TTS；Radio 先把用户输入归一化为结构化听歌意图，Settings Provider 切换先做轻量连接与认证检测，手动“测试连接”和真实生成再执行完整规划契约，桌面启动只读取活动 Provider 配置与本地服务状态，不重复执行完整节目规划。规划通过 Library Port 获取当前 Profile 最多 1,000 首可播放库内摘要，覆盖个人完整候选库；默认库内/库外各半，奇数库外多一首，库内硬约束候选不足时由库外补足，显式来源约束严格执行。Planner 根据复杂度在 8～12 首间选择，并最多提供 16 个原版候选；Backend 依序解析全部备用候选。最近 3 档或 24 小时内精确曲目硬去重，第 4～10 档只强避重，点名歌曲/艺人/特殊版本可覆盖；明确“围绕某首歌规划歌单/节目”时锚点歌曲为第一首。`languageScope`、`regionScope` 与 `vocalMode` 是不可放宽的硬约束：指定华语、中文、欧美、英语、日语或韩语时自动要求可验证主唱歌词；主题配乐、纯音乐、短制作信息、Beat/调式元数据、稀疏时间轴散文和无法证明实质主唱的候选均被拒绝。候选不足会给出具体原因。DJ TTS 的单段默认等待 75 秒，helper 超时或掉线后自动恢复并重试一次；第二次失败时新节目不提交，旧节目继续。高置信节目请求的首句和完整意图由活动 AI 大脑生成，AI 失败不启动节目。

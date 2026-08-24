@@ -82,16 +82,23 @@ export class MusicProviderResponseError extends Error {
   }
 }
 
-export class MusicProviderUnavailableError extends Error {
-  readonly reason: "cancelled" | "timeout" | "unavailable";
+export type MusicProviderUnavailableReason =
+  "cancelled" | "network" | "no_audio" | "rate_limited" | "timeout" | "unavailable";
 
-  constructor(reason: "cancelled" | "timeout" | "unavailable" = "unavailable") {
+export class MusicProviderUnavailableError extends Error {
+  readonly reason: MusicProviderUnavailableReason;
+
+  constructor(reason: MusicProviderUnavailableReason = "unavailable") {
     super(
       reason === "cancelled"
         ? "Music provider request was cancelled"
         : reason === "timeout"
           ? "Music provider request timed out"
-          : "Music provider is unavailable",
+          : reason === "rate_limited"
+            ? "Music provider rate limited the request"
+            : reason === "no_audio"
+              ? "Music provider has no playable audio for this track"
+              : "Music provider is unavailable",
     );
     this.name = "MusicProviderUnavailableError";
     this.reason = reason;

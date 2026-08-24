@@ -17,7 +17,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../../apps/server/src/bootstrap/app.js";
 import type { RuntimeConfig } from "../../apps/server/src/bootstrap/config.js";
 import type { RadioAssistantProvider } from "../../apps/server/src/modules/radio/index.js";
-import type { MusicProvider, ProviderTrack } from "../../apps/server/src/modules/library/index.js";
+import {
+  MusicProviderUnavailableError,
+  type MusicProvider,
+  type ProviderTrack,
+} from "../../apps/server/src/modules/library/index.js";
 
 const origin = "http://127.0.0.1:49373";
 const openApps: Awaited<ReturnType<typeof createApp>>[] = [];
@@ -31,6 +35,17 @@ describe("UX-11 Radio conversation", () => {
     const parent = await mkdtemp(join(tmpdir(), "koradio-radio-original-version-"));
     const dataRoot = join(parent, "data");
     const tracks: ProviderTrack[] = [
+      {
+        source: "netease",
+        sourceTrackId: "different-beach-house-track",
+        title: "Myth",
+        artist: "Beach House",
+        album: "Bloom",
+        artworkUrl: null,
+        durationMs: 260_000,
+        lyricStatus: "untimed",
+        playable: true,
+      },
       {
         source: "netease",
         sourceTrackId: "cover",
@@ -55,6 +70,17 @@ describe("UX-11 Radio conversation", () => {
       },
       {
         source: "netease",
+        sourceTrackId: "unavailable-original",
+        title: "Space Song",
+        artist: "Beach House",
+        album: "Depression Cherry",
+        artworkUrl: null,
+        durationMs: 180_000,
+        lyricStatus: "untimed",
+        playable: true,
+      },
+      {
+        source: "netease",
         sourceTrackId: "original",
         title: "Space Song",
         artist: "Beach House",
@@ -65,6 +91,7 @@ describe("UX-11 Radio conversation", () => {
         playable: true,
       },
     ];
+    const resolvedSourceIds: string[] = [];
     const music: MusicProvider = {
       source: "netease",
       search() {
@@ -82,6 +109,10 @@ describe("UX-11 Radio conversation", () => {
         return Promise.resolve({ status: "unavailable" as const, content: null });
       },
       resolveAudio(sourceTrackId) {
+        resolvedSourceIds.push(sourceTrackId);
+        if (sourceTrackId === "unavailable-original") {
+          return Promise.reject(new MusicProviderUnavailableError("no_audio"));
+        }
         return Promise.resolve({
           resolvedAudioRef: `https://media.example.test/${sourceTrackId}.mp3`,
           expiresAt: "2099-01-01T00:00:00.000Z",
@@ -141,7 +172,12 @@ describe("UX-11 Radio conversation", () => {
         })
       ).json<unknown>(),
     );
-    expect(turn.track).toMatchObject({ title: "Space Song", artist: "Beach House" });
+    expect(turn.track).toMatchObject({
+      sourceTrackId: "original",
+      title: "Space Song",
+      artist: "Beach House",
+    });
+    expect(resolvedSourceIds).toEqual(["unavailable-original", "original"]);
   });
 
   it("persists chat, returns a single-track card and starts programs only for explicit program intent", async () => {

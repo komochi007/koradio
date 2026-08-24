@@ -5,6 +5,7 @@ import {
   hasNonCanonicalVersionMarker,
   isCanonicalOriginalCandidate,
   isNonCanonicalVersion,
+  matchesRequestedTrackQuery,
   sortCanonicalCandidates,
 } from "../../apps/server/src/modules/library/track-version.js";
 
@@ -36,6 +37,13 @@ describe("track version selection", () => {
         { ...original, artist: "Cover Singer", album: "Beach House Tribute" },
         "Space Song Beach House",
       ),
+    ).toBe(false);
+  });
+
+  it("requires both the requested title and primary artist before considering a fallback", () => {
+    expect(matchesRequestedTrackQuery(original, "Space Song Beach House")).toBe(true);
+    expect(
+      matchesRequestedTrackQuery({ ...original, title: "Myth" }, "Space Song Beach House"),
     ).toBe(false);
   });
 

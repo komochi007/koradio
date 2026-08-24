@@ -4,6 +4,7 @@ import {
   radioConversationSchema,
   radioTurnSchema,
   type CreateRadioTurnCommand,
+  type MusicTrack,
   type RadioConversation,
   type RadioTurn,
 } from "@koradio/contracts";
@@ -12,6 +13,7 @@ import type { LibraryService } from "../library/index.js";
 import {
   hasNonCanonicalVersionMarker,
   isCanonicalOriginalCandidate,
+  matchesRequestedTrackQuery,
   sortCanonicalCandidates,
 } from "../library/track-version.js";
 import {
@@ -31,6 +33,9 @@ import type { RadioTurnRepository } from "./persistence.js";
 
 export class RadioTurnNotFoundError extends Error {}
 export class RadioTurnUnavailableError extends Error {}
+
+const singleTrackAudioPreflightLimit = 3;
+const singleTrackAudioPreflightTimeoutMs = 15_000;
 
 export {
   isProgramRetryRequest,
@@ -106,6 +111,22 @@ export interface CreateRadioServiceOptions {
 export function createRadioService(options: CreateRadioServiceOptions) {
   const now = options.now ?? (() => new Date());
   const randomId = options.randomId ?? randomUUID;
+
+  async function resolveSingleTrackCandidate(
+    candidates: readonly MusicTrack[],
+  ): Promise<MusicTrack | null> {
+    const signal = AbortSignal.timeout(singleTrackAudioPreflightTimeoutMs);
+    for (const candidate of candidates.slice(0, singleTrackAudioPreflightLimit)) {
+      try {
+        await options.library.resolveAudio(candidate.id, signal);
+        return candidate;
+      } catch {
+        if (signal.aborted) return null;
+      }
+    }
+    return null;
+  }
+
   return {
     clear(profileId: string): void {
       options.repository.clear(profileId);
@@ -202,6 +223,7 @@ export function createRadioService(options: CreateRadioServiceOptions) {
               return output.data;
             })();
       let track = null;
+      let singleTrackAudioUnavailable = false;
       const recommendedTracks: NonNullable<RadioTurn["recommendedTracks"]> = [];
       let programJobId: string | null = null;
       const previousRecommendations = [...recent]
@@ -212,7 +234,7 @@ export function createRadioService(options: CreateRadioServiceOptions) {
       const explicitlyRequestedNonCanonicalVersion = hasNonCanonicalVersionMarker(command.content);
       if (response.decision === "single_track") {
         if (recommendationFollowUp && previousRecommendations !== undefined) {
-          track =
+          const candidate =
             previousRecommendations.find((candidate) =>
               `${candidate.title} ${candidate.artist}`
                 .toLocaleLowerCase("en-US")
@@ -220,20 +242,24 @@ export function createRadioService(options: CreateRadioServiceOptions) {
             ) ??
             previousRecommendations[0] ??
             null;
+          track = candidate === null ? null : await resolveSingleTrackCandidate([candidate]);
+          singleTrackAudioUnavailable = candidate !== null && track === null;
         } else if (response.musicQuery !== null) {
           const result = await options.library.search(response.musicQuery);
-          track =
-            sortCanonicalCandidates(
-              result.items.filter(
-                (candidate) =>
-                  candidate.playable &&
-                  (explicitlyRequestedNonCanonicalVersion ||
-                    isCanonicalOriginalCandidate(candidate, response.musicQuery ?? "")),
-              ),
-              response.musicQuery,
-            )[0] ?? null;
+          const candidates = sortCanonicalCandidates(
+            result.items.filter(
+              (candidate) =>
+                candidate.playable &&
+                matchesRequestedTrackQuery(candidate, response.musicQuery ?? "") &&
+                (explicitlyRequestedNonCanonicalVersion ||
+                  isCanonicalOriginalCandidate(candidate, response.musicQuery ?? "")),
+            ),
+            response.musicQuery,
+          );
+          track = await resolveSingleTrackCandidate(candidates);
+          singleTrackAudioUnavailable = candidates.length > 0 && track === null;
         }
-        if (track === null) throw new RadioTurnUnavailableError();
+        if (track === null && !singleTrackAudioUnavailable) throw new RadioTurnUnavailableError();
       } else if (response.decision === "recommendations") {
         const seen = new Set<string>();
         for (const query of response.musicQueries.slice(0, 5)) {
@@ -274,8 +300,9 @@ export function createRadioService(options: CreateRadioServiceOptions) {
         ).jobId;
       }
       const createdAt = now().toISOString();
-      const reply =
-        response.decision === "recommendations" && recommendedTracks.length < 5
+      const reply = singleTrackAudioUnavailable
+        ? `${response.reply} 这首歌的原版音频当前不可用；我没有用翻唱、纯音乐或其他歌曲替代。你可以重新获取，或换一首。`
+        : response.decision === "recommendations" && recommendedTracks.length < 5
           ? recommendationArtist === undefined
             ? `${response.reply} 目前只找到 ${String(recommendedTracks.length)} 首可播放的歌曲。`
             : `${response.reply} 目前只找到 ${String(recommendedTracks.length)} 首可播放的 ${recommendationArtist} 歌曲。`

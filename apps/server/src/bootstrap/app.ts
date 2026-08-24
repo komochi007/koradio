@@ -292,6 +292,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     modelService: ttsModelService,
   });
   const library = createLibraryService({
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
     originMode: options.config.providerMode,
     provider: options.musicProvider ?? runtimeProviders.music,
     repository: createLibraryRepository(database.client),

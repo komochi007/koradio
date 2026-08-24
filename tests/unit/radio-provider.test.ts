@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { radioTurnSchema } from "@koradio/contracts";
+import { radioTurnSchema, type MusicTrack } from "@koradio/contracts";
 
 import { createMockRadioAssistantProvider } from "../../apps/server/src/modules/radio/providers.js";
 import {
@@ -9,6 +9,7 @@ import {
   parseAnchorTrack,
   parseProgramListeningIntent,
 } from "../../apps/server/src/modules/radio/service.js";
+import { MusicProviderUnavailableError } from "../../apps/server/src/modules/library/index.js";
 
 describe("UX-11 mock Radio intent routing", () => {
   const provider = createMockRadioAssistantProvider();
@@ -124,6 +125,84 @@ describe("UX-11 mock Radio intent routing", () => {
       vocalMode: "vocal-only",
       genreHints: ["pop"],
     });
+  });
+
+  it("does not return a playable card when every original candidate has no audio", async () => {
+    const candidates: MusicTrack[] = [
+      {
+        id: "10000000-0000-4000-8000-000000000011",
+        source: "netease",
+        sourceTrackId: "space-song-original-a",
+        title: "Space Song",
+        artist: "Beach House",
+        album: "Depression Cherry",
+        artworkUrl: null,
+        durationMs: 300_000,
+        lyricStatus: "available",
+        playable: true,
+        originMode: "mock",
+      },
+      {
+        id: "10000000-0000-4000-8000-000000000012",
+        source: "netease",
+        sourceTrackId: "space-song-original-b",
+        title: "Space Song",
+        artist: "Beach House",
+        album: "Depression Cherry",
+        artworkUrl: null,
+        durationMs: 300_000,
+        lyricStatus: "available",
+        playable: true,
+        originMode: "mock",
+      },
+    ];
+    const attemptedTrackIds: string[] = [];
+    const service = createRadioService({
+      assistant: {
+        respond() {
+          return Promise.resolve({
+            decision: "single_track",
+            reply: "我先找《Space Song》的原版。",
+            musicQuery: "Space Song Beach House",
+            musicQueries: [],
+          });
+        },
+      },
+      currentProgram: { current: () => null },
+      library: {
+        resolveAudio(trackId) {
+          attemptedTrackIds.push(trackId);
+          return Promise.reject(new MusicProviderUnavailableError("no_audio"));
+        },
+        search() {
+          return Promise.resolve({ items: candidates });
+        },
+      },
+      programs: { start: () => ({ jobId: "10000000-0000-4000-8000-000000000013" }) as never },
+      repository: {
+        clear() {},
+        findById() {
+          return null;
+        },
+        findByIdempotency() {
+          return null;
+        },
+        insert() {},
+        list() {
+          return [];
+        },
+      },
+    });
+
+    const turn = await service.create(
+      "20000000-0000-4000-8000-000000000001",
+      { content: "我想听 Space Song" },
+      "single-track-unavailable",
+    );
+
+    expect(attemptedTrackIds).toEqual(candidates.map((candidate) => candidate.id));
+    expect(turn).toMatchObject({ decision: "single_track", track: null });
+    expect(turn.assistantMessage.content).toContain("没有用翻唱、纯音乐或其他歌曲替代");
   });
 
   it("reuses the original scenario when the user asks to retry", async () => {

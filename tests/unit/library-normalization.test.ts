@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   BoundedTtlCache,
   MusicProviderResponseError,
+  MusicProviderUnavailableError,
   createLibraryService,
   normalizeProviderTrack,
   parseProviderAudioResult,
@@ -175,6 +176,82 @@ describe("Library normalization and cache policy", () => {
     cache.set("ignored", 4, 0);
     expect(cache.size).toBe(0);
     expect(() => new BoundedTtlCache({ capacity: 0, defaultTtlMs: 10 })).toThrow(TypeError);
+  });
+
+  it("retries transient audio resolution once without retrying tracks that have no audio", async () => {
+    const normalized = normalizeProviderTrack(track);
+    let transientCalls = 0;
+    const service = createLibraryService({
+      provider: {
+        source: "netease",
+        search() {
+          return Promise.resolve({ items: [] });
+        },
+        importPlaylist() {
+          return Promise.resolve({});
+        },
+        getLyrics() {
+          return Promise.resolve({});
+        },
+        resolveAudio() {
+          transientCalls += 1;
+          if (transientCalls === 1) {
+            return Promise.reject(new MusicProviderUnavailableError("network"));
+          }
+          return Promise.resolve({
+            resolvedAudioRef: "https://media.example.test/night-signal.m4a",
+            expiresAt: "2099-01-01T00:00:00.000Z",
+          });
+        },
+      },
+      repository: createRepository({ findTrack: () => normalized }),
+    });
+
+    await expect(service.resolveAudio(normalized.id)).resolves.toMatchObject({
+      trackId: normalized.id,
+    });
+    await expect(service.resolveAudio(normalized.id)).resolves.toMatchObject({
+      trackId: normalized.id,
+    });
+    expect(transientCalls).toBe(2);
+    await service.close();
+
+    const failures: unknown[] = [];
+    let unavailableCalls = 0;
+    const unavailableService = createLibraryService({
+      logger: { warn: (_event, data) => failures.push(data) },
+      provider: {
+        source: "netease",
+        search() {
+          return Promise.resolve({ items: [] });
+        },
+        importPlaylist() {
+          return Promise.resolve({});
+        },
+        getLyrics() {
+          return Promise.resolve({});
+        },
+        resolveAudio() {
+          unavailableCalls += 1;
+          return Promise.reject(new MusicProviderUnavailableError("no_audio"));
+        },
+      },
+      repository: createRepository({ findTrack: () => normalized }),
+    });
+
+    await expect(unavailableService.resolveAudio(normalized.id)).rejects.toMatchObject({
+      reason: "no_audio",
+    });
+    expect(unavailableCalls).toBe(1);
+    expect(failures).toEqual([
+      {
+        attempts: 1,
+        reason: "no_audio",
+        source: "netease",
+        sourceTrackId: "track-001",
+      },
+    ]);
+    await unavailableService.close();
   });
 
   it("merges at most three keyword results and caches empty and successful searches", async () => {

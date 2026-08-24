@@ -177,14 +177,14 @@ function mapFetchFailure(
   if (options?.signal?.aborted === true) {
     return new MusicProviderUnavailableError("cancelled");
   }
-  return new MusicProviderUnavailableError(signal.aborted ? "timeout" : "unavailable");
+  return new MusicProviderUnavailableError(signal.aborted ? "timeout" : "network");
 }
 
 export const resolvePublicDns: DnsResolver = (hostname) =>
   new Promise((resolveAddresses, reject) => {
     lookup(hostname, { all: true, verbatim: true }, (error, addresses) => {
       if (error !== null) {
-        reject(new MusicProviderUnavailableError());
+        reject(new MusicProviderUnavailableError("network"));
         return;
       }
       resolveAddresses(addresses);
@@ -411,7 +411,7 @@ export function createNetEaseAdapter(options: CreateNetEaseAdapterOptions = {}):
         signal,
       });
       if (response.status === 429) {
-        throw new MusicProviderUnavailableError();
+        throw new MusicProviderUnavailableError("rate_limited");
       }
       if (!response.ok) {
         throw new MusicProviderUnavailableError();
@@ -554,7 +554,7 @@ export function createNetEaseAdapter(options: CreateNetEaseAdapterOptions = {}):
       }
       const track = parsed.data.data.find((item) => item.id === id.data);
       if (track === undefined || track.code !== 200 || track.url === null) {
-        throw new MusicProviderUnavailableError();
+        throw new MusicProviderUnavailableError("no_audio");
       }
       const url = await probeMediaUrl(track.url, callOptions, {
         dnsResolver,

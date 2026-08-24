@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 
 import {
   audioResolutionSchema,
@@ -29,6 +30,7 @@ import {
   type MusicProvider,
 } from "./music-provider.js";
 import type { LibraryRepository } from "./persistence.js";
+import type { SafeLogger } from "../../platform/logging/index.js";
 
 export class LibraryTrackNotFoundError extends Error {
   constructor() {
@@ -45,6 +47,7 @@ export class PlaylistImportNotFoundError extends Error {
 }
 
 export interface CreateLibraryServiceOptions {
+  logger?: Pick<SafeLogger, "warn">;
   now?: () => Date;
   provider: MusicProvider;
   randomId?: () => string;
@@ -90,6 +93,37 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
   const pendingImports = new Set<Promise<void>>();
 
   options.repository.recoverInterruptedImports(now().toISOString());
+
+  async function waitForAudioRetry(signal?: AbortSignal): Promise<void> {
+    try {
+      await delay(200, undefined, signal === undefined ? {} : { signal });
+    } catch {
+      throw new MusicProviderUnavailableError("cancelled");
+    }
+  }
+
+  function reportAudioResolutionFailure(track: MusicTrack, error: unknown, attempts: number): void {
+    options.logger?.warn("library.audio_resolution_failed", {
+      attempts,
+      reason:
+        error instanceof MusicProviderUnavailableError
+          ? error.reason
+          : error instanceof MusicProviderResponseError
+            ? "response_invalid"
+            : "unknown",
+      source: track.source,
+      sourceTrackId: track.sourceTrackId,
+    });
+  }
+
+  function shouldRetryAudioResolution(error: unknown, attempts: number): boolean {
+    return (
+      attempts === 1 &&
+      error instanceof MusicProviderUnavailableError &&
+      error.reason !== "cancelled" &&
+      error.reason !== "no_audio"
+    );
+  }
 
   async function searchOne(keyword: string, signal?: AbortSignal): Promise<MusicSearchResponse> {
     const cacheKey = `${options.provider.source}:${keyword.trim().toLowerCase()}`;
@@ -289,29 +323,36 @@ export function createLibraryService(options: CreateLibraryServiceOptions): Libr
         return cached;
       }
 
-      const current = now();
-      let providerResponse: unknown;
-      try {
-        providerResponse = await options.provider.resolveAudio(
-          track.sourceTrackId,
-          signal === undefined ? {} : { signal },
-        );
-      } catch (error) {
-        if (
-          error instanceof MusicProviderResponseError ||
-          error instanceof MusicProviderUnavailableError
-        ) {
-          throw error;
+      let attempts = 0;
+      for (;;) {
+        attempts += 1;
+        try {
+          const providerResponse = await options.provider.resolveAudio(
+            track.sourceTrackId,
+            signal === undefined ? {} : { signal },
+          );
+          const current = now();
+          const resolution = parseProviderAudioResult(providerResponse, track.id, current);
+          audioCache.set(
+            cacheKey,
+            resolution,
+            Math.min(Date.parse(resolution.expiresAt) - current.getTime(), 10 * 60_000),
+          );
+          return audioResolutionSchema.parse(resolution);
+        } catch (error) {
+          const normalized =
+            error instanceof MusicProviderResponseError ||
+            error instanceof MusicProviderUnavailableError
+              ? error
+              : new MusicProviderUnavailableError("network");
+          if (shouldRetryAudioResolution(normalized, attempts)) {
+            await waitForAudioRetry(signal);
+            continue;
+          }
+          reportAudioResolutionFailure(track, normalized, attempts);
+          throw normalized;
         }
-        throw new MusicProviderUnavailableError();
       }
-      const resolution = parseProviderAudioResult(providerResponse, track.id, current);
-      audioCache.set(
-        cacheKey,
-        resolution,
-        Math.min(Date.parse(resolution.expiresAt) - current.getTime(), 10 * 60_000),
-      );
-      return audioResolutionSchema.parse(resolution);
     },
     search(keyword, signal) {
       return searchOne(keyword, signal);
