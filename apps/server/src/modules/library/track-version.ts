@@ -4,6 +4,8 @@ const nonCanonicalVersionMarker =
   /(?:\b(?:live|karaoke|cover|remix|unplugged|sped\s*up|speed\s*up|nightcore|slowed(?:\s*(?:\+|and|&)\s*reverb)?|reverb|dj\s*(?:version|edit|mix)|piano\s*version|fingerstyle|instrumental|inst)\b|现场|演唱会|伴奏|翻唱|翻自|混音|加速|倍速|变速|降速|减速|慢速|慢放|夜核|钢琴版|吉他版|演奏版|纯音乐|器乐)/iu;
 const instrumentalMarker =
   /(?:\b(?:instrumental|piano\s*(?:version|solo|sonata)|fingerstyle|karaoke|inst|orchestral|symphony|concerto|original\s*score|type\s*beat|beat\s*maker)\b|纯音乐|器乐|演奏版|钢琴版|吉他版|伴奏|奏鸣曲|交响曲|协奏曲|配乐)/iu;
+const disallowedInstrumentalVersionMarker =
+  /(?:\b(?:cover|karaoke|type\s*beat|beat\s*maker|ai(?:\s*(?:cover|version|music))?|originally\s+performed|made\s+popular|tribute)\b|翻唱|翻自|伴奏)/iu;
 
 function normalizeForMatch(value: string): string {
   return value
@@ -30,6 +32,10 @@ export function hasNonCanonicalVersionMarker(value: string): boolean {
 
 export function hasInstrumentalMarker(value: string): boolean {
   return instrumentalMarker.test(value);
+}
+
+export function hasDisallowedInstrumentalVersionMarker(value: string): boolean {
+  return disallowedInstrumentalVersionMarker.test(value);
 }
 
 export function isNonCanonicalVersion(

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   canonicalTrackKey,
+  hasDisallowedInstrumentalVersionMarker,
   hasInstrumentalMarker,
   hasNonCanonicalVersionMarker,
   isCanonicalOriginalCandidate,
@@ -57,6 +58,14 @@ describe("track version selection", () => {
   it("recognizes beat production tracks as instrumental", () => {
     expect(hasInstrumentalMarker('"雪" - Richnomadic Type Beat')).toBe(true);
     expect(hasInstrumentalMarker("Beat Maker Session")).toBe(true);
+  });
+
+  it("keeps official instrumental arrangements distinct from covers and beat production", () => {
+    expect(hasDisallowedInstrumentalVersionMarker("Nuvole Bianche")).toBe(false);
+    expect(hasDisallowedInstrumentalVersionMarker("Japanese Denim (Instrumental Cover)")).toBe(
+      true,
+    );
+    expect(hasDisallowedInstrumentalVersionMarker('"雪" - Richnomadic Type Beat')).toBe(true);
   });
 
   it("normalizes collaboration credits for artist and track freshness", () => {

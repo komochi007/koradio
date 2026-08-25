@@ -2,6 +2,7 @@ import { musicTrackSchema, type TrackLyrics } from "@koradio/contracts";
 import { describe, expect, it } from "vitest";
 
 import {
+  isHighConfidenceInstrumentalTrack,
   isPotentiallyEligibleTrack,
   isTrackEligible,
   trackEligibilityFailureReason,
@@ -104,6 +105,24 @@ describe("track eligibility", () => {
         ),
       ),
     ).toBe("instrumental");
+  });
+
+  it("accepts planner-selected unmarked instrumentals but keeps unsafe versions out", () => {
+    const instrumentalScenario = "规划一档午后办公听的纯音乐歌单";
+    const instrumentalIntent = parseProgramListeningIntent(instrumentalScenario);
+    const unmarked = track("Nuvole Bianche", "Ludovico Einaudi", "Una Mattina");
+    const karaoke = track("Nuvole Bianche (Piano Karaoke)", "Backing Artist");
+
+    expect(isPotentiallyEligibleTrack(unmarked, instrumentalIntent, instrumentalScenario)).toBe(
+      true,
+    );
+    expect(
+      trackEligibilityFailureReason(unmarked, instrumentalIntent, instrumentalScenario),
+    ).toBeNull();
+    expect(isHighConfidenceInstrumentalTrack(unmarked)).toBe(false);
+    expect(isPotentiallyEligibleTrack(karaoke, instrumentalIntent, instrumentalScenario)).toBe(
+      false,
+    );
   });
 
   it("treats named language requests as vocal-only and rejects credit-only theme tracks", () => {

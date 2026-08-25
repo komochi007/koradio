@@ -932,11 +932,12 @@ describe("S3-06 Program generation orchestration", () => {
     await closeHarness(harness);
   });
 
-  it("keeps legitimate instrumental arrangements and fills a short library share from discovery", async () => {
+  it("accepts planner-selected unmarked instrumentals without requiring a library quota", async () => {
+    let capturedContext: ReturnType<typeof codexPlanningContextSchema.parse> | undefined;
     const tracks = Array.from({ length: 5 }, (_, index) => ({
       source: "netease" as const,
       sourceTrackId: `instrumental-${String(index + 1)}`,
-      title: `Instrumental Window ${String(index + 1)} (Piano Version)`,
+      title: `Quiet Window ${String(index + 1)}`,
       artist: `Instrumental Artist ${String(index + 1)}`,
       album: "Instrumental Fixtures",
       durationMs: 180_000,
@@ -971,6 +972,7 @@ describe("S3-06 Program generation orchestration", () => {
     const codex: CodexProvider = {
       plan(context) {
         const parsed = codexPlanningContextSchema.parse(context);
+        capturedContext = parsed;
         return Promise.resolve({
           programTitle: "Instrumental Afternoon",
           scenarioSummary: parsed.scenarioText,
@@ -1020,8 +1022,10 @@ describe("S3-06 Program generation orchestration", () => {
 
     expect(snapshot.status).toBe("succeeded");
     const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
+    expect(capturedContext?.library.minimumLibraryTrackCount).toBe(0);
+    expect(capturedContext?.library.requiredDiscoveryTrackCount).toBe(5);
     expect(detail.tracks.map((track) => track.title)).toHaveLength(5);
-    expect(detail.tracks.every((track) => track.title.includes("Piano Version"))).toBe(true);
+    expect(detail.tracks.every((track) => track.title.startsWith("Quiet Window"))).toBe(true);
     await closeHarness(harness);
   });
 

@@ -7,7 +7,10 @@ import type {
   TrackLyrics,
 } from "@koradio/contracts";
 
-import { hasInstrumentalMarker } from "../library/track-version.js";
+import {
+  hasDisallowedInstrumentalVersionMarker,
+  hasInstrumentalMarker,
+} from "../library/track-version.js";
 import { normalizeProgramListeningIntent } from "./listening-intent.js";
 
 export type TrackLyricLanguage =
@@ -116,7 +119,9 @@ export function isPotentiallyEligibleTrack(
   )
     return false;
   if (vocalMode === "vocal-only" && hasInstrumentalMarker(trackText)) return false;
-  if (vocalMode === "instrumental-only" && !hasInstrumentalMarker(trackText)) return false;
+  if (vocalMode === "instrumental-only" && hasDisallowedInstrumentalVersionMarker(trackText)) {
+    return false;
+  }
   if (
     regionScope === "western" &&
     (hasEastAsianScript(trackText) ||
@@ -171,7 +176,9 @@ export function trackEligibilityFailureReason(
   )
     return "era";
   if (vocalMode === "vocal-only" && hasInstrumentalMarker(trackText)) return "instrumental";
-  if (vocalMode === "instrumental-only" && !hasInstrumentalMarker(trackText)) return "instrumental";
+  if (vocalMode === "instrumental-only" && hasDisallowedInstrumentalVersionMarker(trackText)) {
+    return "instrumental";
+  }
   if (
     regionScope === "western" &&
     (hasEastAsianScript(trackText) ||
@@ -199,6 +206,11 @@ export function trackEligibilityFailureReason(
     }
   }
   return null;
+}
+
+export function isHighConfidenceInstrumentalTrack(track: MusicTrack): boolean {
+  const trackText = `${track.title}\n${track.artist}\n${track.album}`;
+  return hasInstrumentalMarker(trackText) && !hasDisallowedInstrumentalVersionMarker(trackText);
 }
 
 export function isTrackEligible(

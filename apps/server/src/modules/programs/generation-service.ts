@@ -41,7 +41,11 @@ import {
 } from "./providers.js";
 import { normalizeProgramListeningIntent } from "./listening-intent.js";
 import { createPlanningContext } from "./planning-context.js";
-import { isPotentiallyEligibleTrack, trackEligibilityFailureReason } from "./track-eligibility.js";
+import {
+  isHighConfidenceInstrumentalTrack,
+  isPotentiallyEligibleTrack,
+  trackEligibilityFailureReason,
+} from "./track-eligibility.js";
 import type { ProgramGenerationRepository } from "./generation-persistence.js";
 import type { ProgramService } from "./service.js";
 
@@ -453,7 +457,8 @@ export function createProgramGenerationService(
         !forced &&
         normalizedListeningIntent.sourceMode === "balanced" &&
         !discovery &&
-        resolvedLibraryTrackCount() >= minimumLibraryTrackCount
+        resolvedLibraryTrackCount() >= minimumLibraryTrackCount &&
+        normalizedListeningIntent.vocalMode !== "instrumental-only"
       ) {
         return false;
       }
@@ -665,6 +670,12 @@ export function createProgramGenerationService(
       ) {
         rejectedNonCanonicalVersion += 1;
         trackDegraded = true;
+        continue;
+      }
+      if (
+        normalizedListeningIntent.vocalMode === "instrumental-only" &&
+        !isHighConfidenceInstrumentalTrack(track)
+      ) {
         continue;
       }
       await tryResolve(track);

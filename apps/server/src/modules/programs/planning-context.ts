@@ -25,6 +25,9 @@ function sourceTrackCounts(
   libraryTracks: MusicTrack[],
 ): { library: number; discovery: number } {
   const sourceMode = listeningIntent?.sourceMode ?? "balanced";
+  if (sourceMode === "balanced" && listeningIntent?.vocalMode === "instrumental-only") {
+    return { library: 0, discovery: targetTrackCount };
+  }
   const requestedLibrary =
     sourceMode === "library-only"
       ? targetTrackCount

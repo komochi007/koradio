@@ -141,6 +141,14 @@ export function transcriptIsPinnedToEnd(
 }
 
 function failureCopy(code: string): { message: string; settings: boolean; title: string } {
+  if (code === "PROGRAM_GENERATION_INSUFFICIENT_INSTRUMENTAL_TRACKS") {
+    return {
+      title: "INSTRUMENTAL TRACKS INSUFFICIENT",
+      message:
+        "符合纯音乐要求且可播放的器乐候选不足。DJ 已排除有人声、翻唱、Karaoke、Type Beat 和不确定的伴奏版本；可重试或补充偏好的器乐类型。",
+      settings: false,
+    };
+  }
   if (code === "PROGRAM_GENERATION_INSUFFICIENT_LIBRARY_TRACKS") {
     return {
       title: "LIBRARY TRACKS INSUFFICIENT",
