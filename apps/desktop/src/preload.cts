@@ -1,6 +1,7 @@
-import { contextBridge, ipcRenderer } from "electron";
+const { contextBridge, ipcRenderer } = require("electron") as typeof import("electron");
 
-import type { MenuBarCommand, MenuBarPlayback } from "./menu-bar.js";
+type MenuBarCommand = import("./menu-bar.js").MenuBarCommand;
+type MenuBarPlayback = import("./menu-bar.js").MenuBarPlayback;
 
 let pendingMenuBarPlaybackRequest = false;
 let latestMenuBarPlayback: MenuBarPlayback | undefined;

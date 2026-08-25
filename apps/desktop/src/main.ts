@@ -237,7 +237,7 @@ function createMainWindow(): BrowserWindow {
       devTools: !app.isPackaged && !smokeMode,
       nodeIntegration: false,
       sandbox: true,
-      preload: resolve(desktopDirectory, "preload.js"),
+      preload: resolve(desktopDirectory, "preload.cjs"),
       webSecurity: true,
       webviewTag: false,
     },
