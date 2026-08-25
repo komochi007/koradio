@@ -42,8 +42,13 @@ const audio: AudioEngineSnapshot = {
   volume: 1,
 };
 
+const audioEngine = {
+  getSnapshot: () => audio,
+  subscribe: () => () => undefined,
+} as unknown as AudioEngineFacade;
+
 function Fixture(): null {
-  useDesktopMenuBar(audio, {} as AudioEngineFacade);
+  useDesktopMenuBar(audio, audioEngine);
   return null;
 }
 

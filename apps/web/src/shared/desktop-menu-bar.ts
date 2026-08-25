@@ -54,16 +54,28 @@ export function useDesktopMenuBar(
   useEffect(() => {
     const bridge = window.koradioDesktop;
     if (bridge === undefined) return;
-    bridge.publishMenuBarPlayback(playback);
-  }, [playback]);
+    let lastPublished = "";
+    const publish = (): void => {
+      const next = playbackForMenuBar(audioEngine.getSnapshot());
+      const fingerprint = JSON.stringify(next);
+      latestPlayback.current = next;
+      if (fingerprint === lastPublished) return;
+      lastPublished = fingerprint;
+      bridge.publishMenuBarPlayback(next);
+    };
+    publish();
+    return audioEngine.subscribe(publish);
+  }, [audioEngine]);
 
   useEffect(() => {
     const bridge = window.koradioDesktop;
     if (bridge === undefined) return;
     return bridge.onMenuBarPlaybackRequested(() => {
-      bridge.publishMenuBarPlayback(latestPlayback.current);
+      const next = playbackForMenuBar(audioEngine.getSnapshot());
+      latestPlayback.current = next;
+      bridge.publishMenuBarPlayback(next);
     });
-  }, []);
+  }, [audioEngine]);
 
   useEffect(() => {
     const bridge = window.koradioDesktop;

@@ -181,7 +181,7 @@ function parseYrc(value: string, durationMs: number): TimedTextLine[] {
 }
 
 export function splitDjSentences(value: string): string[] {
-  const chunks = value.match(/[^。！？!?；;.\n]+[。！？!?；;.]?/gu) ?? [];
+  const chunks = value.match(/[^，,。！？!?；;.\n]+[，,。！？!?；;.]?/gu) ?? [];
   return chunks
     .map((chunk) => chunk.replace(/^[，。！？!?；;、,.:：]+|[，。！？!?；;、,.:：]+$/gu, "").trim())
     .filter(Boolean);
