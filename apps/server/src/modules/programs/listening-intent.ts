@@ -40,11 +40,52 @@ function releaseYearRange(content: string): ProgramListeningIntent["releaseYearR
 
 function energyTarget(content: string): ProgramListeningIntent["energyTarget"] {
   if (/(?:中高能量|中高强度|明快有劲|活力)/u.test(content)) return "mid-high";
-  if (/(?:中低能量|低中能量|不太激烈|柔和)/u.test(content)) return "low-mid";
+  if (/(?:中低能量|低中能量|不太激烈|柔和|舒缓|平和)/u.test(content)) return "low-mid";
   if (/(?:高能量|高强度|热烈|亢奋)/u.test(content)) return "high";
   if (/(?:低能量|安静|放松|睡前)/u.test(content)) return "low";
   if (/(?:中等能量|适中)/u.test(content)) return "mid";
   return null;
+}
+
+function rhythmSalience(content: string): ProgramListeningIntent["rhythmSalience"] {
+  if (/(?:强鼓点|强烈律动|蹦迪|drop|trap|drill|高强度节奏)/iu.test(content)) return "strong";
+  if (/(?:轻微律动|一点律动|轻律动|轻轻的律动|groove)/iu.test(content)) return "light";
+  if (/(?:柔和|舒缓|平和|安静|不抢注意力|不太激烈)/u.test(content)) return "restrained";
+  if (/(?:律动|节奏)/u.test(content)) return "steady";
+  return "any";
+}
+
+function attentionLevel(content: string): ProgramListeningIntent["attentionLevel"] {
+  if (/(?:办公|工作|阅读|看书|写作|专注|不抢注意力)/u.test(content)) return "focus";
+  if (/(?:背景音乐|咖啡店|日常)/u.test(content)) return "background";
+  if (/(?:沉浸|独处|静静听)/u.test(content)) return "immersive";
+  return "any";
+}
+
+function styleAvoids(content: string): string[] {
+  const avoids: string[] = [];
+  const lowStimulation = /(?:柔和|舒缓|平和|安静|不抢注意力|不太激烈)/u.test(content);
+  const requestsRap =
+    /(?:想听|来点|要|偏)(?:.{0,8})(?:说唱|嘻哈|hip\s*hop|rap|trap|drill)/iu.test(content) &&
+    !/(?:不要|别|不含|排除|避免|不想听|拒绝).{0,12}(?:说唱|嘻哈|hip\s*hop|rap|trap|drill)/iu.test(
+      content,
+    );
+  const requestsStrongElectronic = /(?:强\s*edm|drop|电音派对|蹦迪)/iu.test(content);
+  if (lowStimulation && !requestsRap) avoids.push("说唱主导", "Trap/Drill", "强鼓点");
+  if (lowStimulation && !requestsStrongElectronic) avoids.push("强 EDM/drop");
+  if (/(?:不要|别|不含|排除|避免).{0,12}(?:说唱|嘻哈|hip\s*hop|rap)/iu.test(content)) {
+    avoids.push("说唱");
+  }
+  if (/(?:不要|别|不含|排除|避免).{0,12}(?:重鼓|强鼓点|edm|电音|摇滚|金属)/iu.test(content)) {
+    avoids.push("强鼓点/强电子");
+  }
+  return [...new Set(avoids)];
+}
+
+function explorationMode(content: string): ProgramListeningIntent["explorationMode"] {
+  if (/(?:多探索|换一批|来点没听过|新一点|不要重复上次)/u.test(content)) return "broaden";
+  if (/(?:稳一点|按我的口味|熟悉一点)/u.test(content)) return "familiar";
+  return "balanced";
 }
 
 function sourceMode(content: string): ProgramListeningIntent["sourceMode"] {
@@ -73,7 +114,7 @@ function moodHints(content: string): string[] {
     [/(?:轻快|轻盈)/u, "轻快"],
     [/(?:明亮|晴朗)/u, "明亮"],
     [/(?:灵动|俏皮)/u, "灵动"],
-    [/(?:柔和|温柔)/u, "柔和"],
+    [/(?:柔和|温柔|舒缓|平和)/u, "柔和"],
     [/(?:律动|groove)/iu, "律动"],
   ] as const;
   return values.filter(([pattern]) => pattern.test(content)).map(([, value]) => value);
@@ -183,6 +224,10 @@ export function parseProgramListeningIntent(content: string): ProgramListeningIn
     sceneHints: sceneHints(content),
     moodHints: moodHints(content),
     energyTarget: energyTarget(content),
+    rhythmSalience: rhythmSalience(content),
+    attentionLevel: attentionLevel(content),
+    styleAvoids: styleAvoids(content),
+    explorationMode: explorationMode(content),
   });
 }
 
@@ -211,6 +256,13 @@ export function normalizeProgramListeningIntent(
           ? "vocal-only"
           : inferred.vocalMode,
     genreHints: parsed.genreHints.length > 0 ? parsed.genreHints : inferred.genreHints,
+    rhythmSalience:
+      parsed.rhythmSalience === "any" ? inferred.rhythmSalience : parsed.rhythmSalience,
+    attentionLevel:
+      parsed.attentionLevel === "any" ? inferred.attentionLevel : parsed.attentionLevel,
+    styleAvoids: [...new Set([...inferred.styleAvoids, ...parsed.styleAvoids])],
+    explorationMode:
+      parsed.explorationMode === "balanced" ? inferred.explorationMode : parsed.explorationMode,
   });
 }
 

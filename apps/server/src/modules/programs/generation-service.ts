@@ -21,10 +21,12 @@ import {
 
 import type { LibraryService } from "../library/index.js";
 import {
+  canonicalTrackKey,
   hasNonCanonicalVersionMarker,
   isCanonicalOriginalCandidate,
   isNonCanonicalVersion,
   matchesTrackRequest,
+  primaryArtistKey,
   sortCanonicalCandidates,
 } from "../library/track-version.js";
 import type { ProfilePreferencesService } from "../profile-preferences/index.js";
@@ -76,7 +78,7 @@ interface ActiveRun {
 
 type GenerationLibrary = Pick<
   LibraryService,
-  "candidateTracks" | "getLyrics" | "resolveAudio" | "search"
+  "candidateTracks" | "getLyrics" | "getTracks" | "resolveAudio" | "search"
 >;
 type GenerationPrograms = Pick<ProgramService, "commit" | "list">;
 type GenerationPreferences = Pick<ProfilePreferencesService, "get">;
@@ -305,20 +307,62 @@ export function createProgramGenerationService(
     const selectedTrackIds = new Set<string>();
     const selectedArtists = new Set<string>();
     const searchCache = new Map<string, Promise<MusicTrack[]>>();
-    const recentTrackIds = new Set(
-      options.programs
-        .list(snapshot.profileId, undefined, 10)
-        .items.filter(
-          (program, index) =>
-            index < 3 || Date.parse(program.createdAt) >= now().getTime() - 24 * 60 * 60_000,
-        )
-        .flatMap((program) => program.trackIds),
+    const recentPrograms = options.programs.list(snapshot.profileId, undefined, 10).items;
+    const hardRecentPrograms = recentPrograms.filter(
+      (program, index) =>
+        index < 3 || Date.parse(program.createdAt) >= now().getTime() - 24 * 60 * 60_000,
     );
+    const hardRecentProgramIds = new Set(hardRecentPrograms.map((program) => program.id));
+    const historicalTracks = options.library.getTracks([
+      ...new Set(recentPrograms.flatMap((program) => program.trackIds)),
+    ]);
+    const historicalTracksById = new Map(historicalTracks.map((track) => [track.id, track]));
+    const hardRecentTrackIds = new Set(hardRecentPrograms.flatMap((program) => program.trackIds));
+    const hardRecentTrackKeys = new Set(
+      hardRecentPrograms.flatMap((program) =>
+        program.trackIds.flatMap((trackId) => {
+          const track = historicalTracksById.get(trackId);
+          return track === undefined ? [] : [canonicalTrackKey(track)];
+        }),
+      ),
+    );
+    const softRecentTrackKeys = new Set(
+      recentPrograms
+        .filter((program) => !hardRecentProgramIds.has(program.id))
+        .flatMap((program) =>
+          program.trackIds.flatMap((trackId) => {
+            const track = historicalTracksById.get(trackId);
+            return track === undefined ? [] : [canonicalTrackKey(track)];
+          }),
+        ),
+    );
+    const hardRecentArtistKeys = new Set(
+      hardRecentPrograms.flatMap((program) =>
+        program.trackIds.flatMap((trackId) => {
+          const track = historicalTracksById.get(trackId);
+          const artistKey = track === undefined ? "" : primaryArtistKey(track.artist);
+          return artistKey.length === 0 ? [] : [artistKey];
+        }),
+      ),
+    );
+    const softRecentArtistUses = new Map<string, number>();
+    for (const program of recentPrograms) {
+      if (hardRecentProgramIds.has(program.id)) continue;
+      for (const trackId of program.trackIds) {
+        const track = historicalTracksById.get(trackId);
+        const artistKey = track === undefined ? "" : primaryArtistKey(track.artist);
+        if (artistKey.length === 0) continue;
+        softRecentArtistUses.set(artistKey, (softRecentArtistUses.get(artistKey) ?? 0) + 1);
+      }
+    }
     const normalizedListeningIntent = normalizeProgramListeningIntent(
       scenarioText,
       listeningIntent,
     );
     const normalizedScenario = scenarioText.toLocaleLowerCase("en-US");
+    const normalizedScenarioIdentity = normalizedScenario
+      .normalize("NFKD")
+      .replace(/[\s\p{P}\p{S}]/gu, "");
     let rejectedInstrumental = 0;
     let rejectedLanguage = 0;
     let rejectedRegion = 0;
@@ -326,6 +370,10 @@ export function createProgramGenerationService(
     let rejectedNonCanonicalVersion = 0;
     let failedAudioResolution = 0;
     let trackDegraded = false;
+    const deferredFreshnessCandidates = new Map<
+      string,
+      { discovery: boolean; track: MusicTrack }
+    >();
 
     const isExplicitTrack = (track: MusicTrack): boolean => {
       const titleKey = track.title.trim().toLocaleLowerCase("en-US");
@@ -388,12 +436,14 @@ export function createProgramGenerationService(
       track: MusicTrack,
       discovery = false,
       forced = false,
+      allowSoftReuse = false,
     ): Promise<boolean> => {
       if (selectedTrackIds.has(track.id)) {
         return false;
       }
-      const artistKey = track.artist.trim().toLocaleLowerCase("en-US");
-      const explicitArtist = artistKey.length > 0 && normalizedScenario.includes(artistKey);
+      const artistKey = primaryArtistKey(track.artist);
+      const trackKey = canonicalTrackKey(track);
+      const explicitArtist = artistKey.length > 0 && normalizedScenarioIdentity.includes(artistKey);
       const explicitTrack = isExplicitTrack(track);
       if (!forced && normalizedListeningIntent.sourceMode === "library-only" && discovery)
         return false;
@@ -416,16 +466,35 @@ export function createProgramGenerationService(
         trackDegraded = true;
         return false;
       }
-      if (discovery && !explicitTrack && isAlternativeVersion(track)) {
+      if (
+        discovery &&
+        normalizedListeningIntent.vocalMode !== "instrumental-only" &&
+        !explicitTrack &&
+        isAlternativeVersion(track)
+      ) {
         rejectedNonCanonicalVersion += 1;
         trackDegraded = true;
         return false;
       }
       if (
         !forced &&
-        ((!explicitTrack && recentTrackIds.has(track.id)) ||
+        ((!explicitTrack &&
+          (hardRecentTrackIds.has(track.id) || hardRecentTrackKeys.has(trackKey))) ||
           (!explicitArtist && selectedArtists.has(artistKey)))
       ) {
+        trackDegraded = true;
+        return false;
+      }
+      if (
+        !forced &&
+        !allowSoftReuse &&
+        !explicitTrack &&
+        !explicitArtist &&
+        (softRecentTrackKeys.has(trackKey) ||
+          hardRecentArtistKeys.has(artistKey) ||
+          (softRecentArtistUses.get(artistKey) ?? 0) >= 2)
+      ) {
+        deferredFreshnessCandidates.set(track.id, { discovery, track });
         trackDegraded = true;
         return false;
       }
@@ -490,7 +559,10 @@ export function createProgramGenerationService(
         if (
           failedTrackIds.has(track.id) ||
           (!includeLibraryCandidates && libraryCandidates.has(track.id)) ||
-          (expectedArtist !== undefined && !isCanonicalOriginalCandidate(track, expectedArtist))
+          (expectedArtist !== undefined &&
+            (normalizedListeningIntent.vocalMode === "instrumental-only"
+              ? primaryArtistKey(track.artist) !== primaryArtistKey(expectedArtist)
+              : !isCanonicalOriginalCandidate(track, expectedArtist)))
         ) {
           continue;
         }
@@ -560,7 +632,11 @@ export function createProgramGenerationService(
             trackDegraded = true;
             continue;
           }
-          if (isAlternativeVersion(track) && !isExplicitTrack(track)) {
+          if (
+            normalizedListeningIntent.vocalMode !== "instrumental-only" &&
+            isAlternativeVersion(track) &&
+            !isExplicitTrack(track)
+          ) {
             rejectedNonCanonicalVersion += 1;
             trackDegraded = true;
             continue;
@@ -582,7 +658,11 @@ export function createProgramGenerationService(
       ) {
         break;
       }
-      if (isAlternativeVersion(track) && !isExplicitTrack(track)) {
+      if (
+        normalizedListeningIntent.vocalMode !== "instrumental-only" &&
+        isAlternativeVersion(track) &&
+        !isExplicitTrack(track)
+      ) {
         rejectedNonCanonicalVersion += 1;
         trackDegraded = true;
         continue;
@@ -590,10 +670,20 @@ export function createProgramGenerationService(
       await tryResolve(track);
     }
 
+    if (resolved.length < targetTrackCount) {
+      for (const { discovery, track } of deferredFreshnessCandidates.values()) {
+        if (resolved.length === targetTrackCount) break;
+        await tryResolve(track, discovery, false, true);
+      }
+    }
+
     if (trackDegraded) {
       publishDegraded(snapshot, "track", "PROGRAM_TRACK_UNAVAILABLE");
     }
     const insufficientTracksCode = (): string => {
+      if (normalizedListeningIntent.vocalMode === "instrumental-only" && rejectedInstrumental > 0) {
+        return "PROGRAM_GENERATION_INSUFFICIENT_INSTRUMENTAL_TRACKS";
+      }
       if (resolvedLibraryTrackCount() < minimumLibraryTrackCount) {
         return "PROGRAM_GENERATION_INSUFFICIENT_LIBRARY_TRACKS";
       }
@@ -637,6 +727,9 @@ export function createProgramGenerationService(
       return "PROGRAM_GENERATION_INSUFFICIENT_TRACKS";
     };
     if (resolved.length === 0) {
+      if (normalizedListeningIntent.vocalMode === "instrumental-only" && rejectedInstrumental > 0) {
+        throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_INSTRUMENTAL_TRACKS");
+      }
       if (minimumLibraryTrackCount > 0 && resolvedLibraryTrackCount() < minimumLibraryTrackCount) {
         throw new GenerationPipelineError("PROGRAM_GENERATION_INSUFFICIENT_LIBRARY_TRACKS");
       }

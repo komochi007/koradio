@@ -24,6 +24,16 @@ export const programHistoryContextSchema = z.strictObject({
   scenarioText: z.string().trim().min(1).max(500),
   createdAt: occurredAtSchema,
   trackIds: z.array(trackIdSchema).max(12).default([]),
+  tracks: z
+    .array(
+      z.strictObject({
+        trackId: trackIdSchema,
+        title: z.string().trim().min(1).max(300),
+        artist: z.string().trim().min(1).max(300),
+      }),
+    )
+    .max(12)
+    .default([]),
 });
 
 export const libraryTrackContextSchema = z.strictObject({

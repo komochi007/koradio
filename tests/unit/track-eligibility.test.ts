@@ -38,6 +38,24 @@ function lyrics(content: string): TrackLyrics {
 }
 
 describe("track eligibility", () => {
+  it("derives a restrained, focused profile from soft office language", () => {
+    const softOffice = parseProgramListeningIntent("下午在咖啡店办公，想听柔和、舒缓一点的歌");
+
+    expect(softOffice).toMatchObject({
+      attentionLevel: "focus",
+      energyTarget: "low-mid",
+      rhythmSalience: "restrained",
+      styleAvoids: ["说唱主导", "Trap/Drill", "强鼓点", "强 EDM/drop"],
+    });
+  });
+
+  it("keeps a negative rap instruction as an avoidance rather than a positive request", () => {
+    const softOffice = parseProgramListeningIntent("下午办公想听舒缓的歌，不要说唱");
+
+    expect(softOffice.styleAvoids).toContain("说唱");
+    expect(softOffice.styleAvoids).toContain("Trap/Drill");
+  });
+
   it("keeps western vocal songs and rejects other languages", () => {
     const western = track("Midnight Signal", "English Artist");
     const korean = track("Foreign ~ k o r e a n ~", "DEAN");
@@ -64,6 +82,28 @@ describe("track eligibility", () => {
     const instrumental = track("Midnight Signal (Piano Version)", "English Artist");
     expect(isPotentiallyEligibleTrack(instrumental, intent, scenarioText)).toBe(false);
     expect(trackEligibilityFailureReason(instrumental, intent, scenarioText)).toBe("instrumental");
+  });
+
+  it("accepts marked instrumental works without lyrics and rejects sung material", () => {
+    const instrumentalScenario = "规划一档午后办公听的纯音乐歌单";
+    const instrumentalIntent = parseProgramListeningIntent(instrumentalScenario);
+    const piano = track("Afternoon Window (Piano Version)", "Fixture Artist");
+
+    expect(instrumentalIntent.vocalMode).toBe("instrumental-only");
+    expect(isPotentiallyEligibleTrack(piano, instrumentalIntent, instrumentalScenario)).toBe(true);
+    expect(
+      trackEligibilityFailureReason(piano, instrumentalIntent, instrumentalScenario),
+    ).toBeNull();
+    expect(
+      trackEligibilityFailureReason(
+        piano,
+        instrumentalIntent,
+        instrumentalScenario,
+        lyrics(
+          "窗边的风吹过午后的光线\n让时间慢慢停在桌面\n我把思绪放进安静的房间\n等下一页轻轻翻开",
+        ),
+      ),
+    ).toBe("instrumental");
   });
 
   it("treats named language requests as vocal-only and rejects credit-only theme tracks", () => {

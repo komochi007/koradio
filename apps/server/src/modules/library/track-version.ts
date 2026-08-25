@@ -12,8 +12,16 @@ function normalizeForMatch(value: string): string {
     .replace(/[\s\p{P}\p{S}]/gu, "");
 }
 
-function primaryArtist(value: string): string {
-  return value.split(/\s*(?:,|，|、|&|\band\b|\bfeat\.?\b|\bft\.?\b)\s*/iu)[0]?.trim() ?? "";
+export function primaryArtist(value: string): string {
+  return value.split(/\s*(?:\/|,|，|、|&|\band\b|\bfeat\.?\b|\bft\.?\b)\s*/iu)[0]?.trim() ?? "";
+}
+
+export function primaryArtistKey(value: string): string {
+  return normalizeForMatch(primaryArtist(value));
+}
+
+export function canonicalTrackKey(track: Pick<MusicTrack, "artist" | "title">): string {
+  return `${normalizeForMatch(track.title)}:${primaryArtistKey(track.artist)}`;
 }
 
 export function hasNonCanonicalVersionMarker(value: string): boolean {
@@ -35,7 +43,7 @@ export function isCanonicalOriginalCandidate(
   query: string,
 ): boolean {
   if (isNonCanonicalVersion(track)) return false;
-  const expectedArtist = normalizeForMatch(primaryArtist(track.artist));
+  const expectedArtist = primaryArtistKey(track.artist);
   return expectedArtist.length > 0 && normalizeForMatch(query).includes(expectedArtist);
 }
 
@@ -66,9 +74,7 @@ export function matchesTrackRequest(
     (requestedTitle.length >= 2 && candidateTitle.startsWith(requestedTitle));
   if (!titleMatches) return false;
   if (artist === null || artist === undefined || artist.trim().length === 0) return true;
-  return (
-    normalizeForMatch(primaryArtist(track.artist)) === normalizeForMatch(primaryArtist(artist))
-  );
+  return primaryArtistKey(track.artist) === primaryArtistKey(artist);
 }
 
 export function sortCanonicalCandidates<T extends Pick<MusicTrack, "album" | "artist" | "title">>(

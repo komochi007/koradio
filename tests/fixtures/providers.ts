@@ -21,6 +21,7 @@ export const codexPlanningContextFixture = {
       scenarioText: "深夜阅读",
       createdAt: "2026-07-16T20:00:00.000Z",
       trackIds: [],
+      tracks: [],
     },
   ],
   library: {

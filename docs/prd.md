@@ -937,7 +937,7 @@ Radio 主播放页采用单列固定顺序，不因主题模式变化而改变�
 | TasteOverrides | profileId、tags、avoidRules、sceneRules、updatedAt | 人工编辑的规则，优先级高于自动投影 |
 | EffectiveTaste | profileId、projectionVersion、overrideVersion、resolvedTaste | 提供给活动 Planner 的合并只读视图，不单独成为写入入口 |
 | MusicTrack | id、source、sourceTrackId、title、artist、album、releaseYear、duration、lyricStatus、originMode | 保存稳定歌曲元数据；语言、地区和人声硬约束使用运行时取得的原始歌词与曲目版本标识判定；年代限制按原始发行年执行 |
-| ProgramListeningIntent | `anchorTrack`、`similarityDimensions`、`languageConstraint`、`languageScope`、`regionScope`、`vocalMode`、`genreHints`、来源、年代、场景、情绪、能量 | 保存于规划内存上下文的结构化听歌需求；显式语言、地区和人声要求不可被 Taste 比例或候选不足静默放宽 |
+| ProgramListeningIntent | `anchorTrack`、`similarityDimensions`、`languageConstraint`、`languageScope`、`regionScope`、`vocalMode`、`genreHints`、来源、年代、场景、情绪、能量、节奏显著度、注意力等级、风格排除项、探索倾向 | 保存于规划内存上下文的结构化听歌需求；抽象听感词必须转成候选约束，显式语言、地区和人声要求不可被 Taste 比例或候选不足静默放宽；Taste 只作特征级探索引导 |
 | PlaylistSource | id、profileId、source、sourcePlaylistId、title、originMode | 保存歌单来源、导入统计和 Live/Demo 来源 |
 | Program | id、profileId、scenarioText、title、status、trackIds、originMode、playbackMode、createdAt | 保存一次电台节目；新节目使用 `voice-overlay`，旧数据缺失时按 `sequential` 读取 |
 | CurrentProgram | profileId、programId?、updatedAt | 保存每个 Profile 的当前节目指针；空指针不得回退到历史第一条 |

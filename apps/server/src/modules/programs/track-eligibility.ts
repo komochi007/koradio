@@ -179,6 +179,11 @@ export function trackEligibilityFailureReason(
   ) {
     return "region";
   }
+  if (vocalMode === "instrumental-only") {
+    return lyrics !== undefined && lyrics.content !== null && hasSubstantiveLyrics(track, lyrics)
+      ? "instrumental"
+      : null;
+  }
   if (vocalMode === "vocal-only" || languageScope !== "any" || regionScope !== "any") {
     if (lyrics === undefined || lyrics.content === null) return "lyrics";
     if (vocalMode === "vocal-only" && !hasSubstantiveLyrics(track, lyrics)) return "lyrics";

@@ -931,6 +931,216 @@ describe("S3-06 Program generation orchestration", () => {
     await recovered.close();
     await closeHarness(harness);
   });
+
+  it("keeps legitimate instrumental arrangements and fills a short library share from discovery", async () => {
+    const tracks = Array.from({ length: 5 }, (_, index) => ({
+      source: "netease" as const,
+      sourceTrackId: `instrumental-${String(index + 1)}`,
+      title: `Instrumental Window ${String(index + 1)} (Piano Version)`,
+      artist: `Instrumental Artist ${String(index + 1)}`,
+      album: "Instrumental Fixtures",
+      durationMs: 180_000,
+      lyricStatus: "unavailable" as const,
+      playable: true,
+    }));
+    const music: MusicProvider = {
+      source: "netease",
+      getLyrics() {
+        return Promise.resolve({ status: "unavailable" as const, content: null });
+      },
+      importPlaylist() {
+        return Promise.resolve({
+          source: "netease",
+          sourcePlaylistId: "instrumental-library",
+          title: "Instrumental Library",
+          tracks: tracks.slice(0, 2),
+        });
+      },
+      resolveAudio(sourceTrackId) {
+        return Promise.resolve({
+          resolvedAudioRef: `https://media.example.test/${sourceTrackId}.mp3`,
+          expiresAt: "2099-01-01T00:00:00.000Z",
+        });
+      },
+      search(keyword) {
+        const index = Number.parseInt(keyword.replace(/\D/gu, ""), 10) - 1;
+        const track = index < 0 ? undefined : tracks[index];
+        return Promise.resolve({ items: track === undefined ? [] : [track] });
+      },
+    };
+    const codex: CodexProvider = {
+      plan(context) {
+        const parsed = codexPlanningContextSchema.parse(context);
+        return Promise.resolve({
+          programTitle: "Instrumental Afternoon",
+          scenarioSummary: parsed.scenarioText,
+          djLanguage: parsed.preferences.djLanguage,
+          djPersona: parsed.preferences.djVoiceStyle,
+          djScripts: [
+            {
+              type: "intro",
+              language: parsed.preferences.djLanguage,
+              text: "这一段只留器乐和空气感。",
+              displayText: "这一段只留器乐和空气感。",
+              estimatedTiming: true,
+            },
+          ],
+          trackIntents: [
+            ...parsed.library.tracks.map((track) => ({
+              kind: "library" as const,
+              trackId: track.trackId,
+              reason: "库内正式器乐编配",
+            })),
+            ...tracks.slice(2).map((track, index) => ({
+              kind: "discovery" as const,
+              keyword: `instrumental ${String(index + 3)}`,
+              expectedArtist: track.artist,
+              reason: "库外正式器乐编配",
+            })),
+          ],
+          playlistIntent: { energy: "low-mid", mood: "calm", avoid: ["vocals"] },
+        });
+      },
+    };
+    const harness = await createHarness(codex, 5_000, createMockTtsProvider(), music, 5);
+    harness.library.importPlaylist(
+      harness.profile.id,
+      "instrumental-library",
+      "instrumental-library-import",
+    );
+    await harness.library.close();
+
+    const started = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "规划一档午后办公听的纯音乐歌单" },
+      "instrumental-program-001",
+    );
+    await harness.generation.waitForIdle();
+    const snapshot = harness.generation.get(harness.profile.id, started.jobId);
+
+    expect(snapshot.status).toBe("succeeded");
+    const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
+    expect(detail.tracks.map((track) => track.title)).toHaveLength(5);
+    expect(detail.tracks.every((track) => track.title.includes("Piano Version"))).toBe(true);
+    await closeHarness(harness);
+  });
+
+  it("avoids fourth-to-tenth programme repeats before using a deferred fallback", async () => {
+    const tracks = Array.from({ length: 9 }, (_, index) => ({
+      source: "netease" as const,
+      sourceTrackId: `freshness-${String(index + 1)}`,
+      title: `Freshness Track ${String(index + 1)}`,
+      artist: `Freshness Artist ${String(index + 1)}`,
+      album: "Freshness Fixtures",
+      durationMs: 180_000,
+      lyricStatus: "unavailable" as const,
+      playable: true,
+    }));
+    const music: MusicProvider = {
+      source: "netease",
+      getLyrics() {
+        return Promise.resolve({ status: "unavailable" as const, content: null });
+      },
+      importPlaylist() {
+        return Promise.resolve({
+          source: "netease",
+          sourcePlaylistId: "freshness-library",
+          title: "Freshness Library",
+          tracks,
+        });
+      },
+      resolveAudio(sourceTrackId) {
+        return Promise.resolve({
+          resolvedAudioRef: `https://media.example.test/${sourceTrackId}.mp3`,
+          expiresAt: "2099-01-01T00:00:00.000Z",
+        });
+      },
+      search() {
+        return Promise.resolve({ items: [] });
+      },
+    };
+    const codex: CodexProvider = {
+      plan(context) {
+        const parsed = codexPlanningContextSchema.parse(context);
+        const intents = [1, 5, 6, 7, 8].map((number) => {
+          const track = parsed.library.tracks.find(
+            (item) => item.title === `Freshness Track ${String(number)}`,
+          );
+          if (track === undefined)
+            throw new Error("Freshness fixture is missing from the planning context");
+          return { kind: "library" as const, trackId: track.trackId, reason: "验证近期避重" };
+        });
+        return Promise.resolve({
+          programTitle: "Freshness First",
+          scenarioSummary: parsed.scenarioText,
+          djLanguage: parsed.preferences.djLanguage,
+          djPersona: parsed.preferences.djVoiceStyle,
+          djScripts: [
+            {
+              type: "intro",
+              language: parsed.preferences.djLanguage,
+              text: "这次先换一批声音。",
+              displayText: "这次先换一批声音。",
+              estimatedTiming: true,
+            },
+          ],
+          trackIntents: intents,
+          playlistIntent: { energy: "mid", mood: "fresh", avoid: [] },
+        });
+      },
+    };
+    const harness = await createHarness(codex, 5_000, createMockTtsProvider(), music, 5);
+    harness.library.importPlaylist(
+      harness.profile.id,
+      "freshness-library",
+      "freshness-library-import",
+    );
+    await harness.library.close();
+    const libraryTracks = harness.library.candidateTracks(harness.profile.id, 20);
+    const trackId = (number: number) => {
+      const found = libraryTracks.find(
+        (track) => track.title === `Freshness Track ${String(number)}`,
+      );
+      if (found === undefined) throw new Error("Freshness fixture track is missing");
+      return found.id;
+    };
+    const insertedAt = [96, 72, 48, 25].map((hoursAgo) =>
+      new Date(Date.now() - hoursAgo * 60 * 60_000).toISOString(),
+    );
+    const insertProgram = harness.database.client.prepare(
+      "INSERT INTO program (id, profile_id, scenario_text, title, status, created_at, origin_mode, playback_mode) VALUES (?, ?, ?, ?, 'ready', ?, 'mock', 'sequential')",
+    );
+    const insertTrack = harness.database.client.prepare(
+      "INSERT INTO program_track (program_id, position, track_id) VALUES (?, 0, ?)",
+    );
+    [1, 2, 3, 4].forEach((number, index) => {
+      const programId = `00000000-0000-4000-8000-0000000001${String(index + 1).padStart(2, "0")}`;
+      insertProgram.run(
+        programId,
+        harness.profile.id,
+        "相近场景的旧节目",
+        `Historical ${String(index + 1)}`,
+        insertedAt[index] ??
+          (() => {
+            throw new Error("Historical fixture timestamp is missing");
+          })(),
+      );
+      insertTrack.run(programId, trackId(number));
+    });
+
+    const started = harness.generation.start(
+      harness.profile.id,
+      { scenarioText: "再来一档适合下午办公的歌单，多探索一点" },
+      "freshness-program-001",
+    );
+    await harness.generation.waitForIdle();
+    const snapshot = harness.generation.get(harness.profile.id, started.jobId);
+
+    expect(snapshot.status).toBe("succeeded");
+    const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
+    expect(detail.tracks.map((track) => track.title)).not.toContain("Freshness Track 1");
+    await closeHarness(harness);
+  });
 });
 
 function createConfig(parent: string): RuntimeConfig {

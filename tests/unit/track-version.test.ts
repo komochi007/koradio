@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canonicalTrackKey,
   hasInstrumentalMarker,
   hasNonCanonicalVersionMarker,
   isCanonicalOriginalCandidate,
   isNonCanonicalVersion,
   matchesRequestedTrackQuery,
+  primaryArtist,
   sortCanonicalCandidates,
 } from "../../apps/server/src/modules/library/track-version.js";
 
@@ -55,6 +57,13 @@ describe("track version selection", () => {
   it("recognizes beat production tracks as instrumental", () => {
     expect(hasInstrumentalMarker('"雪" - Richnomadic Type Beat')).toBe(true);
     expect(hasInstrumentalMarker("Beat Maker Session")).toBe(true);
+  });
+
+  it("normalizes collaboration credits for artist and track freshness", () => {
+    expect(primaryArtist("J. Cole / 21 Savage / Morray")).toBe("J. Cole");
+    expect(canonicalTrackKey({ ...original, artist: "Beach House feat. Guest" })).toBe(
+      canonicalTrackKey(original),
+    );
   });
 
   it("prefers the plain canonical title when a source appends release metadata", () => {

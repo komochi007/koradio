@@ -106,7 +106,7 @@ flowchart LR
 - **Transport**：认证、DTO、状态码和事件连接；**Application**：用例、事务、取消、超时、重试和降级。
 - **Domain**：稳定规则，不依赖框架；**Ports**：Application 消费的 repository/provider 接口。
 - **Adapters/Persistence**：翻译第三方协议与 I/O，不向上泄露供应商结构。
-- 节目规划在 Application/Domain 边界由两个共享纯模块收口：`listening-intent` 将 Radio 文本和重试上下文归一为锚点、语言/地区、人声模式、来源、年代、场景、情绪和能量；`track-eligibility` 在库内、搜索、锚点和补选路径执行同一套可播放性、原始发行年代、歌词实质性、语言/地区和纯音乐硬校验。Provider 只能提供候选，不能放宽这些规则。
+- 节目规划在 Application/Domain 边界由两个共享纯模块收口：`listening-intent` 将 Radio 文本和重试上下文归一为锚点、语言/地区、人声模式、来源、年代、场景、情绪、能量、节奏显著度、注意力等级、风格排除和探索倾向；`track-eligibility` 在库内、搜索、锚点和补选路径执行同一套可播放性、原始发行年代、歌词实质性、语言/地区和纯音乐硬校验。纯音乐路径不使用通用替代版本排除，正式器乐候选只要无实质歌词即可解析。Provider 只能提供候选，不能放宽这些规则；Taste 仅作特征级探索引导。
 ## 5. Feature Module Structure
 
 | Feature | Owns | Consumes | Produces | Must not own |

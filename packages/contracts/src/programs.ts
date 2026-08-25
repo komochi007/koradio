@@ -41,6 +41,15 @@ export const programRegionScopeSchema = z.enum([
 export const programVocalModeSchema = z.enum(["any", "vocal-only", "instrumental-only"]);
 export const programSourceModeSchema = z.enum(["balanced", "library-only", "discovery-only"]);
 export const programEnergyTargetSchema = z.enum(["low", "low-mid", "mid", "mid-high", "high"]);
+export const programRhythmSalienceSchema = z.enum([
+  "any",
+  "restrained",
+  "light",
+  "steady",
+  "strong",
+]);
+export const programAttentionLevelSchema = z.enum(["any", "background", "focus", "immersive"]);
+export const programExplorationModeSchema = z.enum(["balanced", "broaden", "familiar"]);
 export const programListeningIntentSchema = z.strictObject({
   anchorTrack: z
     .strictObject({
@@ -70,6 +79,10 @@ export const programListeningIntentSchema = z.strictObject({
   sceneHints: z.array(z.string().trim().min(1).max(120)).max(6).default([]),
   moodHints: z.array(z.string().trim().min(1).max(80)).max(6).default([]),
   energyTarget: programEnergyTargetSchema.nullable().default(null),
+  rhythmSalience: programRhythmSalienceSchema.default("any"),
+  attentionLevel: programAttentionLevelSchema.default("any"),
+  styleAvoids: z.array(z.string().trim().min(1).max(80)).max(12).default([]),
+  explorationMode: programExplorationModeSchema.default("balanced"),
 });
 export const djCitationSchema = z.strictObject({
   id: z.uuid(),
@@ -182,5 +195,8 @@ export type ProgramRegionScope = z.infer<typeof programRegionScopeSchema>;
 export type ProgramVocalMode = z.infer<typeof programVocalModeSchema>;
 export type ProgramSourceMode = z.infer<typeof programSourceModeSchema>;
 export type ProgramEnergyTarget = z.infer<typeof programEnergyTargetSchema>;
+export type ProgramRhythmSalience = z.infer<typeof programRhythmSalienceSchema>;
+export type ProgramAttentionLevel = z.infer<typeof programAttentionLevelSchema>;
+export type ProgramExplorationMode = z.infer<typeof programExplorationModeSchema>;
 export type PlaybackCheckpoint = z.infer<typeof playbackCheckpointSchema>;
 export type SavePlaybackCheckpointCommand = z.infer<typeof savePlaybackCheckpointCommandSchema>;

@@ -6,7 +6,10 @@ import type { ProgramService } from "./service.js";
 import { isPotentiallyEligibleTrack } from "./track-eligibility.js";
 
 export interface PlanningContextDependencies {
-  library: { candidateTracks(profileId: string, limit: number): MusicTrack[] };
+  library: {
+    candidateTracks(profileId: string, limit: number): MusicTrack[];
+    getTracks?(trackIds: string[]): MusicTrack[];
+  };
   now(): Date;
   preferences: Pick<ProfilePreferencesService, "get">;
   programs: Pick<ProgramService, "list">;
@@ -56,16 +59,24 @@ export function createPlanningContext(
     listeningIntent,
     libraryTracks,
   );
+  const history = dependencies.programs.list(profileId, undefined, 20).items;
+  const historicalTrackIds = [...new Set(history.flatMap((program) => program.trackIds))];
+  const historicalTracks = dependencies.library.getTracks?.(historicalTrackIds) ?? [];
+  const historicalTracksById = new Map(historicalTracks.map((track) => [track.id, track]));
   return codexPlanningContextSchema.parse({
     scenarioText,
     listeningIntent,
     effectiveTaste: taste.effective,
     tasteBlueprint: taste.blueprint,
-    history: dependencies.programs.list(profileId, undefined, 20).items.map((program) => ({
+    history: history.map((program) => ({
       title: program.title,
       scenarioText: program.scenarioText,
       createdAt: program.createdAt,
       trackIds: program.trackIds,
+      tracks: program.trackIds.flatMap((trackId) => {
+        const track = historicalTracksById.get(trackId);
+        return track === undefined ? [] : [{ trackId, title: track.title, artist: track.artist }];
+      }),
     })),
     library: {
       tracks: libraryTracks.map((track) => ({
