@@ -938,7 +938,14 @@ describe("S3-06 Program generation orchestration", () => {
       source: "netease" as const,
       sourceTrackId: `instrumental-${String(index + 1)}`,
       title: `Quiet Window ${String(index + 1)}`,
-      artist: `Instrumental Artist ${String(index + 1)}`,
+      artist:
+        [
+          "Library Instrumentalist One",
+          "Library Instrumentalist Two",
+          "Ludovico Einaudi",
+          "Yiruma",
+          "Yann Tiersen",
+        ][index] ?? "Instrumental Artist",
       album: "Instrumental Fixtures",
       durationMs: 180_000,
       lyricStatus: "unavailable" as const,
@@ -964,8 +971,13 @@ describe("S3-06 Program generation orchestration", () => {
         });
       },
       search(keyword) {
-        const index = Number.parseInt(keyword.replace(/\D/gu, ""), 10) - 1;
-        const track = index < 0 ? undefined : tracks[index];
+        const track = keyword.includes("Nuvole Bianche")
+          ? tracks[2]
+          : keyword.includes("River Flows in You")
+            ? tracks[3]
+            : keyword.includes("Comptine d'un autre été")
+              ? tracks[4]
+              : undefined;
         return Promise.resolve({ items: track === undefined ? [] : [track] });
       },
     };
@@ -993,12 +1005,6 @@ describe("S3-06 Program generation orchestration", () => {
               trackId: track.trackId,
               reason: "库内正式器乐编配",
             })),
-            ...tracks.slice(2).map((track, index) => ({
-              kind: "discovery" as const,
-              keyword: `instrumental ${String(index + 3)}`,
-              expectedArtist: track.artist,
-              reason: "库外正式器乐编配",
-            })),
           ],
           playlistIntent: { energy: "low-mid", mood: "calm", avoid: ["vocals"] },
         });
@@ -1022,8 +1028,8 @@ describe("S3-06 Program generation orchestration", () => {
 
     expect(snapshot.status).toBe("succeeded");
     const detail = harness.programs.get(harness.profile.id, snapshot.programId ?? "");
-    expect(capturedContext?.library.minimumLibraryTrackCount).toBe(0);
-    expect(capturedContext?.library.requiredDiscoveryTrackCount).toBe(5);
+    expect(capturedContext?.library.minimumLibraryTrackCount).toBe(2);
+    expect(capturedContext?.library.requiredDiscoveryTrackCount).toBe(3);
     expect(detail.tracks.map((track) => track.title)).toHaveLength(5);
     expect(detail.tracks.every((track) => track.title.startsWith("Quiet Window"))).toBe(true);
     await closeHarness(harness);

@@ -3,7 +3,10 @@ import type { MusicTrack, ProgramListeningIntent } from "@koradio/contracts";
 import type { ProfilePreferencesService } from "../profile-preferences/index.js";
 import type { TasteService } from "../taste/index.js";
 import type { ProgramService } from "./service.js";
-import { isPotentiallyEligibleTrack } from "./track-eligibility.js";
+import {
+  isHighConfidenceInstrumentalTrack,
+  isPotentiallyEligibleTrack,
+} from "./track-eligibility.js";
 
 export interface PlanningContextDependencies {
   library: {
@@ -26,7 +29,9 @@ function sourceTrackCounts(
 ): { library: number; discovery: number } {
   const sourceMode = listeningIntent?.sourceMode ?? "balanced";
   if (sourceMode === "balanced" && listeningIntent?.vocalMode === "instrumental-only") {
-    return { library: 0, discovery: targetTrackCount };
+    const eligibleLibraryCount = libraryTracks.filter(isHighConfidenceInstrumentalTrack).length;
+    const library = Math.min(2, eligibleLibraryCount);
+    return { library, discovery: targetTrackCount - library };
   }
   const requestedLibrary =
     sourceMode === "library-only"

@@ -130,6 +130,17 @@ const chineseTrackCounts = new Map([
   ["十二", 12],
 ]);
 
+const instrumentalFallbackQueries = [
+  { artist: "Ludovico Einaudi", keyword: "Nuvole Bianche Ludovico Einaudi" },
+  { artist: "Ludovico Einaudi", keyword: "Experience Ludovico Einaudi" },
+  { artist: "Yiruma", keyword: "River Flows in You Yiruma" },
+  { artist: "Yiruma", keyword: "Kiss the Rain Yiruma" },
+  { artist: "Yann Tiersen", keyword: "Comptine d'un autre été Yann Tiersen" },
+  { artist: "久石让", keyword: "Summer 久石让" },
+  { artist: "久石让", keyword: "One Summer's Day 久石让" },
+  { artist: "坂本龙一", keyword: "Merry Christmas Mr. Lawrence 坂本龙一" },
+];
+
 function normalizeDjCopy(value: string, language: "zh-CN" | "en-GB"): string {
   const text = value
     .replace(/\s+/gu, " ")
@@ -654,6 +665,13 @@ export function createProgramGenerationService(
         await searchAndResolve(intent.keyword, false, intent.expectedArtist ?? undefined);
       }
       if (resolved.length === targetTrackCount) break;
+    }
+
+    if (normalizedListeningIntent.vocalMode === "instrumental-only") {
+      for (const fallback of instrumentalFallbackQueries) {
+        if (resolved.length === targetTrackCount) break;
+        await searchAndResolve(fallback.keyword, false, fallback.artist);
+      }
     }
 
     for (const track of libraryTracks) {
