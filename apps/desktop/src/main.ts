@@ -116,9 +116,10 @@ function createMenuBar(): void {
   updateMenuBarMenu();
 }
 
-ipcMain.on("koradio:menu-bar-playback", (_event, playback: unknown) => {
+ipcMain.on("koradio:menu-bar-playback", (event, playback: unknown) => {
   menuBarPlayback = parseMenuBarPlayback(playback);
   updateMenuBarMenu();
+  event.returnValue = true;
 });
 
 ipcMain.on("koradio:menu-bar-ready", (event) => {

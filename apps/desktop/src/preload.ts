@@ -35,7 +35,7 @@ contextBridge.exposeInMainWorld("koradioDesktop", {
   },
   publishMenuBarPlayback(playback: MenuBarPlayback): void {
     latestMenuBarPlayback = playback;
-    ipcRenderer.send("koradio:menu-bar-playback", playback);
+    ipcRenderer.sendSync("koradio:menu-bar-playback", playback);
   },
 });
 
