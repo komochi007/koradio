@@ -69,6 +69,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] UX-26 点播原版可播预检优化已验收：单曲在返回卡片前验证原版播放源，瞬态解析失败有界重试一次，最多尝试三条同曲同艺人原版候选；失败不以翻唱、纯音乐或其他歌曲替代，且播放 URL 始终只保留在短期内存缓存中。安全日志仅记录来源、稳定原因和尝试次数，不记录 URL 或用户输入。
 - [x] UX-27 DJ 串讲与桌面播放体验优化已验收：Detail 串讲按自然标点短句显示单一时间标识；文案由活动 Planner 生成开场、深入转场与收尾，严格遵循 DJ Language 并保留歌名/艺人原文；Qwen TTS 使用稳定采样，DJ 以 38% duck 的 overlay 与音乐同时播放；对话不显示 `SOURCE`；Electron 菜单栏通过 Audio Engine 直接订阅和 CommonJS preload bridge 展示当前播放歌曲与艺人。
 - [x] UX-28 P0 节目听感、纯音乐与探索范围优化已验收：结构化意图新增节奏显著度、注意力等级、风格排除项与探索倾向；柔和/舒缓等抽象需求在 Planner 中成为候选约束，Taste 退回特征级探索指导；纯音乐正式器乐候选不再被通用替代版本过滤误杀；第 4～10 期同曲和高频艺人优先避重、候选不足才回退复用。
+- [x] UX-29 纯音乐候选补足已验收：纯音乐不再依赖曲名器乐标记，Planner 可选择无实质歌词的正式器乐；默认只保留小比例高置信库内器乐保底，库外候选不可播时会继续预检专项器乐回退池，不以翻唱、Karaoke、Type Beat、AI 或伴奏补位。
 - [x] Mock Provider 后端闭环已验收：Radio 闲聊不触发节目，歧义追问，单曲卡片、3～5 首推荐卡片和 8～12 首节目分别执行；空库探索、两轮补选、近 10 期去重、同艺人与点名覆盖、中文歌词硬约束、MusicBrainz/Wikimedia 引用、搜索/音频失败、Codex 错误/非法计划、TTS 阻断、歌词降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
 - [x] Codex、DeepSeek、NetEase 与 TTS Provider adapters：Codex、NetEase、DeepSeek 和 Qwen TTS 的协议边界、Keychain、重试、响应校验与 Mock fixtures 已实现；真实 DeepSeek API smoke 仍需手动凭据，Production Server 与 Electron 主进程默认 Live，Development、Test 和 CI 默认 Mock
