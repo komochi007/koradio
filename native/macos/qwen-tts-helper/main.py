@@ -39,7 +39,7 @@ def synthesize(model, request):
     maximum_duration = max(5000, len(request["text"]) * 250)
     audio = None
     sample_rate = None
-    for temperature in (0.9, 0.8, 0.7):
+    for temperature in (0.65, 0.55, 0.45):
         with contextlib.redirect_stdout(sys.stderr):
             results = list(
                 model.generate(
@@ -48,9 +48,9 @@ def synthesize(model, request):
                     lang_code=LANGUAGES[request["language"]],
                     max_tokens=4096,
                     temperature=temperature,
-                    top_k=50,
-                    top_p=1.0,
-                    repetition_penalty=1.05,
+                    top_k=30,
+                    top_p=0.9,
+                    repetition_penalty=1.1,
                     verbose=False,
                 )
             )

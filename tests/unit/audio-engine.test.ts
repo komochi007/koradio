@@ -1220,7 +1220,7 @@ describe("Audio Engine", () => {
       voiceSegmentId: intro.segmentId,
     });
     vi.advanceTimersByTime(350);
-    expect(music.volume).toBeCloseTo(0.28, 2);
+    expect(music.volume).toBeCloseTo(0.38, 2);
     await engine.pause();
     expect(voice.paused).toBe(true);
     await engine.play();
@@ -1229,7 +1229,7 @@ describe("Audio Engine", () => {
     voice.currentTime = 1.2;
     voice.emit("timeupdate");
     expect(engine.getSnapshot()).toMatchObject({ voicePositionMs: 1_200, volume: 0.5 });
-    expect(music.volume).toBeCloseTo(0.14, 2);
+    expect(music.volume).toBeCloseTo(0.19, 2);
     voice.emit("ended");
     vi.advanceTimersByTime(650);
     expect(music.volume).toBeCloseTo(0.5, 2);

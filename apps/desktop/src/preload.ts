@@ -3,8 +3,13 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { MenuBarCommand, MenuBarPlayback } from "./menu-bar.js";
 
 let pendingMenuBarPlaybackRequest = false;
+let latestMenuBarPlayback: MenuBarPlayback | undefined;
 
 ipcRenderer.on("koradio:menu-bar-request-playback", () => {
+  if (latestMenuBarPlayback !== undefined) {
+    ipcRenderer.send("koradio:menu-bar-playback", latestMenuBarPlayback);
+    return;
+  }
   pendingMenuBarPlaybackRequest = true;
 });
 
@@ -29,6 +34,7 @@ contextBridge.exposeInMainWorld("koradioDesktop", {
     return () => ipcRenderer.removeListener("koradio:menu-bar-command", receive);
   },
   publishMenuBarPlayback(playback: MenuBarPlayback): void {
+    latestMenuBarPlayback = playback;
     ipcRenderer.send("koradio:menu-bar-playback", playback);
   },
 });

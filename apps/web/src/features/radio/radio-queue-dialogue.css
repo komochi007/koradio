@@ -451,8 +451,7 @@
   margin-top: 8px;
 }
 
-.radio-track-card button,
-.radio-dj-source {
+.radio-track-card button {
   border: 0;
   color: var(--kr-accent);
   background: transparent;

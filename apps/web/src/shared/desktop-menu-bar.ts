@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type { AudioEngineFacade, AudioEngineSnapshot } from "../audio/index.js";
 
@@ -48,16 +48,22 @@ export function useDesktopMenuBar(
     () => playbackForMenuBar(audio),
     [audio.currentItem, audio.currentTrack, audio.itemCount, audio.preview, audio.state],
   );
+  const latestPlayback = useRef(playback);
+  latestPlayback.current = playback;
 
   useEffect(() => {
     const bridge = window.koradioDesktop;
     if (bridge === undefined) return;
-    const publish = (): void => {
-      bridge.publishMenuBarPlayback(playback);
-    };
-    publish();
-    return bridge.onMenuBarPlaybackRequested(publish);
+    bridge.publishMenuBarPlayback(playback);
   }, [playback]);
+
+  useEffect(() => {
+    const bridge = window.koradioDesktop;
+    if (bridge === undefined) return;
+    return bridge.onMenuBarPlaybackRequested(() => {
+      bridge.publishMenuBarPlayback(latestPlayback.current);
+    });
+  }, []);
 
   useEffect(() => {
     const bridge = window.koradioDesktop;

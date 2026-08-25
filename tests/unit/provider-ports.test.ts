@@ -15,7 +15,7 @@ import {
 } from "../fixtures/providers.js";
 
 describe("Provider ports and deterministic mocks", () => {
-  it("accepts the PRD plan shape and rejects missing intro or mixed languages", () => {
+  it("accepts the DJ plan shape and rejects missing intro or mixed languages", () => {
     expect(codexProgramPlanSchema.parse(codexProgramPlanFixture)).toEqual(codexProgramPlanFixture);
     expect(() =>
       codexProgramPlanSchema.parse({

@@ -58,6 +58,20 @@ export const codexProgramPlanFixture = {
       displayText: "今晚适合慢一点，但不要睡着。",
       estimatedTiming: true,
     },
+    {
+      type: "segue",
+      language: "zh-CN",
+      text: "旋律先把房间慢慢打开，下一首歌会顺着这份余裕接住你。",
+      displayText: "旋律先把房间慢慢打开，下一首歌会顺着这份余裕接住你。",
+      estimatedTiming: true,
+    },
+    {
+      type: "segue",
+      language: "zh-CN",
+      text: "留意人声收尾时的换气，节奏会把这段安静自然推向下一首。",
+      displayText: "留意人声收尾时的换气，节奏会把这段安静自然推向下一首。",
+      estimatedTiming: true,
+    },
   ],
   trackIntents: [
     {

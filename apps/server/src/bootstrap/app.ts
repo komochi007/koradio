@@ -116,7 +116,6 @@ import {
   createProgramGenerationRepository,
   createProgramGenerationService,
   createPlannerReadinessService,
-  createMusicBrainzFactProvider,
   createProgramDeletionService,
   createProgramRepository,
   createProgramService,
@@ -349,7 +348,6 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const programGeneration = createProgramGenerationService({
     ...(options.codexProvider === undefined ? {} : { codex: options.codexProvider }),
     events: eventHub,
-    ...(options.config.providerMode === "live" ? { facts: createMusicBrainzFactProvider() } : {}),
     library,
     ...(options.programMaximumTracks === undefined
       ? {}

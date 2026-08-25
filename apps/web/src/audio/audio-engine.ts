@@ -387,7 +387,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     voiceAudio.load();
     voiceAudio.currentTime = 0;
     voiceAudio.volume = 1;
-    rampMusic(userVolume * 0.28, 350);
+    rampMusic(userVolume * 0.38, 350);
     try {
       await voiceAudio.play();
       voiceActive = true;
@@ -1249,7 +1249,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     setVolume(volume) {
       const next = clamp(volume, 0, 1);
       userVolume = next;
-      audio.volume = voiceActive ? next * 0.28 : next;
+      audio.volume = voiceActive ? next * 0.38 : next;
       update({ volume: next });
     },
     stopPreview,

@@ -983,17 +983,6 @@ function RadioDialogue({
               <KoradioAvatar fallback="KO" label="DJ 头像" reference={profile.djAvatarRef} />
               <div className="radio-dj-bubble">
                 <p>{entry.script.text}</p>
-                {(entry.script.citations ?? []).map((citation) => (
-                  <a
-                    className="radio-dj-source"
-                    href={citation.url}
-                    key={citation.id}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    SOURCE · {citation.title}
-                  </a>
-                ))}
                 {entry.script.ttsAudioRef !== null
                   ? (() => {
                       const playing =

@@ -42,7 +42,6 @@ import { createPlanningContext } from "./planning-context.js";
 import { isPotentiallyEligibleTrack, trackEligibilityFailureReason } from "./track-eligibility.js";
 import type { ProgramGenerationRepository } from "./generation-persistence.js";
 import type { ProgramService } from "./service.js";
-import type { MusicFact, MusicFactProvider } from "./music-facts.js";
 
 export class ProgramGenerationNotFoundError extends Error {
   constructor() {
@@ -91,7 +90,6 @@ export interface CreateProgramGenerationServiceOptions {
   codex?: CodexProvider;
   events: { publish(event: V1Event): void };
   library: GenerationLibrary;
-  facts?: MusicFactProvider;
   maximumTracks?: number;
   now?: () => Date;
   originMode?: OriginMode;
@@ -126,28 +124,15 @@ const chineseTrackCounts = new Map([
   ["十二", 12],
 ]);
 
-const maximumDeepCommentaryCharacters = 120;
-
-function trimCommentary(value: string): string {
-  const characters = Array.from(value.trim());
-  if (characters.length <= maximumDeepCommentaryCharacters) return value.trim();
-  return `${characters.slice(0, maximumDeepCommentaryCharacters - 1).join("")}…`;
-}
-
-function deepCommentaryFor(
-  track: MusicTrack,
-  language: "zh-CN" | "en-GB",
-  facts: MusicFact[],
-): string {
-  const factText = trimCommentary(facts.map((fact) => fact.fact).join(" "));
-  if (language === "zh-CN") {
-    return trimCommentary(
-      `${track.title} 把旋律向上推开，再在句尾收住；${track.artist} 的声音和节奏留出了一点呼吸。${factText.length === 0 ? "此刻不补写传闻，只听见鼓点和换气里的细节。" : factText}`,
-    );
-  }
-  return trimCommentary(
-    `${track.title} lets the melody rise, then draws it back. ${track.artist}'s voice and the rhythm leave room to breathe. ${factText || "No backstage story is needed here; listen for the drum weight and the small shifts inside the phrase."}`,
-  );
+function normalizeDjCopy(value: string, language: "zh-CN" | "en-GB"): string {
+  const text = value
+    .replace(/\s+/gu, " ")
+    .replace(/(?:…|\.{2,})+/gu, language === "zh-CN" ? "。" : ".")
+    .replace(/([!?！？])\1+/gu, "$1")
+    .replace(/([,，;；:：])\1+/gu, "$1")
+    .trim();
+  if (/[。！？!?]$/u.test(text)) return text;
+  return `${text}${language === "zh-CN" ? "。" : "."}`;
 }
 
 function ttsFailureCode(error: unknown): string {
@@ -738,30 +723,14 @@ export function createProgramGenerationService(
     command: GenerateProgramCommand,
     plan: CodexProgramPlan,
     resolvedTracks: Array<{ audio: AudioResolution; track: MusicTrack }>,
-    featuredFacts: Map<string, MusicFact[]>,
     signal: AbortSignal,
   ): Promise<ProgramDetail> {
     setStage(snapshot.jobId, "synthesizing_dj", signal);
     const programId = randomId();
     const maximumSegues = Math.max(0, resolvedTracks.length - 1);
     let segueCount = 0;
-    const deepScripts: Array<CodexProgramPlan["djScripts"][number] & { citations?: MusicFact[] }> =
-      [];
-    for (const { track } of strictTrackCount ? resolvedTracks.slice(0, 2) : []) {
-      const facts = featuredFacts.get(track.id) ?? [];
-      const text = deepCommentaryFor(track, plan.djLanguage, facts);
-      deepScripts.push({
-        type: "segue",
-        language: plan.djLanguage,
-        text,
-        displayText: text,
-        estimatedTiming: true,
-        citations: facts,
-      });
-    }
-    const scripts: Array<CodexProgramPlan["djScripts"][number] & { citations?: MusicFact[] }> = [
+    const scripts = [
       ...plan.djScripts.filter((script) => script.type === "intro"),
-      ...deepScripts,
       ...plan.djScripts.filter((script) => script.type === "segue"),
       ...plan.djScripts.filter((script) => script.type === "outro"),
     ];
@@ -781,6 +750,7 @@ export function createProgramGenerationService(
     }
     const djScripts: Array<DjScriptSegment & { durationMs: number | null }> = [];
     for (const [index, script] of scripts.entries()) {
+      const text = normalizeDjCopy(script.text, script.language);
       let ttsAudioRef: string | null = null;
       let estimatedTiming = script.estimatedTiming;
       let durationMs: number | null = null;
@@ -791,7 +761,7 @@ export function createProgramGenerationService(
               () =>
                 options.tts?.synthesize(
                   {
-                    text: script.text,
+                    text,
                     language: script.language,
                     voiceStyle: plan.djPersona,
                   },
@@ -818,17 +788,12 @@ export function createProgramGenerationService(
         programId,
         type: script.type,
         language: script.language,
-        text: script.text,
-        displayText: script.text,
+        text,
+        displayText: text,
         estimatedTiming,
         revealedAt: null,
         ttsAudioRef,
-        citations: (script.citations ?? []).map((citation) => ({
-          id: randomId(),
-          title: citation.title,
-          url: citation.url,
-          provider: citation.provider,
-        })),
+        citations: [],
         durationMs,
       });
     }
@@ -1001,38 +966,7 @@ export function createProgramGenerationService(
       signal,
     );
     await enrichLyrics(snapshot, resolvedTracks, lyricsCache, signal);
-    const featuredFacts = new Map<string, MusicFact[]>();
-    if (options.facts !== undefined) {
-      const factResults = await Promise.all(
-        resolvedTracks.slice(0, 2).map(async ({ track }) => {
-          try {
-            return [
-              track.id,
-              await withAbort(
-                () => options.facts?.lookup(track, signal) ?? Promise.resolve([]),
-                signal,
-              ),
-            ] as const;
-          } catch (error) {
-            if (signal.aborted || error instanceof GenerationAbortedError) {
-              throw new GenerationAbortedError();
-            }
-            return [track.id, [] as MusicFact[]] as const;
-          }
-        }),
-      );
-      for (const [trackId, facts] of factResults) {
-        featuredFacts.set(trackId, facts);
-      }
-    }
-    const detail = await buildProgram(
-      snapshot,
-      command,
-      plan,
-      resolvedTracks,
-      featuredFacts,
-      signal,
-    );
+    const detail = await buildProgram(snapshot, command, plan, resolvedTracks, signal);
     setStage(snapshot.jobId, "committing", signal);
     assertActive(snapshot.jobId, signal);
     try {

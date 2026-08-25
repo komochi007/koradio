@@ -136,6 +136,32 @@ export function createMockCodexProvider(): CodexProvider & RadioAssistantProvide
               displayText: text,
               estimatedTiming: true,
             },
+            {
+              type: "segue",
+              language: parsedContext.preferences.djLanguage,
+              text:
+                parsedContext.preferences.djLanguage === "zh-CN"
+                  ? "先听旋律怎样把空间打开，再留意鼓点怎样把下一首歌稳稳接住。"
+                  : "Listen for how the melody opens the room, then how the drums make the handoff feel inevitable.",
+              displayText:
+                parsedContext.preferences.djLanguage === "zh-CN"
+                  ? "先听旋律怎样把空间打开，再留意鼓点怎样把下一首歌稳稳接住。"
+                  : "Listen for how the melody opens the room, then how the drums make the handoff feel inevitable.",
+              estimatedTiming: true,
+            },
+            {
+              type: "segue",
+              language: parsedContext.preferences.djLanguage,
+              text:
+                parsedContext.preferences.djLanguage === "zh-CN"
+                  ? "人声落下之后，编曲还在轻轻推着节奏，正好把此刻的心情带到下一段。"
+                  : "After the vocal lands, the arrangement keeps the pulse moving and carries this moment into the next song.",
+              displayText:
+                parsedContext.preferences.djLanguage === "zh-CN"
+                  ? "人声落下之后，编曲还在轻轻推着节奏，正好把此刻的心情带到下一段。"
+                  : "After the vocal lands, the arrangement keeps the pulse moving and carries this moment into the next song.",
+              estimatedTiming: true,
+            },
           ],
           trackIntents: [...libraryIntents, ...discoveryIntents],
           playlistIntent: {
