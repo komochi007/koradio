@@ -524,6 +524,16 @@ scripts/
 | TD-16 | Qwen3-TTS 8-bit via bundled Python/MLX helper | 获得更自然的本地语音并保持零 API 调用费 | 仅支持 macOS 15+ arm64，需要约 450 MiB runtime、1.84 GiB 首次模型下载、进程 deadline；新节目要求全部语音成功，失败保留旧节目 |
 | TD-17 | Built-in TypeScript NetEase `linuxapi` adapter | Personal Local Preview 不依赖官方 CLI、C# 二进制或 .NET 运行时 | 协议变化与公开发布合规必须在 S3/S7 持续验证 |
 | TD-18 | Personal Local Preview 启动前从 `origin/main` 本机构建更新 | 固定唯一桌面入口，同时保证每次打开都先确认源码最新且不公开分发 ad-hoc 产物 | 启动依赖网络和本机构建工具；更新失败时 fail-closed，不提供离线启动旧版 |
+| TD-19 | Daily Mix 使用独立持久聚合与通用 PlaybackSource | Daily 是无 DJ/TTS 的固定纯歌单，不能伪装成 Program；两类来源需要各自保存播放进度 | 增加 Daily 生成、曲目、checkpoint 与来源会话；保留现有 Program owner 和 public contract |
+
+### Daily Mix generation and playback
+
+- `DailyMix` owner 持有 `(profileId, localDate)` 幂等生成、候选编排、20 首原子提交、七日自然日期保留和 Daily checkpoint。Programs 只在历史页读取 Daily 的 public list/detail port，不拥有或删除 Daily 数据。
+- Daily 规划一次生成带储备的库内与探索候选，Backend 并发搜索并通过 Library public port 执行真实 `resolveAudio` 预检；Provider 只提供候选，不能绕过来源、避重、艺人或可播放性规则。候选不足时最多一次定向补足，任务整体上限 180 秒。
+- Daily 与 Program generation 使用独立活动任务；Profile 激活先提交 Daily，但二者不建立完成依赖。外部调用发生在事务外，只有最终 20 首与任务成功状态在短事务中原子提交。
+- Browser Audio Engine 内部使用 `ProgramSource | DailyMixSource` 判别式播放来源。现有 `loadProgram` 行为保持不变，Daily 按播放时重新解析的音频引用构建运行时队列。
+- 每个 Profile 的来源会话保存最近 Program、最近 Daily 和当前来源；两类 checkpoint 独立持久化。临时 `PLAY NEXT` 只存在于 Audio Engine 单槽位上下文，不进入任何持久来源或历史。
+- Daily 的自然日期由本地服务按设备当前本地时区计算并落为 `YYYY-MM-DD`。记录保留窗口为今天至前 6 天；清理只移除 Daily 行和关联，不删除共享 MusicTrack、LibraryItem、Feedback 或来源不明文件。
 ## 19. Known Tradeoffs
 
 - 模块化单体易部署，但 process crash 会同时影响全部 backend 能力。
