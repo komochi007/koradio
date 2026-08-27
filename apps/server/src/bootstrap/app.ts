@@ -7,6 +7,20 @@ import websocket from "@fastify/websocket";
 import {
   audioResolutionRequestSchema,
   audioResolutionSchema,
+  dailyMixDetailRequestSchema,
+  dailyMixDetailSchema,
+  dailyMixCheckpointRequestSchema,
+  dailyMixPlaybackCheckpointSchema,
+  dailyMixGenerationSnapshotSchema,
+  dailyMixListRequestSchema,
+  dailyMixListResponseSchema,
+  dailyMixTodayRequestSchema,
+  dailyMixTodayResponseSchema,
+  ensureDailyMixRequestSchema,
+  activatePlaybackSourceRequestSchema,
+  playbackSourceSessionRequestSchema,
+  playbackSourceSessionSchema,
+  saveDailyMixCheckpointRequestSchema,
   createFeedbackRequestSchema,
   clearRadioConversationRequestSchema,
   createRadioTurnRequestSchema,
@@ -63,6 +77,17 @@ import {
   updateTasteOverridesRequestSchema,
 } from "@koradio/contracts";
 import Fastify, { type FastifyInstance } from "fastify";
+
+import {
+  DailyMixDataError,
+  DailyMixCheckpointPolicyError,
+  DailyMixCheckpointStaleError,
+  DailyMixGenerationNotFoundError,
+  DailyMixNotFoundError,
+  createDailyMixRepository,
+  createDailyMixService,
+  type DailyMixPlannerProvider,
+} from "../modules/daily-mixes/index.js";
 
 import {
   createDataRootMigrationService,
@@ -186,6 +211,7 @@ export interface CreateAppOptions {
   musicProvider?: MusicProvider;
   codexProvider?: CodexProvider;
   plannerProvider?: ProgramPlannerProvider;
+  dailyMixPlannerProvider?: DailyMixPlannerProvider;
   programMaximumTracks?: number;
   radioAssistantProvider?: RadioAssistantProvider;
   generationTimeoutMs?: number;
@@ -310,9 +336,10 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     programs,
     repository: playbackRepository,
   });
+  const feedbackRepository = createFeedbackRepository(database.client);
   const feedback = createFeedbackService({
     client: database.client,
-    repository: createFeedbackRepository(database.client),
+    repository: feedbackRepository,
     targets: {
       programExists:
         options.programFeedbackTargets?.programExists ??
@@ -365,6 +392,29 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       : { timeoutMs: options.generationTimeoutMs }),
     tts: options.ttsProvider ?? runtimeProviders.tts,
   });
+  const configuredDailyPlanner =
+    options.dailyMixPlannerProvider ??
+    (options.plannerProvider !== undefined && "planDailyMix" in options.plannerProvider
+      ? (options.plannerProvider as ProgramPlannerProvider & DailyMixPlannerProvider)
+      : options.codexProvider !== undefined && "planDailyMix" in options.codexProvider
+        ? (options.codexProvider as CodexProvider & DailyMixPlannerProvider)
+        : runtimeProviders.planner);
+  const dailyMix = createDailyMixService({
+    client: database.client,
+    feedback: feedbackRepository,
+    library,
+    planner: configuredDailyPlanner,
+    programs,
+    repository: createDailyMixRepository(database.client),
+    taste,
+  });
+  const ensureDailyFirst = (profileId: string): void => {
+    try {
+      dailyMix.ensure(profileId);
+    } catch (error) {
+      if (!(error instanceof DailyMixDataError)) throw error;
+    }
+  };
   const plannerReadiness = createPlannerReadinessService({
     context: {
       library,
@@ -383,7 +433,12 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
     assistant: options.radioAssistantProvider ?? runtimeProviders.radioAssistant,
     currentProgram: programs,
     library,
-    programs: programGeneration,
+    programs: {
+      start(profileId, command, idempotencyKey) {
+        ensureDailyFirst(profileId);
+        return programGeneration.start(profileId, command, idempotencyKey);
+      },
+    },
     repository: createRadioTurnRepository(database.client),
   });
   const radioSpeech = createRadioSpeechService({
@@ -411,6 +466,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
           return Promise.resolve();
         }),
       async pauseGenerationAndPlayback() {
+        await dailyMix.close();
         await programGeneration.close();
         await options.migrationRuntimeCoordinator?.pauseGenerationAndPlayback();
       },
@@ -422,6 +478,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
   const webSocketAuthenticationTimeoutMs = options.webSocketAuthenticationTimeoutMs ?? 2_000;
 
   app.addHook("onClose", async () => {
+    await dailyMix.close();
     await programGeneration.close();
     await radioSpeech.close();
     await library.close();
@@ -494,7 +551,9 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
 
     app.get("/api/v1/profiles/current", async (_request, reply) => {
       try {
-        return currentProfileResponseSchema.parse(await profileContext.getCurrent());
+        const current = currentProfileResponseSchema.parse(await profileContext.getCurrent());
+        if (current.current !== null) ensureDailyFirst(current.current.profile.id);
+        return current;
       } catch (error) {
         if (
           error instanceof ProfileNotFoundError ||
@@ -529,9 +588,11 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       }
 
       try {
-        return currentProfileResponseSchema.parse(
+        const selected = currentProfileResponseSchema.parse(
           await profileContext.select(parsed.data.body.profileId),
         );
+        if (selected.current !== null) ensureDailyFirst(selected.current.profile.id);
+        return selected;
       } catch (error) {
         if (error instanceof ProfileNotFoundError) {
           return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
@@ -952,6 +1013,301 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
       }
     });
 
+    app.post("/api/v1/profiles/:profileId/daily-mixes/today", (request, reply) => {
+      const parsed = ensureDailyMixRequestSchema.safeParse({
+        params: request.params,
+        body: request.body ?? {},
+      });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "DAILY_MIX_GENERATION_VALIDATION_FAILED",
+          "Daily Mix generation request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        const snapshot = dailyMix.ensure(parsed.data.params.profileId, parsed.data.body.retry);
+        return reply
+          .status(snapshot.status === "succeeded" ? 200 : 202)
+          .send(dailyMixGenerationSnapshotSchema.parse(snapshot));
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof DailyMixDataError) {
+          return sendApiError(
+            reply,
+            500,
+            "DAILY_MIX_GENERATION_UNAVAILABLE",
+            "Daily Mix generation could not be started",
+            true,
+          );
+        }
+        throw error;
+      }
+    });
+
+    app.get("/api/v1/profiles/:profileId/daily-mixes/today", (request, reply) => {
+      const parsed = dailyMixTodayRequestSchema.safeParse({ params: request.params });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "DAILY_MIX_VALIDATION_FAILED",
+          "Daily Mix request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        return dailyMixTodayResponseSchema.parse(dailyMix.today(parsed.data.params.profileId));
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof DailyMixDataError) {
+          return sendApiError(
+            reply,
+            500,
+            "DAILY_MIX_UNREADABLE",
+            "Daily Mix could not be read",
+            true,
+          );
+        }
+        throw error;
+      }
+    });
+
+    app.get("/api/v1/profiles/:profileId/daily-mixes", (request, reply) => {
+      const parsed = dailyMixListRequestSchema.safeParse({
+        params: request.params,
+        query: request.query,
+      });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "DAILY_MIX_VALIDATION_FAILED",
+          "Daily Mix request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        return dailyMixListResponseSchema.parse(dailyMix.list(parsed.data.params.profileId));
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        throw error;
+      }
+    });
+
+    app.get("/api/v1/profiles/:profileId/daily-mixes/:dailyMixId", (request, reply) => {
+      const parsed = dailyMixDetailRequestSchema.safeParse({ params: request.params });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "DAILY_MIX_VALIDATION_FAILED",
+          "Daily Mix request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        return dailyMixDetailSchema.parse(
+          dailyMix.get(parsed.data.params.profileId, parsed.data.params.dailyMixId),
+        );
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof DailyMixNotFoundError) {
+          return sendApiError(reply, 404, "DAILY_MIX_NOT_FOUND", "Daily Mix was not found", false);
+        }
+        throw error;
+      }
+    });
+
+    app.get("/api/v1/profiles/:profileId/daily-mix-generations/:jobId", (request, reply) => {
+      const parsed = programGenerationSnapshotRequestSchema.safeParse({ params: request.params });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "DAILY_MIX_GENERATION_VALIDATION_FAILED",
+          "Daily Mix generation request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        return dailyMixGenerationSnapshotSchema.parse(
+          dailyMix.getGeneration(parsed.data.params.profileId, parsed.data.params.jobId),
+        );
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof DailyMixGenerationNotFoundError) {
+          return sendApiError(
+            reply,
+            404,
+            "DAILY_MIX_GENERATION_NOT_FOUND",
+            "Daily Mix generation was not found",
+            false,
+          );
+        }
+        throw error;
+      }
+    });
+
+    app.get("/api/v1/profiles/:profileId/daily-mix-playback", (request, reply) => {
+      const parsed = dailyMixCheckpointRequestSchema.safeParse({ params: request.params });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "DAILY_MIX_PLAYBACK_INVALID",
+          "Playback request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        const checkpoint = dailyMix.getCheckpoint(parsed.data.params.profileId);
+        if (checkpoint === null) {
+          return sendApiError(
+            reply,
+            404,
+            "DAILY_MIX_CHECKPOINT_NOT_FOUND",
+            "Playback checkpoint was not found",
+            false,
+          );
+        }
+        return dailyMixPlaybackCheckpointSchema.parse(checkpoint);
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        throw error;
+      }
+    });
+
+    app.put("/api/v1/profiles/:profileId/daily-mix-playback/checkpoints", (request, reply) => {
+      const parsed = saveDailyMixCheckpointRequestSchema.safeParse({
+        params: request.params,
+        body: request.body,
+      });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "DAILY_MIX_PLAYBACK_INVALID",
+          "Playback checkpoint is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        return dailyMixPlaybackCheckpointSchema.parse(
+          dailyMix.saveCheckpoint(parsed.data.params.profileId, parsed.data.body),
+        );
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof DailyMixNotFoundError) {
+          return sendApiError(reply, 404, "DAILY_MIX_NOT_FOUND", "Daily Mix was not found", false);
+        }
+        if (error instanceof DailyMixCheckpointPolicyError) {
+          return sendApiError(
+            reply,
+            409,
+            "DAILY_MIX_PLAYBACK_CONFLICT",
+            "Playback checkpoint was rejected",
+            false,
+          );
+        }
+        if (error instanceof DailyMixCheckpointStaleError) {
+          return sendApiError(reply, 409, "PLAYBACK_LEASE_STALE", "Playback lease is stale", false);
+        }
+        throw error;
+      }
+    });
+
+    app.get("/api/v1/profiles/:profileId/playback/source", (request, reply) => {
+      const parsed = playbackSourceSessionRequestSchema.safeParse({ params: request.params });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "PLAYBACK_SOURCE_INVALID",
+          "Playback source request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        const source = dailyMix.getSourceSession(parsed.data.params.profileId);
+        if (source === null) {
+          return sendApiError(
+            reply,
+            404,
+            "PLAYBACK_SOURCE_NOT_FOUND",
+            "Playback source was not found",
+            false,
+          );
+        }
+        return playbackSourceSessionSchema.parse(source);
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        throw error;
+      }
+    });
+
+    app.put("/api/v1/profiles/:profileId/playback/source", (request, reply) => {
+      const parsed = activatePlaybackSourceRequestSchema.safeParse({
+        params: request.params,
+        body: request.body,
+      });
+      if (!parsed.success) {
+        return sendApiError(
+          reply,
+          400,
+          "PLAYBACK_SOURCE_INVALID",
+          "Playback source request is invalid",
+          false,
+        );
+      }
+      try {
+        profiles.get(parsed.data.params.profileId);
+        return playbackSourceSessionSchema.parse(
+          dailyMix.activateSource(parsed.data.params.profileId, parsed.data.body),
+        );
+      } catch (error) {
+        if (error instanceof ProfileNotFoundError) {
+          return sendApiError(reply, 404, "PROFILE_NOT_FOUND", "Profile was not found", false);
+        }
+        if (error instanceof DailyMixNotFoundError) {
+          return sendApiError(
+            reply,
+            404,
+            "PLAYBACK_SOURCE_NOT_FOUND",
+            "Playback source was not found",
+            false,
+          );
+        }
+        throw error;
+      }
+    });
+
     app.post("/api/v1/profiles/:profileId/program-generations", (request, reply) => {
       const parsed = generateProgramRequestSchema.safeParse({
         params: request.params,
@@ -972,6 +1328,7 @@ export async function createApp(options: CreateAppOptions): Promise<FastifyInsta
 
       try {
         profiles.get(parsed.data.params.profileId);
+        ensureDailyFirst(parsed.data.params.profileId);
         const snapshot = programGeneration.start(
           parsed.data.params.profileId,
           parsed.data.body,

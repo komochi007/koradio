@@ -12,8 +12,8 @@
 | 问题 | 直接答案 |
 |---|---|
 | 当前工程阶段 | S7 Personal Local Preview 核心闭环已完成；S7-09 Electron 外壳迁移与个人本机稳定性试用进行中，公开分发工程等待项目所有者重新授权 |
-| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06`、`S5-01`～`S5-04`、`S6-01`～`S6-05`、`S7-01`、`S7-02`、`S7-06`、`S7-08`、`AI-01`、`UX-01`～`UX-23`（含 `UX-12-01`、`UX-17-01`） |
-| 当前活动任务 | `S7-07`、`S7-09` |
+| 当前已完成任务 | `S0-01`～`S0-08`、`S1-01`～`S1-04`、`S2-01`～`S2-05`、`S3-01`～`S3-07`、`S4-01`～`S4-06`、`S5-01`～`S5-04`、`S6-01`～`S6-05`、`S7-01`、`S7-02`、`S7-06`、`S7-08`、`AI-01`、`UX-01`～`UX-29`（含 `UX-12-01`、`UX-17-01`） |
+| 当前活动任务 | `S7-07`、`S7-09`、`UX-30` |
 | 初始下一任务 | `S7-07` 个人本机稳定性试用；`S7-03`～`S7-05` 仅在授权外部分发后启动 |
 | 首轮外部测试条件 | `S5-04`、`S6-05`、`S7-05` 全部为 `已完成` |
 | 当前交付与后续发布 | 先做项目所有者本机 Personal Local Preview；公开下载获再次授权后才进入签名公证直发 |
@@ -58,7 +58,7 @@ AI 执行任务时按固定顺序操作：
 | S5 P1 全量功能 | 4 | 0 | 0 | 0 | 0 | 4 |
 | S6 集成、质量与安全加固 | 5 | 0 | 0 | 0 | 0 | 5 |
 | S7 macOS 本机运行与后置发布工程 | 4 | 3 | 3 | 0 | 0 | 10 |
-| UX 个人本机使用体验优化 | 23 | 0 | 0 | 0 | 0 | 23 |
+| UX 个人本机使用体验优化 | 29 | 0 | 1 | 0 | 0 | 30 |
 | S8 全量外部测试与 Release Candidate | 0 | 4 | 0 | 0 | 0 | 4 |
 | S9 v1.0 发布与稳定期 | 0 | 4 | 0 | 0 | 0 | 4 |
 
@@ -206,6 +206,7 @@ AI 执行任务时按固定顺序操作：
 | `UX-27` DJ 串讲与桌面播放体验优化 | 已验收 | Critical | 修复 Detail 串讲切分、DJ 文案/TTS、音乐叠播、对话来源和 macOS 菜单栏播放信息体验。 | UX-26 | 项目所有者复现截图、Radio/Detail/Audio/Electron 实现。 | 不改 Program、历史、持久队列、公开 REST/WS schema、音源选择或非本次 UI。 | Detail 按逗号、句号等自然标点短句显示且每句一个时间；文案有开场、至少两段深入转场和收尾，严格跟随 DJ Language 并保留歌名/艺人原文；清理异常标点；DJ 与音乐 overlay、音乐 duck 38%；对话无 `SOURCE`；菜单栏展示当前歌曲和艺人。 | Planner/TTS/Audio/Detail/Conversation/Electron 精准改动、定向回归、权威文档与安装包验证。 | Node 24.18.0 下定向 unit、integration、component 回归，以及 typecheck、lint、format、production build、macOS 0.0.215 包验证通过；CDP 确认 Renderer 已加载菜单栏 bridge 并可发布当前歌曲快照，项目所有者已完成验收。 | Codex / 项目所有者 | 真实 TTS 的内容与韵律仍受模型和输入影响；音乐平台可用性不在本任务变更范围。 |
 | `UX-28` P0 节目听感、纯音乐与探索范围优化 | 已验收 | Critical | 修复抽象低刺激需求混入强说唱/强节奏、纯音乐误报库内不足，以及相似需求下重复歌曲/艺人的问题。 | UX-27 | 项目所有者真实节目记录、近 10 期节目统计与当前 Planner/候选解析实现。 | 不改变公开 REST/WS、用户数据、音源或最近 3 档/24 小时硬去重；不把 Taste 当作硬筛选器。 | 柔和/舒缓/平和与办公场景成为节奏、注意力和风格排除候选约束；纯音乐正式器乐可补足且不混入人声；第 4～10 期先避开同曲、近期艺人和高频艺人，缺少合规候选时才回退；当前意图优先于 Taste。 | Contracts、Programs intent/context/eligibility/generation、Codex/DeepSeek prompts、专项 unit/integration、权威文档。 | Node 24.18.0 下定向 unit/integration、typecheck、lint、format、构建、桌面包更新和项目所有者场景验收通过；提交 `67df9d2`，桌面端 `0.0.218` 已加载该提交。 | Codex / 项目所有者 | 无歌曲听感元数据时，强风格判断主要由活动 Planner 与用户的明确排除项完成；外部候选不足时受控复用优先于节目失败。 |
 | `UX-29` 纯音乐候选补足 | 已验收 | Critical | 修复纯音乐依赖标题标记而漏掉真实器乐、库外候选无音频即整档失败的问题。 | UX-28 | 项目所有者两轮真实失败任务、网易云音频只读抽样与 Programs 解析实现。 | 不改变公开 REST/WS、用户数据、当前安装包、音源或人声节目校验；不将翻唱、Karaoke、Type Beat、AI 或伴奏视为纯音乐。 | Planner 选择的正式无歌词器乐可进入校验；默认只保留小比例高置信库内器乐保底；库外候选无音频时逐首预检专项器乐回退池，补足目标数后才提交节目。 | Programs eligibility/context/generation、Codex/DeepSeek 提示、Radio 失败提示和专项 integration 回归。 | Node 24.18.0 下纯音乐专项 20 项、unit、typecheck、lint、format、组件、生产构建和 macOS `0.0.221` 包验证通过；项目所有者桌面端验收通过。提交 `1c11da0`、`d35bf8b`。 | Codex / 项目所有者 | 外部音源临时无音频仍可能减少可选曲目；回退池全部不可播时保留旧节目并明确提示。 |
+| `UX-30` 新增 Daily Mix 每日推荐 | 进行中 | Critical | 为每个 Profile 每个自然日生成一份 20 首真实可播的探索型纯歌单，并支持与 Radio 节目无损切换。 | UX-29 | 项目所有者完成 53 项产品与视觉决策；`docs/prd.md`、`docs/user-flow.md`、`architecture.md`、`design/design.md` 与参考图。 | 不改变既有 Program 规划、音源、反馈、Profile 或公开分发边界；保留最近 7 个自然日；不得把旧列表伪装为今日推荐；所有播放源保持独立精确进度。 | 每日首次启动优先异步生成 Daily；120 秒总预算内以并发解析和一次补选提高成功率；20 首原子提交；Radio 卡片、Queue `RADIO/DAILY` 胶囊、Programs 历史和 Detail 均满足已冻结视觉与交互规则；`PLAY NEXT` 结束后回到原来源。 | Daily contracts、SQLite migration、Planner/解析/持久化服务、双播放源 AudioEngine、Radio/Programs UI、专项 contract/unit/integration/component 回归及权威文档。 | Node 24.18.0 下 `pnpm check` 已通过：unit 181、contract 65、integration 122、component 48、coverage 416 与生产构建通过；待完成 arm64 包验证、桌面端真实 Provider 日推和项目所有者人工验收。 | Codex / 当前工作区 | 外部 Planner 或音源在 120 秒内无法解析 20 首时明确失败并保留手动重试；不显示昨日列表。 |
 
 ### S8｜全量外部测试与 Release Candidate
 

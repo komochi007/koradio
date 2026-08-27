@@ -12,6 +12,7 @@ export const asyncJobStatusSchema = z.enum([
 ]);
 export const asyncJobKindSchema = z.enum([
   "program_generation",
+  "daily_mix_generation",
   "playlist_import",
   "data_root_migration",
 ]);
@@ -21,6 +22,13 @@ export const programGenerationStageSchema = z.enum([
   "resolving_tracks",
   "enriching_tracks",
   "synthesizing_dj",
+  "committing",
+  "completed",
+]);
+export const dailyMixGenerationStageSchema = z.enum([
+  "queued",
+  "planning",
+  "resolving_tracks",
   "committing",
   "completed",
 ]);
@@ -78,5 +86,6 @@ export const activeProgramGenerationResponseSchema = z.strictObject({
 export type JobAcceptedResponse = z.infer<typeof jobAcceptedResponseSchema>;
 export type AsyncJobSnapshot = z.infer<typeof asyncJobSnapshotSchema>;
 export type ProgramGenerationStage = z.infer<typeof programGenerationStageSchema>;
+export type DailyMixGenerationStage = z.infer<typeof dailyMixGenerationStageSchema>;
 export type ProgramGenerationSnapshot = z.infer<typeof programGenerationSnapshotSchema>;
 export type ActiveProgramGenerationResponse = z.infer<typeof activeProgramGenerationResponseSchema>;

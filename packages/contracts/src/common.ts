@@ -4,6 +4,7 @@ export const apiVersionSchema = z.literal(1);
 export const identifierSchema = z.uuid();
 export const profileIdSchema = identifierSchema;
 export const programIdSchema = identifierSchema;
+export const dailyMixIdSchema = identifierSchema;
 export const jobIdSchema = identifierSchema;
 export const trackIdSchema = identifierSchema;
 export const playlistSourceIdSchema = identifierSchema;
@@ -45,6 +46,10 @@ export const profileProgramIdParamsSchema = z.strictObject({
   profileId: profileIdSchema,
   programId: programIdSchema,
 });
+export const profileDailyMixIdParamsSchema = z.strictObject({
+  profileId: profileIdSchema,
+  dailyMixId: dailyMixIdSchema,
+});
 export const profileProgramDjScriptParamsSchema = z.strictObject({
   profileId: profileIdSchema,
   programId: programIdSchema,
@@ -73,6 +78,7 @@ export const idempotencyKeyHeadersSchema = z.strictObject({
 export type PageQuery = z.infer<typeof pageQuerySchema>;
 export type ProfileIdParams = z.infer<typeof profileIdParamsSchema>;
 export type ProfileProgramIdParams = z.infer<typeof profileProgramIdParamsSchema>;
+export type ProfileDailyMixIdParams = z.infer<typeof profileDailyMixIdParamsSchema>;
 export type ProfileProgramDjScriptParams = z.infer<typeof profileProgramDjScriptParamsSchema>;
 export type ProfileJobIdParams = z.infer<typeof profileJobIdParamsSchema>;
 export type ProfileTrackIdParams = z.infer<typeof profileTrackIdParamsSchema>;

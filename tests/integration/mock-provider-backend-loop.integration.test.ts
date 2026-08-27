@@ -299,7 +299,11 @@ describe("S3-07 deterministic Mock Provider backend loop", () => {
       expect.objectContaining({ type: "intro", text: s3GenerationPlanFixture.djScripts[0].text }),
     ]);
     expect(detail.timeline.map((item) => item.kind)).toEqual(["dj", "track"]);
-    expect(searchInvocations).toEqual(["S3 first empty", "S3 second empty", "S3 playable"]);
+    expect(searchInvocations.filter((keyword) => keyword.startsWith("S3 "))).toEqual([
+      "S3 first empty",
+      "S3 second empty",
+      "S3 playable",
+    ]);
 
     openApps.splice(openApps.indexOf(app), 1);
     await app.close();

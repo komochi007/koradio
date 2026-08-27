@@ -8,6 +8,11 @@ import {
   type CodexProgramPlan,
 } from "../modules/programs/index.js";
 import {
+  dailyMixPlanSchema,
+  dailyMixPlanningContextSchema,
+  type DailyMixPlannerProvider,
+} from "../modules/daily-mixes/index.js";
+import {
   radioAssistantOutputSchema,
   radioConversationContextSchema,
   type RadioAssistantProvider,
@@ -106,7 +111,7 @@ export interface CreateDeepseekAdapterOptions {
 }
 
 export interface TestableDeepseekPlannerProvider
-  extends ProgramPlannerProvider, RadioAssistantProvider {
+  extends ProgramPlannerProvider, DailyMixPlannerProvider, RadioAssistantProvider {
   test(options: ProviderCallOptions): Promise<void>;
 }
 
@@ -427,6 +432,43 @@ export function createDeepseekAdapter(
 
   return {
     plan,
+    async planDailyMix(context, callOptions) {
+      const parsedContext = dailyMixPlanningContextSchema.safeParse(context);
+      const parsedOptions = providerCallOptionsSchema.safeParse(callOptions);
+      if (!parsedContext.success || !parsedOptions.success) {
+        throw new DeepseekAdapterError("configuration_invalid");
+      }
+      const primary = parsedContext.data.refill === null;
+      const completion = await requestCompletion(
+        [
+          {
+            role: "system",
+            content:
+              "You are Koradio's Daily Mix planner. Return valid JSON only and never include explanations or reasoning.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              instruction: primary
+                ? "Return exactly 36 distinct candidates: 4 library candidates copied from libraryTracks, 20 close discovery candidates, 8 adjacent discovery candidates and 4 surprise discovery candidates. Every discovery keyword must be one exact canonical studio song title plus its original primary artist and expectedArtist must match. Use EffectiveTaste and tasteBlueprint, exclude recentTracks and dislikedTracks, spread artists broadly, and never intentionally choose covers, live versions, remixes, karaoke, backing tracks, sped-up, slowed, Nightcore, reverb, Type Beats or AI music."
+                : "Return only discovery refill candidates for the missing bucket counts in refill, plus up to two reserves per missing bucket. Do not repeat excludedQueries, recentTracks or dislikedTracks. Every keyword must be one exact canonical studio song title plus its original primary artist and expectedArtist must match. Never intentionally choose covers, live versions, remixes, karaoke, backing tracks, sped-up, slowed, Nightcore, reverb, Type Beats or AI music.",
+              outputSchema: z.toJSONSchema(dailyMixPlanSchema),
+              context: parsedContext.data,
+            }),
+          },
+        ],
+        normalizeCallOptions(parsedOptions.data),
+        primary ? 5_500 : 2_048,
+        "disabled",
+      );
+      const content = completion.choices[0]?.message.content;
+      if (content === undefined || content === null) {
+        throw new DeepseekAdapterError("response_invalid");
+      }
+      const plan = dailyMixPlanSchema.safeParse(parseJsonContent(content));
+      if (!plan.success) throw new DeepseekAdapterError("response_invalid");
+      return plan.data;
+    },
     async respond(context, callOptions) {
       const parsedContext = radioConversationContextSchema.safeParse(context);
       const parsedOptions = providerCallOptionsSchema.safeParse(callOptions);

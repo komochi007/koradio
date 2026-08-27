@@ -8,6 +8,11 @@ import {
   type TtsProvider,
 } from "../modules/programs/index.js";
 import {
+  dailyMixPlanSchema,
+  dailyMixPlanningContextSchema,
+  type DailyMixPlannerProvider,
+} from "../modules/daily-mixes/index.js";
+import {
   createMockRadioAssistantProvider,
   type RadioAssistantProvider,
 } from "../modules/radio/index.js";
@@ -33,10 +38,90 @@ function topicFor(value: string): string {
   return `${Array.from(normalized).slice(0, 23).join("")}…`;
 }
 
-export function createMockCodexProvider(): CodexProvider & RadioAssistantProvider {
+export function createMockCodexProvider(): CodexProvider &
+  DailyMixPlannerProvider &
+  RadioAssistantProvider {
   const radio = createMockRadioAssistantProvider();
   return {
     respond: (context, options) => radio.respond(context, options),
+    planDailyMix(context, options) {
+      const parsed = dailyMixPlanningContextSchema.parse(context);
+      providerCallOptionsSchema.parse(options);
+      const library = rotate(parsed.libraryTracks, scenarioSeed(parsed.localDate))
+        .slice(0, 4)
+        .map((track) => ({
+          kind: "library" as const,
+          bucket: "library" as const,
+          trackId: track.trackId,
+        }));
+      const queries = [
+        "Space Song Beach House",
+        "Midnight City M83",
+        "Quiet Signal Artist Three",
+        "Soft Current Artist Four",
+        "Night Window Artist Five",
+        "Slow Orbit Artist Six",
+        "Paper Moon Artist Seven",
+        "After Rain Artist Eight",
+        "Green Room Artist Nine",
+        "Last Light Artist Ten",
+        "Small Hours Artist Eleven",
+        "Open Road Artist Twelve",
+        "Blue Hour Artist Thirteen",
+        "Window Seat Artist Fourteen",
+        "Low Tide Artist Fifteen",
+        "Silver Lines Artist Sixteen",
+        "Common Ground Artist Seventeen",
+        "Northbound Artist Eighteen",
+        "Velvet Sky Artist Nineteen",
+        "Slow Bloom Artist Twenty",
+        "Warm Static Artist Twenty-One",
+        "Corner Light Artist Twenty-Two",
+        "Soft Focus Artist Twenty-Three",
+        "First Train Artist Twenty-Four",
+        "Distant Rooms Artist Twenty Five",
+        "Half Awake Artist Twenty Six",
+        "Still Moving Artist Twenty Seven",
+        "Faint Lines Artist Twenty Eight",
+        "Open Water Artist Twenty Nine",
+        "Late Edition Artist Thirty",
+        "Quiet Weather Artist Thirty One",
+        "Soft Landing Artist Thirty Two",
+        "Morning Static Artist Thirty Three",
+        "Long Exposure Artist Thirty Four",
+        "Hidden Lake Artist Thirty Five",
+        "Last Window Artist Thirty Six",
+      ];
+      const refillCounts = parsed.refill;
+      const counts =
+        refillCounts === null
+          ? { close: 20, adjacent: 8, surprise: 4 }
+          : {
+              close: Math.min(16, refillCounts.close + 2),
+              adjacent: Math.min(6, refillCounts.adjacent + 2),
+              surprise: Math.min(4, refillCounts.surprise + 2),
+            };
+      let offset = 0;
+      const discovery = (["close", "adjacent", "surprise"] as const).flatMap((bucket) => {
+        const count = counts[bucket];
+        const slice = rotate(queries, scenarioSeed(`${parsed.localDate}|${bucket}`)).slice(
+          offset,
+          offset + count,
+        );
+        offset += count;
+        return slice.map((keyword) => ({
+          kind: "discovery" as const,
+          bucket,
+          keyword,
+          expectedArtist: keyword.split(" ").slice(2).join(" "),
+        }));
+      });
+      return Promise.resolve(
+        dailyMixPlanSchema.parse({
+          candidates: [...(refillCounts === null ? library : []), ...discovery],
+        }),
+      );
+    },
     plan(context, options) {
       const parsedContext = codexPlanningContextSchema.parse(context);
       providerCallOptionsSchema.parse(options);

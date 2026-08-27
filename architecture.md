@@ -529,7 +529,7 @@ scripts/
 ### Daily Mix generation and playback
 
 - `DailyMix` owner 持有 `(profileId, localDate)` 幂等生成、候选编排、20 首原子提交、七日自然日期保留和 Daily checkpoint。Programs 只在历史页读取 Daily 的 public list/detail port，不拥有或删除 Daily 数据。
-- Daily 规划一次生成带储备的库内与探索候选，Backend 并发搜索并通过 Library public port 执行真实 `resolveAudio` 预检；Provider 只提供候选，不能绕过来源、避重、艺人或可播放性规则。候选不足时最多一次定向补足，任务整体上限 180 秒。
+- Daily 规划一次生成带储备的库内与探索候选，Backend 以最多 6 路并发搜索并通过 Library public port 执行真实 `resolveAudio` 预检；Provider 只提供候选，不能绕过来源、避重、艺人或可播放性规则。候选不足时最多一次定向补足，任务整体上限 120 秒；生成始终在后台执行，不锁住 Radio、已有播放或 Program 规划。
 - Daily 与 Program generation 使用独立活动任务；Profile 激活先提交 Daily，但二者不建立完成依赖。外部调用发生在事务外，只有最终 20 首与任务成功状态在短事务中原子提交。
 - Browser Audio Engine 内部使用 `ProgramSource | DailyMixSource` 判别式播放来源。现有 `loadProgram` 行为保持不变，Daily 按播放时重新解析的音频引用构建运行时队列。
 - 每个 Profile 的来源会话保存最近 Program、最近 Daily 和当前来源；两类 checkpoint 独立持久化。临时 `PLAY NEXT` 只存在于 Audio Engine 单槽位上下文，不进入任何持久来源或历史。

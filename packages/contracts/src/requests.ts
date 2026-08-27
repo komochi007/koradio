@@ -4,6 +4,7 @@ import {
   idempotencyKeyHeadersSchema,
   pageQuerySchema,
   profileIdParamsSchema,
+  profileDailyMixIdParamsSchema,
   profileProgramDjScriptParamsSchema,
   profileJobIdParamsSchema,
   profileProgramIdParamsSchema,
@@ -11,6 +12,11 @@ import {
   profileRadioTurnIdParamsSchema,
   profileTrackIdParamsSchema,
 } from "./common.js";
+import {
+  activatePlaybackSourceCommandSchema,
+  ensureDailyMixCommandSchema,
+  saveDailyMixCheckpointCommandSchema,
+} from "./daily-mixes.js";
 import { createFeedbackCommandSchema } from "./feedback.js";
 import {
   addLibraryItemCommandSchema,
@@ -51,6 +57,34 @@ export const generateProgramRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
   headers: idempotencyKeyHeadersSchema,
   body: generateProgramCommandSchema,
+});
+export const ensureDailyMixRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+  body: ensureDailyMixCommandSchema,
+});
+export const dailyMixTodayRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+});
+export const dailyMixListRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+  query: pageQuerySchema,
+});
+export const dailyMixDetailRequestSchema = z.strictObject({
+  params: profileDailyMixIdParamsSchema,
+});
+export const dailyMixCheckpointRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+});
+export const saveDailyMixCheckpointRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+  body: saveDailyMixCheckpointCommandSchema,
+});
+export const playbackSourceSessionRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+});
+export const activatePlaybackSourceRequestSchema = z.strictObject({
+  params: profileIdParamsSchema,
+  body: activatePlaybackSourceCommandSchema,
 });
 export const createRadioTurnRequestSchema = z.strictObject({
   params: profileIdParamsSchema,
@@ -152,6 +186,14 @@ export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
 export type SelectCurrentProfileRequest = z.infer<typeof selectCurrentProfileRequestSchema>;
 export type UpdateProfilePreferencesRequest = z.infer<typeof updateProfilePreferencesRequestSchema>;
 export type GenerateProgramRequest = z.infer<typeof generateProgramRequestSchema>;
+export type EnsureDailyMixRequest = z.infer<typeof ensureDailyMixRequestSchema>;
+export type DailyMixTodayRequest = z.infer<typeof dailyMixTodayRequestSchema>;
+export type DailyMixListRequest = z.infer<typeof dailyMixListRequestSchema>;
+export type DailyMixDetailRequest = z.infer<typeof dailyMixDetailRequestSchema>;
+export type DailyMixCheckpointRequest = z.infer<typeof dailyMixCheckpointRequestSchema>;
+export type SaveDailyMixCheckpointRequest = z.infer<typeof saveDailyMixCheckpointRequestSchema>;
+export type PlaybackSourceSessionRequest = z.infer<typeof playbackSourceSessionRequestSchema>;
+export type ActivatePlaybackSourceRequest = z.infer<typeof activatePlaybackSourceRequestSchema>;
 export type CreateRadioTurnRequest = z.infer<typeof createRadioTurnRequestSchema>;
 export type CreateRadioSpeechGenerationRequest = z.infer<
   typeof createRadioSpeechGenerationRequestSchema
