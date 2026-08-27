@@ -16,6 +16,8 @@ describe("UX-30 Daily Mix UI regressions", () => {
     expect(sourceSwitchStyles).toContain("--radio-source-switch-inset: 3px;");
     expect(sourceSwitchStyles).toContain("padding: 0;");
     expect(sourceSwitchStyles).toContain("border: 0;");
+    expect(sourceSwitchStyles).toContain("appearance: none;");
+    expect(sourceSwitchStyles).toContain("-webkit-appearance: none;");
     expect(sourceSwitchStyles).toContain("width: calc(50% - var(--radio-source-switch-inset));");
     expect(sourceSwitchStyles).toContain("transform: translateX(100%);");
     expect(sourceSwitchStyles).toContain("place-items: center;");
@@ -31,13 +33,15 @@ describe("UX-30 Daily Mix UI regressions", () => {
     expect(dailyMixStyles).toContain("transform: translate(-50%, -50%) skewX(-14deg);");
     expect(dailyMixStyles).toContain("animation: daily-mix-soundfield-line-wave");
     expect(dailyMixStyles).toContain("animation-delay: var(--daily-mix-line-delay, 0ms);");
-    expect(dailyMixStyles).toContain("--daily-mix-active-overhang: 14px;");
-    expect(dailyMixStyles).toContain("--daily-mix-row-radius: 14px;");
+    expect(dailyMixStyles).toContain("--daily-mix-active-overhang-left: 14px;");
+    expect(dailyMixStyles).toContain("--daily-mix-active-overhang-right: 18px;");
     expect(dailyMixStyles).toContain("border-bottom: 1px solid var(--kr-border-subtle);");
     expect(dailyMixStyles).toContain("border-bottom-color: transparent;");
-    expect(dailyMixStyles).toContain("border-radius: var(--daily-mix-row-radius);");
+    expect(dailyMixStyles).toContain(
+      "border-radius: var(--daily-mix-active-overhang-left) var(--daily-mix-active-overhang-right)",
+    );
     expect(dailyMixStyles).toContain("top: 100%;");
-    expect(dailyMixStyles).toContain("right: var(--daily-mix-active-overhang);");
-    expect(dailyMixStyles).toContain("left: var(--daily-mix-active-overhang);");
+    expect(dailyMixStyles).toContain("right: var(--daily-mix-active-overhang-right);");
+    expect(dailyMixStyles).toContain("left: var(--daily-mix-active-overhang-left);");
   });
 });
