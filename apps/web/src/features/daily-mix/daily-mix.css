@@ -1,0 +1,343 @@
+.daily-mix-backdrop {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: rgb(4 6 8 / 72%);
+  backdrop-filter: blur(14px) saturate(0.72);
+  animation: daily-mix-fade 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.daily-mix-card {
+  width: min(752px, calc(100vw - 64px));
+  max-height: min(880px, calc(100dvh - 64px));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--kr-border) 84%, transparent);
+  border-radius: 30px;
+  background: color-mix(in srgb, var(--kr-surface) 96%, #10161a);
+  box-shadow: 0 32px 90px rgb(0 0 0 / 48%);
+  color: var(--kr-text);
+  animation: daily-mix-enter 220ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.daily-mix-hero {
+  position: relative;
+  height: 236px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--kr-border-subtle);
+  background:
+    linear-gradient(
+      100deg,
+      rgb(11 16 19 / 96%) 0 31%,
+      rgb(11 16 19 / 62%) 68%,
+      rgb(11 16 19 / 82%)
+    ),
+    color-mix(in srgb, var(--kr-surface) 90%, #152126);
+}
+
+.daily-mix-soundfield {
+  position: absolute;
+  inset: 4px -28px auto 210px;
+  width: 590px;
+  height: 230px;
+  opacity: 0.72;
+  fill: none;
+  stroke: rgb(232 238 241 / 36%);
+  stroke-width: 0.75;
+}
+
+.daily-mix-soundfield path {
+  transform-origin: 50% 50%;
+  animation: daily-mix-wave 8s ease-in-out infinite alternate;
+  animation-delay: calc(var(--daily-line) * -120ms);
+}
+
+.daily-mix-hero__copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0 40px;
+}
+
+.daily-mix-hero__copy p,
+.daily-mix-kicker {
+  margin: 0;
+  color: var(--kr-text-secondary);
+  font:
+    650 13px/18px "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  letter-spacing: 0.12em;
+}
+
+.daily-mix-hero__copy h2 {
+  margin: 6px 0 12px;
+  font-size: 58px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.055em;
+}
+
+.daily-mix-play-all {
+  display: inline-flex;
+  height: 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--radio-primary, #f2f4f7);
+  color: var(--radio-on-primary, #111317);
+  font-size: 13px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+}
+
+.daily-mix-play-all .daily-mix-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.daily-mix-close {
+  position: absolute;
+  z-index: 2;
+  top: 24px;
+  right: 24px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  background: rgb(7 10 12 / 46%);
+  color: #eef2f4;
+}
+
+.daily-mix-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.daily-mix-body {
+  padding: 20px 32px 0;
+}
+
+.daily-mix-kicker {
+  height: 30px;
+  padding-left: 4px;
+}
+
+.daily-mix-list {
+  max-height: min(574px, calc(100dvh - 350px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: 0 8px 24px 4px;
+  scrollbar-color: var(--kr-border) transparent;
+  scrollbar-width: thin;
+  list-style: none;
+}
+
+.daily-mix-list li {
+  display: grid;
+  min-height: 64px;
+  grid-template-columns: 34px 44px minmax(0, 1fr) 42px 42px;
+  align-items: center;
+  column-gap: 12px;
+  border-bottom: 1px solid var(--kr-border-subtle);
+}
+
+.daily-mix-list__number {
+  color: var(--kr-text-tertiary);
+  font:
+    500 13px/1 "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.daily-mix-list__artwork {
+  display: block;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--kr-bg);
+}
+
+.daily-mix-list__artwork img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.daily-mix-list__meta {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.daily-mix-list__meta strong,
+.daily-mix-list__meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-mix-list__meta strong {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.daily-mix-list__meta small {
+  color: var(--kr-text-secondary);
+  font-size: 13px;
+}
+
+.daily-mix-list__action {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--kr-text-secondary);
+}
+
+.daily-mix-list__action:hover {
+  border-color: var(--kr-accent);
+  color: var(--kr-accent);
+}
+
+.daily-mix-state {
+  display: flex;
+  min-height: 300px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  text-align: center;
+}
+
+.daily-mix-state h3 {
+  margin: 22px 0 8px;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+}
+
+.daily-mix-state p {
+  max-width: 430px;
+  margin: 0;
+  color: var(--kr-text-secondary);
+  font:
+    500 12px/1.7 "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  letter-spacing: 0.06em;
+}
+
+.daily-mix-state button {
+  min-width: 112px;
+  height: 40px;
+  margin-top: 24px;
+  border: 1px solid var(--kr-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--kr-text);
+  font-weight: 700;
+}
+
+.daily-mix-loader {
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--kr-border);
+  border-top-color: var(--kr-accent);
+  border-radius: 50%;
+  animation: daily-mix-spin 900ms linear infinite;
+}
+
+@keyframes daily-mix-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes daily-mix-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+}
+
+@keyframes daily-mix-wave {
+  from {
+    transform: translate3d(-4px, -1px, 0) scaleY(0.96);
+  }
+  to {
+    transform: translate3d(5px, 2px, 0) scaleY(1.04);
+  }
+}
+
+@keyframes daily-mix-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 680px) {
+  .daily-mix-backdrop {
+    padding: 16px;
+  }
+  .daily-mix-card {
+    width: calc(100vw - 32px);
+    max-height: calc(100dvh - 32px);
+    border-radius: 24px;
+  }
+  .daily-mix-hero {
+    height: 210px;
+  }
+  .daily-mix-hero__copy {
+    padding: 0 24px;
+  }
+  .daily-mix-hero__copy h2 {
+    font-size: 48px;
+  }
+  .daily-mix-body {
+    padding-inline: 16px;
+  }
+  .daily-mix-list li {
+    grid-template-columns: 28px 40px minmax(0, 1fr) 38px 38px;
+    column-gap: 8px;
+  }
+  .daily-mix-list__artwork {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .daily-mix-backdrop,
+  .daily-mix-card,
+  .daily-mix-soundfield path,
+  .daily-mix-loader {
+    animation: none;
+  }
+}

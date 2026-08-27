@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+  type DailyMixDetail,
   type MusicTrack,
   type HealthResponse,
   type Profile,
@@ -24,10 +25,17 @@ import { createPortal } from "react-dom";
 import {
   type AudioEngineFacade,
   type AudioEngineSnapshot,
+  getPlaybackSourceSession,
   useAudioSnapshot,
 } from "../../audio/index.js";
 import { applyTheme, updateProfilePreferences } from "../profile-preferences/index.js";
 import { resolveTrackAudio } from "../library/index.js";
+import {
+  DailyMixCard,
+  ensureTodayDailyMix,
+  getDailyMix,
+  getTodayDailyMix,
+} from "../daily-mix/index.js";
 import { FeedbackNotice, useFeedback } from "../feedback/index.js";
 import { activateProgramHandoff, getProgramHandoff } from "../programs/index.js";
 import { AppNotice, Brand, PrimaryNavigation } from "../../shared/ui.js";
@@ -312,6 +320,7 @@ function RadioMain({
   audioEngine,
   audio,
   feedback,
+  dailyMix,
   program,
   stage,
   state,
@@ -319,6 +328,7 @@ function RadioMain({
   audioEngine: AudioEngineFacade;
   audio: AudioEngineSnapshot;
   feedback: ReturnType<typeof useFeedback>;
+  dailyMix: DailyMixDetail | null;
   program: ProgramDetail | null;
   stage: ProgramGenerationStage | undefined;
   state: RadioViewState;
@@ -341,7 +351,8 @@ function RadioMain({
   }
   const trackPreview = audio.preview?.kind === "track" ? audio.preview : undefined;
   const previewTrack = trackPreview?.track;
-  if ((state === "empty" || program === null) && previewTrack === undefined) {
+  const dailyActive = audio.sourceKind === "daily" && dailyMix !== null;
+  if ((state === "empty" || (program === null && !dailyActive)) && previewTrack === undefined) {
     return (
       <section className="radio-main radio-main--empty" aria-label="当前节目">
         <p className="radio-eyebrow">NOW PLAYING</p>
@@ -350,7 +361,10 @@ function RadioMain({
       </section>
     );
   }
-  const tracks = new Map((program?.tracks ?? []).map((track) => [track.id, track]));
+  const sourceTracks = dailyActive
+    ? dailyMix.tracks.map(({ track }) => track)
+    : (program?.tracks ?? []);
+  const tracks = new Map(sourceTracks.map((track) => [track.id, track]));
   const current =
     previewTrack ??
     (audio.currentItem?.kind === "track" ? tracks.get(audio.currentItem.trackId) : undefined);
@@ -378,10 +392,14 @@ function RadioMain({
           </span>
           <div className="radio-player__meta">
             <p className="radio-eyebrow">NOW PLAYING</p>
-            <h2>{current?.title ?? program?.program.title ?? "DJ 点播"}</h2>
+            <h2>
+              {current?.title ?? (dailyActive ? "DAILY MIX" : program?.program.title) ?? "DJ 点播"}
+            </h2>
             <p>
               {current === undefined
-                ? (program?.program.title ?? "DJ 点播")
+                ? dailyActive
+                  ? "DAILY MIX"
+                  : (program?.program.title ?? "DJ 点播")
                 : `${current.artist} · ${current.album}`}
             </p>
           </div>
@@ -518,20 +536,30 @@ function RadioMain({
 
 function RadioQueue({
   audio,
+  audioEngine,
   currentTrackId,
+  dailyMix,
   expanded,
   onExpandedChange,
   program,
   state,
 }: {
   audio: AudioEngineSnapshot;
+  audioEngine: AudioEngineFacade;
   currentTrackId: string | undefined;
+  dailyMix: DailyMixDetail | null;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   program: ProgramDetail | null;
   state: RadioViewState;
 }): ReactElement {
-  const tracks = program === null ? [] : orderedTracks(program);
+  const activeKind = audio.sourceKind ?? "program";
+  const tracks =
+    activeKind === "daily"
+      ? (dailyMix?.tracks.map(({ track }) => track) ?? [])
+      : program === null
+        ? []
+        : orderedTracks(program);
   const previewTrack = audio.preview?.kind === "track" ? audio.preview.track : undefined;
   const queuedPreviewTrack =
     audio.queuedPreview?.kind === "track" ? audio.queuedPreview.track : undefined;
@@ -548,7 +576,33 @@ function RadioQueue({
       aria-label="播放队列"
     >
       <header>
-        <h2>{label}</h2>
+        <div className="radio-queue__heading">
+          <h2>{label}</h2>
+          <div className="radio-source-switch" role="group" aria-label="PLAYBACK SOURCE">
+            <button
+              type="button"
+              aria-pressed={activeKind === "program"}
+              disabled={program === null || activeKind === "program"}
+              onClick={() => void audioEngine.switchSource?.("program")}
+            >
+              RADIO
+            </button>
+            <button
+              type="button"
+              aria-pressed={activeKind === "daily"}
+              disabled={dailyMix === null || activeKind === "daily"}
+              onClick={() => {
+                if (dailyMix !== null) {
+                  void audioEngine.loadDailyMix?.(dailyMix, {
+                    autoplay: audio.state === "playing" || audio.state === "buffering",
+                  });
+                }
+              }}
+            >
+              DAILY
+            </button>
+          </div>
+        </div>
         {state === "generating" ? (
           <span>BUILDING</span>
         ) : (
@@ -1163,6 +1217,70 @@ export function RadioExperience({
     transport,
   });
   const audio = useAudioSnapshot(audioEngine);
+  const [dailyOpen, setDailyOpen] = useState(false);
+  const dailyEnsureStarted = useRef(false);
+  const playbackSource = useQuery({
+    queryKey: ["playback-source", current.profile.id],
+    queryFn: () => getPlaybackSourceSession(transport, current.profile.id),
+    retry: false,
+  });
+  const todayDailyMix = useQuery({
+    queryKey: ["daily-mix", "today", current.profile.id],
+    queryFn: () => getTodayDailyMix(transport, current.profile.id),
+    refetchInterval: (query) => {
+      const status = query.state.data?.generation?.status;
+      return status === "queued" || status === "running" ? 500 : false;
+    },
+    retry: false,
+  });
+  const sourceDailyId =
+    playbackSource.data?.activeKind === "daily" ? playbackSource.data.dailyMixId : null;
+  const todayMix = todayDailyMix.data?.mix ?? null;
+  const todayMixId = todayMix?.mix.id;
+  const sourceDailyMix = useQuery({
+    queryKey: ["daily-mix", "source", current.profile.id, sourceDailyId],
+    queryFn: () => getDailyMix(transport, current.profile.id, sourceDailyId ?? ""),
+    enabled: sourceDailyId !== null && sourceDailyId !== todayMixId,
+    retry: false,
+  });
+  const restoredDailyMix =
+    sourceDailyId === null
+      ? null
+      : sourceDailyId === todayMixId
+        ? todayMix
+        : (sourceDailyMix.data ?? null);
+  const availableDailyMix =
+    audio.sourceKind === "daily"
+      ? audio.dailyMixId === todayMixId
+        ? todayMix
+        : (restoredDailyMix ?? todayMix)
+      : (todayMix ?? restoredDailyMix);
+  useEffect(() => {
+    if (todayDailyMix.data === undefined || todayDailyMix.data.generation !== null) return;
+    if (dailyEnsureStarted.current) return;
+    dailyEnsureStarted.current = true;
+    void ensureTodayDailyMix(transport, current.profile.id).finally(() => {
+      void todayDailyMix.refetch();
+    });
+  }, [current.profile.id, todayDailyMix.data, todayDailyMix.refetch, transport]);
+  const retryDailyMix = useMutation({
+    mutationFn: () => ensureTodayDailyMix(transport, current.profile.id, true),
+    onSuccess() {
+      void todayDailyMix.refetch();
+    },
+  });
+  const queueDailyTrack = useMutation({
+    mutationFn: async (track: MusicTrack) => {
+      const resolution = await resolveTrackAudio(transport, current.profile.id, track.id);
+      await audioEngine.queuePreviewNext?.({
+        kind: "track",
+        previewId: track.id,
+        resolvedAudioRef: resolution.resolvedAudioRef,
+        durationMs: track.durationMs,
+        track,
+      });
+    },
+  });
   const handoff = useQuery({
     queryKey: ["program-handoff", current.profile.id],
     queryFn: () => getProgramHandoff(transport, current.profile.id),
@@ -1180,7 +1298,8 @@ export function RadioExperience({
     },
   });
   const playbackState: RadioViewState =
-    audio.preview?.kind === "track" && audio.preview.track !== undefined
+    audio.sourceKind === "daily" ||
+    (audio.preview?.kind === "track" && audio.preview.track !== undefined)
       ? "playing"
       : radio.viewState;
   const feedback = useFeedback({ eventBus, profileId: current.profile.id, transport });
@@ -1189,6 +1308,7 @@ export function RadioExperience({
   const [detailUnavailable, setDetailUnavailable] = useState(false);
   const [detailError, setDetailError] = useState(false);
   const [queueExpanded, setQueueExpanded] = useState(true);
+  const dailyOpenerRef = useRef<HTMLButtonElement>(null);
   const detailOpenerRef = useRef<HTMLButtonElement>(null);
   const sceneInputRef = useRef<HTMLInputElement>(null);
   const [reuseNotice, setReuseNotice] = useState(initialScenarioDraft !== undefined);
@@ -1211,19 +1331,49 @@ export function RadioExperience({
     };
   }, [reuseNotice]);
   useEffect(() => {
-    if (radio.program !== null) {
-      if (radio.autoplayProgramId === radio.program.program.id) {
-        void audioEngine.loadProgram(radio.program, { autoplay: true });
-      } else {
+    if (radio.program !== null && radio.autoplayProgramId === radio.program.program.id) {
+      void audioEngine.loadProgram(radio.program, { autoplay: true });
+      return;
+    }
+    if (audio.sourceKind !== undefined) {
+      if (radio.program !== null) {
         void (
           audioEngine.syncProgram?.(radio.program) ??
           audioEngine.loadProgram(radio.program, { autoplay: false })
         );
       }
+      return;
+    }
+    if (playbackSource.isPending || (sourceDailyId !== null && restoredDailyMix === null)) return;
+    if (playbackSource.data?.activeKind === "daily" && restoredDailyMix !== null) {
+      const loading = audioEngine.loadDailyMix?.(restoredDailyMix, { autoplay: false });
+      if (loading !== undefined) {
+        void loading.then(() => {
+          if (radio.program !== null) return audioEngine.syncProgram?.(radio.program);
+          return undefined;
+        });
+      }
+      return;
+    }
+    if (radio.program !== null) {
+      void (
+        audioEngine.syncProgram?.(radio.program) ??
+        audioEngine.loadProgram(radio.program, { autoplay: false })
+      );
     } else {
       void audioEngine.activateProfile(current.profile.id);
     }
-  }, [audioEngine, current.profile.id, radio.autoplayProgramId, radio.program]);
+  }, [
+    audio.sourceKind,
+    audioEngine,
+    current.profile.id,
+    playbackSource.data?.activeKind,
+    playbackSource.isPending,
+    radio.autoplayProgramId,
+    radio.program,
+    restoredDailyMix,
+    sourceDailyId,
+  ]);
   useEffect(
     () =>
       eventBus.subscribe((event) => {
@@ -1233,10 +1383,10 @@ export function RadioExperience({
           event.payload.clearedCurrentSession
         ) {
           setDetailOpen(false);
-          void audioEngine.clearProgram?.();
+          if (audio.sourceKind !== "daily") void audioEngine.clearProgram?.();
         }
       }),
-    [audioEngine, current.profile.id, eventBus],
+    [audio.sourceKind, audioEngine, current.profile.id, eventBus],
   );
   useEffect(() => {
     setQueueExpanded(true);
@@ -1267,6 +1417,11 @@ export function RadioExperience({
     radio.submitScenario();
   }
 
+  function closeDailyMix(): void {
+    setDailyOpen(false);
+    window.queueMicrotask(() => dailyOpenerRef.current?.focus());
+  }
+
   return (
     <>
       <div
@@ -1276,6 +1431,19 @@ export function RadioExperience({
         <header className="topbar radio-page__topbar">
           <Brand />
           <div className="radio-page__tools">
+            <button
+              className={`radio-daily-trigger${todayMix === null ? "" : " radio-daily-trigger--ready"}`}
+              type="button"
+              aria-label="OPEN DAILY MIX"
+              aria-haspopup="dialog"
+              aria-expanded={dailyOpen}
+              onClick={() => {
+                setDailyOpen(true);
+              }}
+              ref={dailyOpenerRef}
+            >
+              <Icon name="calendar" />
+            </button>
             <span className="radio-page__mode">
               {health.mode === "live" ? "LIVE" : "DEMO MODE"}
             </span>
@@ -1310,6 +1478,7 @@ export function RadioExperience({
           <RadioMain
             audio={audio}
             audioEngine={audioEngine}
+            dailyMix={availableDailyMix}
             feedback={feedback}
             program={radio.program}
             stage={radio.stage}
@@ -1317,10 +1486,12 @@ export function RadioExperience({
           />
           <RadioQueue
             audio={audio}
+            audioEngine={audioEngine}
             currentTrackId={
               audio.currentItem?.kind === "track" ? audio.currentItem.trackId : undefined
             }
             expanded={queueExpanded}
+            dailyMix={availableDailyMix}
             onExpandedChange={setQueueExpanded}
             program={radio.program}
             state={playbackState}
@@ -1341,10 +1512,14 @@ export function RadioExperience({
           <button
             className={`radio-dj-status radio-dj-status--${radio.viewState}`}
             type="button"
-            aria-expanded={detailOpen}
+            aria-expanded={audio.sourceKind === "daily" ? dailyOpen : detailOpen}
             aria-haspopup="dialog"
-            aria-label={radio.program === null ? "查看节目详情" : "打开当前节目详情"}
+            aria-label={audio.sourceKind === "daily" ? "OPEN DAILY MIX" : "OPEN PROGRAM DETAIL"}
             onClick={() => {
+              if (audio.sourceKind === "daily") {
+                setDailyOpen(true);
+                return;
+              }
               if (radio.program === null && audio.preview?.track === undefined) {
                 setDetailUnavailable(true);
                 return;
@@ -1357,15 +1532,19 @@ export function RadioExperience({
           >
             <span>
               <i aria-hidden="true" />
-              <strong>DJ</strong>
+              <strong>{audio.sourceKind === "daily" ? "DAILY" : "DJ"}</strong>
               <span>
-                {radio.viewState === "generating"
-                  ? "THINKING"
-                  : audio.voiceActive || audio.currentItem?.kind === "dj"
-                    ? "SPEAKING"
-                    : radio.viewState === "playing"
-                      ? "PLAYING"
-                      : "LIVE"}
+                {audio.sourceKind === "daily"
+                  ? audio.state === "completed"
+                    ? "TODAY'S MIX COMPLETE"
+                    : "PLAYING"
+                  : radio.viewState === "generating"
+                    ? "THINKING"
+                    : audio.voiceActive || audio.currentItem?.kind === "dj"
+                      ? "SPEAKING"
+                      : radio.viewState === "playing"
+                        ? "PLAYING"
+                        : "LIVE"}
               </span>
             </span>
             <b aria-hidden="true">⌃</b>
@@ -1542,6 +1721,19 @@ export function RadioExperience({
           </div>,
           document.body,
         )}
+      <DailyMixCard
+        audioEngine={audioEngine}
+        onClose={closeDailyMix}
+        onPlayNext={(track) => {
+          queueDailyTrack.mutate(track);
+        }}
+        onRetry={() => {
+          retryDailyMix.mutate();
+        }}
+        open={dailyOpen}
+        retrying={retryDailyMix.isPending}
+        today={todayDailyMix.data}
+      />
     </>
   );
 }

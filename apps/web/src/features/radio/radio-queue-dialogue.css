@@ -29,6 +29,44 @@
   font: inherit;
 }
 
+.radio-queue__heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.radio-source-switch {
+  display: inline-grid;
+  height: 30px;
+  grid-template-columns: 1fr 1fr;
+  padding: 2px;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--kr-bg) 74%, transparent);
+}
+
+.radio-source-switch button {
+  min-width: 66px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  transition:
+    color 180ms cubic-bezier(0.2, 0, 0, 1),
+    background 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.radio-source-switch button[aria-pressed="true"] {
+  color: var(--radio-on-primary);
+  background: var(--radio-primary);
+  opacity: 1;
+}
+
+.radio-source-switch button:disabled:not([aria-pressed="true"]) {
+  opacity: 0.34;
+}
+
 .radio-queue header span,
 .radio-queue header button {
   border: 0;

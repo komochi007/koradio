@@ -1,5 +1,18 @@
-import { useInfiniteQuery, useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
-import type { DjScriptSegment, ProfileContext, Program, ProgramDetail } from "@koradio/contracts";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import type {
+  DailyMix,
+  DailyMixDetail,
+  DjScriptSegment,
+  ProfileContext,
+  Program,
+  ProgramDetail,
+} from "@koradio/contracts";
 import {
   useEffect,
   useMemo,
@@ -14,10 +27,12 @@ import { type AudioEngineFacade, useAudioSnapshot } from "../../audio/index.js";
 import type { AppEventBus } from "../../shared/events.js";
 import type { ServiceTransport } from "../../shared/transport.js";
 import { KoradioAvatar } from "../../shared/avatar.js";
+import { ArtworkImage } from "../../shared/artwork.js";
 import { Brand, PrimaryNavigation, Status } from "../../shared/ui.js";
 import { Icon as SharedIcon, type IconName } from "../../shared/icon.js";
 import { formatLongProgramDate as formatLongDate, formatProgramDate } from "../../shared/date.js";
 import { FeedbackNotice, useFeedback } from "../feedback/index.js";
+import { getDailyMix, getDailyMixes } from "../daily-mix/index.js";
 import { deleteProgram, getProgram, getPrograms } from "./api.js";
 import {
   formatClockDuration,
@@ -122,6 +137,109 @@ function ProgramsTopbar({
         </button>
       </div>
     </header>
+  );
+}
+
+function DailyHistory({
+  items,
+  onOpen,
+}: {
+  items: readonly DailyMix[];
+  onOpen: (id: string, button: HTMLButtonElement) => void;
+}): ReactElement | null {
+  if (items.length === 0) return null;
+  return (
+    <section className="programs-daily-history" aria-labelledby="programs-daily-title">
+      <header>
+        <h2 id="programs-daily-title">DAILY PROGRAMS</h2>
+        <span>LAST 7 DAYS</span>
+      </header>
+      <div>
+        {items.map((mix) => (
+          <button
+            type="button"
+            key={mix.id}
+            onClick={(event) => {
+              onOpen(mix.id, event.currentTarget);
+            }}
+          >
+            <span>{mix.localDate.slice(5).replace("-", "/")}</span>
+            <strong>DAILY PROGRAM</strong>
+            <small>20 TRACKS</small>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DailyDetailView({
+  audioEngine,
+  detail,
+  navigate,
+  onBack,
+}: {
+  audioEngine: AudioEngineFacade;
+  detail: DailyMixDetail;
+  navigate: (path: string) => void;
+  onBack: () => void;
+}): ReactElement {
+  return (
+    <div className="app-surface program-detail-page">
+      <header className="topbar program-detail-topbar">
+        <Brand />
+        <button className="icon-button" type="button" aria-label="BACK" onClick={onBack}>
+          <Icon name="back" />
+        </button>
+      </header>
+      <main className="program-detail-main daily-program-detail">
+        <header className="program-detail-heading">
+          <p>DAILY MIX</p>
+          <h1 tabIndex={-1}>DAILY PROGRAM</h1>
+          <span>20 TRACKS</span>
+          <button
+            className="button"
+            type="button"
+            onClick={() =>
+              void audioEngine.loadDailyMix?.(detail, { autoplay: true, startIndex: 0 })
+            }
+          >
+            PLAY ALL
+          </button>
+        </header>
+        <section className="program-detail-queue" aria-labelledby="daily-program-queue-title">
+          <h2 id="daily-program-queue-title">DAILY QUEUE · 20 TRACKS</h2>
+          <ol>
+            {detail.tracks.map(({ position, track }) => (
+              <li key={track.id}>
+                <span>{String(position + 1).padStart(2, "0")}</span>
+                <span className="program-detail-cover">
+                  <ArtworkImage src={track.artworkUrl} />
+                </span>
+                <span>
+                  <strong>{track.title}</strong>
+                  <small>{track.artist}</small>
+                </span>
+                <button
+                  className="daily-program-track-play"
+                  type="button"
+                  aria-label={`PLAY ${track.title}`}
+                  onClick={() =>
+                    void audioEngine.loadDailyMix?.(detail, {
+                      autoplay: true,
+                      startIndex: position,
+                    })
+                  }
+                >
+                  <Icon name="play" />
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
+      </main>
+      <PrimaryNavigation active="programs" onNavigate={navigate} />
+    </div>
   );
 }
 
@@ -569,6 +687,7 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
   const feedback = useFeedback({ eventBus: props.eventBus, profileId, transport: props.transport });
   const [filter, setFilter] = useState<"all" | "favorites">("all");
   const [selectedProgramId, setSelectedProgramId] = useState<string>();
+  const [selectedDailyId, setSelectedDailyId] = useState<string>();
   const [deleteTarget, setDeleteTarget] = useState<Program>();
   const [deletionWarning, setDeletionWarning] = useState(false);
   const lastOpener = useRef<HTMLButtonElement | null>(null);
@@ -577,6 +696,15 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
     queryFn: ({ pageParam }) => getPrograms(props.transport, profileId, pageParam, 4),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.nextCursor,
+  });
+  const dailyHistory = useQuery({
+    queryKey: ["daily-mix", "history", profileId],
+    queryFn: () => getDailyMixes(props.transport, profileId),
+  });
+  const selectedDaily = useQuery({
+    queryKey: ["daily-mix", "detail", profileId, selectedDailyId],
+    queryFn: () => getDailyMix(props.transport, profileId, selectedDailyId ?? ""),
+    enabled: selectedDailyId !== undefined,
   });
   const programs = useMemo(
     () => history.data?.pages.flatMap((page) => page.items) ?? [],
@@ -642,12 +770,64 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
   );
 
   useEffect(() => {
+    if (selectedDaily.data !== undefined) {
+      document.querySelector<HTMLElement>(".daily-program-detail h1")?.focus();
+      return;
+    }
     if (selectedDetail !== undefined) {
       document.querySelector<HTMLElement>(".program-detail-heading h1")?.focus();
     } else if (selectedProgramId === undefined) {
       props.headingRef.current?.focus();
     }
-  }, [props.headingRef, selectedDetail, selectedProgramId]);
+  }, [props.headingRef, selectedDaily.data, selectedDetail, selectedProgramId]);
+
+  if (selectedDailyId !== undefined) {
+    if (selectedDaily.data !== undefined) {
+      return (
+        <DailyDetailView
+          audioEngine={props.audioEngine}
+          detail={selectedDaily.data}
+          navigate={props.navigate}
+          onBack={() => {
+            setSelectedDailyId(undefined);
+            window.requestAnimationFrame(() => lastOpener.current?.focus());
+          }}
+        />
+      );
+    }
+    return (
+      <div className="app-surface programs-page">
+        <ProgramsTopbar
+          current={props.current}
+          onOpenProfiles={props.onOpenProfiles}
+          reconnecting={props.reconnecting}
+        />
+        <main className="programs-main">
+          <ProgramsState
+            action={selectedDaily.isError ? () => void selectedDaily.refetch() : undefined}
+            actionLabel={selectedDaily.isError ? "RETRY" : undefined}
+            error={selectedDaily.isError}
+            loading={!selectedDaily.isError}
+            title={selectedDaily.isError ? "DAILY PROGRAM UNAVAILABLE" : "LOADING DAILY PROGRAM..."}
+          >
+            {selectedDaily.isError
+              ? "THE SAVED LIST IS INTACT. TRY READING IT AGAIN."
+              : "RESTORING THE SAVED DAILY QUEUE."}
+          </ProgramsState>
+          <button
+            className="button button--secondary"
+            type="button"
+            onClick={() => {
+              setSelectedDailyId(undefined);
+            }}
+          >
+            BACK TO PROGRAMS
+          </button>
+        </main>
+        <PrimaryNavigation active="programs" onNavigate={props.navigate} />
+      </div>
+    );
+  }
 
   if (selectedProgramId !== undefined) {
     if (selectedDetail !== undefined) {
@@ -769,6 +949,15 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
             Favorites
           </button>
         </div>
+        {filter === "all" ? (
+          <DailyHistory
+            items={dailyHistory.data?.items ?? []}
+            onOpen={(id, button) => {
+              lastOpener.current = button;
+              setSelectedDailyId(id);
+            }}
+          />
+        ) : null}
         {history.isPending ? (
           <ProgramsState loading title="正在读取节目历史...">
             正在整理当前档案保存在这台设备上的节目记录。

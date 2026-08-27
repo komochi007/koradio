@@ -3,6 +3,8 @@ import type { ReactElement } from "react";
 export type IconName =
   | "back"
   | "bookmark"
+  | "calendar"
+  | "close"
   | "heart"
   | "mic"
   | "moon"
@@ -20,6 +22,8 @@ export type IconName =
 const paths: Record<IconName, ReactElement> = {
   back: <path d="m15 18-6-6 6-6" />,
   bookmark: <path d="M7 4h10v16l-5-3-5 3Z" />,
+  calendar: <path d="M5 5h14v15H5Zm0 5h14M8 3v4m8-4v4" />,
+  close: <path d="m6 6 12 12M18 6 6 18" />,
   heart: <path d="M12 20.4 4.8 13.6A4.9 4.9 0 0 1 12 7a4.9 4.9 0 0 1 7.2 6.6Z" />,
   mic: <path d="M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0Zm-3 6a6 6 0 0 0 12 0M12 17v4m-4 0h8" />,
   moon: <path d="M20 15.2A8.7 8.7 0 0 1 8.8 4 8.7 8.7 0 1 0 20 15.2Z" />,

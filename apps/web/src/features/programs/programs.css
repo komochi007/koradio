@@ -745,7 +745,126 @@
   }
 }
 
+.programs-daily-history {
+  padding: 24px;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 24px;
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--kr-accent) 7%, transparent), transparent 46%),
+    var(--kr-surface);
+}
+
+.programs-daily-history > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.programs-daily-history h2,
+.programs-daily-history header span {
+  margin: 0;
+  font:
+    650 12px/1 "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  letter-spacing: 0.1em;
+}
+
+.programs-daily-history header span {
+  color: var(--kr-text-tertiary);
+  font-size: 10px;
+}
+
+.programs-daily-history > div {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.programs-daily-history > div > button {
+  display: grid;
+  min-height: 116px;
+  align-content: end;
+  justify-items: start;
+  padding: 16px;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--kr-bg) 72%, transparent);
+  color: var(--kr-text);
+  text-align: left;
+}
+
+.programs-daily-history button > span {
+  margin-bottom: auto;
+  color: var(--kr-accent);
+  font-size: 22px;
+  font-weight: 760;
+  letter-spacing: -0.04em;
+}
+
+.programs-daily-history button strong {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.programs-daily-history button small {
+  margin-top: 4px;
+  color: var(--kr-text-tertiary);
+  font:
+    500 9px/1 "SFMono-Regular",
+    "SF Mono",
+    Consolas,
+    monospace;
+  letter-spacing: 0.08em;
+}
+
+.daily-program-detail .program-detail-heading {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+}
+
+.daily-program-detail .program-detail-heading > .button {
+  position: absolute;
+  right: 0;
+  bottom: 34px;
+}
+
+.daily-program-detail .program-detail-cover {
+  overflow: hidden;
+}
+
+.daily-program-detail .program-detail-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.daily-program-track-play {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--kr-border-subtle);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--kr-text-secondary);
+}
+
+.daily-program-track-play .programs-icon {
+  width: 18px;
+  height: 18px;
+}
+
 @media (max-width: 700px) {
+  .programs-daily-history > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .programs-main,
   .program-detail-main {
     padding-inline: 20px;
