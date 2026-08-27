@@ -76,8 +76,25 @@
 }
 
 .daily-mix-soundfield__line {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
   stroke-linecap: round;
   stroke-width: 0.8;
+  animation: daily-mix-soundfield-line-wave 13s ease-in-out infinite;
+  animation-delay: var(--daily-mix-line-delay, 0ms);
+}
+
+.daily-mix-soundfield__layer--crest .daily-mix-soundfield__line {
+  animation-duration: 12s;
+}
+
+.daily-mix-soundfield__layer--trough .daily-mix-soundfield__line {
+  animation-duration: 15s;
+  animation-direction: reverse;
+}
+
+.daily-mix-soundfield__layer--crossing .daily-mix-soundfield__line {
+  animation-duration: 13.5s;
 }
 
 .daily-mix-soundfield__line--primary {
@@ -134,7 +151,8 @@
   position: relative;
   display: inline-block;
   width: 0.14em;
-  height: 0.84em;
+  height: 0.72em;
+  align-self: center;
   flex: 0 0 0.14em;
   margin-inline: 0.02em;
   color: transparent;
@@ -144,14 +162,14 @@
 
 .daily-mix-date__slash::before {
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 50%;
   width: 0.13em;
   height: 100%;
   border-radius: 999px;
   background: var(--kr-text);
   content: "";
-  transform: translateX(-50%) skewX(-14deg);
+  transform: translate(-50%, -50%) skewX(-14deg);
 }
 
 .daily-mix-play-all {
@@ -208,6 +226,7 @@
 .daily-mix-body {
   --daily-mix-track-inset-left: 36px;
   --daily-mix-track-inset-right: 40px;
+  --daily-mix-row-radius: 14px;
   padding: 20px 32px 0;
 }
 
@@ -239,14 +258,24 @@
   grid-template-columns: 34px 44px minmax(0, 1fr) 42px 42px;
   align-items: center;
   column-gap: 12px;
-  border-bottom: 1px solid var(--kr-border-subtle);
   transition: background-color 180ms ease-out;
+}
+
+.daily-mix-list li::after {
+  position: absolute;
+  right: var(--daily-mix-row-radius);
+  bottom: 0;
+  left: var(--daily-mix-row-radius);
+  height: 1px;
+  background: var(--kr-border-subtle);
+  content: "";
 }
 
 .daily-mix-list__track--current {
   margin-inline: calc(-1 * var(--daily-mix-track-inset-left))
     calc(-1 * var(--daily-mix-track-inset-right));
   padding-inline: var(--daily-mix-track-inset-left) var(--daily-mix-track-inset-right);
+  border-radius: var(--daily-mix-row-radius);
   background: color-mix(in srgb, var(--kr-accent) 5%, transparent);
 }
 
@@ -463,6 +492,16 @@
   }
   to {
     transform: translate3d(4px, -1px, 0) rotate(0.5deg) scaleY(1.04);
+  }
+}
+
+@keyframes daily-mix-soundfield-line-wave {
+  0%,
+  100% {
+    transform: translate3d(-2px, -3px, 0) rotate(-0.16deg) scaleY(0.985);
+  }
+  50% {
+    transform: translate3d(2px, 4px, 0) rotate(0.16deg) scaleY(1.025);
   }
 }
 

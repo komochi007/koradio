@@ -37,6 +37,8 @@
 }
 
 .radio-source-switch {
+  --radio-source-switch-gap: 6px;
+  --radio-source-switch-inset: 3px;
   position: relative;
   display: inline-grid;
   width: 128px;
@@ -44,7 +46,8 @@
   height: 28px;
   flex: 0 0 128px;
   grid-template-columns: 1fr 1fr;
-  padding: 2px;
+  column-gap: var(--radio-source-switch-gap);
+  padding: var(--radio-source-switch-inset);
   border: 1px solid var(--kr-border-subtle);
   border-radius: 999px;
   background: color-mix(in srgb, var(--kr-bg) 74%, transparent);
@@ -53,8 +56,9 @@
 .radio-source-switch::before {
   position: absolute;
   z-index: 0;
-  inset: 2px auto 2px 2px;
-  width: calc(50% - 2px);
+  inset: var(--radio-source-switch-inset) auto var(--radio-source-switch-inset)
+    var(--radio-source-switch-inset);
+  width: calc((100% - (var(--radio-source-switch-inset) * 2) - var(--radio-source-switch-gap)) / 2);
   border-radius: 999px;
   background: #ffffff;
   content: "";
@@ -63,19 +67,23 @@
 }
 
 .radio-source-switch--daily::before {
-  transform: translateX(calc(100% + 4px));
+  transform: translateX(calc(100% + var(--radio-source-switch-gap)));
 }
 
 .radio-source-switch button {
   position: relative;
+  display: grid;
   z-index: 1;
   min-width: 0;
-  padding: 0 12px;
+  place-items: center;
+  padding: 0;
   border-radius: 999px;
   color: var(--kr-text-tertiary);
   background: transparent;
   font-size: 10px;
+  line-height: 1;
   letter-spacing: 0.08em;
+  text-align: center;
   white-space: nowrap;
   transition:
     color 160ms cubic-bezier(0.2, 0, 0, 1),
@@ -107,8 +115,8 @@
   }
 }
 
-.radio-queue header span,
-.radio-queue header button {
+.radio-queue > header > span,
+.radio-queue > header > button {
   border: 0;
   color: var(--kr-text-tertiary);
   background: transparent;
@@ -116,11 +124,11 @@
   letter-spacing: inherit;
 }
 
-.radio-queue header button {
+.radio-queue > header > button {
   cursor: pointer;
 }
 
-.radio-queue header button:disabled {
+.radio-queue > header > button:disabled {
   cursor: default;
   opacity: 0.55;
 }

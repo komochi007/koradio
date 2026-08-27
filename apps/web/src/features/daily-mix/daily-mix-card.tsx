@@ -1,5 +1,12 @@
 import type { DailyMixDetail, DailyMixTodayResponse, MusicTrack } from "@koradio/contracts";
-import { useEffect, useCallback, useRef, useState, type ReactElement } from "react";
+import {
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactElement,
+} from "react";
 import { createPortal } from "react-dom";
 
 import type { AudioEngineFacade, AudioEngineSnapshot } from "../../audio/index.js";
@@ -108,12 +115,19 @@ function Soundfield(): ReactElement {
             const progress = index / Math.max(1, count - 1);
             const edgeFade = 0.16 + Math.sin(Math.PI * progress) * 0.84;
             const tone = soundfieldTone(index);
+            const layerDelayOffset = id === "trough" ? 720 : id === "crossing" ? 340 : 0;
+            const waveDelay = `${String(-(index * 140 + layerDelayOffset))}ms`;
             return (
               <path
                 className={`daily-mix-soundfield__line daily-mix-soundfield__line--${tone}`}
                 d={soundfieldPath(soundfieldPoints(id, index, count))}
                 key={index}
-                style={{ opacity: edgeFade }}
+                style={
+                  {
+                    opacity: edgeFade,
+                    "--daily-mix-line-delay": waveDelay,
+                  } as CSSProperties
+                }
               />
             );
           })}
