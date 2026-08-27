@@ -25,6 +25,7 @@ Koradio 是运行在单台设备上的私人 AI 音乐电台。目标用户有�
 - **UX-27 已完成并验收**：Detail DJ 串讲按逗号、句号和等价标点切为短句，每句只显示一个时间标识；Planner 生成开场、至少两段深入转场和收尾，严格采用 Settings 的 DJ Language，歌名和艺人保留原文，并清理重复标点、无意义省略号和无来源依据的内容。Qwen TTS 使用更保守的采样参数；DJ 以 voice overlay 与音乐同时播放，音乐 duck 至 38%；对话不显示 `SOURCE`。Electron 菜单栏改为 Audio Engine 直接订阅加 CommonJS preload bridge 的快照握手，原生菜单展示当前歌曲和艺人。
 - **UX-28 已完成并验收**：`ProgramListeningIntent` 新增节奏显著度、注意力等级、风格排除项和探索倾向；柔和/舒缓/平和办公请求会明确约束为克制节奏与低刺激候选，Taste 仅保留特征级探索作用。纯音乐正式器乐候选不再被通用替代版本规则误杀；最近第 4～10 期的同曲、近期艺人与高频艺人会先延后，只在合规候选不足时复用。
 - **UX-29 已完成并验收**：纯音乐候选不再强制要求标题带 `Instrumental` 或 `Piano` 标记；有实质歌词、翻唱、Karaoke、Type Beat、AI 与伴奏仍被排除。默认只使用少量高置信库内器乐保底，Planner 候选无音频时继续逐首预检专项器乐回退池，避免单批库外音频失效导致整档失败。
+- **UX-30 已完成并验收**：Daily Mix 按 Profile 和本机自然日后台生成固定 20 首真实可播纯歌单（约 10% 库内、90% 库外），失败不展示旧列表；Daily 与 Program 保持独立 checkpoint，支持 `PLAY ALL`、逐首、`PLAY NEXT`、来源切换与结束停留。Radio 日历入口、Daily Card、Queue/Detail/Programs 历史及全链路视觉状态均已完成本机验收；Queue 来源胶囊使用单一深色母胶囊和内缩白色滑块，当前 Daily 行采用等边距的克制高亮与外缘分隔线。
 
 ```text
 场景 → 规划 → 搜歌 → 全部 TTS → 节目与队列 → 播放 → 反馈 → 品味投影 → 下一次规划
