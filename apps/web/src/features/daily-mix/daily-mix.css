@@ -224,8 +224,7 @@
 }
 
 .daily-mix-body {
-  --daily-mix-track-inset-left: 36px;
-  --daily-mix-track-inset-right: 40px;
+  --daily-mix-active-overhang: 14px;
   --daily-mix-row-radius: 14px;
   padding: 20px 32px 0;
 }
@@ -239,8 +238,9 @@
   max-height: min(574px, calc(100dvh - 350px));
   overflow-y: auto;
   overscroll-behavior: contain;
-  margin: 0;
-  padding: 0 8px 24px 4px;
+  margin: 0 calc(-1 * var(--daily-mix-active-overhang));
+  padding: 0 calc(8px + var(--daily-mix-active-overhang)) 24px
+    calc(4px + var(--daily-mix-active-overhang));
   scrollbar-width: none;
   list-style: none;
 }
@@ -258,23 +258,14 @@
   grid-template-columns: 34px 44px minmax(0, 1fr) 42px 42px;
   align-items: center;
   column-gap: 12px;
+  border-bottom: 1px solid var(--kr-border-subtle);
   transition: background-color 180ms ease-out;
 }
 
-.daily-mix-list li::after {
-  position: absolute;
-  right: var(--daily-mix-row-radius);
-  bottom: 0;
-  left: var(--daily-mix-row-radius);
-  height: 1px;
-  background: var(--kr-border-subtle);
-  content: "";
-}
-
 .daily-mix-list__track--current {
-  margin-inline: calc(-1 * var(--daily-mix-track-inset-left))
-    calc(-1 * var(--daily-mix-track-inset-right));
-  padding-inline: var(--daily-mix-track-inset-left) var(--daily-mix-track-inset-right);
+  margin-inline: calc(-1 * var(--daily-mix-active-overhang));
+  padding-inline: var(--daily-mix-active-overhang);
+  border-bottom-color: transparent;
   border-radius: var(--daily-mix-row-radius);
   background: color-mix(in srgb, var(--kr-accent) 5%, transparent);
 }
@@ -283,10 +274,20 @@
   position: absolute;
   top: 12px;
   bottom: 12px;
-  left: var(--daily-mix-track-inset-left);
+  left: 12px;
   width: 2px;
   border-radius: 0 2px 2px 0;
   background: var(--kr-accent);
+  content: "";
+}
+
+.daily-mix-list__track--current::after {
+  position: absolute;
+  right: var(--daily-mix-active-overhang);
+  bottom: 0;
+  left: var(--daily-mix-active-overhang);
+  height: 1px;
+  background: var(--kr-border-subtle);
   content: "";
 }
 
@@ -545,8 +546,6 @@
     opacity: 0.82;
   }
   .daily-mix-body {
-    --daily-mix-track-inset-left: 20px;
-    --daily-mix-track-inset-right: 24px;
     padding-inline: 16px;
   }
   .daily-mix-list li {

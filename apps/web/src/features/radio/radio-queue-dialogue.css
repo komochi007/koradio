@@ -37,7 +37,6 @@
 }
 
 .radio-source-switch {
-  --radio-source-switch-gap: 6px;
   --radio-source-switch-inset: 3px;
   position: relative;
   display: inline-grid;
@@ -46,8 +45,7 @@
   height: 28px;
   flex: 0 0 128px;
   grid-template-columns: 1fr 1fr;
-  column-gap: var(--radio-source-switch-gap);
-  padding: var(--radio-source-switch-inset);
+  padding: 0;
   border: 1px solid var(--kr-border-subtle);
   border-radius: 999px;
   background: color-mix(in srgb, var(--kr-bg) 74%, transparent);
@@ -58,7 +56,7 @@
   z-index: 0;
   inset: var(--radio-source-switch-inset) auto var(--radio-source-switch-inset)
     var(--radio-source-switch-inset);
-  width: calc((100% - (var(--radio-source-switch-inset) * 2) - var(--radio-source-switch-gap)) / 2);
+  width: calc(50% - var(--radio-source-switch-inset));
   border-radius: 999px;
   background: #ffffff;
   content: "";
@@ -67,7 +65,7 @@
 }
 
 .radio-source-switch--daily::before {
-  transform: translateX(calc(100% + var(--radio-source-switch-gap)));
+  transform: translateX(100%);
 }
 
 .radio-source-switch button {
