@@ -204,6 +204,99 @@ describe("Codex adapter", () => {
     expect(discoverySchema?.required).toContain("expectedArtist");
   });
 
+  it("uses a flattened Daily Mix schema and restores candidate unions", async () => {
+    const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-daily-schema-"));
+    const invocations: ProviderProcessInvocation[] = [];
+    const libraryTrackId = "20000000-0000-4000-8000-000000000011";
+    const adapter = createCodexAdapter({
+      command: "codex",
+      resolveExecutable: () => Promise.resolve("/trusted/codex"),
+      runner: (invocation) => {
+        invocations.push(invocation);
+        return Promise.resolve({
+          exitCode: 0,
+          stderr: "",
+          stdout: codexJsonl({
+            candidates: [
+              {
+                kind: "library",
+                bucket: "library",
+                trackId: libraryTrackId,
+                keyword: null,
+                expectedArtist: null,
+              },
+              {
+                kind: "discovery",
+                bucket: "close",
+                trackId: null,
+                keyword: "Space Song Beach House",
+                expectedArtist: "Beach House",
+              },
+            ],
+          }),
+        });
+      },
+      runtimeDirectory,
+    });
+
+    await expect(
+      adapter.planDailyMix(
+        {
+          localDate: "2026-08-27",
+          effectiveTaste: {
+            profileId: "20000000-0000-4000-8000-000000000001",
+            projectionVersion: 2,
+            overrideVersion: 1,
+            resolvedTaste: {
+              tags: ["dream-pop"],
+              affinities: ["track:space-song"],
+              avoidRules: [],
+              sceneRules: [],
+            },
+          },
+          tasteBlueprint: null,
+          libraryTracks: [
+            {
+              trackId: libraryTrackId,
+              title: "Space Song",
+              artist: "Beach House",
+              album: "Depression Cherry",
+              durationMs: 320_000,
+            },
+          ],
+          recentTracks: [],
+          dislikedTracks: [],
+          currentTime: "2026-08-27T10:00:00.000Z",
+          refill: null,
+        },
+        { correlationId: providerCorrelationId },
+      ),
+    ).resolves.toEqual({
+      candidates: [
+        { kind: "library", bucket: "library", trackId: libraryTrackId },
+        {
+          kind: "discovery",
+          bucket: "close",
+          keyword: "Space Song Beach House",
+          expectedArtist: "Beach House",
+        },
+      ],
+    });
+
+    const invocation = invocations[0];
+    const schemaPath = invocation?.args.at(invocation.args.indexOf("--output-schema") + 1);
+    const outputSchema = JSON.parse(await readFile(schemaPath ?? "", "utf8")) as {
+      properties: {
+        candidates: { items: { required: string[] } };
+      };
+    };
+    expect(JSON.stringify(outputSchema)).not.toContain('"oneOf"');
+    expect(outputSchema.properties.candidates.items.required).toEqual(
+      expect.arrayContaining(["kind", "bucket", "trackId", "keyword", "expectedArtist"]),
+    );
+    expect(invocation?.input).toContain("trackId to null");
+  });
+
   it("emits a Codex-compatible required list for every radio-turn object property", async () => {
     const runtimeDirectory = await mkdtemp(join(tmpdir(), "koradio-codex-radio-schema-"));
     const invocations: ProviderProcessInvocation[] = [];
