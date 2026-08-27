@@ -800,7 +800,7 @@ describe("App Shell", () => {
     });
   });
 
-  it("keeps a prepared-program return link visible outside Radio", async () => {
+  it("does not render a global prepared-program return link outside Radio", async () => {
     window.history.replaceState(null, "", "/library");
     render(
       <App
@@ -809,7 +809,8 @@ describe("App Shell", () => {
       />,
     );
 
-    expect(await screen.findByRole("button", { name: "新节目已就绪 · 返回 Radio" })).toBeTruthy();
+    await screen.findByText("音乐库");
+    expect(screen.queryByRole("button", { name: "新节目已就绪 · 返回 Radio" })).toBeNull();
   });
 
   it("renders every program track in a keyboard-scrollable queue", async () => {

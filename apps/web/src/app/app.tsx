@@ -30,11 +30,7 @@ import { SettingsExperience } from "../features/device-settings/index.js";
 import { resolveTrackAudio } from "../features/library/api.js";
 import { applyTheme } from "../features/profile-preferences/index.js";
 import { getCurrentProfile, getProfiles, ProfileExperience } from "../features/profiles/index.js";
-import {
-  activateProgramHandoff,
-  getActiveProgramGeneration,
-  getProgramHandoff,
-} from "../features/programs/index.js";
+import { activateProgramHandoff, getProgramHandoff } from "../features/programs/index.js";
 import { ConnectingPage, OfflinePage, OfflineSettingsPage, OnlineShellPage } from "./pages.js";
 import { createAppQueryClient, QueryClientProvider } from "./query-client.js";
 import { useAppRouter } from "./router.js";
@@ -126,18 +122,6 @@ function AppComposition({
     enabled:
       activeProfileId !== undefined &&
       (connection.state === "online" || connection.state === "reconnecting"),
-  });
-  const activeGeneration = useQuery({
-    queryKey: ["program-generation", "active", activeProfileId],
-    queryFn: () => {
-      if (activeProfileId === undefined)
-        throw new Error("Active program generation requested without a profile");
-      return getActiveProgramGeneration(transport, activeProfileId);
-    },
-    enabled:
-      activeProfileId !== undefined &&
-      (connection.state === "online" || connection.state === "reconnecting"),
-    refetchInterval: (query) => (query.state.data?.active === null ? false : 350),
   });
   const consumeReusedScenario = useCallback((): void => {
     setReusedScenario(undefined);
@@ -256,27 +240,6 @@ function AppComposition({
     }
   };
 
-  const globalProgramStatus =
-    route.id === "radio"
-      ? undefined
-      : activeGeneration.data?.active !== null && activeGeneration.data?.active !== undefined
-        ? "节目准备中 · 返回 Radio"
-        : handoff.data?.program !== null && handoff.data?.program !== undefined
-          ? "新节目已就绪 · 返回 Radio"
-          : undefined;
-  const globalProgramStatusLink =
-    globalProgramStatus === undefined ? null : (
-      <button
-        className="program-activity-link"
-        type="button"
-        onClick={() => {
-          navigate("/radio");
-        }}
-      >
-        {globalProgramStatus}
-      </button>
-    );
-
   if (currentProfile.data.current === null || profilesOpen) {
     return (
       <ProfileExperience
@@ -305,7 +268,6 @@ function AppComposition({
   if (route.id === "settings") {
     return (
       <>
-        {globalProgramStatusLink}
         <SettingsExperience
           current={currentProfile.data.current}
           health={connection.health}
@@ -323,7 +285,6 @@ function AppComposition({
 
   return (
     <>
-      {globalProgramStatusLink}
       <OnlineShellPage
         audioEngine={audioEngine}
         headingRef={headingRef}

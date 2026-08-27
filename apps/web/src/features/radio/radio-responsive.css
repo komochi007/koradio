@@ -55,6 +55,11 @@
   .radio-page__tools {
     gap: 12px;
   }
+  .radio-daily-trigger {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+  }
   .radio-scroll {
     top: 96px;
     bottom: calc(180px + env(safe-area-inset-bottom));

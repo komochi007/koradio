@@ -578,7 +578,11 @@ function RadioQueue({
       <header>
         <div className="radio-queue__heading">
           <h2>{label}</h2>
-          <div className="radio-source-switch" role="group" aria-label="PLAYBACK SOURCE">
+          <div
+            className={`radio-source-switch radio-source-switch--${activeKind}`}
+            role="group"
+            aria-label="PLAYBACK SOURCE"
+          >
             <button
               type="button"
               aria-pressed={activeKind === "program"}
@@ -1431,19 +1435,6 @@ export function RadioExperience({
         <header className="topbar radio-page__topbar">
           <Brand />
           <div className="radio-page__tools">
-            <button
-              className={`radio-daily-trigger${todayMix === null ? "" : " radio-daily-trigger--ready"}`}
-              type="button"
-              aria-label="OPEN DAILY MIX"
-              aria-haspopup="dialog"
-              aria-expanded={dailyOpen}
-              onClick={() => {
-                setDailyOpen(true);
-              }}
-              ref={dailyOpenerRef}
-            >
-              <Icon name="calendar" />
-            </button>
             <span className="radio-page__mode">
               {health.mode === "live" ? "LIVE" : "DEMO MODE"}
             </span>
@@ -1458,6 +1449,19 @@ export function RadioExperience({
                 label="当前档案头像"
                 reference={current.profile.avatarRef}
               />
+            </button>
+            <button
+              className={`radio-daily-trigger${todayMix === null ? "" : " radio-daily-trigger--ready"}`}
+              type="button"
+              aria-label="OPEN DAILY MIX"
+              aria-haspopup="dialog"
+              aria-expanded={dailyOpen}
+              onClick={() => {
+                setDailyOpen(true);
+              }}
+              ref={dailyOpenerRef}
+            >
+              <Icon name="calendar" />
             </button>
             <button
               className="icon-button"
@@ -1512,15 +1516,15 @@ export function RadioExperience({
           <button
             className={`radio-dj-status radio-dj-status--${radio.viewState}`}
             type="button"
-            aria-expanded={audio.sourceKind === "daily" ? dailyOpen : detailOpen}
+            aria-expanded={detailOpen}
             aria-haspopup="dialog"
-            aria-label={audio.sourceKind === "daily" ? "OPEN DAILY MIX" : "OPEN PROGRAM DETAIL"}
+            aria-label="打开当前节目详情"
             onClick={() => {
-              if (audio.sourceKind === "daily") {
-                setDailyOpen(true);
-                return;
-              }
-              if (radio.program === null && audio.preview?.track === undefined) {
+              if (
+                radio.program === null &&
+                audio.currentTrack === undefined &&
+                audio.preview?.track === undefined
+              ) {
                 setDetailUnavailable(true);
                 return;
               }
@@ -1693,12 +1697,14 @@ export function RadioExperience({
         <PrimaryNavigation active="radio" onNavigate={navigate} />
       </div>
       {detailOpen &&
-        (radio.program !== null || audio.preview?.track !== undefined) &&
+        (radio.program !== null ||
+          audio.currentTrack !== undefined ||
+          audio.preview?.track !== undefined) &&
         createPortal(
           <div className="radio-detail-portal">
             <div className="radio-detail-portal__canvas">
               <DetailSheetBoundary
-                key={radio.program?.program.id ?? audio.preview?.previewId}
+                key={`${audio.sourceKind ?? "program"}:${radio.program?.program.id ?? audio.sourceId ?? audio.currentTrack?.id ?? audio.preview?.previewId ?? "detail"}`}
                 onFailure={() => {
                   setDetailOpen(false);
                   setDetailError(true);
@@ -1722,6 +1728,7 @@ export function RadioExperience({
           document.body,
         )}
       <DailyMixCard
+        audio={audio}
         audioEngine={audioEngine}
         onClose={closeDailyMix}
         onPlayNext={(track) => {

@@ -7,7 +7,11 @@
   padding: 32px;
   background: rgb(4 6 8 / 72%);
   backdrop-filter: blur(14px) saturate(0.72);
-  animation: daily-mix-fade 180ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: daily-mix-backdrop-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.daily-mix-backdrop--closing {
+  animation: daily-mix-backdrop-out 320ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 .daily-mix-card {
@@ -15,11 +19,15 @@
   max-height: min(880px, calc(100dvh - 64px));
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--kr-border) 84%, transparent);
-  border-radius: 30px;
+  border-radius: 24px;
   background: color-mix(in srgb, var(--kr-surface) 96%, #10161a);
-  box-shadow: 0 32px 90px rgb(0 0 0 / 48%);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 34%);
   color: var(--kr-text);
-  animation: daily-mix-enter 220ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: daily-mix-card-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.daily-mix-card--closing {
+  animation: daily-mix-card-out 320ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 .daily-mix-hero {
@@ -39,19 +47,38 @@
 
 .daily-mix-soundfield {
   position: absolute;
-  inset: 4px -28px auto 210px;
-  width: 590px;
+  inset: -8px -32px auto 180px;
+  width: 620px;
   height: 230px;
-  opacity: 0.72;
+  max-width: calc(100% - 120px);
+  opacity: 0.92;
   fill: none;
-  stroke: rgb(232 238 241 / 36%);
-  stroke-width: 0.75;
+  pointer-events: none;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 84%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 84%, transparent 100%);
 }
 
-.daily-mix-soundfield path {
+.daily-mix-soundfield__line {
+  stroke-linecap: round;
+  stroke-width: 0.75;
   transform-origin: 50% 50%;
-  animation: daily-mix-wave 8s ease-in-out infinite alternate;
-  animation-delay: calc(var(--daily-line) * -120ms);
+  animation: daily-mix-wave 12s ease-in-out infinite alternate;
+  animation-delay: calc(var(--daily-line) * -90ms);
+}
+
+.daily-mix-soundfield__line--primary {
+  stroke: #f3f5f7;
+  stroke-opacity: 0.44;
+}
+
+.daily-mix-soundfield__line--secondary {
+  stroke: #a9b0ba;
+  stroke-opacity: 0.27;
+}
+
+.daily-mix-soundfield__line--ambient {
+  stroke: #737b87;
+  stroke-opacity: 0.13;
 }
 
 .daily-mix-hero__copy {
@@ -78,11 +105,24 @@
 }
 
 .daily-mix-hero__copy h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.08em;
   margin: 6px 0 12px;
   font-size: 58px;
   font-weight: 800;
   line-height: 1;
-  letter-spacing: -0.055em;
+  letter-spacing: 0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-mix-date__slash {
+  display: inline-flex;
+  align-items: center;
+  height: 1em;
+  font-size: 0.88em;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .daily-mix-play-all {
@@ -111,14 +151,19 @@
   top: 24px;
   right: 24px;
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 33px;
+  height: 33px;
   place-items: center;
   padding: 0;
   border: 1px solid rgb(255 255 255 / 18%);
   border-radius: 50%;
   background: rgb(7 10 12 / 46%);
   color: #eef2f4;
+}
+
+.daily-mix-close .daily-mix-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .daily-mix-icon {
@@ -146,18 +191,40 @@
   overscroll-behavior: contain;
   margin: 0;
   padding: 0 8px 24px 4px;
-  scrollbar-color: var(--kr-border) transparent;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   list-style: none;
 }
 
+.daily-mix-list::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .daily-mix-list li {
+  position: relative;
   display: grid;
   min-height: 64px;
   grid-template-columns: 34px 44px minmax(0, 1fr) 42px 42px;
   align-items: center;
   column-gap: 12px;
   border-bottom: 1px solid var(--kr-border-subtle);
+  transition: background-color 180ms ease-out;
+}
+
+.daily-mix-list__track--current {
+  background: color-mix(in srgb, var(--kr-accent) 5%, transparent);
+}
+
+.daily-mix-list__track--current::before {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--kr-accent);
+  content: "";
 }
 
 .daily-mix-list__number {
@@ -200,6 +267,10 @@
 }
 
 .daily-mix-list__meta strong {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
   font-size: 15px;
   font-weight: 650;
 }
@@ -207,6 +278,40 @@
 .daily-mix-list__meta small {
   color: var(--kr-text-secondary);
   font-size: 13px;
+}
+
+.daily-mix-list__playing {
+  display: inline-flex;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.daily-mix-list__playing i {
+  display: block;
+  width: 2px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--kr-accent);
+  animation: daily-mix-equalizer 900ms ease-in-out infinite alternate;
+}
+
+.daily-mix-list__playing i:nth-child(2) {
+  height: 12px;
+  animation-delay: -260ms;
+}
+
+.daily-mix-list__playing i:nth-child(3) {
+  height: 7px;
+  animation-delay: -520ms;
+}
+
+.daily-mix-list__playing--paused i {
+  height: 7px;
+  animation: none;
 }
 
 .daily-mix-list__action {
@@ -274,25 +379,47 @@
   animation: daily-mix-spin 900ms linear infinite;
 }
 
-@keyframes daily-mix-fade {
+@keyframes daily-mix-backdrop-in {
   from {
     opacity: 0;
   }
 }
 
-@keyframes daily-mix-enter {
+@keyframes daily-mix-backdrop-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes daily-mix-card-in {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.985);
+    transform: translateY(18px) scale(0.96);
+  }
+}
+
+@keyframes daily-mix-card-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
   }
 }
 
 @keyframes daily-mix-wave {
   from {
-    transform: translate3d(-4px, -1px, 0) scaleY(0.96);
+    transform: translate3d(-1px, -0.5px, 0) scaleY(0.97);
   }
   to {
-    transform: translate3d(5px, 2px, 0) scaleY(1.04);
+    transform: translate3d(1px, 0.5px, 0) scaleY(1.03);
+  }
+}
+
+@keyframes daily-mix-equalizer {
+  from {
+    transform: scaleY(0.65);
+  }
+  to {
+    transform: scaleY(1);
   }
 }
 
@@ -335,8 +462,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .daily-mix-backdrop,
+  .daily-mix-backdrop--closing,
   .daily-mix-card,
-  .daily-mix-soundfield path,
+  .daily-mix-card--closing,
+  .daily-mix-soundfield__line,
+  .daily-mix-list__playing i,
   .daily-mix-loader {
     animation: none;
   }

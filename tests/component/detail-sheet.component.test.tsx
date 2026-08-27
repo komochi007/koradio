@@ -175,6 +175,28 @@ describe("Detail Sheet", () => {
     expect(pause).toHaveBeenCalledOnce();
   });
 
+  it("uses the daily source track for the lyrics detail", async () => {
+    renderDetail({
+      audio: {
+        ...snapshot(1),
+        sourceKind: "daily",
+        sourceId: "00000000-0000-4000-8000-000000000490",
+        programId: undefined,
+        dailyMixId: "00000000-0000-4000-8000-000000000490",
+        currentItem: program.timeline[1],
+        currentIndex: 0,
+        itemCount: 1,
+        currentTrack: program.tracks[0],
+      },
+    });
+
+    expect(screen.getByRole("dialog", { name: "DAILY PROGRAM" })).toBeTruthy();
+    expect(screen.queryByText("今晚不必急着找到答案")).toBeNull();
+    expect(
+      (await screen.findByText("A small light stayed awake")).getAttribute("aria-current"),
+    ).toBe("true");
+  });
+
   it("uses a DJ preview track's own position when following lyrics", async () => {
     renderDetail({
       audio: {

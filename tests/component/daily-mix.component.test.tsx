@@ -4,7 +4,7 @@ import type { DailyMixDetail, DailyMixTodayResponse } from "@koradio/contracts";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { AudioEngineFacade } from "../../apps/web/src/audio/types.js";
+import type { AudioEngineFacade, AudioEngineSnapshot } from "../../apps/web/src/audio/types.js";
 import { DailyMixCard } from "../../apps/web/src/features/daily-mix/daily-mix-card.js";
 
 const profileId = "00000000-0000-4000-8000-000000000010";
@@ -64,6 +64,7 @@ describe("UX-30 Daily Mix card", () => {
     const audioEngine = { loadDailyMix } as unknown as AudioEngineFacade;
     render(
       <DailyMixCard
+        audio={{} as AudioEngineSnapshot}
         audioEngine={audioEngine}
         onClose={vi.fn()}
         onPlayNext={onPlayNext}
@@ -92,6 +93,7 @@ describe("UX-30 Daily Mix card", () => {
     if (generation === null) throw new Error("Expected the succeeded fixture generation");
     render(
       <DailyMixCard
+        audio={{} as AudioEngineSnapshot}
         audioEngine={{} as AudioEngineFacade}
         onClose={vi.fn()}
         onPlayNext={vi.fn()}
@@ -114,5 +116,56 @@ describe("UX-30 Daily Mix card", () => {
     expect(screen.getByText("TODAY'S MIX IS NOT READY")).toBeTruthy();
     expect(screen.queryByRole("list")).toBeNull();
     expect(screen.getByRole("button", { name: "RETRY" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("marks the active daily track and toggles pause and resume", () => {
+    const pause = vi.fn(() => Promise.resolve());
+    const play = vi.fn(() => Promise.resolve());
+    const audioEngine = { pause, play } as unknown as AudioEngineFacade;
+    const activeAudio = {
+      sourceKind: "daily",
+      state: "playing",
+      currentItem: {
+        id: "daily-item-4",
+        kind: "track",
+        position: 3,
+        trackId: detail.tracks[3]?.track.id,
+        resolvedAudioRef: "https://media.example.test/track-4.mp3",
+        durationMs: 180_000,
+      },
+      preview: undefined,
+    } as unknown as AudioEngineSnapshot;
+    const view = render(
+      <DailyMixCard
+        audio={activeAudio}
+        audioEngine={audioEngine}
+        onClose={vi.fn()}
+        onPlayNext={vi.fn()}
+        onRetry={vi.fn()}
+        open
+        retrying={false}
+        today={today}
+      />,
+    );
+
+    const current = screen.getAllByRole("listitem")[3];
+    expect(current?.getAttribute("aria-current")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "PAUSE TRACK 4" }));
+    expect(pause).toHaveBeenCalledOnce();
+
+    view.rerender(
+      <DailyMixCard
+        audio={{ ...activeAudio, state: "paused" }}
+        audioEngine={audioEngine}
+        onClose={vi.fn()}
+        onPlayNext={vi.fn()}
+        onRetry={vi.fn()}
+        open
+        retrying={false}
+        today={today}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "PLAY TRACK 4" }));
+    expect(play).toHaveBeenCalledOnce();
   });
 });

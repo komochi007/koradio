@@ -37,8 +37,10 @@
 }
 
 .radio-source-switch {
+  position: relative;
   display: inline-grid;
-  height: 30px;
+  width: 104px;
+  height: 28px;
   grid-template-columns: 1fr 1fr;
   padding: 2px;
   border: 1px solid var(--kr-border-subtle);
@@ -46,25 +48,52 @@
   background: color-mix(in srgb, var(--kr-bg) 74%, transparent);
 }
 
-.radio-source-switch button {
-  min-width: 66px;
-  padding: 0 12px;
+.radio-source-switch::before {
+  position: absolute;
+  z-index: 0;
+  inset: 2px auto 2px 2px;
+  width: calc(50% - 2px);
   border-radius: 999px;
+  background: #ffffff;
+  content: "";
+  transform: translateX(0);
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.radio-source-switch--daily::before {
+  transform: translateX(calc(100% + 4px));
+}
+
+.radio-source-switch button {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--kr-text-tertiary);
+  background: transparent;
   font-size: 10px;
   letter-spacing: 0.08em;
   transition:
-    color 180ms cubic-bezier(0.2, 0, 0, 1),
-    background 180ms cubic-bezier(0.2, 0, 0, 1);
+    color 160ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 160ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .radio-source-switch button[aria-pressed="true"] {
-  color: var(--radio-on-primary);
-  background: var(--radio-primary);
+  color: #111317;
+  background: transparent;
   opacity: 1;
 }
 
 .radio-source-switch button:disabled:not([aria-pressed="true"]) {
   opacity: 0.34;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radio-source-switch::before,
+  .radio-source-switch button {
+    transition: none;
+  }
 }
 
 .radio-queue header span,

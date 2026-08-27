@@ -89,6 +89,7 @@ function contextTrack(
 ): MusicTrack | undefined {
   if (audio.preview?.kind === "track" && audio.preview.track !== undefined)
     return audio.preview.track;
+  if (audio.currentTrack !== undefined) return audio.currentTrack;
   if (program === null) return undefined;
   const tracks = new Map(program.tracks.map((track) => [track.id, track]));
   if (audio.currentItem?.kind === "track") return tracks.get(audio.currentItem.trackId);
@@ -285,8 +286,9 @@ export function DetailSheet({
   const closeTimer = useRef<number | undefined>(undefined);
   const dragOffsetRef = useRef(0);
   const dragStart = useRef<number | undefined>(undefined);
+  const dailySource = audio.sourceKind === "daily";
   const track = contextTrack(program, audio);
-  const script = currentScript(program, audio);
+  const script = dailySource ? undefined : currentScript(program, audio);
   const speaking = (audio.voiceActive || audio.currentItem?.kind === "dj") && script !== undefined;
   const scriptDurationMs = audio.voiceActive
     ? (audio.voiceDurationMs ?? audio.durationMs)
@@ -334,8 +336,13 @@ export function DetailSheet({
       !speaking && lyrics.data?.status === "untimed" ? parseUntimedLyrics(lyrics.data.content) : [],
     [lyrics.data, speaking],
   );
-  const totalProgress =
-    program === null ? 0 : programProgress(program.timeline, audio.currentIndex, audio.positionMs);
+  const totalProgress = dailySource
+    ? audio.itemCount <= 1
+      ? 0
+      : Math.min(1, Math.max(0, audio.currentIndex / Math.max(1, audio.itemCount - 1)))
+    : program === null
+      ? 0
+      : programProgress(program.timeline, audio.currentIndex, audio.positionMs);
   const trackProgress =
     trackDurationMs === 0 ? 0 : Math.min(1, Math.max(0, trackPositionMs / trackDurationMs));
   const playing =
@@ -464,7 +471,9 @@ export function DetailSheet({
           )}
         </div>
         <section className="detail-paper">
-          <h1 id="radio-detail-title">{program?.program.title ?? track?.title ?? "DJ 点播"}</h1>
+          <h1 id="radio-detail-title">
+            {dailySource ? "DAILY PROGRAM" : (program?.program.title ?? track?.title ?? "DJ 点播")}
+          </h1>
           <p className="detail-track">
             {track === undefined ? "Koradio live session" : `${track.title} · ${track.artist}`}
           </p>
