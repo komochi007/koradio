@@ -1,6 +1,12 @@
 import {
+  dailyMixPlaybackCheckpointSchema,
   playbackCheckpointSchema,
+  playbackSourceSessionSchema,
+  type ActivatePlaybackSourceCommand,
+  type DailyMixPlaybackCheckpoint,
   type PlaybackCheckpoint,
+  type PlaybackSourceSession,
+  type SaveDailyMixCheckpointCommand,
   type SavePlaybackCheckpointCommand,
 } from "@koradio/contracts";
 
@@ -25,6 +31,63 @@ export async function getPlaybackCheckpoint(
     ) {
       return null;
     }
+    throw error;
+  }
+}
+
+export async function getDailyMixCheckpoint(
+  transport: ServiceTransport,
+  profileId: string,
+): Promise<DailyMixPlaybackCheckpoint | null> {
+  try {
+    return await requestJson(
+      transport,
+      `/api/v1/profiles/${encodeURIComponent(profileId)}/daily-mix-playback`,
+      dailyMixPlaybackCheckpointSchema,
+    );
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+export function saveDailyMixCheckpoint(
+  transport: ServiceTransport,
+  command: SaveDailyMixCheckpointCommand,
+): Promise<DailyMixPlaybackCheckpoint> {
+  return requestJson(
+    transport,
+    `/api/v1/profiles/${encodeURIComponent(command.profileId)}/daily-mix-playback/checkpoints`,
+    dailyMixPlaybackCheckpointSchema,
+    jsonRequest("PUT", command),
+  );
+}
+
+export function activatePlaybackSource(
+  transport: ServiceTransport,
+  profileId: string,
+  command: ActivatePlaybackSourceCommand,
+): Promise<PlaybackSourceSession> {
+  return requestJson(
+    transport,
+    `/api/v1/profiles/${encodeURIComponent(profileId)}/playback/source`,
+    playbackSourceSessionSchema,
+    jsonRequest("PUT", command),
+  );
+}
+
+export async function getPlaybackSourceSession(
+  transport: ServiceTransport,
+  profileId: string,
+): Promise<PlaybackSourceSession | null> {
+  try {
+    return await requestJson(
+      transport,
+      `/api/v1/profiles/${encodeURIComponent(profileId)}/playback/source`,
+      playbackSourceSessionSchema,
+    );
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 404) return null;
     throw error;
   }
 }

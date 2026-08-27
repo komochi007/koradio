@@ -1,6 +1,9 @@
 import {
   djScriptSegmentSchema,
+  type DailyMixDetail,
+  type DailyMixPlaybackCheckpoint,
   type PlaybackCheckpoint,
+  type PlaybackSourceKind,
   type PlaybackTimelineItem,
   type ProgramDetail,
   type AudioResolution,
@@ -8,7 +11,12 @@ import {
 
 import { ApiRequestError, requestJson } from "../shared/api.js";
 import type { ServiceTransport } from "../shared/transport.js";
-import { getPlaybackCheckpoint, savePlaybackCheckpoint } from "./api.js";
+import {
+  getDailyMixCheckpoint,
+  getPlaybackCheckpoint,
+  saveDailyMixCheckpoint,
+  savePlaybackCheckpoint,
+} from "./api.js";
 import {
   createPlaybackLeaseCoordinator,
   type PlaybackLeaseCoordinator,
@@ -18,6 +26,7 @@ import type {
   AudioEngineSnapshot,
   AudioPlaybackState,
   LeasePlaybackSnapshot,
+  LoadDailyMixOptions,
   LoadProgramOptions,
   PreviewAudioOptions,
 } from "./types.js";
@@ -43,6 +52,7 @@ interface AudioPreloader {
 }
 
 interface CreateAudioEngineOptions {
+  activateSource?: (profileId: string, kind: PlaybackSourceKind, sourceId: string) => Promise<void>;
   activateProgramHandoff?: (profileId: string, programId: string) => Promise<ProgramDetail>;
   audio?: AudioElementLike;
   voiceAudio?: AudioElementLike;
@@ -68,7 +78,10 @@ const initialSnapshot: AudioEngineSnapshot = {
   ownership: "passive",
   state: "idle",
   profileId: undefined,
+  sourceKind: undefined,
+  sourceId: undefined,
   programId: undefined,
+  dailyMixId: undefined,
   currentItem: undefined,
   currentIndex: 0,
   itemCount: 0,
@@ -152,6 +165,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   const listeners = new Set<() => void>();
   let snapshot = initialSnapshot;
   let program: ProgramDetail | undefined;
+  let dailyMix: DailyMixDetail | undefined;
+  let sourceKind: PlaybackSourceKind | undefined;
   let timeline: PlaybackTimelineItem[] = [];
   let profileId: string | undefined;
   let currentIndex = 0;
@@ -193,6 +208,30 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     return timeline[currentIndex];
   }
 
+  function sourceTracks() {
+    return sourceKind === "daily" ? dailyMix?.tracks.map(({ track }) => track) : program?.tracks;
+  }
+
+  function activeSourceId(): string | undefined {
+    return sourceKind === "daily" ? dailyMix?.mix.id : program?.program.id;
+  }
+
+  function hasActiveSource(): boolean {
+    return activeSourceId() !== undefined && timeline.length > 0;
+  }
+
+  async function persistActiveSource(
+    nextProfileId: string,
+    kind: PlaybackSourceKind,
+    sourceId: string,
+  ): Promise<void> {
+    try {
+      await options.activateSource?.(nextProfileId, kind, sourceId);
+    } catch {
+      update({ checkpointError: true });
+    }
+  }
+
   function activePreviewId(): string | undefined {
     return previewContext?.previewId;
   }
@@ -207,11 +246,15 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
 
   function remoteSnapshot(value: LeasePlaybackSnapshot): AudioEngineSnapshot {
     const item = timeline.find((candidate) => candidate.id === value.timelineItemId);
+    const remoteKind = value.sourceKind ?? "program";
     return {
       ownership: "passive",
       state: value.state,
       profileId: value.profileId,
-      programId: value.programId,
+      sourceKind: remoteKind,
+      sourceId: value.programId,
+      programId: remoteKind === "program" ? value.programId : undefined,
+      dailyMixId: remoteKind === "daily" ? value.programId : undefined,
       currentItem: item,
       currentIndex: value.currentIndex,
       itemCount: value.itemCount,
@@ -230,13 +273,14 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     if (
       snapshot.ownership === "active" &&
       snapshot.profileId !== undefined &&
-      snapshot.programId !== undefined &&
+      snapshot.sourceId !== undefined &&
       snapshot.leaseEpoch !== undefined &&
       item !== undefined
     ) {
       lease.publishSnapshot({
         profileId: snapshot.profileId,
-        programId: snapshot.programId,
+        programId: snapshot.sourceId,
+        ...(snapshot.sourceKind === undefined ? {} : { sourceKind: snapshot.sourceKind }),
         timelineItemId: item.id,
         currentIndex: snapshot.currentIndex,
         itemCount: snapshot.itemCount,
@@ -258,7 +302,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       currentTrack:
         nextSnapshot.preview?.track ??
         (item?.kind === "track"
-          ? program?.tracks.find((track) => track.id === item.trackId)
+          ? sourceTracks()?.find((track) => track.id === item.trackId)
           : undefined),
     };
     publish();
@@ -352,6 +396,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   }
 
   function originalTrackPosition(trackId: string): number {
+    if (sourceKind !== "program") return -1;
     return (
       program?.timeline.findIndex((item) => item.kind === "track" && item.trackId === trackId) ?? -1
     );
@@ -359,7 +404,9 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
 
   function cueBeforeTrack(trackIndex: number): PlaybackTimelineItem | undefined {
     const track = timeline[trackIndex];
-    if (program === undefined || track?.kind !== "track") return undefined;
+    if (sourceKind !== "program" || program === undefined || track?.kind !== "track") {
+      return undefined;
+    }
     const position = originalTrackPosition(track.trackId);
     const previousTrack =
       trackIndex === 0
@@ -372,7 +419,9 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
 
   function outroCue(): PlaybackTimelineItem | undefined {
     const last = timeline.at(-1);
-    if (program === undefined || last?.kind !== "track") return undefined;
+    if (sourceKind !== "program" || program === undefined || last?.kind !== "track") {
+      return undefined;
+    }
     return program.timeline
       .slice(originalTrackPosition(last.trackId) + 1)
       .find((item) => item.kind === "dj");
@@ -425,7 +474,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   }
 
   function maybeStartOverlay(positionMs: number): void {
-    if (program?.program.playbackMode !== "voice-overlay") return;
+    if (sourceKind !== "program" || program?.program.playbackMode !== "voice-overlay") return;
     const item = currentItem();
     if (item?.kind !== "track") return;
     if (currentIndex === 0 && positionMs < 1_500) void startVoice(cueBeforeTrack(0));
@@ -511,7 +560,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     const next = timeline[currentIndex + 1];
     if (next === undefined) preloader.clear();
     else if (next.kind === "track") {
-      preloader.preload(sourceFor(next));
+      if (next.resolvedAudioRef !== "/") preloader.preload(sourceFor(next));
       void refreshTrackAudio(next).then((resolved) => {
         if (
           timeline[currentIndex + 1]?.id === resolved.id &&
@@ -528,18 +577,23 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     positionMs = 0,
     state: AudioPlaybackState = "ready",
   ): void {
-    if (program === undefined) return;
+    if (!hasActiveSource()) return;
     currentIndex = clamp(index, 0, timeline.length - 1);
     const item = timeline[currentIndex];
     if (item === undefined) return;
-    const source = sourceFor(item);
     loadVersion += 1;
     audio.pause();
-    audio.src = source;
-    expectedSource = audio.src;
-    audio.preload = "auto";
-    audio.load();
-    audio.currentTime = clamp(positionMs, 0, item.durationMs) / 1000;
+    if (item.kind === "track" && item.resolvedAudioRef === "/") {
+      expectedSource = undefined;
+      audio.removeAttribute("src");
+      audio.load();
+    } else {
+      audio.src = sourceFor(item);
+      expectedSource = audio.src;
+      audio.preload = "auto";
+      audio.load();
+      audio.currentTime = clamp(positionMs, 0, item.durationMs) / 1000;
+    }
     update({
       state,
       currentItem: item,
@@ -560,7 +614,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     previewContext = undefined;
     stopMedia();
     update({ preview: undefined });
-    if (program !== undefined && returning.returnIndex !== undefined) {
+    if (hasActiveSource() && returning.returnIndex !== undefined) {
       setCurrentItem(returning.returnIndex, returning.returnPositionMs, "paused");
       if (returning.returnWasPlaying) void playCurrent(false);
     }
@@ -752,7 +806,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     const epoch = lease.getState().epoch;
     if (
       profileId === undefined ||
-      program === undefined ||
+      sourceKind === undefined ||
       item === undefined ||
       epoch === undefined ||
       lease.getState().ownership !== "active"
@@ -768,15 +822,28 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         : clamp(snapshot.positionMs, 0, item.durationMs);
     lastCheckpointAt = now();
     try {
-      await savePlaybackCheckpoint(options.transport, {
-        profileId,
-        programId: program.program.id,
-        timelineItemId: item.id,
-        positionMs,
-        volume: userVolume,
-        status: resolvedStatus,
-        leaseEpoch: epoch,
-      });
+      if (sourceKind === "daily" && dailyMix !== undefined && item.kind === "track") {
+        await saveDailyMixCheckpoint(options.transport, {
+          profileId,
+          dailyMixId: dailyMix.mix.id,
+          trackId: item.trackId,
+          position: currentIndex,
+          positionMs,
+          volume: userVolume,
+          status: resolvedStatus,
+          leaseEpoch: epoch,
+        });
+      } else if (sourceKind === "program" && program !== undefined) {
+        await savePlaybackCheckpoint(options.transport, {
+          profileId,
+          programId: program.program.id,
+          timelineItemId: item.id,
+          positionMs,
+          volume: userVolume,
+          status: resolvedStatus,
+          leaseEpoch: epoch,
+        });
+      }
       update({ checkpointError: false });
     } catch (error) {
       if (
@@ -792,12 +859,13 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
 
   async function advance(reason: "ended" | "error" | "next"): Promise<void> {
     const item = currentItem();
-    if (item === undefined || program === undefined) return;
+    if (item === undefined || !hasActiveSource()) return;
     await checkpoint(
       reason === "error" ? "failed" : snapshot.state === "playing" ? "playing" : "paused",
     );
     if (
       reason === "ended" &&
+      sourceKind === "program" &&
       scheduledProgramHandoff !== undefined &&
       scheduledProgramHandoff.program.profileId === profileId
     ) {
@@ -861,7 +929,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   async function playCurrent(requestTakeover: boolean): Promise<void> {
     if (requestTakeover && lease.getState().ownership !== "active") {
       await lease.requestTakeover();
-      if (program !== undefined) setCurrentItem(currentIndex, snapshot.positionMs, "ready");
+      if (hasActiveSource()) setCurrentItem(currentIndex, snapshot.positionMs, "ready");
     }
     const epoch = lease.getState().epoch;
     let item = currentItem();
@@ -948,6 +1016,52 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       update({
         ownership: "passive",
         state: saved?.status === "completed" ? "completed" : "paused",
+        currentItem: item,
+        currentIndex: index,
+        itemCount: timeline.length,
+        positionMs,
+        durationMs: item?.durationMs ?? 0,
+        volume: saved?.volume ?? snapshot.volume,
+      });
+    }
+  }
+
+  async function restoreDaily(
+    mixDetail: DailyMixDetail,
+    loadOptions: LoadDailyMixOptions,
+  ): Promise<void> {
+    const version = ++loadVersion;
+    let saved: DailyMixPlaybackCheckpoint | null = null;
+    if (loadOptions.startIndex === undefined) {
+      try {
+        saved = await getDailyMixCheckpoint(options.transport, mixDetail.mix.profileId);
+      } catch {
+        update({ checkpointError: true });
+      }
+    }
+    if (destroyed || version !== loadVersion || dailyMix !== mixDetail) return;
+    const savedItem = saved === null ? undefined : timeline[saved.position];
+    const savedIndex =
+      saved?.dailyMixId === mixDetail.mix.id &&
+      savedItem?.kind === "track" &&
+      savedItem.trackId === saved.trackId
+        ? saved.position
+        : -1;
+    const index = clamp(loadOptions.startIndex ?? (savedIndex >= 0 ? savedIndex : 0), 0, 19);
+    const positionMs =
+      loadOptions.startIndex === undefined && savedIndex >= 0 ? (saved?.positionMs ?? 0) : 0;
+    const completed = loadOptions.startIndex === undefined && saved?.status === "completed";
+    if (lease.getState().ownership === "active") {
+      userVolume = saved?.volume ?? userVolume;
+      audio.volume = userVolume;
+      setCurrentItem(index, positionMs, completed ? "completed" : "paused");
+      if (loadOptions.autoplay && !completed) await playCurrent(false);
+    } else {
+      currentIndex = index;
+      const item = timeline[index];
+      update({
+        ownership: "passive",
+        state: completed ? "completed" : "paused",
         currentItem: item,
         currentIndex: index,
         itemCount: timeline.length,
@@ -1076,7 +1190,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     if (
       lease.getState().ownership === "passive" &&
       profileId === remote.profileId &&
-      program?.program.id === remote.programId
+      activeSourceId() === remote.programId &&
+      (remote.sourceKind ?? "program") === sourceKind
     ) {
       currentIndex = remote.currentIndex;
       snapshot = remoteSnapshot(remote);
@@ -1109,9 +1224,10 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   ): Promise<void> {
     await stopPreview();
     await activateProfile(nextProgram.program.profileId);
-    if (program?.program.id === nextProgram.program.id) return;
-    if (program !== undefined && lease.getState().ownership === "active") await yieldPlayback();
+    if (sourceKind === "program" && program?.program.id === nextProgram.program.id) return;
+    if (hasActiveSource() && lease.getState().ownership === "active") await yieldPlayback();
     program = nextProgram;
+    sourceKind = "program";
     timeline =
       nextProgram.program.playbackMode === "voice-overlay"
         ? nextProgram.timeline.filter((item) => item.kind === "track")
@@ -1123,7 +1239,10 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     currentIndex = 0;
     update({
       profileId,
+      sourceKind,
+      sourceId: nextProgram.program.id,
       programId: nextProgram.program.id,
+      dailyMixId: undefined,
       state: "ready",
       currentIndex: 0,
       itemCount: timeline.length,
@@ -1132,7 +1251,50 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       checkpointError: false,
       mediaError: undefined,
     });
+    await persistActiveSource(profileId, "program", nextProgram.program.id);
     await restore(nextProgram, loadOptions.autoplay);
+  }
+
+  async function loadDailyMix(
+    nextDailyMix: DailyMixDetail,
+    loadOptions: LoadDailyMixOptions,
+  ): Promise<void> {
+    await stopPreview();
+    await activateProfile(nextDailyMix.mix.profileId);
+    const sameMix = sourceKind === "daily" && dailyMix?.mix.id === nextDailyMix.mix.id;
+    if (sameMix && loadOptions.startIndex === undefined) return;
+    if (hasActiveSource() && lease.getState().ownership === "active") await yieldPlayback();
+    dailyMix = nextDailyMix;
+    sourceKind = "daily";
+    timeline = nextDailyMix.tracks.map(({ position, track }) => ({
+      id: track.id,
+      kind: "track" as const,
+      position,
+      trackId: track.id,
+      resolvedAudioRef: "/",
+      durationMs: track.durationMs,
+    }));
+    triggeredVoiceCues.clear();
+    retriedMediaItems.clear();
+    audioResolutions.clear();
+    profileId = nextDailyMix.mix.profileId;
+    currentIndex = 0;
+    update({
+      profileId,
+      sourceKind,
+      sourceId: nextDailyMix.mix.id,
+      programId: undefined,
+      dailyMixId: nextDailyMix.mix.id,
+      state: "ready",
+      currentIndex: 0,
+      itemCount: timeline.length,
+      positionMs: 0,
+      durationMs: timeline[0]?.durationMs ?? 0,
+      checkpointError: false,
+      mediaError: undefined,
+    });
+    await persistActiveSource(profileId, "daily", nextDailyMix.mix.id);
+    await restoreDaily(nextDailyMix, loadOptions);
   }
 
   return {
@@ -1145,6 +1307,8 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       lease.release();
       stopMedia();
       program = undefined;
+      dailyMix = undefined;
+      sourceKind = undefined;
       timeline = [];
       profileId = undefined;
       snapshot = initialSnapshot;
@@ -1166,8 +1330,15 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     async loadProgram(nextProgram, loadOptions: LoadProgramOptions) {
       await loadProgram(nextProgram, loadOptions);
     },
+    async loadDailyMix(nextDailyMix, loadOptions: LoadDailyMixOptions) {
+      await loadDailyMix(nextDailyMix, loadOptions);
+    },
     async syncProgram(nextProgram) {
       await activateProfile(nextProgram.program.profileId);
+      if (sourceKind === "daily") {
+        program = nextProgram;
+        return;
+      }
       if (program !== undefined || snapshot.preview !== undefined) return;
       await loadProgram(nextProgram, { autoplay: false });
     },
@@ -1176,7 +1347,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
         await stopPreview();
         return;
       }
-      if (program === undefined && queuedPreview !== undefined) {
+      if (!hasActiveSource() && queuedPreview !== undefined) {
         const nextPreview = queuedPreview;
         queuedPreview = undefined;
         update({ queuedPreview: undefined });
@@ -1217,13 +1388,15 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       await yieldPlayback();
       lease.release();
       program = undefined;
+      dailyMix = undefined;
+      sourceKind = undefined;
       timeline = [];
       profileId = undefined;
       snapshot = initialSnapshot;
       publish();
     },
     async previous() {
-      if (lease.getState().ownership !== "active" || program === undefined) return;
+      if (lease.getState().ownership !== "active" || !hasActiveSource()) return;
       if (previewContext !== undefined) {
         await stopPreview();
         return;
@@ -1251,6 +1424,14 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       userVolume = next;
       audio.volume = voiceActive ? next * 0.38 : next;
       update({ volume: next });
+    },
+    async switchSource(kind) {
+      if (kind === sourceKind) return;
+      if (kind === "program" && program !== undefined) {
+        await loadProgram(program, { autoplay: snapshot.state === "playing" });
+      } else if (kind === "daily" && dailyMix !== undefined) {
+        await loadDailyMix(dailyMix, { autoplay: snapshot.state === "playing" });
+      }
     },
     stopPreview,
     subscribe(listener) {

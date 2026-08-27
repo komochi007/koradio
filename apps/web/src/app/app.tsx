@@ -14,7 +14,11 @@ import {
   type ReactNode,
 } from "react";
 
-import { createAudioEngine, type AudioEngineFacade } from "../audio/index.js";
+import {
+  activatePlaybackSource,
+  createAudioEngine,
+  type AudioEngineFacade,
+} from "../audio/index.js";
 import { useAudioSnapshot } from "../audio/react.js";
 import {
   createServiceTransport,
@@ -355,6 +359,9 @@ export function App({ audioEngine, transport }: AppProps): ReactElement {
     () =>
       audioEngine ??
       createAudioEngine({
+        activateSource: async (profileId, kind, sourceId) => {
+          await activatePlaybackSource(serviceTransport, profileId, { kind, sourceId });
+        },
         activateProgramHandoff: (profileId, programId) =>
           activateProgramHandoff(serviceTransport, profileId, programId),
         resolveTrackAudio: (profileId, trackId) =>

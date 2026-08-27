@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ProgramDetail } from "@koradio/contracts";
+import type { DailyMixDetail, ProgramDetail } from "@koradio/contracts";
 import { act, renderHook } from "@testing-library/react";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
@@ -97,6 +97,39 @@ const program: ProgramDetail = {
       durationMs: 20_000,
     },
   ],
+};
+
+const dailyMix: DailyMixDetail = {
+  mix: {
+    id: "00000000-0000-4000-8000-000000000090",
+    profileId,
+    localDate: "2026-08-26",
+    trackIds: Array.from(
+      { length: 20 },
+      (_, index) => `00000000-0000-4000-8000-${String(100 + index).padStart(12, "0")}`,
+    ),
+    generatedAt: "2026-08-26T00:00:00.000Z",
+  },
+  tracks: Array.from({ length: 20 }, (_, index) => {
+    const id = `00000000-0000-4000-8000-${String(100 + index).padStart(12, "0")}`;
+    return {
+      position: index,
+      bucket: index < 2 ? ("library" as const) : ("close" as const),
+      track: {
+        id,
+        source: "netease" as const,
+        sourceTrackId: `daily-${String(index)}`,
+        title: `Daily ${String(index + 1)}`,
+        artist: `Artist ${String(index + 1)}`,
+        album: "Daily",
+        artworkUrl: null,
+        durationMs: 30_000,
+        lyricStatus: "unavailable" as const,
+        playable: true,
+        originMode: "mock" as const,
+      },
+    };
+  }),
 };
 
 class FakeAudio {
@@ -575,7 +608,7 @@ describe("Audio Engine", () => {
       new Promise<void>((resolve) => {
         resolvePreview = resolve;
       });
-    lease.setState({ ownership: "passive", profileId });
+    lease.state = { ownership: "passive", profileId };
     const pendingPreview = engine.previewAudio({
       kind: "track",
       previewId: program.tracks[1]?.id ?? "",
@@ -1474,6 +1507,274 @@ describe("Audio Engine", () => {
     });
     await engine.previous();
     expect(engine.getSnapshot().preview).toBeUndefined();
+  });
+
+  it("restores independent Daily and Program checkpoints and returns from PLAY NEXT", async () => {
+    const audio = new FakeAudio();
+    let programCheckpoint: Record<string, unknown> | undefined;
+    let dailyCheckpoint: Record<string, unknown> | undefined;
+    const transport: ServiceTransport = {
+      clearSession() {},
+      connectEvents: () => Promise.reject(new Error("unused")),
+      fetchHealth: () => Promise.reject(new Error("unused")),
+      request(path, init) {
+        if ((init?.method ?? "GET") === "GET") {
+          const checkpoint = path.endsWith("/daily-mix-playback")
+            ? dailyCheckpoint
+            : programCheckpoint;
+          return Promise.resolve(
+            checkpoint === undefined
+              ? new Response(errorEnvelope("PLAYBACK_SNAPSHOT_NOT_FOUND"), { status: 404 })
+              : new Response(JSON.stringify(checkpoint), { status: 200 }),
+          );
+        }
+        if (typeof init?.body !== "string") throw new Error("Expected checkpoint JSON");
+        const command = JSON.parse(init.body) as Record<string, unknown>;
+        const checkpoint = { ...command };
+        delete checkpoint.leaseEpoch;
+        const saved = { ...checkpoint, savedAt: "2026-08-26T08:00:00.000Z" };
+        if (path.includes("daily-mix-playback")) dailyCheckpoint = saved;
+        else programCheckpoint = saved;
+        return Promise.resolve(new Response(JSON.stringify(saved), { status: 200 }));
+      },
+    };
+    const engine = createAudioEngine({
+      activateSource: () => Promise.resolve(),
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      resolveTrackAudio: (_profile, trackId) =>
+        Promise.resolve({
+          trackId,
+          resolvedAudioRef: `https://media.example.test/${trackId}.mp3`,
+          expiresAt: "2026-08-27T08:00:00.000Z",
+        }),
+      transport,
+    });
+
+    await engine.loadProgram(program, { autoplay: false });
+    await engine.seek(4_321);
+    await engine.loadDailyMix?.(dailyMix, { autoplay: false, startIndex: 3 });
+    await engine.seek(2_345);
+    await engine.loadProgram(program, { autoplay: false });
+    expect(engine.getSnapshot()).toMatchObject({
+      sourceKind: "program",
+      currentIndex: 0,
+      positionMs: 4_321,
+    });
+
+    await engine.loadDailyMix?.(dailyMix, { autoplay: false });
+    expect(engine.getSnapshot()).toMatchObject({
+      sourceKind: "daily",
+      currentIndex: 3,
+      positionMs: 2_345,
+      currentTrack: { title: "Daily 4" },
+    });
+    await engine.play();
+    await engine.queuePreviewNext?.({
+      kind: "track",
+      previewId: "00000000-0000-4000-8000-000000000199",
+      resolvedAudioRef: "https://media.example.test/preview.mp3",
+      durationMs: 5_000,
+      track: dailyMix.tracks[5]?.track,
+    });
+    audio.emit("ended");
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot().preview?.state).toBe("playing");
+    });
+    audio.emit("ended");
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot()).toMatchObject({
+        sourceKind: "daily",
+        currentIndex: 4,
+        state: "playing",
+        currentTrack: { title: "Daily 5" },
+      });
+    });
+  });
+
+  it("restores a completed Daily source passively and switches between retained sources", async () => {
+    const audio = new FakeAudio();
+    const lease = new FakeLease();
+    lease.state = { ownership: "passive", profileId };
+    const transport: ServiceTransport = {
+      clearSession() {},
+      connectEvents: () => Promise.reject(new Error("unused")),
+      fetchHealth: () => Promise.reject(new Error("unused")),
+      request(path, init) {
+        if ((init?.method ?? "GET") === "GET" && path.endsWith("/daily-mix-playback")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                profileId,
+                dailyMixId: dailyMix.mix.id,
+                trackId: dailyMix.tracks[19]?.track.id,
+                position: 19,
+                positionMs: 30_000,
+                volume: 0.45,
+                status: "completed",
+                savedAt: "2026-08-27T08:00:00.000Z",
+              }),
+            ),
+          );
+        }
+        return Promise.resolve(
+          new Response(errorEnvelope("PLAYBACK_SNAPSHOT_NOT_FOUND"), { status: 404 }),
+        );
+      },
+    };
+    const engine = createAudioEngine({
+      activateSource: () => Promise.reject(new Error("offline")),
+      audio,
+      lease,
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport,
+    });
+
+    await engine.loadDailyMix?.(dailyMix, { autoplay: true });
+    expect(engine.getSnapshot()).toMatchObject({
+      ownership: "passive",
+      sourceKind: "daily",
+      currentIndex: 19,
+      positionMs: 30_000,
+      state: "completed",
+      checkpointError: true,
+    });
+    expect(audio.play).not.toHaveBeenCalled();
+
+    lease.emitSnapshot({
+      profileId,
+      programId: dailyMix.mix.id,
+      sourceKind: "daily",
+      timelineItemId: dailyMix.tracks[4]?.track.id ?? "",
+      currentIndex: 4,
+      itemCount: 20,
+      positionMs: 1_500,
+      durationMs: 30_000,
+      volume: 0.45,
+      state: "paused",
+      leaseEpoch: 9,
+    });
+    expect(engine.getSnapshot()).toMatchObject({
+      sourceKind: "daily",
+      dailyMixId: dailyMix.mix.id,
+      programId: undefined,
+      currentIndex: 4,
+    });
+
+    await engine.syncProgram?.(program);
+    await engine.switchSource?.("program");
+    expect(engine.getSnapshot()).toMatchObject({ sourceKind: "program", programId });
+    await engine.switchSource?.("program");
+    await engine.switchSource?.("daily");
+    expect(engine.getSnapshot()).toMatchObject({
+      sourceKind: "daily",
+      dailyMixId: dailyMix.mix.id,
+    });
+    engine.clearProgramHandoff?.();
+  });
+
+  it("plays a requested Daily track and ignores a duplicate source load", async () => {
+    const audio = new FakeAudio();
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      resolveTrackAudio: (_profile, trackId) =>
+        Promise.resolve({
+          trackId,
+          resolvedAudioRef: `https://media.example.test/${trackId}.mp3`,
+          expiresAt: "2026-08-27T08:00:00.000Z",
+        }),
+      transport: createTransport(),
+    });
+
+    await engine.loadDailyMix?.(dailyMix, { autoplay: true, startIndex: 6 });
+    expect(engine.getSnapshot()).toMatchObject({
+      sourceKind: "daily",
+      currentIndex: 6,
+      state: "playing",
+    });
+    const snapshot = engine.getSnapshot();
+    await engine.loadDailyMix?.(dailyMix, { autoplay: false });
+    expect(engine.getSnapshot()).toBe(snapshot);
+    await engine.switchSource?.("daily");
+  });
+
+  it("keeps Daily usable when checkpoint restoration fails", async () => {
+    const audio = new FakeAudio();
+    const transport = createTransport();
+    transport.request = () =>
+      Promise.resolve(new Response(errorEnvelope("INTERNAL_ERROR"), { status: 500 }));
+    const engine = createAudioEngine({
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport,
+    });
+
+    await engine.loadDailyMix?.(dailyMix, { autoplay: false });
+    expect(engine.getSnapshot()).toMatchObject({
+      sourceKind: "daily",
+      state: "paused",
+      checkpointError: true,
+    });
+  });
+
+  it("continues the current Program when a scheduled handoff fails", async () => {
+    const audio = new FakeAudio();
+    const nextProgram: ProgramDetail = {
+      ...program,
+      program: { ...program.program, id: "00000000-0000-4000-8000-000000000094" },
+    };
+    const engine = createAudioEngine({
+      activateProgramHandoff: () => Promise.reject(new Error("handoff failed")),
+      audio,
+      lease: new FakeLease(),
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+    await engine.loadProgram(program, { autoplay: true });
+    engine.scheduleProgramHandoff?.(nextProgram);
+
+    audio.emit("ended");
+    await vi.waitFor(() => {
+      expect(engine.getSnapshot()).toMatchObject({ programId, currentIndex: 1, state: "playing" });
+    });
+  });
+
+  it("retries a blocked preview after takeover and restores after media failure", async () => {
+    const audio = new FakeAudio();
+    const lease = new FakeLease();
+    audio.playResult = () =>
+      Promise.reject(new DOMException("Playback requires interaction", "NotAllowedError"));
+    const engine = createAudioEngine({
+      audio,
+      lease,
+      preloader: { preload: vi.fn(), clear: vi.fn() },
+      transport: createTransport(),
+    });
+
+    await engine.previewAudio({
+      kind: "track",
+      previewId: program.tracks[0]?.id ?? "",
+      resolvedAudioRef: "https://media.example.test/blocked.mp3",
+      durationMs: 5_000,
+      track: program.tracks[0],
+    });
+    expect(engine.getSnapshot().preview).toMatchObject({
+      state: "paused",
+      mediaError: "autoplay_blocked",
+    });
+
+    lease.state = { ownership: "passive", profileId };
+    audio.playResult = () => Promise.reject(new Error("decode failed"));
+    await engine.play();
+    expect(engine.getSnapshot().preview).toMatchObject({
+      state: "failed",
+      mediaError: "media_failed",
+    });
+    expect(lease.getState().ownership).toBe("active");
   });
 
   it("provides client and server React snapshots", () => {

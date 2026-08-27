@@ -1,4 +1,10 @@
-import type { MusicTrack, PlaybackTimelineItem, ProgramDetail } from "@koradio/contracts";
+import type {
+  DailyMixDetail,
+  MusicTrack,
+  PlaybackSourceKind,
+  PlaybackTimelineItem,
+  ProgramDetail,
+} from "@koradio/contracts";
 
 export type AudioOwnership = "active" | "passive";
 export type AudioPlaybackState =
@@ -27,7 +33,10 @@ export interface AudioEngineSnapshot {
   ownership: AudioOwnership;
   state: AudioPlaybackState;
   profileId: string | undefined;
+  sourceKind?: PlaybackSourceKind | undefined;
+  sourceId?: string | undefined;
   programId: string | undefined;
+  dailyMixId?: string | undefined;
   currentItem: PlaybackTimelineItem | undefined;
   currentTrack?: MusicTrack | undefined;
   currentIndex: number;
@@ -52,12 +61,18 @@ export interface LoadProgramOptions {
   autoplay: boolean;
 }
 
+export interface LoadDailyMixOptions {
+  autoplay: boolean;
+  startIndex?: number;
+}
+
 export interface AudioEngineFacade {
   activateProfile(profileId: string): Promise<void>;
   clearProgram?(): Promise<void>;
   destroy(): Promise<void>;
   getSnapshot(): AudioEngineSnapshot;
   loadProgram(program: ProgramDetail, options: LoadProgramOptions): Promise<void>;
+  loadDailyMix?(dailyMix: DailyMixDetail, options: LoadDailyMixOptions): Promise<void>;
   clearProgramHandoff?(): void;
   syncProgram?(program: ProgramDetail): Promise<void>;
   next(): Promise<void>;
@@ -70,6 +85,7 @@ export interface AudioEngineFacade {
   previewAudio(options: PreviewAudioOptions): Promise<void>;
   queuePreviewNext?(options: PreviewAudioOptions): Promise<void>;
   scheduleProgramHandoff?(program: ProgramDetail): void;
+  switchSource?(kind: PlaybackSourceKind): Promise<void>;
   stopPreview(): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
@@ -77,6 +93,7 @@ export interface AudioEngineFacade {
 export interface LeasePlaybackSnapshot {
   profileId: string;
   programId: string;
+  sourceKind?: PlaybackSourceKind;
   timelineItemId: string;
   currentIndex: number;
   itemCount: number;
