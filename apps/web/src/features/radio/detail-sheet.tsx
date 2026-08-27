@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import type { DjScriptSegment, MusicTrack, ProgramDetail } from "@koradio/contracts";
+import type {
+  DailyMixDetail,
+  DjScriptSegment,
+  MusicTrack,
+  ProgramDetail,
+} from "@koradio/contracts";
 import {
   Component,
   useEffect,
@@ -35,6 +40,7 @@ const timelineBars = 96;
 interface DetailSheetProps {
   audio: AudioEngineSnapshot;
   audioEngine: AudioEngineFacade;
+  dailyMix?: DailyMixDetail | null | undefined;
   onClosed: () => void;
   profileId: string;
   program: ProgramDetail | null;
@@ -86,10 +92,18 @@ function timelineHeight(index: number): number {
 function contextTrack(
   program: ProgramDetail | null,
   audio: AudioEngineSnapshot,
+  dailyMix: DailyMixDetail | null | undefined,
 ): MusicTrack | undefined {
   if (audio.preview?.kind === "track" && audio.preview.track !== undefined)
     return audio.preview.track;
   if (audio.currentTrack !== undefined) return audio.currentTrack;
+  if (audio.sourceKind === "daily" && dailyMix !== null && dailyMix !== undefined) {
+    if (audio.currentItem?.kind === "track") {
+      const currentTrackId = audio.currentItem.trackId;
+      const dailyTrack = dailyMix.tracks.find(({ track }) => track.id === currentTrackId);
+      if (dailyTrack !== undefined) return dailyTrack.track;
+    }
+  }
   if (program === null) return undefined;
   const tracks = new Map(program.tracks.map((track) => [track.id, track]));
   if (audio.currentItem?.kind === "track") return tracks.get(audio.currentItem.trackId);
@@ -273,6 +287,7 @@ function PlaybackIcon({ paused }: { paused: boolean }): ReactElement {
 export function DetailSheet({
   audio,
   audioEngine,
+  dailyMix,
   onClosed,
   profileId,
   program,
@@ -287,7 +302,7 @@ export function DetailSheet({
   const dragOffsetRef = useRef(0);
   const dragStart = useRef<number | undefined>(undefined);
   const dailySource = audio.sourceKind === "daily";
-  const track = contextTrack(program, audio);
+  const track = contextTrack(program, audio, dailyMix);
   const script = dailySource ? undefined : currentScript(program, audio);
   const speaking = (audio.voiceActive || audio.currentItem?.kind === "dj") && script !== undefined;
   const scriptDurationMs = audio.voiceActive

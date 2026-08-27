@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ProgramDetail } from "@koradio/contracts";
+import type { DailyMixDetail, ProgramDetail } from "@koradio/contracts";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -71,6 +71,20 @@ const program: ProgramDetail = {
   ],
 };
 
+const dailyTrack = program.tracks[0];
+if (dailyTrack === undefined) throw new Error("Expected a daily track fixture");
+
+const dailyMix: DailyMixDetail = {
+  mix: {
+    id: "00000000-0000-4000-8000-000000000490",
+    profileId,
+    localDate: "2026-07-19",
+    trackIds: [trackId],
+    generatedAt: "2026-07-19T08:00:00.000Z",
+  },
+  tracks: [{ position: 0, bucket: "close", track: dailyTrack }],
+};
+
 function snapshot(index: 0 | 1): AudioEngineSnapshot {
   const currentItem = program.timeline[index];
   return {
@@ -122,6 +136,7 @@ function renderDetail(options: {
   audio?: AudioEngineSnapshot;
   engine?: AudioEngineFacade;
   lyrics?: unknown;
+  dailyMix?: DailyMixDetail | null;
   onClosed?: () => void;
 }) {
   const queryClient = createAppQueryClient();
@@ -132,6 +147,7 @@ function renderDetail(options: {
       <DetailSheet
         audio={options.audio ?? snapshot(1)}
         audioEngine={engine}
+        dailyMix={options.dailyMix}
         onClosed={onClosed}
         profileId={profileId}
         program={program}
@@ -195,6 +211,34 @@ describe("Detail Sheet", () => {
     expect(
       (await screen.findByText("A small light stayed awake")).getAttribute("aria-current"),
     ).toBe("true");
+  });
+
+  it("resolves a passive daily track from the loaded daily mix", async () => {
+    renderDetail({
+      dailyMix,
+      audio: {
+        ...snapshot(1),
+        ownership: "passive",
+        sourceKind: "daily",
+        sourceId: dailyMix.mix.id,
+        programId: undefined,
+        dailyMixId: dailyMix.mix.id,
+        currentItem: {
+          id: trackId,
+          kind: "track",
+          position: 0,
+          trackId,
+          resolvedAudioRef: "https://media.example.test/detail.mp3",
+          durationMs: 20_000,
+        },
+        currentIndex: 0,
+        itemCount: 1,
+        currentTrack: undefined,
+      },
+    });
+
+    expect(screen.getByRole("dialog", { name: "DAILY PROGRAM" })).toBeTruthy();
+    expect(await screen.findByText("A small light stayed awake")).toBeTruthy();
   });
 
   it("uses a DJ preview track's own position when following lyrics", async () => {

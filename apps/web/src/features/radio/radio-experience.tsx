@@ -1714,6 +1714,7 @@ export function RadioExperience({
                 <DetailSheet
                   audio={audio}
                   audioEngine={audioEngine}
+                  dailyMix={availableDailyMix}
                   onClosed={() => {
                     setDetailOpen(false);
                     window.queueMicrotask(() => detailOpenerRef.current?.focus());
