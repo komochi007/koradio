@@ -28,8 +28,8 @@ html[data-electron-canvas="true"] .electron-window-drag-region {
   position: absolute;
   z-index: 100;
   top: 0;
-  right: 116px;
-  left: 112px;
+  right: var(--desktop-drag-region-right, 116px);
+  left: var(--desktop-drag-region-left, 112px);
   height: 56px;
   -webkit-app-region: drag;
 }

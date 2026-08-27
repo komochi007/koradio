@@ -1,12 +1,5 @@
 import type { DailyMixDetail, DailyMixTodayResponse, MusicTrack } from "@koradio/contracts";
-import {
-  useEffect,
-  useCallback,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactElement,
-} from "react";
+import { useEffect, useCallback, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 
 import type { AudioEngineFacade, AudioEngineSnapshot } from "../../audio/index.js";
@@ -26,18 +19,79 @@ interface DailyMixCardProps {
   today: DailyMixTodayResponse | undefined;
 }
 
-function soundfieldPath(index: number): string {
-  const progress = index / 55;
-  const y = 13 + progress * 204;
-  const amplitude = 4 + Math.sin(Math.PI * progress) * 17;
-  const phase = ((index % 7) - 3) * 0.8;
-  const shoulder = Math.sin(index * 0.63) * 2.2;
+type SoundfieldLayer = "crest" | "crossing" | "trough";
+
+interface SoundfieldPoint {
+  x: number;
+  y: number;
+}
+
+const soundfieldLayers: Array<{ id: SoundfieldLayer; count: number }> = [
+  { id: "crest", count: 34 },
+  { id: "trough", count: 30 },
+  { id: "crossing", count: 24 },
+];
+
+function soundfieldPath(points: SoundfieldPoint[]): string {
+  const first = points[0];
+  if (first === undefined) return "";
+  let path = `M ${String(first.x)} ${String(first.y)}`;
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const point = points[index];
+    if (previous === undefined || point === undefined) continue;
+    const before = points[index - 2] ?? previous;
+    const after = points[index + 1] ?? point;
+    const controlOne = {
+      x: previous.x + (point.x - before.x) / 6,
+      y: previous.y + (point.y - before.y) / 6,
+    };
+    const controlTwo = {
+      x: point.x - (after.x - previous.x) / 6,
+      y: point.y - (after.y - previous.y) / 6,
+    };
+    path += ` C ${String(controlOne.x)} ${String(controlOne.y)}, ${String(controlTwo.x)} ${String(controlTwo.y)}, ${String(point.x)} ${String(point.y)}`;
+  }
+  return path;
+}
+
+function soundfieldPoints(layer: SoundfieldLayer, index: number, count: number): SoundfieldPoint[] {
+  const progress = index / Math.max(1, count - 1);
+  const offset = (progress - 0.5) * 2;
+  const phase = index * 0.47;
+  const texture = Math.sin(phase) * 2.6 + Math.cos(phase * 0.63) * 1.7;
+  if (layer === "crest") {
+    return [
+      { x: -72, y: 132 + offset * 88 + texture },
+      { x: 82, y: 68 + offset * 78 - texture * 0.6 },
+      { x: 238, y: 28 + offset * 62 + texture * 0.35 },
+      { x: 408, y: 72 + offset * 20 - texture * 0.4 },
+      { x: 586, y: 136 + offset * 70 + texture * 0.5 },
+      { x: 792, y: 154 + offset * 88 - texture },
+    ];
+  }
+  if (layer === "trough") {
+    return [
+      { x: -72, y: 84 + offset * 82 - texture },
+      { x: 92, y: 168 + offset * 74 + texture * 0.5 },
+      { x: 256, y: 214 + offset * 56 - texture * 0.35 },
+      { x: 424, y: 164 + offset * 18 + texture * 0.4 },
+      { x: 604, y: 116 + offset * 66 - texture * 0.5 },
+      { x: 792, y: 188 + offset * 86 + texture },
+    ];
+  }
   return [
-    `M -48 ${String(y + phase)}`,
-    `C 68 ${String(y - amplitude * 0.42 + shoulder)}, 138 ${String(y + amplitude * 0.58)}, 252 ${String(y + phase * 0.35)}`,
-    `S 390 ${String(y - amplitude * 0.72 - shoulder)}, 482 ${String(y - amplitude * 0.12)}`,
-    `S 626 ${String(y + amplitude * 0.86 + phase)}, 782 ${String(y + phase * 0.28)}`,
-  ].join(" ");
+    { x: -72, y: 190 + offset * 90 + texture * 0.7 },
+    { x: 112, y: 146 + offset * 76 - texture * 0.4 },
+    { x: 286, y: 86 + offset * 58 + texture * 0.3 },
+    { x: 454, y: 128 + offset * 18 - texture * 0.5 },
+    { x: 632, y: 186 + offset * 64 + texture * 0.4 },
+    { x: 792, y: 110 + offset * 88 - texture * 0.7 },
+  ];
+}
+
+function soundfieldTone(index: number): "primary" | "secondary" | "ambient" {
+  return index % 7 === 0 ? "primary" : index % 7 <= 4 ? "secondary" : "ambient";
 }
 
 function Soundfield(): ReactElement {
@@ -48,24 +102,23 @@ function Soundfield(): ReactElement {
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      {Array.from({ length: 56 }, (_, index) => {
-        const progress = index / 55;
-        const edgeFade = 0.12 + Math.sin(Math.PI * progress) * 0.88;
-        const layer = index % 7 === 0 ? "primary" : index % 7 <= 4 ? "secondary" : "ambient";
-        return (
-          <path
-            className={`daily-mix-soundfield__line daily-mix-soundfield__line--${layer}`}
-            d={soundfieldPath(index)}
-            key={index}
-            style={
-              {
-                "--daily-line": index,
-                opacity: edgeFade,
-              } as CSSProperties
-            }
-          />
-        );
-      })}
+      {soundfieldLayers.map(({ id, count }) => (
+        <g className={`daily-mix-soundfield__layer daily-mix-soundfield__layer--${id}`} key={id}>
+          {Array.from({ length: count }, (_, index) => {
+            const progress = index / Math.max(1, count - 1);
+            const edgeFade = 0.16 + Math.sin(Math.PI * progress) * 0.84;
+            const tone = soundfieldTone(index);
+            return (
+              <path
+                className={`daily-mix-soundfield__line daily-mix-soundfield__line--${tone}`}
+                d={soundfieldPath(soundfieldPoints(id, index, count))}
+                key={index}
+                style={{ opacity: edgeFade }}
+              />
+            );
+          })}
+        </g>
+      ))}
     </svg>
   );
 }
@@ -254,7 +307,7 @@ export function DailyMixCard(props: DailyMixCardProps): ReactElement | null {
           <Soundfield />
           <div className="daily-mix-hero__copy">
             <p id="daily-mix-title">DAILY MIX</p>
-            <h2>
+            <h2 aria-label={`${date.month}/${date.day}`}>
               <span>{date.month}</span>
               <span className="daily-mix-date__slash" aria-hidden="true">
                 /

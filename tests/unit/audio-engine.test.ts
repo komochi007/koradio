@@ -1326,6 +1326,46 @@ describe("Audio Engine", () => {
     await engine.destroy();
   });
 
+  it("clears stale DJ voice state when switching from Daily back to Radio", async () => {
+    const music = new FakeAudio();
+    const voice = new FakeAudio();
+    const intro = program.timeline[1];
+    const firstTrack = program.timeline[0];
+    if (intro === undefined || firstTrack === undefined || intro.kind !== "dj") {
+      throw new Error("Audio fixture is incomplete");
+    }
+    const overlayProgram: ProgramDetail = {
+      ...program,
+      program: { ...program.program, playbackMode: "voice-overlay" },
+      timeline: [intro, firstTrack],
+    };
+    const engine = createAudioEngine({
+      audio: music,
+      lease: new FakeLease(),
+      transport: createTransport(),
+      voiceAudio: voice,
+    });
+
+    await engine.loadProgram(overlayProgram, { autoplay: true });
+    await flushAsync();
+    expect(engine.getSnapshot()).toMatchObject({
+      voiceActive: true,
+      voiceSegmentId: intro.segmentId,
+    });
+
+    await engine.loadDailyMix?.(dailyMix, { autoplay: false });
+    await engine.loadProgram(program, { autoplay: false });
+
+    expect(engine.getSnapshot()).toMatchObject({
+      sourceKind: "program",
+      voiceActive: false,
+      voiceSegmentId: undefined,
+      voicePositionMs: undefined,
+      voiceDurationMs: undefined,
+    });
+    await engine.destroy();
+  });
+
   it("recovers music when resuming a paused overlay voice fails", async () => {
     const music = new FakeAudio();
     const voice = new FakeAudio();

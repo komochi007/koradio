@@ -47,23 +47,37 @@
 
 .daily-mix-soundfield {
   position: absolute;
-  inset: -8px -32px auto 180px;
-  width: 620px;
-  height: 230px;
-  max-width: calc(100% - 120px);
-  opacity: 0.92;
+  inset: -10px -28px auto 174px;
+  width: 628px;
+  height: 246px;
+  max-width: calc(100% - 96px);
+  opacity: 0.96;
   fill: none;
   pointer-events: none;
-  mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 84%, transparent 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 13%, #000 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 13%, #000 88%, transparent 100%);
+}
+
+.daily-mix-soundfield__layer {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.daily-mix-soundfield__layer--crest {
+  animation: daily-mix-soundfield-crest 23s ease-in-out infinite alternate;
+}
+
+.daily-mix-soundfield__layer--trough {
+  animation: daily-mix-soundfield-trough 29s ease-in-out infinite alternate-reverse;
+}
+
+.daily-mix-soundfield__layer--crossing {
+  animation: daily-mix-soundfield-crossing 19s ease-in-out infinite alternate;
 }
 
 .daily-mix-soundfield__line {
   stroke-linecap: round;
-  stroke-width: 0.75;
-  transform-origin: 50% 50%;
-  animation: daily-mix-wave 12s ease-in-out infinite alternate;
-  animation-delay: calc(var(--daily-line) * -90ms);
+  stroke-width: 0.8;
 }
 
 .daily-mix-soundfield__line--primary {
@@ -107,22 +121,37 @@
 .daily-mix-hero__copy h2 {
   display: inline-flex;
   align-items: center;
-  gap: 0.08em;
+  gap: 0.1em;
   margin: 6px 0 12px;
   font-size: 58px;
   font-weight: 800;
   line-height: 1;
-  letter-spacing: 0.025em;
+  letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
 }
 
 .daily-mix-date__slash {
-  display: inline-flex;
-  align-items: center;
-  height: 1em;
-  font-size: 0.88em;
+  position: relative;
+  display: inline-block;
+  width: 0.14em;
+  height: 0.84em;
+  flex: 0 0 0.14em;
+  margin-inline: 0.02em;
+  color: transparent;
   line-height: 1;
   letter-spacing: 0;
+}
+
+.daily-mix-date__slash::before {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0.13em;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--kr-text);
+  content: "";
+  transform: translateX(-50%) skewX(-14deg);
 }
 
 .daily-mix-play-all {
@@ -177,6 +206,8 @@
 }
 
 .daily-mix-body {
+  --daily-mix-track-inset-left: 36px;
+  --daily-mix-track-inset-right: 40px;
   padding: 20px 32px 0;
 }
 
@@ -213,6 +244,9 @@
 }
 
 .daily-mix-list__track--current {
+  margin-inline: calc(-1 * var(--daily-mix-track-inset-left))
+    calc(-1 * var(--daily-mix-track-inset-right));
+  padding-inline: var(--daily-mix-track-inset-left) var(--daily-mix-track-inset-right);
   background: color-mix(in srgb, var(--kr-accent) 5%, transparent);
 }
 
@@ -220,7 +254,7 @@
   position: absolute;
   top: 12px;
   bottom: 12px;
-  left: 0;
+  left: var(--daily-mix-track-inset-left);
   width: 2px;
   border-radius: 0 2px 2px 0;
   background: var(--kr-accent);
@@ -405,12 +439,30 @@
   }
 }
 
-@keyframes daily-mix-wave {
+@keyframes daily-mix-soundfield-crest {
   from {
-    transform: translate3d(-1px, -0.5px, 0) scaleY(0.97);
+    transform: translate3d(-4px, 1px, 0) rotate(-0.55deg) scaleY(0.98);
   }
   to {
-    transform: translate3d(1px, 0.5px, 0) scaleY(1.03);
+    transform: translate3d(5px, -2px, 0) rotate(0.45deg) scaleY(1.03);
+  }
+}
+
+@keyframes daily-mix-soundfield-trough {
+  from {
+    transform: translate3d(4px, -1px, 0) rotate(0.45deg) scaleY(1.02);
+  }
+  to {
+    transform: translate3d(-5px, 2px, 0) rotate(-0.4deg) scaleY(0.97);
+  }
+}
+
+@keyframes daily-mix-soundfield-crossing {
+  from {
+    transform: translate3d(-3px, 2px, 0) rotate(-0.3deg) scaleY(0.97);
+  }
+  to {
+    transform: translate3d(4px, -1px, 0) rotate(0.5deg) scaleY(1.04);
   }
 }
 
@@ -447,7 +499,15 @@
   .daily-mix-hero__copy h2 {
     font-size: 48px;
   }
+  .daily-mix-soundfield {
+    inset: -12px -24px auto 132px;
+    height: 222px;
+    max-width: calc(100% - 56px);
+    opacity: 0.82;
+  }
   .daily-mix-body {
+    --daily-mix-track-inset-left: 20px;
+    --daily-mix-track-inset-right: 24px;
     padding-inline: 16px;
   }
   .daily-mix-list li {
@@ -465,6 +525,7 @@
   .daily-mix-backdrop--closing,
   .daily-mix-card,
   .daily-mix-card--closing,
+  .daily-mix-soundfield__layer,
   .daily-mix-soundfield__line,
   .daily-mix-list__playing i,
   .daily-mix-loader {

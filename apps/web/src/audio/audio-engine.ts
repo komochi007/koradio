@@ -499,6 +499,12 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     audio.volume = userVolume;
     preloader.clear();
     stopWaveformSampling();
+    update({
+      voiceActive: false,
+      voiceDurationMs: undefined,
+      voicePositionMs: undefined,
+      voiceSegmentId: undefined,
+    });
   }
 
   async function refreshTrackAudio(

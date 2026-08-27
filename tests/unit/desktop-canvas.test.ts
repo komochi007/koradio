@@ -6,6 +6,7 @@ import {
   electronCompactCanvasScale,
   prototypeCanvasHeight,
   prototypeCanvasWidth,
+  resolveElectronDragRegionInsets,
   resolveDesktopCanvasState,
 } from "../../apps/web/src/app/desktop-canvas.js";
 
@@ -22,13 +23,35 @@ describe("DesktopCanvas", () => {
     expect(stylesheet).toContain(
       'html[data-electron-canvas="true"] .electron-window-drag-region {',
     );
-    expect(stylesheet).toContain("left: 112px;");
-    expect(stylesheet).toContain("right: 116px;");
+    expect(stylesheet).toContain("left: var(--desktop-drag-region-left, 112px);");
+    expect(stylesheet).toContain("right: var(--desktop-drag-region-right, 116px);");
     expect(stylesheet).toContain("height: 56px;");
     expect(stylesheet).toContain("-webkit-app-region: drag;");
     expect(component).toContain('className="electron-window-drag-region"');
     expect(stylesheet).toContain(".desktop-canvas .topbar button");
     expect(stylesheet).toContain("-webkit-app-region: no-drag;");
+  });
+
+  it("keeps the Electron drag region between the brand and topbar tools at every scale", () => {
+    const compact = resolveDesktopCanvasState({
+      hasFinePointer: true,
+      isElectron: true,
+      isStandalone: false,
+      viewportHeight: 680,
+      viewportWidth: 430,
+    });
+    const wide = resolveDesktopCanvasState({
+      hasFinePointer: true,
+      isElectron: true,
+      isStandalone: false,
+      viewportHeight: 900,
+      viewportWidth: 1_440,
+    });
+    const compactInsets = resolveElectronDragRegionInsets(compact);
+    const wideInsets = resolveElectronDragRegionInsets(wide);
+
+    expect(compactInsets).toEqual({ left: 120, right: 147 });
+    expect(wideInsets).toEqual({ left: 594, right: 630 });
   });
 
   it("scales a standalone desktop PWA down to the entire available viewport", () => {

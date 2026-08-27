@@ -5,6 +5,8 @@ export const prototypeCanvasWidth = 960;
 export const electronCompactCanvasScale = 0.425;
 export const electronCompactReferenceWidth = 900;
 export const electronNativeTitlebarLeading = 88;
+export const electronDragRegionLogicalStart = 256;
+export const electronDragRegionLogicalEnd = 640;
 
 export interface DesktopCanvasState {
   enabled: boolean;
@@ -24,6 +26,25 @@ export interface DesktopCanvasEnvironment {
   isStandalone: boolean;
   viewportHeight: number;
   viewportWidth: number;
+}
+
+export interface ElectronDragRegionInsets {
+  left: number;
+  right: number;
+}
+
+export function resolveElectronDragRegionInsets(
+  state: DesktopCanvasState,
+): ElectronDragRegionInsets {
+  const viewportWidth = state.viewportLogicalWidth * state.scale;
+  const canvasOffset = Math.max(0, (viewportWidth - state.width) / 2);
+  return {
+    left: Math.round(canvasOffset + electronDragRegionLogicalStart * state.scale),
+    right: Math.max(
+      0,
+      Math.round(viewportWidth - canvasOffset - electronDragRegionLogicalEnd * state.scale),
+    ),
+  };
 }
 
 export function resolveDesktopCanvasState({
@@ -131,9 +152,22 @@ export function DesktopCanvas({ children }: { children: ReactNode }): ReactNode 
 
   if (!state.enabled) return children;
 
+  const dragRegionInsets = state.isElectron ? resolveElectronDragRegionInsets(state) : undefined;
+
   return (
     <div className="desktop-canvas-viewport desktop-canvas-viewport--standalone">
-      {state.isElectron ? <div aria-hidden="true" className="electron-window-drag-region" /> : null}
+      {state.isElectron ? (
+        <div
+          aria-hidden="true"
+          className="electron-window-drag-region"
+          style={
+            {
+              "--desktop-drag-region-left": `${String(dragRegionInsets?.left ?? 112)}px`,
+              "--desktop-drag-region-right": `${String(dragRegionInsets?.right ?? 116)}px`,
+            } as CSSProperties
+          }
+        />
+      ) : null}
       <div
         className="desktop-canvas"
         style={{
