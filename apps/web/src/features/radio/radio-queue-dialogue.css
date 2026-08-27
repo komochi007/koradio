@@ -46,7 +46,7 @@
   flex: 0 0 128px;
   grid-template-columns: 1fr 1fr;
   padding: 0;
-  border: 1px solid var(--kr-border-subtle);
+  border: 0;
   border-radius: 999px;
   background: color-mix(in srgb, var(--kr-bg) 74%, transparent);
 }

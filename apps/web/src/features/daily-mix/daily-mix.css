@@ -284,11 +284,13 @@
 .daily-mix-list__track--current::after {
   position: absolute;
   right: var(--daily-mix-active-overhang);
-  bottom: 0;
+  top: 100%;
   left: var(--daily-mix-active-overhang);
   height: 1px;
   background: var(--kr-border-subtle);
   content: "";
+  pointer-events: none;
+  z-index: 1;
 }
 
 .daily-mix-list__number {
