@@ -22,6 +22,11 @@
   scrollbar-width: none;
 }
 
+.programs-main {
+  --programs-section-gap: 24px;
+  --programs-list-gap: 16px;
+}
+
 .programs-main::-webkit-scrollbar,
 .program-detail-main::-webkit-scrollbar {
   display: none;
@@ -111,6 +116,11 @@
 .programs-state button:focus-visible {
   outline: none;
   box-shadow: var(--kr-focus);
+}
+
+.programs-flow {
+  display: grid;
+  gap: var(--programs-section-gap);
 }
 
 .programs-summary,
@@ -211,8 +221,7 @@
 
 .programs-list {
   display: grid;
-  gap: 14px;
-  margin-top: 24px;
+  gap: var(--programs-list-gap);
 }
 
 .program-card {
@@ -439,7 +448,6 @@
   grid-template-columns: 72px minmax(0, 1fr) auto;
   gap: 24px;
   align-items: center;
-  margin-top: 24px;
   padding: 32px;
 }
 
@@ -496,6 +504,10 @@
   display: flex;
   min-width: 180px;
   margin: 20px auto 0;
+}
+
+.programs-flow .programs-load-more {
+  margin: 0 auto;
 }
 
 .program-detail-topbar {
@@ -793,6 +805,7 @@
   border-radius: 16px;
   background: color-mix(in srgb, var(--kr-bg) 72%, transparent);
   color: var(--kr-text);
+  cursor: pointer;
   text-align: left;
 }
 

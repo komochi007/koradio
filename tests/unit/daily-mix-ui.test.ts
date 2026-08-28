@@ -27,12 +27,17 @@ describe("UX-30 Daily Mix UI regressions", () => {
     );
   });
 
-  it("keeps the date, soundfield, and active row aligned with the card system", () => {
+  it("keeps the date, dense soundfield, play icon, and active row aligned with the card system", () => {
     expect(dailyMixStyles).toContain("height: 0.72em;");
     expect(dailyMixStyles).toContain("top: 50%;");
     expect(dailyMixStyles).toContain("transform: translate(-50%, -50%) skewX(-14deg);");
     expect(dailyMixStyles).toContain("animation: daily-mix-soundfield-line-wave");
     expect(dailyMixStyles).toContain("animation-delay: var(--daily-mix-line-delay, 0ms);");
+    expect(dailyMixStyles).toContain("animation: daily-mix-soundfield-glow 18s linear infinite;");
+    expect(dailyMixStyles).toContain("stroke-dasharray: 0.08 0.92;");
+    expect(dailyMixStyles).toContain(".daily-mix-play-all__icon {");
+    expect(dailyMixStyles).toContain("background: #111317;");
+    expect(dailyMixStyles).toContain("fill: #f7f8fa;");
     expect(dailyMixStyles).toContain("--daily-mix-active-overhang-left: 14px;");
     expect(dailyMixStyles).toContain("--daily-mix-active-overhang-right: 18px;");
     expect(dailyMixStyles).toContain("border-bottom: 1px solid var(--kr-border-subtle);");

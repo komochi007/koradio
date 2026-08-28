@@ -949,95 +949,97 @@ export function ProgramsExperience(props: ProgramsExperienceProps): ReactElement
             Favorites
           </button>
         </div>
-        {filter === "all" ? (
-          <DailyHistory
-            items={dailyHistory.data?.items ?? []}
-            onOpen={(id, button) => {
-              lastOpener.current = button;
-              setSelectedDailyId(id);
-            }}
-          />
-        ) : null}
-        {history.isPending ? (
-          <ProgramsState loading title="正在读取节目历史...">
-            正在整理当前档案保存在这台设备上的节目记录。
-          </ProgramsState>
-        ) : history.isError ? (
-          <ProgramsState
-            action={() => {
-              void history.refetch();
-            }}
-            actionLabel="重新读取"
-            error
-            title="节目历史暂时无法读取"
-          >
-            当前档案的本地历史读取失败。你可以重试，或先回到 Radio。
-          </ProgramsState>
-        ) : programs.length === 0 ? (
-          <ProgramsState
-            action={() => {
-              props.navigate("/radio");
-            }}
-            actionLabel="去 Radio 生成第一段电台"
-            title="还没有节目"
-          >
-            去 Radio 生成第一段电台，节目和场景会保存在这里。
-          </ProgramsState>
-        ) : (
-          <>
-            <ProgramsSummary
-              details={details}
-              hasNextPage={history.hasNextPage}
-              programs={programs}
+        <div className="programs-flow">
+          {filter === "all" ? (
+            <DailyHistory
+              items={dailyHistory.data?.items ?? []}
+              onOpen={(id, button) => {
+                lastOpener.current = button;
+                setSelectedDailyId(id);
+              }}
             />
-            {visiblePrograms.length === 0 ? (
-              <ProgramsState
-                action={() => {
-                  setFilter("all");
-                }}
-                actionLabel="查看全部节目"
-                title="还没有收藏节目"
-              >
-                收藏节目后，可以在这里快速找到它们。
-              </ProgramsState>
-            ) : (
-              <section className="programs-list" aria-label="节目历史列表">
-                {visiblePrograms.map((program) => (
-                  <ProgramCard
-                    key={program.id}
-                    detail={details.get(program.id)}
-                    favorited={feedback.isFavorited(program.id)}
-                    onFavorite={() => {
-                      feedback.toggleFavorite(program.id);
-                    }}
-                    onDelete={() => {
-                      setDeleteTarget(program);
-                    }}
-                    onOpen={(button) => {
-                      lastOpener.current = button;
-                      setSelectedProgramId(program.id);
-                    }}
-                    pending={feedback.isPending("program_favorite", program.id)}
-                    program={program}
-                  />
-                ))}
-              </section>
-            )}
-            {history.hasNextPage ? (
-              <button
-                className="button button--secondary programs-load-more"
-                type="button"
-                aria-busy={history.isFetchingNextPage || undefined}
-                disabled={history.isFetchingNextPage}
-                onClick={() => {
-                  void history.fetchNextPage();
-                }}
-              >
-                {history.isFetchingNextPage ? "正在加载..." : "加载更多"}
-              </button>
-            ) : null}
-          </>
-        )}
+          ) : null}
+          {history.isPending ? (
+            <ProgramsState loading title="正在读取节目历史...">
+              正在整理当前档案保存在这台设备上的节目记录。
+            </ProgramsState>
+          ) : history.isError ? (
+            <ProgramsState
+              action={() => {
+                void history.refetch();
+              }}
+              actionLabel="重新读取"
+              error
+              title="节目历史暂时无法读取"
+            >
+              当前档案的本地历史读取失败。你可以重试，或先回到 Radio。
+            </ProgramsState>
+          ) : programs.length === 0 ? (
+            <ProgramsState
+              action={() => {
+                props.navigate("/radio");
+              }}
+              actionLabel="去 Radio 生成第一段电台"
+              title="还没有节目"
+            >
+              去 Radio 生成第一段电台，节目和场景会保存在这里。
+            </ProgramsState>
+          ) : (
+            <>
+              <ProgramsSummary
+                details={details}
+                hasNextPage={history.hasNextPage}
+                programs={programs}
+              />
+              {visiblePrograms.length === 0 ? (
+                <ProgramsState
+                  action={() => {
+                    setFilter("all");
+                  }}
+                  actionLabel="查看全部节目"
+                  title="还没有收藏节目"
+                >
+                  收藏节目后，可以在这里快速找到它们。
+                </ProgramsState>
+              ) : (
+                <section className="programs-list" aria-label="节目历史列表">
+                  {visiblePrograms.map((program) => (
+                    <ProgramCard
+                      key={program.id}
+                      detail={details.get(program.id)}
+                      favorited={feedback.isFavorited(program.id)}
+                      onFavorite={() => {
+                        feedback.toggleFavorite(program.id);
+                      }}
+                      onDelete={() => {
+                        setDeleteTarget(program);
+                      }}
+                      onOpen={(button) => {
+                        lastOpener.current = button;
+                        setSelectedProgramId(program.id);
+                      }}
+                      pending={feedback.isPending("program_favorite", program.id)}
+                      program={program}
+                    />
+                  ))}
+                </section>
+              )}
+              {history.hasNextPage ? (
+                <button
+                  className="button button--secondary programs-load-more"
+                  type="button"
+                  aria-busy={history.isFetchingNextPage || undefined}
+                  disabled={history.isFetchingNextPage}
+                  onClick={() => {
+                    void history.fetchNextPage();
+                  }}
+                >
+                  {history.isFetchingNextPage ? "正在加载..." : "加载更多"}
+                </button>
+              ) : null}
+            </>
+          )}
+        </div>
         {history.isError ? (
           <button
             className="button button--secondary programs-radio-return"

@@ -112,6 +112,18 @@
   stroke-opacity: 0.13;
 }
 
+.daily-mix-soundfield__glow {
+  stroke: #f8fbff;
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-dasharray: 0.08 0.92;
+  stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 5px rgb(241 246 255 / 72%));
+  opacity: 0;
+  animation: daily-mix-soundfield-glow 18s linear infinite;
+  animation-delay: var(--daily-mix-glow-delay, 0s);
+}
+
 .daily-mix-hero__copy {
   position: relative;
   z-index: 1;
@@ -187,9 +199,22 @@
   letter-spacing: 0.04em;
 }
 
-.daily-mix-play-all .daily-mix-icon {
-  width: 17px;
-  height: 17px;
+.daily-mix-play-all__icon {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: #111317;
+}
+
+.daily-mix-play-all__icon .daily-mix-icon {
+  width: 11px;
+  height: 11px;
+  fill: #f7f8fa;
+  stroke: none;
+  transform: translateX(0.6px);
 }
 
 .daily-mix-close {
@@ -511,6 +536,21 @@
   }
 }
 
+@keyframes daily-mix-soundfield-glow {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 1;
+  }
+  12%,
+  76% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    stroke-dashoffset: -1;
+  }
+}
+
 @keyframes daily-mix-equalizer {
   from {
     transform: scaleY(0.65);
@@ -570,6 +610,7 @@
   .daily-mix-card--closing,
   .daily-mix-soundfield__layer,
   .daily-mix-soundfield__line,
+  .daily-mix-soundfield__glow,
   .daily-mix-list__playing i,
   .daily-mix-loader {
     animation: none;

@@ -34,9 +34,9 @@ interface SoundfieldPoint {
 }
 
 const soundfieldLayers: Array<{ id: SoundfieldLayer; count: number }> = [
-  { id: "crest", count: 34 },
-  { id: "trough", count: 30 },
-  { id: "crossing", count: 24 },
+  { id: "crest", count: 43 },
+  { id: "trough", count: 41 },
+  { id: "crossing", count: 37 },
 ];
 
 function soundfieldPath(points: SoundfieldPoint[]): string {
@@ -63,37 +63,44 @@ function soundfieldPath(points: SoundfieldPoint[]): string {
 }
 
 function soundfieldPoints(layer: SoundfieldLayer, index: number, count: number): SoundfieldPoint[] {
-  const progress = index / Math.max(1, count - 1);
+  const normalizedIndex = index / Math.max(1, count - 1);
+  const progress = Math.min(
+    1,
+    Math.max(0, normalizedIndex + Math.sin(index * 1.71) * 0.008 + Math.cos(index * 0.29) * 0.004),
+  );
   const offset = (progress - 0.5) * 2;
-  const phase = index * 0.47;
-  const texture = Math.sin(phase) * 2.6 + Math.cos(phase * 0.63) * 1.7;
+  const phase = index * 0.53;
+  const texture = Math.sin(phase) * 2.2 + Math.cos(phase * 0.71) * 1.5;
   if (layer === "crest") {
     return [
-      { x: -72, y: 132 + offset * 88 + texture },
-      { x: 82, y: 68 + offset * 78 - texture * 0.6 },
-      { x: 238, y: 28 + offset * 62 + texture * 0.35 },
-      { x: 408, y: 72 + offset * 20 - texture * 0.4 },
-      { x: 586, y: 136 + offset * 70 + texture * 0.5 },
-      { x: 792, y: 154 + offset * 88 - texture },
+      { x: -72, y: 138 + offset * 88 + texture },
+      { x: 74, y: 82 + offset * 74 - texture * 0.5 },
+      { x: 224, y: 34 + offset * 52 + texture * 0.3 },
+      { x: 354, y: 104 + offset * 20 - texture * 0.45 },
+      { x: 514, y: 166 + offset * 34 + texture * 0.42 },
+      { x: 652, y: 118 + offset * 68 - texture * 0.38 },
+      { x: 792, y: 152 + offset * 88 + texture * 0.7 },
     ];
   }
   if (layer === "trough") {
     return [
-      { x: -72, y: 84 + offset * 82 - texture },
-      { x: 92, y: 168 + offset * 74 + texture * 0.5 },
-      { x: 256, y: 214 + offset * 56 - texture * 0.35 },
-      { x: 424, y: 164 + offset * 18 + texture * 0.4 },
-      { x: 604, y: 116 + offset * 66 - texture * 0.5 },
-      { x: 792, y: 188 + offset * 86 + texture },
+      { x: -72, y: 82 + offset * 84 - texture * 0.7 },
+      { x: 84, y: 154 + offset * 70 + texture * 0.45 },
+      { x: 240, y: 198 + offset * 48 - texture * 0.3 },
+      { x: 390, y: 130 + offset * 18 + texture * 0.4 },
+      { x: 540, y: 76 + offset * 36 - texture * 0.45 },
+      { x: 668, y: 144 + offset * 68 + texture * 0.34 },
+      { x: 792, y: 184 + offset * 84 - texture * 0.65 },
     ];
   }
   return [
-    { x: -72, y: 190 + offset * 90 + texture * 0.7 },
-    { x: 112, y: 146 + offset * 76 - texture * 0.4 },
-    { x: 286, y: 86 + offset * 58 + texture * 0.3 },
-    { x: 454, y: 128 + offset * 18 - texture * 0.5 },
-    { x: 632, y: 186 + offset * 64 + texture * 0.4 },
-    { x: 792, y: 110 + offset * 88 - texture * 0.7 },
+    { x: -72, y: 194 + offset * 90 + texture * 0.58 },
+    { x: 104, y: 156 + offset * 70 - texture * 0.35 },
+    { x: 270, y: 72 + offset * 48 + texture * 0.25 },
+    { x: 412, y: 110 + offset * 16 - texture * 0.45 },
+    { x: 558, y: 192 + offset * 36 + texture * 0.35 },
+    { x: 678, y: 116 + offset * 68 - texture * 0.38 },
+    { x: 792, y: 108 + offset * 88 + texture * 0.58 },
   ];
 }
 
@@ -132,6 +139,25 @@ function Soundfield(): ReactElement {
             );
           })}
         </g>
+      ))}
+      {[
+        { layer: "crest" as const, index: 13, delay: "-4s" },
+        { layer: "crossing" as const, index: 18, delay: "-10s" },
+        { layer: "trough" as const, index: 27, delay: "-16s" },
+      ].map(({ delay, index, layer }) => (
+        <path
+          className="daily-mix-soundfield__glow"
+          d={soundfieldPath(
+            soundfieldPoints(
+              layer,
+              index,
+              soundfieldLayers.find(({ id }) => id === layer)?.count ?? 1,
+            ),
+          )}
+          key={`${layer}-${String(index)}`}
+          pathLength="1"
+          style={{ "--daily-mix-glow-delay": delay } as CSSProperties}
+        />
       ))}
     </svg>
   );
@@ -336,7 +362,9 @@ export function DailyMixCard(props: DailyMixCardProps): ReactElement | null {
                   void props.audioEngine.loadDailyMix?.(mix, { autoplay: true, startIndex: 0 })
                 }
               >
-                <Icon className="daily-mix-icon" name="play" />
+                <span className="daily-mix-play-all__icon" aria-hidden="true">
+                  <Icon className="daily-mix-icon" name="play" />
+                </span>
                 PLAY ALL
               </button>
             ) : null}

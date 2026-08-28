@@ -163,23 +163,53 @@
     var(--kr-border) max(2%, var(--radio-progress)) 100%
   );
   cursor: pointer;
+  transition:
+    height 180ms ease-out,
+    box-shadow 180ms ease-out;
 }
 
 .radio-player__progress > input::-webkit-slider-thumb {
-  width: 0;
-  height: 0;
+  width: 10px;
+  height: 10px;
   appearance: none;
-  border: 0;
+  border: 2px solid var(--kr-surface);
   border-radius: 50%;
-  background: transparent;
+  background: var(--kr-accent);
+  box-shadow: 0 0 0 3px rgb(85 185 120 / 18%);
+  opacity: 0;
+  transform: scale(0.55);
+  transition:
+    opacity 180ms ease-out,
+    transform 180ms ease-out;
 }
 
 .radio-player__progress > input::-moz-range-thumb {
-  width: 0;
-  height: 0;
-  border: 0;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--kr-surface);
   border-radius: 50%;
-  background: transparent;
+  background: var(--kr-accent);
+  box-shadow: 0 0 0 3px rgb(85 185 120 / 18%);
+  opacity: 0;
+  transform: scale(0.55);
+  transition:
+    opacity 180ms ease-out,
+    transform 180ms ease-out;
+}
+
+.radio-player__progress > input:not(:disabled):is(:hover, :focus-visible) {
+  height: 6px;
+  box-shadow: 0 0 0 3px rgb(85 185 120 / 8%);
+}
+
+.radio-player__progress > input:not(:disabled):is(:hover, :focus-visible)::-webkit-slider-thumb {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.radio-player__progress > input:not(:disabled):is(:hover, :focus-visible)::-moz-range-thumb {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .radio-player__progress > input:disabled {
