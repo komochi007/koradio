@@ -10,6 +10,10 @@ const dailyMixStyles = readFileSync(
   new URL("../../apps/web/src/features/daily-mix/daily-mix.css", import.meta.url),
   "utf8",
 );
+const dailyMixCard = readFileSync(
+  new URL("../../apps/web/src/features/daily-mix/daily-mix-card.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("UX-30 Daily Mix UI regressions", () => {
   it("keeps source labels centered inside a single inset thumb", () => {
@@ -27,14 +31,19 @@ describe("UX-30 Daily Mix UI regressions", () => {
     );
   });
 
-  it("keeps the date, dense soundfield, play icon, and active row aligned with the card system", () => {
+  it("keeps the date, continuous soundfield, play icon, and active row aligned with the card system", () => {
     expect(dailyMixStyles).toContain("height: 0.72em;");
     expect(dailyMixStyles).toContain("top: 50%;");
     expect(dailyMixStyles).toContain("transform: translate(-50%, -50%) skewX(-14deg);");
-    expect(dailyMixStyles).toContain("animation: daily-mix-soundfield-line-wave");
-    expect(dailyMixStyles).toContain("animation-delay: var(--daily-mix-line-delay, 0ms);");
-    expect(dailyMixStyles).toContain("animation: daily-mix-soundfield-glow 18s linear infinite;");
-    expect(dailyMixStyles).toContain("stroke-dasharray: 0.08 0.92;");
+    expect(dailyMixCard).toContain("const soundfieldLineCount = 72;");
+    expect(dailyMixCard).toContain('preserveAspectRatio="xMidYMid slice"');
+    expect(dailyMixCard).toContain('className="daily-mix-soundfield__surface"');
+    expect(dailyMixCard).toContain('className="daily-mix-soundfield__glint"');
+    expect(dailyMixStyles).toContain("stroke-width: 0.82;");
+    expect(dailyMixStyles).toContain("animation: daily-mix-soundfield-glint 24s linear infinite;");
+    expect(dailyMixStyles).toContain("contain: paint;");
+    expect(dailyMixStyles).not.toContain("filter: drop-shadow");
+    expect(dailyMixStyles).not.toContain("transform-box: fill-box");
     expect(dailyMixStyles).toContain(".daily-mix-play-all__icon {");
     expect(dailyMixStyles).toContain("background: #111317;");
     expect(dailyMixStyles).toContain("fill: #f7f8fa;");

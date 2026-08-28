@@ -26,18 +26,13 @@ interface DailyMixCardProps {
   today: DailyMixTodayResponse | undefined;
 }
 
-type SoundfieldLayer = "crest" | "crossing" | "trough";
-
 interface SoundfieldPoint {
   x: number;
   y: number;
 }
 
-const soundfieldLayers: Array<{ id: SoundfieldLayer; count: number }> = [
-  { id: "crest", count: 43 },
-  { id: "trough", count: 41 },
-  { id: "crossing", count: 37 },
-];
+const soundfieldLineCount = 72;
+const soundfieldSampleCount = 28;
 
 function soundfieldPath(points: SoundfieldPoint[]): string {
   const first = points[0];
@@ -62,103 +57,102 @@ function soundfieldPath(points: SoundfieldPoint[]): string {
   return path;
 }
 
-function soundfieldPoints(layer: SoundfieldLayer, index: number, count: number): SoundfieldPoint[] {
-  const normalizedIndex = index / Math.max(1, count - 1);
-  const progress = Math.min(
-    1,
-    Math.max(0, normalizedIndex + Math.sin(index * 1.71) * 0.008 + Math.cos(index * 0.29) * 0.004),
-  );
-  const offset = (progress - 0.5) * 2;
-  const phase = index * 0.53;
-  const texture = Math.sin(phase) * 2.2 + Math.cos(phase * 0.71) * 1.5;
-  if (layer === "crest") {
-    return [
-      { x: -72, y: 138 + offset * 88 + texture },
-      { x: 74, y: 82 + offset * 74 - texture * 0.5 },
-      { x: 224, y: 34 + offset * 52 + texture * 0.3 },
-      { x: 354, y: 104 + offset * 20 - texture * 0.45 },
-      { x: 514, y: 166 + offset * 34 + texture * 0.42 },
-      { x: 652, y: 118 + offset * 68 - texture * 0.38 },
-      { x: 792, y: 152 + offset * 88 + texture * 0.7 },
-    ];
-  }
-  if (layer === "trough") {
-    return [
-      { x: -72, y: 82 + offset * 84 - texture * 0.7 },
-      { x: 84, y: 154 + offset * 70 + texture * 0.45 },
-      { x: 240, y: 198 + offset * 48 - texture * 0.3 },
-      { x: 390, y: 130 + offset * 18 + texture * 0.4 },
-      { x: 540, y: 76 + offset * 36 - texture * 0.45 },
-      { x: 668, y: 144 + offset * 68 + texture * 0.34 },
-      { x: 792, y: 184 + offset * 84 - texture * 0.65 },
-    ];
-  }
-  return [
-    { x: -72, y: 194 + offset * 90 + texture * 0.58 },
-    { x: 104, y: 156 + offset * 70 - texture * 0.35 },
-    { x: 270, y: 72 + offset * 48 + texture * 0.25 },
-    { x: 412, y: 110 + offset * 16 - texture * 0.45 },
-    { x: 558, y: 192 + offset * 36 + texture * 0.35 },
-    { x: 678, y: 116 + offset * 68 - texture * 0.38 },
-    { x: 792, y: 108 + offset * 88 + texture * 0.58 },
-  ];
+function bell(value: number, center: number, spread: number): number {
+  return Math.exp(-((value - center) ** 2) / spread);
 }
 
-function soundfieldTone(index: number): "primary" | "secondary" | "ambient" {
-  return index % 7 === 0 ? "primary" : index % 7 <= 4 ? "secondary" : "ambient";
+function surfaceRidge(progress: number): number {
+  return (
+    123 -
+    bell(progress, 0.19, 0.018) * 22 +
+    bell(progress, 0.43, 0.034) * 35 -
+    bell(progress, 0.68, 0.022) * 28 +
+    bell(progress, 0.88, 0.028) * 17 +
+    Math.sin(progress * Math.PI * 3.3 - 0.7) * 5
+  );
+}
+
+function surfaceSpan(progress: number): number {
+  return 22 + bell(progress, 0.34, 0.06) * 26 + bell(progress, 0.7, 0.05) * 34;
+}
+
+function surfacePoint(progress: number, depth: number): SoundfieldPoint {
+  const span = surfaceSpan(progress) + Math.sin(progress * Math.PI * 2.4 + 0.8) * 5;
+  return {
+    x: -36 + progress * 792,
+    y: surfaceRidge(progress) + depth * span,
+  };
+}
+
+function surfaceLinePoints(depth: number): SoundfieldPoint[] {
+  return Array.from({ length: soundfieldSampleCount }, (_, index) =>
+    surfacePoint(index / Math.max(1, soundfieldSampleCount - 1), depth),
+  );
+}
+
+function surfaceLineDepth(index: number): number {
+  const regularDepth = -1 + (index / Math.max(1, soundfieldLineCount - 1)) * 2;
+  return Math.min(1, Math.max(-1, regularDepth + Math.sin(index * 1.37) * 0.009));
+}
+
+function soundfieldTone(depth: number): "primary" | "secondary" | "ambient" {
+  if (depth > 0.34) return "primary";
+  if (depth > -0.48) return "secondary";
+  return "ambient";
+}
+
+function surfaceShape(): string {
+  const upper = surfaceLinePoints(-1);
+  const lower = surfaceLinePoints(1).toReversed();
+  return `${soundfieldPath(upper)} ${soundfieldPath(lower).replace(/^M /u, "L ")} Z`;
 }
 
 function Soundfield(): ReactElement {
+  const lines = Array.from({ length: soundfieldLineCount }, (_, index) => {
+    const depth = surfaceLineDepth(index);
+    return { depth, index, path: soundfieldPath(surfaceLinePoints(depth)) };
+  });
   return (
     <svg
       className="daily-mix-soundfield"
       viewBox="0 0 720 230"
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
     >
-      {soundfieldLayers.map(({ id, count }) => (
-        <g className={`daily-mix-soundfield__layer daily-mix-soundfield__layer--${id}`} key={id}>
-          {Array.from({ length: count }, (_, index) => {
-            const progress = index / Math.max(1, count - 1);
-            const edgeFade = 0.16 + Math.sin(Math.PI * progress) * 0.84;
-            const tone = soundfieldTone(index);
-            const layerDelayOffset = id === "trough" ? 720 : id === "crossing" ? 340 : 0;
-            const waveDelay = `${String(-(index * 140 + layerDelayOffset))}ms`;
-            return (
-              <path
-                className={`daily-mix-soundfield__line daily-mix-soundfield__line--${tone}`}
-                d={soundfieldPath(soundfieldPoints(id, index, count))}
-                key={index}
-                style={
-                  {
-                    opacity: edgeFade,
-                    "--daily-mix-line-delay": waveDelay,
-                  } as CSSProperties
-                }
-              />
-            );
-          })}
-        </g>
-      ))}
-      {[
-        { layer: "crest" as const, index: 13, delay: "-4s" },
-        { layer: "crossing" as const, index: 18, delay: "-10s" },
-        { layer: "trough" as const, index: 27, delay: "-16s" },
-      ].map(({ delay, index, layer }) => (
-        <path
-          className="daily-mix-soundfield__glow"
-          d={soundfieldPath(
-            soundfieldPoints(
-              layer,
-              index,
-              soundfieldLayers.find(({ id }) => id === layer)?.count ?? 1,
-            ),
-          )}
-          key={`${layer}-${String(index)}`}
-          pathLength="1"
-          style={{ "--daily-mix-glow-delay": delay } as CSSProperties}
-        />
-      ))}
+      <defs>
+        <linearGradient id="daily-mix-soundfield-surface" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stopColor="#1d252c" stopOpacity="0" />
+          <stop offset="0.26" stopColor="#b8c1ca" stopOpacity="0.08" />
+          <stop offset="0.54" stopColor="#f0f3f6" stopOpacity="0.14" />
+          <stop offset="0.78" stopColor="#9aa5b0" stopOpacity="0.06" />
+          <stop offset="1" stopColor="#151b21" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path className="daily-mix-soundfield__surface" d={surfaceShape()} />
+      <g className="daily-mix-soundfield__mesh">
+        {lines.map(({ depth, index, path }) => (
+          <path
+            className={`daily-mix-soundfield__line daily-mix-soundfield__line--${soundfieldTone(depth)}`}
+            d={path}
+            key={index}
+            pathLength="1"
+            style={{ opacity: 0.3 + (depth + 1) * 0.35 }}
+          />
+        ))}
+      </g>
+      <g className="daily-mix-soundfield__glints">
+        {lines
+          .filter(({ index }) => index % 3 === 1)
+          .map(({ index, path }) => (
+            <path
+              className="daily-mix-soundfield__glint"
+              d={path}
+              key={index}
+              pathLength="1"
+              style={{ "--daily-mix-glint-delay": `${String(-index * 85)}ms` } as CSSProperties}
+            />
+          ))}
+      </g>
     </svg>
   );
 }
