@@ -47,58 +47,14 @@
 
 .daily-mix-soundfield {
   position: absolute;
-  inset: 0 auto auto 166px;
-  width: 680px;
-  height: 236px;
+  inset: 0 auto auto 158px;
+  display: block;
+  width: 720px;
+  height: auto;
   max-width: none;
-  opacity: 0.92;
-  fill: none;
+  opacity: 0.96;
   contain: paint;
   pointer-events: none;
-  shape-rendering: geometricPrecision;
-}
-
-.daily-mix-soundfield__surface {
-  fill: url("#daily-mix-soundfield-surface");
-}
-
-.daily-mix-soundfield__mesh {
-  fill: none;
-}
-
-.daily-mix-soundfield__line {
-  stroke-linecap: round;
-  stroke-width: 0.82;
-}
-
-.daily-mix-soundfield__line--primary {
-  stroke: #f3f5f7;
-  stroke-opacity: 0.44;
-}
-
-.daily-mix-soundfield__line--secondary {
-  stroke: #a9b0ba;
-  stroke-opacity: 0.27;
-}
-
-.daily-mix-soundfield__line--ambient {
-  stroke: #737b87;
-  stroke-opacity: 0.13;
-}
-
-.daily-mix-soundfield__glints {
-  fill: none;
-}
-
-.daily-mix-soundfield__glint {
-  stroke: #f4f7fa;
-  stroke-width: 0.82;
-  stroke-linecap: round;
-  stroke-dasharray: 0.06 0.94;
-  stroke-dashoffset: 1;
-  opacity: 0;
-  animation: daily-mix-soundfield-glint 24s linear infinite;
-  animation-delay: var(--daily-mix-glint-delay, 0ms);
 }
 
 .daily-mix-hero__copy {
@@ -476,21 +432,6 @@
   }
 }
 
-@keyframes daily-mix-soundfield-glint {
-  0% {
-    opacity: 0;
-    stroke-dashoffset: 1;
-  }
-  16%,
-  72% {
-    opacity: 0.72;
-  }
-  100% {
-    opacity: 0;
-    stroke-dashoffset: -0.82;
-  }
-}
-
 @keyframes daily-mix-equalizer {
   from {
     transform: scaleY(0.65);
@@ -525,10 +466,10 @@
     font-size: 48px;
   }
   .daily-mix-soundfield {
-    inset: 10px auto auto 98px;
-    width: 520px;
-    height: 190px;
-    opacity: 0.86;
+    inset: 16px auto auto 92px;
+    width: 540px;
+    height: auto;
+    opacity: 0.92;
   }
   .daily-mix-body {
     padding-inline: 16px;
@@ -548,8 +489,6 @@
   .daily-mix-backdrop--closing,
   .daily-mix-card,
   .daily-mix-card--closing,
-  .daily-mix-soundfield__line,
-  .daily-mix-soundfield__glint,
   .daily-mix-list__playing i,
   .daily-mix-loader {
     animation: none;

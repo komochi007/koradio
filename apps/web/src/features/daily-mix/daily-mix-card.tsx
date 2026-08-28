@@ -1,12 +1,5 @@
 import type { DailyMixDetail, DailyMixTodayResponse, MusicTrack } from "@koradio/contracts";
-import {
-  useEffect,
-  useCallback,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactElement,
-} from "react";
+import { useEffect, useCallback, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 
 import type { AudioEngineFacade, AudioEngineSnapshot } from "../../audio/index.js";
@@ -31,31 +24,10 @@ interface SoundfieldPoint {
   y: number;
 }
 
-const soundfieldLineCount = 72;
-const soundfieldSampleCount = 28;
-
-function soundfieldPath(points: SoundfieldPoint[]): string {
-  const first = points[0];
-  if (first === undefined) return "";
-  let path = `M ${String(first.x)} ${String(first.y)}`;
-  for (let index = 1; index < points.length; index += 1) {
-    const previous = points[index - 1];
-    const point = points[index];
-    if (previous === undefined || point === undefined) continue;
-    const before = points[index - 2] ?? previous;
-    const after = points[index + 1] ?? point;
-    const controlOne = {
-      x: previous.x + (point.x - before.x) / 6,
-      y: previous.y + (point.y - before.y) / 6,
-    };
-    const controlTwo = {
-      x: point.x - (after.x - previous.x) / 6,
-      y: point.y - (after.y - previous.y) / 6,
-    };
-    path += ` C ${String(controlOne.x)} ${String(controlOne.y)}, ${String(controlTwo.x)} ${String(controlTwo.y)}, ${String(point.x)} ${String(point.y)}`;
-  }
-  return path;
-}
+const soundfieldWidth = 1440;
+const soundfieldHeight = 460;
+const soundfieldColumns = 144;
+const soundfieldRows = 76;
 
 function bell(value: number, center: number, spread: number): number {
   return Math.exp(-((value - center) ** 2) / spread);
@@ -63,97 +35,152 @@ function bell(value: number, center: number, spread: number): number {
 
 function surfaceRidge(progress: number): number {
   return (
-    123 -
-    bell(progress, 0.19, 0.018) * 22 +
-    bell(progress, 0.43, 0.034) * 35 -
-    bell(progress, 0.68, 0.022) * 28 +
-    bell(progress, 0.88, 0.028) * 17 +
-    Math.sin(progress * Math.PI * 3.3 - 0.7) * 5
+    262 -
+    bell(progress, 0.12, 0.024) * 34 -
+    bell(progress, 0.3, 0.026) * 56 -
+    bell(progress, 0.52, 0.036) * 102 -
+    bell(progress, 0.76, 0.03) * 46 -
+    bell(progress, 0.93, 0.022) * 23 +
+    Math.sin(progress * Math.PI * 3.1 - 0.45) * 9
   );
 }
 
 function surfaceSpan(progress: number): number {
-  return 22 + bell(progress, 0.34, 0.06) * 26 + bell(progress, 0.7, 0.05) * 34;
+  return 42 + bell(progress, 0.3, 0.07) * 56 + bell(progress, 0.62, 0.055) * 88;
 }
 
 function surfacePoint(progress: number, depth: number): SoundfieldPoint {
-  const span = surfaceSpan(progress) + Math.sin(progress * Math.PI * 2.4 + 0.8) * 5;
+  const span = surfaceSpan(progress) + Math.sin(progress * Math.PI * 2.1 + 0.6) * 9;
+  const perspective = depth * (18 + bell(progress, 0.54, 0.08) * 18);
   return {
-    x: -36 + progress * 792,
+    x: -28 + progress * (soundfieldWidth + 56) + perspective,
     y: surfaceRidge(progress) + depth * span,
   };
 }
 
-function surfaceLinePoints(depth: number): SoundfieldPoint[] {
-  return Array.from({ length: soundfieldSampleCount }, (_, index) =>
-    surfacePoint(index / Math.max(1, soundfieldSampleCount - 1), depth),
-  );
+function traceSurfaceBoundary(context: CanvasRenderingContext2D): void {
+  context.beginPath();
+  for (let column = 0; column <= soundfieldColumns; column += 1) {
+    const point = surfacePoint(column / soundfieldColumns, -1);
+    if (column === 0) context.moveTo(point.x, point.y);
+    else context.lineTo(point.x, point.y);
+  }
+  for (let column = soundfieldColumns; column >= 0; column -= 1) {
+    const point = surfacePoint(column / soundfieldColumns, 1);
+    context.lineTo(point.x, point.y);
+  }
+  context.closePath();
 }
 
-function surfaceLineDepth(index: number): number {
-  const regularDepth = -1 + (index / Math.max(1, soundfieldLineCount - 1)) * 2;
-  return Math.min(1, Math.max(-1, regularDepth + Math.sin(index * 1.37) * 0.009));
+function drawStaticSoundfield(context: CanvasRenderingContext2D): void {
+  context.clearRect(0, 0, soundfieldWidth, soundfieldHeight);
+  traceSurfaceBoundary(context);
+  const surface = context.createLinearGradient(0, 0, soundfieldWidth, 0);
+  surface.addColorStop(0, "rgb(67 75 85 / 0)");
+  surface.addColorStop(0.3, "rgb(171 183 194 / 0.09)");
+  surface.addColorStop(0.55, "rgb(225 231 237 / 0.16)");
+  surface.addColorStop(0.82, "rgb(120 133 147 / 0.07)");
+  surface.addColorStop(1, "rgb(38 46 55 / 0)");
+  context.fillStyle = surface;
+  context.fill();
+  context.save();
+  traceSurfaceBoundary(context);
+  context.clip();
+  context.lineCap = "round";
+
+  for (let row = 0; row <= soundfieldRows; row += 1) {
+    const depth = -1 + (row / soundfieldRows) * 2;
+    context.beginPath();
+    for (let column = 0; column <= soundfieldColumns; column += 1) {
+      const point = surfacePoint(column / soundfieldColumns, depth);
+      if (column === 0) context.moveTo(point.x, point.y);
+      else context.lineTo(point.x, point.y);
+    }
+    context.lineWidth = 1.25;
+    context.strokeStyle = `rgb(227 233 238 / ${String(0.07 + (depth + 1) * 0.17 + bell(depth, 0.3, 0.32) * 0.15)})`;
+    context.stroke();
+  }
+
+  for (let column = 0; column <= soundfieldColumns; column += 4) {
+    const progress = column / soundfieldColumns;
+    context.beginPath();
+    for (let row = 0; row <= soundfieldRows; row += 1) {
+      const point = surfacePoint(progress, -1 + (row / soundfieldRows) * 2);
+      if (row === 0) context.moveTo(point.x, point.y);
+      else context.lineTo(point.x, point.y);
+    }
+    context.lineWidth = 0.72;
+    context.strokeStyle = `rgb(198 209 220 / ${String(0.025 + bell(progress, 0.52, 0.12) * 0.08)})`;
+    context.stroke();
+  }
+  context.restore();
 }
 
-function soundfieldTone(depth: number): "primary" | "secondary" | "ambient" {
-  if (depth > 0.34) return "primary";
-  if (depth > -0.48) return "secondary";
-  return "ambient";
-}
-
-function surfaceShape(): string {
-  const upper = surfaceLinePoints(-1);
-  const lower = surfaceLinePoints(1).toReversed();
-  return `${soundfieldPath(upper)} ${soundfieldPath(lower).replace(/^M /u, "L ")} Z`;
+function drawFlowingLight(context: CanvasRenderingContext2D, elapsedMs: number): void {
+  const flow = 0.12 + ((elapsedMs / 34_000) % 1) * 0.76;
+  const center = surfacePoint(flow, -0.08 + Math.sin(elapsedMs / 9_000) * 0.18);
+  context.save();
+  traceSurfaceBoundary(context);
+  context.clip();
+  context.globalCompositeOperation = "screen";
+  context.translate(center.x, center.y);
+  context.rotate(-0.32);
+  context.scale(1.8, 0.54);
+  const light = context.createRadialGradient(0, 0, 0, 0, 0, 190);
+  light.addColorStop(0, "rgb(255 255 255 / 0.34)");
+  light.addColorStop(0.24, "rgb(237 243 248 / 0.18)");
+  light.addColorStop(0.62, "rgb(196 212 226 / 0.05)");
+  light.addColorStop(1, "rgb(177 195 211 / 0)");
+  context.fillStyle = light;
+  context.fillRect(-220, -220, 440, 440);
+  context.restore();
 }
 
 function Soundfield(): ReactElement {
-  const lines = Array.from({ length: soundfieldLineCount }, (_, index) => {
-    const depth = surfaceLineDepth(index);
-    return { depth, index, path: soundfieldPath(surfaceLinePoints(depth)) };
-  });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (typeof CanvasRenderingContext2D === "undefined") return undefined;
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (context === null || context === undefined) return undefined;
+    const staticLayer = document.createElement("canvas");
+    staticLayer.width = soundfieldWidth;
+    staticLayer.height = soundfieldHeight;
+    const staticContext = staticLayer.getContext("2d");
+    if (staticContext === null) return undefined;
+    drawStaticSoundfield(staticContext);
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let frame: number | undefined;
+
+    const paint = (elapsedMs: number): void => {
+      context.clearRect(0, 0, soundfieldWidth, soundfieldHeight);
+      context.drawImage(staticLayer, 0, 0);
+      drawFlowingLight(context, motion.matches ? 13_600 : elapsedMs);
+      if (!motion.matches) frame = window.requestAnimationFrame(paint);
+    };
+
+    const restart = (): void => {
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(paint);
+    };
+
+    restart();
+    motion.addEventListener("change", restart);
+    return () => {
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+      motion.removeEventListener("change", restart);
+    };
+  }, []);
+
   return (
-    <svg
-      className="daily-mix-soundfield"
-      viewBox="0 0 720 230"
-      preserveAspectRatio="xMidYMid slice"
+    <canvas
       aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id="daily-mix-soundfield-surface" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0" stopColor="#1d252c" stopOpacity="0" />
-          <stop offset="0.26" stopColor="#b8c1ca" stopOpacity="0.08" />
-          <stop offset="0.54" stopColor="#f0f3f6" stopOpacity="0.14" />
-          <stop offset="0.78" stopColor="#9aa5b0" stopOpacity="0.06" />
-          <stop offset="1" stopColor="#151b21" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path className="daily-mix-soundfield__surface" d={surfaceShape()} />
-      <g className="daily-mix-soundfield__mesh">
-        {lines.map(({ depth, index, path }) => (
-          <path
-            className={`daily-mix-soundfield__line daily-mix-soundfield__line--${soundfieldTone(depth)}`}
-            d={path}
-            key={index}
-            pathLength="1"
-            style={{ opacity: 0.3 + (depth + 1) * 0.35 }}
-          />
-        ))}
-      </g>
-      <g className="daily-mix-soundfield__glints">
-        {lines
-          .filter(({ index }) => index % 3 === 1)
-          .map(({ index, path }) => (
-            <path
-              className="daily-mix-soundfield__glint"
-              d={path}
-              key={index}
-              pathLength="1"
-              style={{ "--daily-mix-glint-delay": `${String(-index * 85)}ms` } as CSSProperties}
-            />
-          ))}
-      </g>
-    </svg>
+      className="daily-mix-soundfield"
+      height={soundfieldHeight}
+      ref={canvasRef}
+      width={soundfieldWidth}
+    />
   );
 }
 
