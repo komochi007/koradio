@@ -26,36 +26,45 @@ interface SoundfieldPoint {
 
 const soundfieldWidth = 1440;
 const soundfieldHeight = 460;
-const soundfieldColumns = 144;
-const soundfieldRows = 76;
+const soundfieldColumns = 180;
+const soundfieldRows = 88;
 
 function bell(value: number, center: number, spread: number): number {
   return Math.exp(-((value - center) ** 2) / spread);
 }
 
-function surfaceRidge(progress: number): number {
-  return (
-    262 -
-    bell(progress, 0.12, 0.024) * 34 -
-    bell(progress, 0.3, 0.026) * 56 -
-    bell(progress, 0.52, 0.036) * 102 -
-    bell(progress, 0.76, 0.03) * 46 -
-    bell(progress, 0.93, 0.022) * 23 +
-    Math.sin(progress * Math.PI * 3.1 - 0.45) * 9
-  );
-}
-
-function surfaceSpan(progress: number): number {
-  return 42 + bell(progress, 0.3, 0.07) * 56 + bell(progress, 0.62, 0.055) * 88;
-}
-
 function surfacePoint(progress: number, depth: number): SoundfieldPoint {
-  const span = surfaceSpan(progress) + Math.sin(progress * Math.PI * 2.1 + 0.6) * 9;
-  const perspective = depth * (18 + bell(progress, 0.54, 0.08) * 18);
+  const mainWave = Math.sin(progress * Math.PI * 2.18 + depth * 0.88 - 0.46);
+  const secondaryWave = Math.sin(progress * Math.PI * 5.1 - depth * 1.24 + 0.7);
+  const centralPeak = bell(progress, 0.51 + depth * 0.035, 0.018);
+  const leftFold = bell(progress, 0.19 - depth * 0.026, 0.022);
+  const rightFold = bell(progress, 0.78 + depth * 0.018, 0.036);
+  const width = 94 + 28 * Math.cos(progress * Math.PI * 1.3 - depth * 0.62);
   return {
-    x: -28 + progress * (soundfieldWidth + 56) + perspective,
-    y: surfaceRidge(progress) + depth * span,
+    x:
+      -32 +
+      progress * (soundfieldWidth + 64) +
+      depth * (22 + centralPeak * 32) +
+      Math.sin(progress * Math.PI * 2.7 + depth * 1.55) * 14,
+    y:
+      235 +
+      depth * width +
+      mainWave * (42 - depth * 16) +
+      secondaryWave * 14 -
+      centralPeak * (92 - depth * 38) -
+      leftFold * (30 + depth * 22) +
+      rightFold * (28 - depth * 24),
   };
+}
+
+function surfaceLuminance(progress: number, depth: number): number {
+  return (
+    0.08 +
+    bell(depth, -0.56, 0.34) * 0.15 +
+    bell(progress, 0.5, 0.026) * bell(depth, -0.34, 0.3) * 0.31 +
+    bell(progress, 0.21, 0.022) * bell(depth, -0.64, 0.28) * 0.14 +
+    bell(progress, 0.77, 0.038) * bell(depth, -0.16, 0.38) * 0.12
+  );
 }
 
 function traceSurfaceBoundary(context: CanvasRenderingContext2D): void {
@@ -76,10 +85,10 @@ function drawStaticSoundfield(context: CanvasRenderingContext2D): void {
   context.clearRect(0, 0, soundfieldWidth, soundfieldHeight);
   traceSurfaceBoundary(context);
   const surface = context.createLinearGradient(0, 0, soundfieldWidth, 0);
-  surface.addColorStop(0, "rgb(67 75 85 / 0)");
-  surface.addColorStop(0.3, "rgb(171 183 194 / 0.09)");
-  surface.addColorStop(0.55, "rgb(225 231 237 / 0.16)");
-  surface.addColorStop(0.82, "rgb(120 133 147 / 0.07)");
+  surface.addColorStop(0, "rgb(53 63 74 / 0)");
+  surface.addColorStop(0.32, "rgb(109 122 137 / 0.015)");
+  surface.addColorStop(0.54, "rgb(190 201 212 / 0.045)");
+  surface.addColorStop(0.82, "rgb(87 101 117 / 0.018)");
   surface.addColorStop(1, "rgb(38 46 55 / 0)");
   context.fillStyle = surface;
   context.fill();
@@ -96,12 +105,12 @@ function drawStaticSoundfield(context: CanvasRenderingContext2D): void {
       if (column === 0) context.moveTo(point.x, point.y);
       else context.lineTo(point.x, point.y);
     }
-    context.lineWidth = 1.25;
-    context.strokeStyle = `rgb(227 233 238 / ${String(0.07 + (depth + 1) * 0.17 + bell(depth, 0.3, 0.32) * 0.15)})`;
+    context.lineWidth = 1.18;
+    context.strokeStyle = `rgb(226 233 239 / ${String(surfaceLuminance(0.5, depth))})`;
     context.stroke();
   }
 
-  for (let column = 0; column <= soundfieldColumns; column += 4) {
+  for (let column = 10; column < soundfieldColumns; column += 18) {
     const progress = column / soundfieldColumns;
     context.beginPath();
     for (let row = 0; row <= soundfieldRows; row += 1) {
@@ -109,30 +118,10 @@ function drawStaticSoundfield(context: CanvasRenderingContext2D): void {
       if (row === 0) context.moveTo(point.x, point.y);
       else context.lineTo(point.x, point.y);
     }
-    context.lineWidth = 0.72;
-    context.strokeStyle = `rgb(198 209 220 / ${String(0.025 + bell(progress, 0.52, 0.12) * 0.08)})`;
+    context.lineWidth = 0.58;
+    context.strokeStyle = `rgb(193 205 217 / ${String(0.018 + bell(progress, 0.52, 0.07) * 0.035)})`;
     context.stroke();
   }
-  context.restore();
-}
-
-function drawFlowingLight(context: CanvasRenderingContext2D, elapsedMs: number): void {
-  const flow = 0.12 + ((elapsedMs / 34_000) % 1) * 0.76;
-  const center = surfacePoint(flow, -0.08 + Math.sin(elapsedMs / 9_000) * 0.18);
-  context.save();
-  traceSurfaceBoundary(context);
-  context.clip();
-  context.globalCompositeOperation = "screen";
-  context.translate(center.x, center.y);
-  context.rotate(-0.32);
-  context.scale(1.8, 0.54);
-  const light = context.createRadialGradient(0, 0, 0, 0, 0, 190);
-  light.addColorStop(0, "rgb(255 255 255 / 0.34)");
-  light.addColorStop(0.24, "rgb(237 243 248 / 0.18)");
-  light.addColorStop(0.62, "rgb(196 212 226 / 0.05)");
-  light.addColorStop(1, "rgb(177 195 211 / 0)");
-  context.fillStyle = light;
-  context.fillRect(-220, -220, 440, 440);
   context.restore();
 }
 
@@ -150,27 +139,9 @@ function Soundfield(): ReactElement {
     const staticContext = staticLayer.getContext("2d");
     if (staticContext === null) return undefined;
     drawStaticSoundfield(staticContext);
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let frame: number | undefined;
-
-    const paint = (elapsedMs: number): void => {
-      context.clearRect(0, 0, soundfieldWidth, soundfieldHeight);
-      context.drawImage(staticLayer, 0, 0);
-      drawFlowingLight(context, motion.matches ? 13_600 : elapsedMs);
-      if (!motion.matches) frame = window.requestAnimationFrame(paint);
-    };
-
-    const restart = (): void => {
-      if (frame !== undefined) window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(paint);
-    };
-
-    restart();
-    motion.addEventListener("change", restart);
-    return () => {
-      if (frame !== undefined) window.cancelAnimationFrame(frame);
-      motion.removeEventListener("change", restart);
-    };
+    context.clearRect(0, 0, soundfieldWidth, soundfieldHeight);
+    context.drawImage(staticLayer, 0, 0);
+    return undefined;
   }, []);
 
   return (

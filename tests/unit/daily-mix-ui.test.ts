@@ -36,11 +36,11 @@ describe("UX-30 Daily Mix UI regressions", () => {
     expect(dailyMixStyles).toContain("top: 50%;");
     expect(dailyMixStyles).toContain("transform: translate(-50%, -50%) skewX(-14deg);");
     expect(dailyMixCard).toContain("const soundfieldWidth = 1440;");
-    expect(dailyMixCard).toContain("const soundfieldRows = 76;");
+    expect(dailyMixCard).toContain("const soundfieldRows = 88;");
     expect(dailyMixCard).toContain("drawStaticSoundfield(staticContext);");
-    expect(dailyMixCard).toContain('context.globalCompositeOperation = "screen";');
-    expect(dailyMixCard).toContain("const light = context.createRadialGradient");
-    expect(dailyMixCard).toContain("window.requestAnimationFrame(paint)");
+    expect(dailyMixCard).toContain("function surfaceLuminance");
+    expect(dailyMixCard).toContain("context.drawImage(staticLayer, 0, 0);");
+    expect(dailyMixCard).not.toContain("window.requestAnimationFrame");
     expect(dailyMixCard).toContain('className="daily-mix-soundfield"');
     expect(dailyMixStyles).toContain("width: 720px;");
     expect(dailyMixStyles).toContain("height: auto;");

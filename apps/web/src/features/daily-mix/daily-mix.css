@@ -47,7 +47,7 @@
 
 .daily-mix-soundfield {
   position: absolute;
-  inset: 0 auto auto 158px;
+  inset: 0 auto auto 192px;
   display: block;
   width: 720px;
   height: auto;
@@ -466,7 +466,7 @@
     font-size: 48px;
   }
   .daily-mix-soundfield {
-    inset: 16px auto auto 92px;
+    inset: 16px auto auto 110px;
     width: 540px;
     height: auto;
     opacity: 0.92;
