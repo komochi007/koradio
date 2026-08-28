@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { AudioEngineFacade, AudioEngineSnapshot } from "../../audio/index.js";
 import { ArtworkImage } from "../../shared/artwork.js";
 import { Icon } from "../../shared/icon.js";
+import { DailyMixWaveMesh } from "./daily-mix-wave-mesh.js";
 
 import "./daily-mix.css";
 
@@ -17,142 +18,6 @@ interface DailyMixCardProps {
   open: boolean;
   retrying: boolean;
   today: DailyMixTodayResponse | undefined;
-}
-
-interface SoundfieldPoint {
-  x: number;
-  y: number;
-}
-
-const soundfieldWidth = 1440;
-const soundfieldHeight = 460;
-const soundfieldColumns = 180;
-const soundfieldRows = 88;
-
-function bell(value: number, center: number, spread: number): number {
-  return Math.exp(-((value - center) ** 2) / spread);
-}
-
-function surfacePoint(progress: number, depth: number): SoundfieldPoint {
-  const mainWave = Math.sin(progress * Math.PI * 2.18 + depth * 0.88 - 0.46);
-  const secondaryWave = Math.sin(progress * Math.PI * 5.1 - depth * 1.24 + 0.7);
-  const centralPeak = bell(progress, 0.51 + depth * 0.035, 0.018);
-  const leftFold = bell(progress, 0.19 - depth * 0.026, 0.022);
-  const rightFold = bell(progress, 0.78 + depth * 0.018, 0.036);
-  const width = 94 + 28 * Math.cos(progress * Math.PI * 1.3 - depth * 0.62);
-  return {
-    x:
-      -32 +
-      progress * (soundfieldWidth + 64) +
-      depth * (22 + centralPeak * 32) +
-      Math.sin(progress * Math.PI * 2.7 + depth * 1.55) * 14,
-    y:
-      235 +
-      depth * width +
-      mainWave * (42 - depth * 16) +
-      secondaryWave * 14 -
-      centralPeak * (92 - depth * 38) -
-      leftFold * (30 + depth * 22) +
-      rightFold * (28 - depth * 24),
-  };
-}
-
-function surfaceLuminance(progress: number, depth: number): number {
-  return (
-    0.08 +
-    bell(depth, -0.56, 0.34) * 0.15 +
-    bell(progress, 0.5, 0.026) * bell(depth, -0.34, 0.3) * 0.31 +
-    bell(progress, 0.21, 0.022) * bell(depth, -0.64, 0.28) * 0.14 +
-    bell(progress, 0.77, 0.038) * bell(depth, -0.16, 0.38) * 0.12
-  );
-}
-
-function traceSurfaceBoundary(context: CanvasRenderingContext2D): void {
-  context.beginPath();
-  for (let column = 0; column <= soundfieldColumns; column += 1) {
-    const point = surfacePoint(column / soundfieldColumns, -1);
-    if (column === 0) context.moveTo(point.x, point.y);
-    else context.lineTo(point.x, point.y);
-  }
-  for (let column = soundfieldColumns; column >= 0; column -= 1) {
-    const point = surfacePoint(column / soundfieldColumns, 1);
-    context.lineTo(point.x, point.y);
-  }
-  context.closePath();
-}
-
-function drawStaticSoundfield(context: CanvasRenderingContext2D): void {
-  context.clearRect(0, 0, soundfieldWidth, soundfieldHeight);
-  traceSurfaceBoundary(context);
-  const surface = context.createLinearGradient(0, 0, soundfieldWidth, 0);
-  surface.addColorStop(0, "rgb(53 63 74 / 0)");
-  surface.addColorStop(0.32, "rgb(109 122 137 / 0.015)");
-  surface.addColorStop(0.54, "rgb(190 201 212 / 0.045)");
-  surface.addColorStop(0.82, "rgb(87 101 117 / 0.018)");
-  surface.addColorStop(1, "rgb(38 46 55 / 0)");
-  context.fillStyle = surface;
-  context.fill();
-  context.save();
-  traceSurfaceBoundary(context);
-  context.clip();
-  context.lineCap = "round";
-
-  for (let row = 0; row <= soundfieldRows; row += 1) {
-    const depth = -1 + (row / soundfieldRows) * 2;
-    context.beginPath();
-    for (let column = 0; column <= soundfieldColumns; column += 1) {
-      const point = surfacePoint(column / soundfieldColumns, depth);
-      if (column === 0) context.moveTo(point.x, point.y);
-      else context.lineTo(point.x, point.y);
-    }
-    context.lineWidth = 1.18;
-    context.strokeStyle = `rgb(226 233 239 / ${String(surfaceLuminance(0.5, depth))})`;
-    context.stroke();
-  }
-
-  for (let column = 10; column < soundfieldColumns; column += 18) {
-    const progress = column / soundfieldColumns;
-    context.beginPath();
-    for (let row = 0; row <= soundfieldRows; row += 1) {
-      const point = surfacePoint(progress, -1 + (row / soundfieldRows) * 2);
-      if (row === 0) context.moveTo(point.x, point.y);
-      else context.lineTo(point.x, point.y);
-    }
-    context.lineWidth = 0.58;
-    context.strokeStyle = `rgb(193 205 217 / ${String(0.018 + bell(progress, 0.52, 0.07) * 0.035)})`;
-    context.stroke();
-  }
-  context.restore();
-}
-
-function Soundfield(): ReactElement {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (typeof CanvasRenderingContext2D === "undefined") return undefined;
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (context === null || context === undefined) return undefined;
-    const staticLayer = document.createElement("canvas");
-    staticLayer.width = soundfieldWidth;
-    staticLayer.height = soundfieldHeight;
-    const staticContext = staticLayer.getContext("2d");
-    if (staticContext === null) return undefined;
-    drawStaticSoundfield(staticContext);
-    context.clearRect(0, 0, soundfieldWidth, soundfieldHeight);
-    context.drawImage(staticLayer, 0, 0);
-    return undefined;
-  }, []);
-
-  return (
-    <canvas
-      aria-hidden="true"
-      className="daily-mix-soundfield"
-      height={soundfieldHeight}
-      ref={canvasRef}
-      width={soundfieldWidth}
-    />
-  );
 }
 
 function formattedDate(localDate: string | undefined): { month: string; day: string } {
@@ -336,7 +201,7 @@ export function DailyMixCard(props: DailyMixCardProps): ReactElement | null {
         ref={cardRef}
       >
         <header className="daily-mix-hero">
-          <Soundfield />
+          <DailyMixWaveMesh />
           <div className="daily-mix-hero__copy">
             <p id="daily-mix-title">DAILY MIX</p>
             <h2 aria-label={`${date.month}/${date.day}`}>

@@ -14,6 +14,10 @@ const dailyMixCard = readFileSync(
   new URL("../../apps/web/src/features/daily-mix/daily-mix-card.tsx", import.meta.url),
   "utf8",
 );
+const dailyMixWaveMesh = readFileSync(
+  new URL("../../apps/web/src/features/daily-mix/daily-mix-wave-mesh.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("UX-30 Daily Mix UI regressions", () => {
   it("keeps source labels centered inside a single inset thumb", () => {
@@ -35,16 +39,20 @@ describe("UX-30 Daily Mix UI regressions", () => {
     expect(dailyMixStyles).toContain("height: 0.72em;");
     expect(dailyMixStyles).toContain("top: 50%;");
     expect(dailyMixStyles).toContain("transform: translate(-50%, -50%) skewX(-14deg);");
-    expect(dailyMixCard).toContain("const soundfieldWidth = 1440;");
-    expect(dailyMixCard).toContain("const soundfieldRows = 88;");
-    expect(dailyMixCard).toContain("drawStaticSoundfield(staticContext);");
-    expect(dailyMixCard).toContain("function surfaceLuminance");
-    expect(dailyMixCard).toContain("context.drawImage(staticLayer, 0, 0);");
-    expect(dailyMixCard).not.toContain("window.requestAnimationFrame");
-    expect(dailyMixCard).toContain('className="daily-mix-soundfield"');
-    expect(dailyMixStyles).toContain("width: 720px;");
-    expect(dailyMixStyles).toContain("height: auto;");
+    expect(dailyMixCard).toContain("<DailyMixWaveMesh />");
+    expect(dailyMixWaveMesh).toContain("export interface DailyMixWaveMeshProps");
+    expect(dailyMixWaveMesh).toContain("lineCount = 72");
+    expect(dailyMixWaveMesh).toContain("peakCount = 3");
+    expect(dailyMixWaveMesh).toContain("lineWidth = 0.72");
+    expect(dailyMixWaveMesh).toContain("fadeRange = 0.2");
+    expect(dailyMixWaveMesh).toContain("offset={1 - safeFadeRange}");
+    expect(dailyMixWaveMesh).toContain("smoothPath(points)");
+    expect(dailyMixWaveMesh).toContain("<mask");
+    expect(dailyMixWaveMesh).not.toContain("Math.random");
+    expect(dailyMixStyles).toContain("width: 78%;");
+    expect(dailyMixStyles).toContain("height: 100%;");
     expect(dailyMixStyles).toContain("contain: paint;");
+    expect(dailyMixStyles).toContain("vector-effect: non-scaling-stroke;");
     expect(dailyMixStyles).not.toContain("filter: drop-shadow");
     expect(dailyMixStyles).not.toContain("transform-box: fill-box");
     expect(dailyMixStyles).not.toContain("daily-mix-soundfield-glint");

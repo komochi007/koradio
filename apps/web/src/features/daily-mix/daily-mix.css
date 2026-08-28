@@ -47,14 +47,25 @@
 
 .daily-mix-soundfield {
   position: absolute;
-  inset: 0 auto auto 192px;
+  z-index: 0;
+  inset: 0 -8% 0 auto;
   display: block;
-  width: 720px;
-  height: auto;
-  max-width: none;
-  opacity: 0.96;
+  width: 78%;
+  height: 100%;
+  overflow: visible;
   contain: paint;
   pointer-events: none;
+}
+
+.daily-mix-soundfield__line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.daily-mix-soundfield__surface {
+  stroke: none;
 }
 
 .daily-mix-hero__copy {
@@ -466,10 +477,8 @@
     font-size: 48px;
   }
   .daily-mix-soundfield {
-    inset: 16px auto auto 110px;
-    width: 540px;
-    height: auto;
-    opacity: 0.92;
+    inset: 0 -8% 0 auto;
+    width: 94%;
   }
   .daily-mix-body {
     padding-inline: 16px;
