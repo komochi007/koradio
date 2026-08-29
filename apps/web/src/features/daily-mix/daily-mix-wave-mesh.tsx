@@ -134,7 +134,7 @@ export function DailyMixWaveMesh({
         const points = Array.from({ length: sampleCount + 1 }, (_, columnIndex) =>
           meshPoint(columnIndex / sampleCount, depth, rowIndex, family, peakCount, safeAmplitude),
         );
-        return { depth, path: smoothPath(points), tone: toneForLine(rowIndex, count) };
+        return { depth, family, path: smoothPath(points), tone: toneForLine(rowIndex, count) };
       }),
     );
   }, [peakCount, safeAmplitude, safeLineCount]);
@@ -198,37 +198,78 @@ export function DailyMixWaveMesh({
           <stop offset="0.64" stopColor="#e4e8eb" stopOpacity="0.048" />
           <stop offset="1" stopColor="#939ca5" stopOpacity="0.02" />
         </linearGradient>
+        <linearGradient id={`${maskId}-glint`} x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stopColor="black" />
+          <stop offset="0.2" stopColor="black" />
+          <stop offset="0.46" stopColor="white" stopOpacity="0.72" />
+          <stop offset="0.54" stopColor="white" stopOpacity="0.72" />
+          <stop offset="0.8" stopColor="black" />
+          <stop offset="1" stopColor="black" />
+        </linearGradient>
         <mask id={`${maskId}-horizontal-mask`} maskUnits="userSpaceOnUse">
           <rect width={meshWidth} height={meshHeight} fill={`url(#${maskId}-horizontal)`} />
         </mask>
         <mask id={`${maskId}-vertical-mask`} maskUnits="userSpaceOnUse">
           <rect width={meshWidth} height={meshHeight} fill={`url(#${maskId}-vertical)`} />
         </mask>
+        <mask
+          id={`${maskId}-glint-mask`}
+          height={meshHeight}
+          maskUnits="userSpaceOnUse"
+          width={meshWidth + 560}
+          x="-280"
+        >
+          <rect
+            className="daily-mix-soundfield__glint-window"
+            fill={`url(#${maskId}-glint)`}
+            height={meshHeight}
+            width="280"
+            x="-280"
+          />
+        </mask>
       </defs>
       {/* 水平与垂直 mask 分层相乘，消除 SVG 自身的矩形边界。 */}
       <g mask={`url(#${maskId}-horizontal-mask)`}>
         <g mask={`url(#${maskId}-vertical-mask)`}>
-          {surfaces.map((path, index) => (
-            <path
-              className="daily-mix-soundfield__surface"
-              d={path}
-              fill={`url(#${maskId}-surface)`}
-              key={`surface-${String(index)}`}
-            />
-          ))}
-          {paths.map(({ depth, path, tone }, index) => {
-            const edgeAttenuation = 1 - Math.abs(depth) * 0.22;
-            return (
+          {([0, 1, 2] as const).map((family) => (
+            <g
+              className={`daily-mix-soundfield__family daily-mix-soundfield__family--${String(family)}`}
+              key={`family-${String(family)}`}
+            >
               <path
-                className={`daily-mix-soundfield__line daily-mix-soundfield__line--${tone}`}
+                className="daily-mix-soundfield__surface"
+                d={surfaces[family] ?? ""}
+                fill={`url(#${maskId}-surface)`}
+              />
+              {paths
+                .filter((line) => line.family === family)
+                .map(({ depth, path, tone }, index) => {
+                  const edgeAttenuation = 1 - Math.abs(depth) * 0.22;
+                  return (
+                    <path
+                      className={`daily-mix-soundfield__line daily-mix-soundfield__line--${tone}`}
+                      d={path}
+                      key={index}
+                      opacity={brightness[tone] * edgeAttenuation}
+                      stroke={`url(#${maskId}-stroke)`}
+                      strokeWidth={lineWidth}
+                    />
+                  );
+                })}
+            </g>
+          ))}
+          <g className="daily-mix-soundfield__glint" mask={`url(#${maskId}-glint-mask)`}>
+            {paths.map(({ depth, path }, index) => (
+              <path
+                className="daily-mix-soundfield__line"
                 d={path}
-                key={index}
-                opacity={brightness[tone] * edgeAttenuation}
-                stroke={`url(#${maskId}-stroke)`}
+                key={`glint-${String(index)}`}
+                opacity={(1 - Math.abs(depth) * 0.3) * 0.32}
+                stroke="#f3f5f6"
                 strokeWidth={lineWidth}
               />
-            );
-          })}
+            ))}
+          </g>
         </g>
       </g>
     </svg>

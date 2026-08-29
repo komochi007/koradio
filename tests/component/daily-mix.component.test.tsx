@@ -78,6 +78,8 @@ describe("UX-30 Daily Mix card", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(20);
     expect(screen.queryByText("HIDDEN ALBUM")).toBeNull();
     expect(screen.queryByText("03:00")).toBeNull();
+    expect(document.querySelectorAll(".daily-mix-soundfield__family")).toHaveLength(3);
+    expect(document.querySelector(".daily-mix-soundfield__glint-window")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "PLAY ALL" }));
     fireEvent.click(screen.getByRole("button", { name: "PLAY TRACK 4" }));

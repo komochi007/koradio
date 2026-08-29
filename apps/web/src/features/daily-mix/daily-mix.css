@@ -50,11 +50,30 @@
   z-index: 0;
   inset: 0 -8% 0 auto;
   display: block;
-  width: 78%;
+  width: 92%;
   height: 100%;
   overflow: visible;
   contain: paint;
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(0 0 0 / 3%) 10%,
+    rgb(0 0 0 / 28%) 24%,
+    #000 42%,
+    #000 100%
+  );
   pointer-events: none;
+  transform-origin: center;
+  will-change: transform, opacity;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(0 0 0 / 3%) 10%,
+    rgb(0 0 0 / 28%) 24%,
+    #000 42%,
+    #000 100%
+  );
+  animation: daily-mix-soundfield-breathe 12s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
 }
 
 .daily-mix-soundfield__line {
@@ -66,6 +85,26 @@
 
 .daily-mix-soundfield__surface {
   stroke: none;
+}
+
+.daily-mix-soundfield__family--0 {
+  animation: daily-mix-soundfield-depth 10.8s ease-in-out infinite alternate;
+}
+
+.daily-mix-soundfield__family--1 {
+  animation: daily-mix-soundfield-depth 13.2s ease-in-out -4.4s infinite alternate-reverse;
+}
+
+.daily-mix-soundfield__family--2 {
+  animation: daily-mix-soundfield-depth 11.7s ease-in-out -7.8s infinite alternate;
+}
+
+.daily-mix-soundfield__glint {
+  pointer-events: none;
+}
+
+.daily-mix-soundfield__glint-window {
+  animation: daily-mix-soundfield-glint 14s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 .daily-mix-hero__copy {
@@ -458,6 +497,35 @@
   }
 }
 
+@keyframes daily-mix-soundfield-breathe {
+  from {
+    opacity: 0.94;
+    transform: translate3d(0, -1px, 0) scaleY(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(-2px, 1px, 0) scaleY(1.008);
+  }
+}
+
+@keyframes daily-mix-soundfield-depth {
+  from {
+    opacity: 0.88;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes daily-mix-soundfield-glint {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(880px);
+  }
+}
+
 @media (max-width: 680px) {
   .daily-mix-backdrop {
     padding: 16px;
@@ -477,8 +545,24 @@
     font-size: 48px;
   }
   .daily-mix-soundfield {
-    inset: 0 -8% 0 auto;
-    width: 94%;
+    inset: 0 -10% 0 auto;
+    width: 112%;
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(0 0 0 / 2%) 14%,
+      rgb(0 0 0 / 22%) 30%,
+      #000 48%,
+      #000 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(0 0 0 / 2%) 14%,
+      rgb(0 0 0 / 22%) 30%,
+      #000 48%,
+      #000 100%
+    );
   }
   .daily-mix-body {
     padding-inline: 16px;
@@ -498,6 +582,9 @@
   .daily-mix-backdrop--closing,
   .daily-mix-card,
   .daily-mix-card--closing,
+  .daily-mix-soundfield,
+  .daily-mix-soundfield__family,
+  .daily-mix-soundfield__glint-window,
   .daily-mix-list__playing i,
   .daily-mix-loader {
     animation: none;
