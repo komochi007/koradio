@@ -79,6 +79,7 @@ describe("UX-30 Daily Mix UI regressions", () => {
     expect(dailyMixWaveMesh).not.toContain('stopOpacity="0.72"');
     expect(dailyMixWaveMesh).toContain('className="daily-mix-soundfield__glint-surface"');
     expect(dailyMixWaveMesh).toContain("surfaces.map((surface, index)");
+    expect(dailyMixWaveMesh).toContain("opacity={index === 1 ? 0.22 : 0.17}");
     expect(dailyMixWaveMesh).not.toContain("paths.map(({ depth, path }, index)");
     expect(dailyMixStyles).toContain(".daily-mix-soundfield__glint-window,");
     expect(dailyMixWaveMesh).not.toContain("requestAnimationFrame");

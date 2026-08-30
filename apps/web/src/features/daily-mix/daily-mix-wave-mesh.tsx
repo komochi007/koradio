@@ -266,7 +266,7 @@ export function DailyMixWaveMesh({
                 d={surface}
                 fill="#f3f5f6"
                 key={`glint-surface-${String(index)}`}
-                opacity={index === 1 ? 0.16 : 0.12}
+                opacity={index === 1 ? 0.22 : 0.17}
               />
             ))}
           </g>
