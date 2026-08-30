@@ -199,8 +199,8 @@ export function DailyMixWaveMesh({
           <stop offset="1" stopColor="#939ca5" stopOpacity="0.02" />
         </linearGradient>
         <radialGradient id={`${maskId}-glint`} cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stopColor="white" stopOpacity="0.62" />
-          <stop offset="0.2" stopColor="white" stopOpacity="0.5" />
+          <stop offset="0" stopColor="white" stopOpacity="0.66" />
+          <stop offset="0.2" stopColor="white" stopOpacity="0.52" />
           <stop offset="0.48" stopColor="white" stopOpacity="0.2" />
           <stop offset="0.74" stopColor="white" stopOpacity="0.05" />
           <stop offset="1" stopColor="white" stopOpacity="0" />
@@ -225,7 +225,7 @@ export function DailyMixWaveMesh({
               cy={meshHeight * 0.52}
               fill={`url(#${maskId}-glint)`}
               rx="180"
-              ry="78"
+              ry="92"
               transform={`rotate(-8 -180 ${String(meshHeight * 0.52)})`}
             />
           </g>

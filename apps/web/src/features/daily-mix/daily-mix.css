@@ -104,7 +104,7 @@
 }
 
 .daily-mix-soundfield__glint-window {
-  animation: daily-mix-soundfield-glint 11.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation: daily-mix-soundfield-glint 9.6s linear infinite;
 }
 
 .daily-mix-hero__copy {
@@ -518,10 +518,23 @@
 }
 
 @keyframes daily-mix-soundfield-glint {
-  from {
+  0% {
+    opacity: 0.82;
     transform: translateX(0);
   }
-  to {
+
+  42% {
+    opacity: 0.9;
+    transform: translateX(403px);
+  }
+
+  72% {
+    opacity: 1;
+    transform: translateX(691px);
+  }
+
+  100% {
+    opacity: 0.92;
     transform: translateX(960px);
   }
 }
