@@ -336,6 +336,9 @@ for (const state of ["empty", "generating", "playing"] as const) {
     test.skip(browserName !== "chromium", "visual baseline is captured once in Chromium");
     await page.setViewportSize({ width: 960, height: 1600 });
     await mockRadio(page, { generation: state === "generating", program: state !== "empty" });
+    if (state === "playing") {
+      await page.getByRole("slider", { name: "播放进度" }).fill("0");
+    }
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await expect(page).toHaveScreenshot(`radio-${state}-dark.png`, {
       animations: "disabled",
@@ -348,6 +351,7 @@ test("Radio playing state matches the frozen light theme", async ({ browserName,
   test.skip(browserName !== "chromium", "visual baseline is captured once in Chromium");
   await page.setViewportSize({ width: 960, height: 1600 });
   await mockRadio(page, { program: true, theme: "light" });
+  await page.getByRole("slider", { name: "播放进度" }).fill("0");
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await expect(page).toHaveScreenshot("radio-playing-light.png", {
     animations: "disabled",
@@ -458,6 +462,7 @@ test("Radio queue collapse reflows the DJ area without leaving a gap", async ({
   );
 
   if (browserName === "chromium") {
+    await page.getByRole("slider", { name: "播放进度" }).fill("0");
     await expect(page).toHaveScreenshot("radio-playing-queue-collapsed.png", {
       animations: "disabled",
       fullPage: false,
@@ -481,6 +486,7 @@ for (const viewport of responsiveViewports) {
     await mockRadio(page, { program: true });
     await expect(page.getByRole("heading", { name: "If" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "告诉 DJ 当前场景" })).toBeVisible();
+    await page.getByRole("slider", { name: "播放进度" }).fill("0");
     await expect(page).toHaveScreenshot(`radio-playing-${viewport.name}.png`, {
       animations: "disabled",
       fullPage: false,
