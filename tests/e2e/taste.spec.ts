@@ -7,6 +7,8 @@ import type {
 } from "@koradio/contracts";
 
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
+
+test.use({ serviceWorkers: "block" });
 const firstProfileId = "00000000-0000-4000-8000-000000000010";
 const secondProfileId = "00000000-0000-4000-8000-000000000011";
 const profiles = [

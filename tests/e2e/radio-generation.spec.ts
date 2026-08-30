@@ -2,6 +2,8 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
+
+test.use({ serviceWorkers: "block" });
 const profile = {
   id: "00000000-0000-4000-8000-000000000010",
   radioName: "After Midnight",

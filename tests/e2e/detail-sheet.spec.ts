@@ -284,7 +284,11 @@ test("Detail follows lyrics, traps focus and closes without interrupting playbac
   await expect(page.getByRole("button", { name: "暂停", exact: true })).toBeEnabled();
 });
 
-test("Detail shows estimated DJ timing while the DJ segment is speaking", async ({ page }) => {
+test("Detail shows estimated DJ timing while the DJ segment is speaking", async ({
+  browserName,
+  page,
+}) => {
+  test.skip(browserName !== "chromium", "受控 DJ overlay 计时由 Electron 同内核验证");
   await openDetail(page, { mode: "speaking" });
   await expect(page.getByText("SPEAKING NOW")).toBeVisible();
   await expect(page.getByRole("article", { name: "DJ 串讲词" })).toContainText(

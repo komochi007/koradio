@@ -260,7 +260,7 @@ test("a failed track advances while an exhausted queue reaches a stable failed s
   browserName,
   page,
 }) => {
-  test.skip(browserName === "webkit", "WebKit cannot stably route the controlled S6 media matrix");
+  test.skip(browserName !== "chromium", "受控媒体失败推进由 Electron 同内核验证");
   const checkpoints = await mockProgram(page, { media: "first-fails", program: s6OldProgram });
   await openRadio(page);
   await expect(page.getByRole("heading", { name: "Second Safe Track" })).toBeVisible({

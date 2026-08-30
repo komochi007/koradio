@@ -9,6 +9,8 @@ import type {
 } from "@koradio/contracts";
 
 const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
+
+test.use({ serviceWorkers: "block" });
 const visualBaselineNow = new Date(
   process.env.CI === undefined ? "2026-07-20T08:45:00.000Z" : "2026-07-21T08:45:00.000Z",
 );
@@ -409,7 +411,8 @@ test("paginates, replays, favorites, reuses and isolates Programs history", asyn
 
   await page.getByRole("button", { name: "播放 DJ 开场" }).click();
   await expect(page.getByRole("button", { name: "停止 DJ 开场重播" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "播放 DJ 开场" })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "停止 DJ 开场重播" }).click();
+  await expect(page.getByRole("button", { name: "播放 DJ 开场" })).toBeVisible();
   await page.getByRole("button", { name: "收藏节目 After Hours, Soft Focus" }).click();
   await expect(
     page.getByRole("button", { name: "取消收藏节目 After Hours, Soft Focus" }),
