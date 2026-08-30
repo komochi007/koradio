@@ -1,10 +1,11 @@
 # Koradio 项目任务管理规范
 
 > Status: Active project-management source of truth
-> Scope: 从 Documentation-first 基线到 macOS v1.0 发布与稳定期
+> Scope: 从 Documentation-first 基线到 macOS 本机正式版与后续外部发布
 > Task registry: [tasks.md](tasks.md)
 > Stage roadmap: [roadmap.md](roadmap.md)
 > Release gates: [release-checklist.md](release-checklist.md)
+> Version management: [version-management.md](version-management.md)
 > Git workflow: [git-workflow.md](git-workflow.md)
 
 ## 0. AI 快速阅读与执行顺序
@@ -15,9 +16,9 @@
 | 2 | [AGENTS.md](../../AGENTS.md)、[AI_RULES.md](../../AI_RULES.md)、[context.md](../../context.md) | 工作方式、工程硬约束、稳定领域认知 | 停止范围外或违反硬约束的动作 |
 | 3 | [roadmap.md](roadmap.md) | 当前阶段、阶段门、关键路径和主要风险 | 不绕过未通过的阶段门 |
 | 4 | [tasks.md](tasks.md) | 哪个任务 Ready、其依赖/输入/边界/验收是什么 | 只选择状态为 `待开始` 且依赖全部完成的任务 |
-| 5 | [git-workflow.md](git-workflow.md) | 如何同步、修改、验证、提交和推送 | 常规任务在根目录 `main` 顺序执行，不创建 worktree 或分支 |
+| 5 | [version-management.md](version-management.md)、[git-workflow.md](git-workflow.md) | 如何判定版本、同步、修改、验证、提交和推送 | 常规任务在根目录 `main` 顺序执行，不创建 worktree 或分支 |
 | 6 | 任务“输入”引用的权威文档 | 精确产品、流程、架构或 UI 规则 | 发现冲突时先按 Concern 修正文档 |
-| 7 | [release-checklist.md](release-checklist.md) | 当前版本是否满足 Beta、RC 或发布硬门 | 未到 S7 前只阅读，不提前勾选发布项 |
+| 7 | [release-checklist.md](release-checklist.md) | 当前版本是否满足外部 Beta、RC 或公开发布硬门 | 未获得外部分发授权时只阅读，不提前勾选发布项 |
 
 AI 不应一次性加载所有历史视觉任务或全部实现细节。先通过路线图定位阶段，再通过任务表读取当前任务的“输入”字段，按需加载直接相关权威章节和真实文件。
 

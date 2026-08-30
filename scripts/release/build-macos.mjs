@@ -117,7 +117,8 @@ function parseArguments(argumentsList) {
   const values = [...argumentsList];
   let architecture = platform() === "darwin" && arch() === "arm64" ? "arm64" : "x64";
   let outputDirectory = resolve(repositoryRoot, "artifacts/macos");
-  let version = "0.0.0";
+  let buildNumber;
+  let version;
   let keepApp = false;
   let noDmg = false;
   let sourceCommit;
@@ -132,6 +133,8 @@ function parseArguments(argumentsList) {
       outputDirectory = resolve(repositoryRoot, values.shift() ?? "");
     } else if (argument === "--version") {
       version = values.shift() ?? "";
+    } else if (argument === "--build-number") {
+      buildNumber = Number(values.shift() ?? "");
     } else if (argument === "--commit") {
       sourceCommit = values.shift() ?? "";
     } else if (argument === "--keep-app") {
@@ -145,8 +148,11 @@ function parseArguments(argumentsList) {
   if (architecture !== "arm64") {
     fail("Qwen3-TTS packaging supports arm64 only");
   }
-  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+  if (version !== undefined && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
     fail("--version must be a numeric semantic version such as 1.2.3");
+  }
+  if (buildNumber !== undefined && (!Number.isSafeInteger(buildNumber) || buildNumber <= 0)) {
+    fail("--build-number must be a positive integer");
   }
   if (sourceCommit !== undefined && !/^[0-9a-f]{40}$/.test(sourceCommit)) {
     fail("--commit must be a full lowercase Git commit");
@@ -154,7 +160,7 @@ function parseArguments(argumentsList) {
   if (noDmg && !keepApp) {
     fail("--no-dmg requires --keep-app");
   }
-  return { architecture, keepApp, noDmg, outputDirectory, sourceCommit, version };
+  return { architecture, buildNumber, keepApp, noDmg, outputDirectory, sourceCommit, version };
 }
 
 async function checksum(path) {
@@ -292,11 +298,12 @@ async function build() {
   }
   const {
     architecture,
+    buildNumber: requestedBuildNumber,
     keepApp,
     noDmg,
     outputDirectory,
     sourceCommit: requestedSourceCommit,
-    version,
+    version: requestedVersion,
   } = parseArguments(process.argv.slice(2));
   const sourceCommit =
     requestedSourceCommit ??
@@ -307,6 +314,23 @@ async function build() {
     ).stdout.trim();
   if (!/^[0-9a-f]{40}$/.test(sourceCommit)) {
     fail("Could not resolve a full lowercase Git source commit");
+  }
+  const version =
+    requestedVersion ?? (await readFile(resolve(repositoryRoot, "VERSION"), "utf8")).trim();
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+    fail("VERSION must contain a numeric semantic version such as 1.2.3");
+  }
+  const buildNumber =
+    requestedBuildNumber ??
+    Number(
+      (
+        await runCapture("/usr/bin/git", ["rev-list", "--count", sourceCommit], {
+          cwd: repositoryRoot,
+        })
+      ).stdout.trim(),
+    );
+  if (!Number.isSafeInteger(buildNumber) || buildNumber <= 0) {
+    fail("Could not resolve a positive Git build number");
   }
   const cacheDirectory =
     process.env.KORADIO_PACKAGING_CACHE_DIRECTORY === undefined
@@ -349,6 +373,7 @@ async function build() {
       metadataTarget,
       `${JSON.stringify(
         {
+          buildNumber,
           electronVersion,
           schemaVersion: 1,
           shell: "electron",
@@ -478,7 +503,7 @@ async function build() {
       appVersion: version,
       arch: architecture,
       asar: false,
-      buildVersion: version,
+      buildVersion: String(buildNumber),
       dir: electronSource,
       derefSymlinks: false,
       download: { cacheRoot: resolve(cacheDirectory, "electron") },
@@ -563,6 +588,7 @@ async function build() {
       `${JSON.stringify({
         app: keepApp ? retainedApplication : null,
         architecture,
+        buildNumber,
         dmg: noDmg ? null : dmg,
         sourceCommit,
         version,

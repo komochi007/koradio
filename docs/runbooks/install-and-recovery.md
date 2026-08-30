@@ -1,6 +1,6 @@
 # Koradio 唯一入口、自动更新与恢复
 
-> Scope: S7-02/S7-07/S7-09 Personal Local Preview；不适用于外部分发、签名公证、Gatekeeper 或干净 Mac 验收。
+> Scope: S7-02/S7-07/S7-09 本机正式版；不适用于外部分发、签名公证、Gatekeeper 或干净 Mac 验收。
 
 ## 前提
 
@@ -8,7 +8,7 @@
 - Electron 桌面壳随 `Koradio.app` 一起安装；不要求系统安装 Node.js、Chrome 或额外 PWA。
 - 首次需要语音串讲时，在 Settings 明确触发约 1.84 GiB Qwen3-TTS 模型下载；下载失败不影响文字 DJ 与歌曲播放。
 - 先对两份 app 执行 `codesign --verify --deep --strict`，再用 `pnpm verify:package:macos <Koradio.app>` 验证包内容与启动停止。
-- 当前只支持数值语义版本。自动更新按可信 `origin/main` 的提交总数生成 `0.0.<count>`；手动构建必须同时写入完整 source commit。
+- 当前只支持三段数字语义版本。产品版本读取仓库根 `VERSION`，Git commit count 作为独立构建号；手动构建必须同时写入完整 source commit。具体规则见[版本管理规范](../project-management/version-management.md)。
 - 真实用户数据默认位于 `~/Library/Application Support/Koradio`；不得在升级、回滚或卸载过程中删除该目录、其备份或 Keychain 凭据。
 
 ## 日常启动与自动更新
@@ -38,7 +38,8 @@ COMMIT="$(git rev-parse HEAD)"
 COUNT="$(git rev-list --count "$COMMIT")"
 node scripts/release/build-macos.mjs \
   --arch arm64 \
-  --version "0.0.$COUNT" \
+  --version "$(tr -d '[:space:]' < VERSION)" \
+  --build-number "$COUNT" \
   --commit "$COMMIT" \
   --output artifacts/macos/s7-09 \
   --keep-app \
@@ -50,8 +51,8 @@ node scripts/release/build-macos.mjs \
 使用两个独立 arm64 构建后执行：
 
 ```bash
-OLD_APP=/absolute/path/to/Koradio-0.0.1.app
-NEW_APP=/absolute/path/to/Koradio-0.0.2.app
+OLD_APP=/absolute/path/to/Koradio-1.0.0-arm64.app
+NEW_APP=/absolute/path/to/Koradio-1.0.1-arm64.app
 pnpm verify:lifecycle:macos --old "$OLD_APP" --new "$NEW_APP"
 ```
 

@@ -8,8 +8,8 @@ import {
   backupDirectoryName,
   needsUpdate,
   parseBuildMetadata,
+  parseReleaseVersion,
   trustedUpdateRemote,
-  versionFromCommitCount,
 } from "./macos-update-core.mjs";
 
 const maximumCapturedOutput = 1024 * 1024;
@@ -199,7 +199,11 @@ async function update() {
   const commitCountResult = await run("/usr/bin/git", ["rev-list", "--count", remoteCommit], {
     cwd: sourceDirectory,
   });
-  const version = versionFromCommitCount(Number(commitCountResult.stdout.trim()));
+  const buildNumber = Number(commitCountResult.stdout.trim());
+  if (!Number.isSafeInteger(buildNumber) || buildNumber <= 0) {
+    fail("Git commit count must be a positive integer");
+  }
+  const version = parseReleaseVersion(await readFile(join(sourceDirectory, "VERSION"), "utf8"));
   const buildDirectory = await mkdtemp(join(tmpdir(), "koradio-auto-update-"));
   const updaterNode = process.execPath;
   const pnpmEntry = join(
@@ -228,6 +232,8 @@ async function update() {
         "arm64",
         "--version",
         version,
+        "--build-number",
+        String(buildNumber),
         "--commit",
         remoteCommit,
         "--output",

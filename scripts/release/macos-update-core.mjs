@@ -1,12 +1,20 @@
 export const trustedUpdateRemote = "https://github.com/komochi007/koradio.git";
 
+export function parseReleaseVersion(value) {
+  const version = String(value).trim();
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+    throw new Error("Release version must be a numeric semantic version such as 1.2.3");
+  }
+  return version;
+}
+
 export function parseBuildMetadata(value) {
   if (
     typeof value !== "object" ||
     value === null ||
     value.schemaVersion !== 1 ||
     typeof value.version !== "string" ||
-    !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value.version) ||
+    parseReleaseVersion(value.version) !== value.version ||
     typeof value.sourceCommit !== "string" ||
     !/^[0-9a-f]{40}$/.test(value.sourceCommit) ||
     value.sourceRemote !== trustedUpdateRemote
@@ -14,10 +22,12 @@ export function parseBuildMetadata(value) {
     throw new Error("Invalid Koradio build metadata");
   }
   if (
-    value.shell !== undefined &&
-    (value.shell !== "electron" ||
-      typeof value.electronVersion !== "string" ||
-      !/^\d+\.\d+\.\d+$/.test(value.electronVersion))
+    (value.buildNumber !== undefined &&
+      (!Number.isSafeInteger(value.buildNumber) || value.buildNumber <= 0)) ||
+    (value.shell !== undefined &&
+      (value.shell !== "electron" ||
+        typeof value.electronVersion !== "string" ||
+        !/^\d+\.\d+\.\d+$/.test(value.electronVersion)))
   ) {
     throw new Error("Invalid Koradio build metadata");
   }
@@ -26,17 +36,11 @@ export function parseBuildMetadata(value) {
     sourceCommit: value.sourceCommit,
     sourceRemote: value.sourceRemote,
     version: value.version,
+    ...(value.buildNumber === undefined ? {} : { buildNumber: value.buildNumber }),
     ...(value.shell === "electron"
       ? { electronVersion: value.electronVersion, shell: value.shell }
       : {}),
   };
-}
-
-export function versionFromCommitCount(value) {
-  if (!Number.isSafeInteger(value) || value <= 0) {
-    throw new Error("Git commit count must be a positive integer");
-  }
-  return `0.0.${value}`;
 }
 
 export function needsUpdate(installedCommit, remoteCommit) {

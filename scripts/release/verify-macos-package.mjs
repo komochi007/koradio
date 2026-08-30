@@ -104,6 +104,9 @@ async function verifyApplication(application) {
     metadata.schemaVersion !== 1 ||
     metadata.shell !== "electron" ||
     metadata.electronVersion !== electronVersion ||
+    !Number.isSafeInteger(metadata.buildNumber) ||
+    metadata.buildNumber <= 0 ||
+    !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(metadata.version) ||
     !/^[0-9a-f]{40}$/.test(metadata.sourceCommit) ||
     metadata.sourceRemote !== "https://github.com/komochi007/koradio.git"
   ) {
@@ -150,10 +153,24 @@ async function verifyApplication(application) {
       "raw",
       infoPlist,
     ]);
+    const bundleVersion = await run("/usr/bin/plutil", [
+      "-extract",
+      "CFBundleVersion",
+      "raw",
+      infoPlist,
+    ]);
+    const productVersion = await run("/usr/bin/plutil", [
+      "-extract",
+      "CFBundleShortVersionString",
+      "raw",
+      infoPlist,
+    ]);
     const info = await run("/usr/bin/plutil", ["-p", infoPlist]);
     if (
       bundleIdentifier.stdout.trim() !== applicationBundleIdentifier ||
       iconName.stdout.trim() !== applicationIconFileName ||
+      bundleVersion.stdout.trim() !== String(metadata.buildNumber) ||
+      productVersion.stdout.trim() !== metadata.version ||
       /\bLSUIElement\b.*=>\s*(?:1|true)/.test(info.stdout)
     ) {
       throw new Error("Application identity metadata is invalid");
@@ -211,6 +228,8 @@ async function verifyApplication(application) {
       python: pythonVersion.stdout.trim(),
       qwenRuntime: true,
       sourceCommit: metadata.sourceCommit,
+      version: metadata.version,
+      buildNumber: metadata.buildNumber,
     };
   } finally {
     await rm(dataDirectory, { force: true, recursive: true });

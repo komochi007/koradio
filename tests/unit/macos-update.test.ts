@@ -5,13 +5,14 @@ import {
   backupDirectoryName,
   needsUpdate,
   parseBuildMetadata,
+  parseReleaseVersion,
   trustedUpdateRemote,
-  versionFromCommitCount,
 } from "../../scripts/release/macos-update-core.mjs";
 
 const commit = "0123456789abcdef0123456789abcdef01234567";
 const nextCommit = "89abcdef0123456789abcdef0123456789abcdef";
 const metadata = {
+  buildNumber: 418,
   schemaVersion: 1 as const,
   sourceCommit: commit,
   sourceRemote: trustedUpdateRemote,
@@ -83,11 +84,14 @@ describe("macOS Personal Local Preview updater", () => {
     expect(() =>
       parseBuildMetadata({ ...metadata, electronVersion: "43.2", shell: "electron" }),
     ).toThrow("Invalid Koradio build metadata");
+    expect(() => parseBuildMetadata({ ...metadata, buildNumber: 0 })).toThrow(
+      "Invalid Koradio build metadata",
+    );
   });
 
-  it("maps the trusted commit count to a monotonic numeric app version", () => {
-    expect(versionFromCommitCount(418)).toBe("0.0.418");
-    expect(() => versionFromCommitCount(0)).toThrow("Git commit count must be a positive integer");
+  it("reads a numeric semantic product version independently from the build number", () => {
+    expect(parseReleaseVersion("1.0.0\n")).toBe("1.0.0");
+    expect(() => parseReleaseVersion("v1.0")).toThrow("Release version must be");
   });
 
   it("updates only when origin/main differs from the installed provenance", () => {
