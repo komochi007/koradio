@@ -522,7 +522,7 @@
     transform: translateX(0);
   }
   to {
-    transform: translateX(1020px);
+    transform: translateX(960px);
   }
 }
 

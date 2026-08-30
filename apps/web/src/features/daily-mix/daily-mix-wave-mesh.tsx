@@ -198,19 +198,13 @@ export function DailyMixWaveMesh({
           <stop offset="0.64" stopColor="#e4e8eb" stopOpacity="0.048" />
           <stop offset="1" stopColor="#939ca5" stopOpacity="0.02" />
         </linearGradient>
-        <linearGradient id={`${maskId}-glint`} x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0" stopColor="black" />
-          <stop offset="0.12" stopColor="white" stopOpacity="0.01" />
-          <stop offset="0.26" stopColor="white" stopOpacity="0.06" />
-          <stop offset="0.38" stopColor="white" stopOpacity="0.22" />
-          <stop offset="0.47" stopColor="white" stopOpacity="0.5" />
-          <stop offset="0.5" stopColor="white" stopOpacity="0.68" />
-          <stop offset="0.53" stopColor="white" stopOpacity="0.5" />
-          <stop offset="0.62" stopColor="white" stopOpacity="0.22" />
-          <stop offset="0.74" stopColor="white" stopOpacity="0.06" />
-          <stop offset="0.88" stopColor="white" stopOpacity="0.01" />
-          <stop offset="1" stopColor="black" />
-        </linearGradient>
+        <radialGradient id={`${maskId}-glint`} cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="white" stopOpacity="0.62" />
+          <stop offset="0.2" stopColor="white" stopOpacity="0.5" />
+          <stop offset="0.48" stopColor="white" stopOpacity="0.2" />
+          <stop offset="0.74" stopColor="white" stopOpacity="0.05" />
+          <stop offset="1" stopColor="white" stopOpacity="0" />
+        </radialGradient>
         <mask id={`${maskId}-horizontal-mask`} maskUnits="userSpaceOnUse">
           <rect width={meshWidth} height={meshHeight} fill={`url(#${maskId}-horizontal)`} />
         </mask>
@@ -219,18 +213,22 @@ export function DailyMixWaveMesh({
         </mask>
         <mask
           id={`${maskId}-glint-mask`}
-          height={meshHeight}
+          height={meshHeight + 200}
           maskUnits="userSpaceOnUse"
-          width={meshWidth + 840}
-          x="-420"
+          width={meshWidth + 720}
+          x="-360"
+          y="-100"
         >
-          <rect
-            className="daily-mix-soundfield__glint-window"
-            fill={`url(#${maskId}-glint)`}
-            height={meshHeight}
-            width="420"
-            x="-420"
-          />
+          <g className="daily-mix-soundfield__glint-window">
+            <ellipse
+              cx="-180"
+              cy={meshHeight * 0.52}
+              fill={`url(#${maskId}-glint)`}
+              rx="180"
+              ry="78"
+              transform={`rotate(-8 -180 ${String(meshHeight * 0.52)})`}
+            />
+          </g>
         </mask>
       </defs>
       {/* 水平与垂直 mask 分层相乘，消除 SVG 自身的矩形边界。 */}
