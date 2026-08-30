@@ -219,16 +219,14 @@ export function DailyMixWaveMesh({
           x="-360"
           y="-100"
         >
-          <g className="daily-mix-soundfield__glint-window">
-            <ellipse
-              cx="-180"
-              cy={meshHeight * 0.52}
-              fill={`url(#${maskId}-glint)`}
-              rx="180"
-              ry="92"
-              transform={`rotate(-8 -180 ${String(meshHeight * 0.52)})`}
-            />
-          </g>
+          <ellipse
+            className="daily-mix-soundfield__glint-window"
+            cx="-180"
+            cy={meshHeight * 0.52}
+            fill={`url(#${maskId}-glint)`}
+            rx="180"
+            ry="92"
+          />
         </mask>
       </defs>
       {/* 水平与垂直 mask 分层相乘，消除 SVG 自身的矩形边界。 */}

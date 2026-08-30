@@ -519,23 +519,23 @@
 
 @keyframes daily-mix-soundfield-glint {
   0% {
+    cx: -180px;
     opacity: 0.82;
-    transform: translateX(0);
   }
 
   42% {
+    cx: 223px;
     opacity: 0.9;
-    transform: translateX(403px);
   }
 
   72% {
+    cx: 511px;
     opacity: 1;
-    transform: translateX(691px);
   }
 
   100% {
+    cx: 780px;
     opacity: 0.92;
-    transform: translateX(960px);
   }
 }
 
