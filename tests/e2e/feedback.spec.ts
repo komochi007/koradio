@@ -7,6 +7,8 @@ const appOrigin = `http://127.0.0.1:${process.env.KORADIO_E2E_PORT ?? "49373"}`;
 const feedbackRoute = /\/api\/v1\/profiles\/[^/]+\/feedback-events$/;
 const feedbackRouteGlob = "**/api/v1/profiles/*/feedback-events";
 
+test.use({ serviceWorkers: "block" });
+
 function wav(durationMs: number): Buffer {
   const sampleRate = 8_000;
   const sampleCount = Math.floor((sampleRate * durationMs) / 1_000);
@@ -44,6 +46,9 @@ async function enterRadio(page: Page): Promise<void> {
     await page.getByRole("textbox", { name: /你的昵称/ }).fill("Feedback");
     await page.getByRole("button", { name: "保存并进入 Koradio" }).click();
   }
+  if (await page.getByRole("heading", { name: "设置" }).isVisible()) {
+    await page.getByRole("button", { name: "Radio", exact: true }).click();
+  }
   await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeVisible();
 }
 
@@ -53,6 +58,9 @@ async function createFeedbackProfile(page: Page, suffix: string): Promise<void> 
   await page.getByRole("textbox", { name: /电台名称/ }).fill(`Feedback ${suffix}`);
   await page.getByRole("textbox", { name: /你的昵称/ }).fill("Feedback");
   await page.getByRole("button", { name: "保存并进入 Koradio" }).click();
+  if (await page.getByRole("heading", { name: "设置" }).isVisible()) {
+    await page.getByRole("button", { name: "Radio", exact: true }).click();
+  }
   await expect(page.getByRole("heading", { name: "Radio", exact: true })).toBeVisible();
 }
 

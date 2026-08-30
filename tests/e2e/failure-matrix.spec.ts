@@ -197,24 +197,27 @@ test("invalid Codex output and exhausted search keep the old Program and Audio s
     if (failure === undefined) throw new Error("Unexpected S6 generation request");
     await route.fulfill({ status: 202, json: { jobId: failure.jobId } });
   });
-  await page.route(/\/api\/v1\/profiles\/[^/]+\/program-generations\/[^/?]+$/, async (route) => {
-    const jobId = new URL(route.request().url()).pathname.split("/").at(-1);
-    if (jobId === undefined) throw new Error("S6 generation job id is missing");
-    const failure = s6GenerationFailureCases.find((candidate) => candidate.jobId === jobId);
-    if (failure === undefined) throw new Error(`Unexpected S6 generation job: ${jobId}`);
-    await route.fulfill({
-      json: {
-        jobId: failure.jobId,
-        profileId: s6Profile.id,
-        status: "failed",
-        stage: failure.code.includes("PLAN") ? "planning" : "resolving_tracks",
-        sequence: 3,
-        errorCode: failure.code,
-        createdAt: "2026-07-20T12:00:00.000Z",
-        updatedAt: "2026-07-20T12:00:01.000Z",
-      },
-    });
-  });
+  await page.route(
+    /\/api\/v1\/profiles\/[^/]+\/program-generations\/(?!active(?:\?|$))[^/?]+$/,
+    async (route) => {
+      const jobId = new URL(route.request().url()).pathname.split("/").at(-1);
+      if (jobId === undefined) throw new Error("S6 generation job id is missing");
+      const failure = s6GenerationFailureCases.find((candidate) => candidate.jobId === jobId);
+      if (failure === undefined) throw new Error(`Unexpected S6 generation job: ${jobId}`);
+      await route.fulfill({
+        json: {
+          jobId: failure.jobId,
+          profileId: s6Profile.id,
+          status: "failed",
+          stage: failure.code.includes("PLAN") ? "planning" : "resolving_tracks",
+          sequence: 3,
+          errorCode: failure.code,
+          createdAt: "2026-07-20T12:00:00.000Z",
+          updatedAt: "2026-07-20T12:00:01.000Z",
+        },
+      });
+    },
+  );
   await openRadio(page);
   await expect(page.getByRole("heading", { name: "First Safe Track" })).toBeVisible();
   await expect(page.getByText("这段已提交的节目不会被失败任务覆盖。")).toBeVisible();
@@ -343,6 +346,7 @@ test("out-of-order events stay fenced across reconnect until a newer commit arri
   test.skip(browserName === "webkit", "WebKit cannot stably route the controlled S6 event matrix");
   test.setTimeout(45_000);
   const sockets: WebSocketRoute[] = [];
+  let handoffProgram: ProgramDetail | null = null;
   await page.routeWebSocket(/\/api\/v1\/events$/, (socket) => {
     const connectionSequence = sockets.length + 1;
     sockets.push(socket);
@@ -367,6 +371,9 @@ test("out-of-order events stay fenced across reconnect until a newer commit arri
     });
   });
   await mockProgram(page, { media: "working", program: s6OldProgram });
+  await page.route(/\/api\/v1\/profiles\/[^/]+\/program-handoff$/, (route) =>
+    route.fulfill({ json: { program: handoffProgram } }),
+  );
   await page.route(/\/api\/v1\/profiles\/[^/]+\/radio-turns$/, (route) => {
     const content = (route.request().postDataJSON() as { content: string }).content;
     return route.fulfill({
@@ -457,6 +464,7 @@ test("out-of-order events stay fenced across reconnect until a newer commit arri
   await expect(page.getByText("Searching for tracks that fit the room.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Text Still On Air" })).toBeHidden();
 
+  handoffProgram = s6DegradedProgram;
   sockets[1]?.send(
     JSON.stringify({
       eventId: "60000000-0000-4000-8000-000000000104",
@@ -469,5 +477,7 @@ test("out-of-order events stay fenced across reconnect until a newer commit arri
       payload: s6DegradedProgram,
     }),
   );
-  await expect(page.getByRole("heading", { name: "Text Still On Air" })).toBeVisible();
+  await expect(page.getByText("NEW SESSION READY · 1 TRACKS")).toBeVisible();
+  await expect(page.getByText("Text Still On Air", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "First Safe Track" })).toBeVisible();
 });

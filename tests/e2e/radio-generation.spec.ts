@@ -326,7 +326,7 @@ test("generates and commits a program through the deterministic Mock backend", a
   await expect(
     page.getByRole("region", { name: "播放队列" }).getByRole("listitem").first(),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("ON AIR")).toBeVisible();
+  await expect(page.getByText("ON AIR", { exact: true })).toBeVisible();
 });
 
 for (const state of ["empty", "generating", "playing"] as const) {

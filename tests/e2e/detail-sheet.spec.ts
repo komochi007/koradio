@@ -305,16 +305,13 @@ test("Detail keeps English DJ copy whole and inside the compact card", async ({ 
   });
   const copy = page.getByRole("article", { name: "DJ 串讲词" });
   const lines = copy.locator(".detail-copy__line p");
-  await expect(lines).toHaveCount(8);
+  await expect(lines).toHaveCount(5);
   await expect(lines).toHaveText([
     "Coming right up",
     "We're keeping the groove crisp",
-    "the melodies bright and the energy",
-    "comfortably below",
-    "accidentally dancing through a",
-    "video call",
-    "Settle in and let the next stretch",
-    "of work find its rhythm",
+    "the melodies bright and the energy comfortably below",
+    "accidentally dancing through a video call",
+    "Settle in and let the next stretch of work find its rhythm",
   ]);
   expect(
     await lines.evaluateAll((elements) =>
