@@ -1,4 +1,4 @@
-# Koradio macOS v1.0 路线图
+# Koradio macOS 本机正式版与后续发布路线图
 
 > Status: Planning baseline
 > Release scope: PRD P0 + P1 全量能力
@@ -9,19 +9,19 @@
 
 | 判断项 | 当前结论 | AI 行动 |
 |---|---|---|
-| 当前阶段 | S7 本机个人预览运行与维护 | S6 阶段门与 S7-01、S7-02、S7-06、S7-08、UX-10 已通过；S7-09 Electron 外壳迁移与 S7-07 稳定性试用进行中，不启动外部分发 |
+| 当前阶段 | `v1.0.0` 本机正式使用与维护 | S1～S6、S7-01/02/06/07/08/09 与 UX-01～31 已通过；按版本管理规范继续优化，不启动外部分发 |
 | 已通过阶段门 | S0 基线与关键决策；S1 工程脚手架；S2 平台、数据与安全底座；S3 核心领域与 Provider 后端；S4 P0 核心产品体验；S5 P1 全量功能；S6 集成、质量与安全加固 | ADR 0000～0004、平台与后端闭环、P0/P1 产品实现、九项能力和 15 页面全量验收，以及 [S6-05 内部质量门记录](s6-05-internal-quality-gate.md) 均已验证 |
-| 当前关键路径 | S7-09 Electron 外壳迁移、S7-07 个人本机稳定性试用；公开发布等待授权 | S7-08 维护性优化已关闭；Mock 保持默认测试/CI 模式，用真实日常使用收口本机缺陷，未获项目所有者新授权前不领取 S7-03～S7-05 或 S8/S9 外部分发任务 |
+| 当前关键路径 | 本机正式版按需维护；公开发布等待授权 | Mock 保持默认测试/CI 模式；后续优化按[版本管理规范](version-management.md)立项，未获项目所有者新授权前不领取 S7-03～S7-05 或 S8/S9 外部分发任务 |
 | 产品实现状态 | PRD 九项能力与 15 个页面状态已由真实产品承载并通过 S5-04 | 以 [S5-04 验收记录](s5-04-full-function-acceptance.md) 为功能完整基线，继续加固非功能质量 |
 | 外部测试状态 | 禁止开始 | `S5-04` 已完成；仅当 `S6-05`、`S7-05` 也完成后解除 |
-| 当前交付渠道 | Personal Local Preview，只在项目所有者受控本机使用 | 不上传、不建立公开下载入口、不向外部分发 ad-hoc 产物 |
-| 后续公开目标 | 经项目所有者再次授权的 macOS v1.0，P0 + P1，Developer ID 签名公证直发 | Windows、App Store、自动更新和云能力保持范围外 |
+| 当前交付渠道 | `v1.0.0` 本机正式版，只在项目所有者受控本机使用 | 不上传、不建立公开下载入口、不向外部分发 ad-hoc 产物 |
+| 后续公开目标 | 经项目所有者再次授权的实际后续版本，Developer ID 签名公证直发 | Windows、App Store、云能力保持范围外；本机启动前更新不等于公开更新渠道 |
 
 阶段定位只在阶段门通过后更新。单个任务完成只更新 [tasks.md](tasks.md)；若它关闭或改变阶段门，再同步本表。
 
 ## 1. 当前进度评估
 
-Koradio 已完成开发前产品和视觉定义、S1～S6 全质量门，以及 S7 的 Native arm64 个人预览、两版本生命周期和真实 Provider 播放闭环。S7-09 正在把桌面外壳迁移到 Electron，并保持现有 Web Renderer、REST、WebSocket、数据和 Provider 不变；UX-10 已用 Qwen3-TTS 8-bit、中文 Serena 与英文 Ryan 替换历史 Apple TTS，并把当前支持矩阵收窄为 macOS 15+ arm64；S7-03 签名、公证与发布流水线在项目所有者授权外部分发前保持后置。
+Koradio 已完成产品和视觉定义、S1～S6 全质量门，以及 S7 的 arm64 包装、安装生命周期、真实 Provider、Electron 外壳和稳定性试用闭环。`v1.0.0` 作为项目所有者本机正式版，保持现有 Web Renderer、REST、WebSocket、数据和 Provider 边界；UX-10 已用 Qwen3-TTS 8-bit、中文 Serena 与英文 Ryan 替换历史 Apple TTS，当前支持 macOS 15+ arm64；S7-03 签名、公证与发布流水线在项目所有者授权外部分发前保持后置。
 
 | 进度维度 | 当前状态 | 证据 | 下一门槛 |
 |---|---|---|---|
@@ -31,13 +31,13 @@ Koradio 已完成开发前产品和视觉定义、S1～S6 全质量门，以及 
 | 工程基础 | S1 阶段门已通过 | manifest、锁文件、四边界源码、dev/build/check、REST/WS、三浏览器 E2E 与真实 CI 已验证 | 随 S2～S6 持续扩展质量门 |
 | 产品功能 | PRD 九项能力与 15 个页面状态已形成并通过 S5 阶段门 | Profile/Settings、Radio、Audio、Detail、Feedback、Library、Taste、Programs 的真实产品路径、contracts、分层测试与完整内部 E2E | S6 保持功能基线并加固失败边界 |
 | 质量验证 | S5 功能完整性阶段门已通过 | unit/contract/integration/component/E2E/visual/coverage 入口、Provider fixtures、事务/失败矩阵、数据库快照断言与三浏览器验收 | S6 全质量门收口 |
-| 发布准备 | Native 个人预览路径已完成，Electron 迁移进行中，公开分发后置 | arm64 app/DMG、strict codesign、Electron/Node/Qwen 资源、两版本安装生命周期、真实 Provider 播放与失败保护 | S7-09 与稳定性门通过后，取得外部分发授权才执行 S7-03 的签名、公证、校验和和发布证据 |
+| 发布准备 | 本机 `v1.0.0` 已完成，公开分发后置 | arm64 app、strict codesign、Electron/Node/Qwen 资源、安装生命周期、真实 Provider、稳定性与失败保护 | 取得外部分发授权后才执行 S7-03 的签名、公证、校验和和发布证据 |
 
 开发基线已由 ADR 0000 确认并进入 `main`；常规任务在根目录 `main` 顺序执行，不得覆盖或回退 VDA-17 与已提交的文档资产。
 
-## 2. v1.0 发布边界
+## 2. 本机正式版与外部发布边界
 
-当前先完成项目所有者受控本机的 Personal Local Preview，不创建公开下载入口。项目所有者后续再次授权公开下载时，macOS v1.0 包含 PRD 定义的六项 P0 和三项 P1 能力，并以签名、公证安装包直接发布。Windows、Mac App Store、云同步、远程访问、支付、公开社区、自动更新和多音乐源不进入 v1.0。
+当前 `v1.0.0` 已完成项目所有者受控本机正式版，不创建公开下载入口。项目所有者后续再次授权公开下载时，应选择届时实际版本并以签名、公证安装包直接发布，不复用已指向本机基线的 `v1.0.0` tag。Windows、Mac App Store、云同步、远程访问、支付、公开社区和多音乐源仍在当前范围外。
 
 包装形态由 ADR 0006 与 ADR 0005 固定为 macOS 15+ arm64 app/DMG、Electron 主进程 + 现有 Web Renderer + bundled Local Service + bundled Python/MLX runtime；Qwen 模型由用户首次下载。旧 Native launcher 仅保留为 legacy 源码，不进入生产构建；Developer ID、Apple 公证、Gatekeeper 和独立干净环境保留为未来 S7 公开分发硬门。
 
@@ -54,7 +54,7 @@ Koradio 已完成开发前产品和视觉定义、S1～S6 全质量门，以及 
 | S6 集成、质量与安全加固 | 关闭异常、性能、安全和跨边界缺口 | 失败矩阵、迁移回滚、长时播放、审计、可访问性、全回归 | 所有合并前质量门和安全检查通过 |
 | S7 macOS 本机运行与后置发布工程 | 完成本地个人包装生命周期、真实 Provider 产品闭环和稳定性试用；公开分发获授权后再生成可信安装包 | 包装、安装生命周期、真实 Provider 验收、本机稳定性试用、签名公证、发布流水线、用户文档 | 本机包可重复构建、真实 Provider 闭环可控且本机稳定性缺陷已收口；任何外部分发前干净 Mac 验收和签名公证有效 |
 | S8 外部测试与 RC | 仅在项目所有者授权外部测试后，用完整产品进行验证并冻结候选版本 | Beta、缺陷分流、兼容验证、完整回归、RC 冻结 | 无 Blocker/Critical；High 已修复或有发布豁免 |
-| S9 v1.0 发布与稳定期 | 仅在项目所有者授权公开下载后建立可恢复的发布闭环 | Go/No-Go、发布、下载冒烟、热修复、复盘 | v1.0 可下载安装，稳定期退出条件满足 |
+| S9 公开正式版与稳定期 | 仅在项目所有者授权公开下载后建立可恢复的发布闭环 | Go/No-Go、发布、下载冒烟、热修复、复盘 | 授权版本可下载安装，稳定期退出条件满足 |
 
 ## 4. 关键路径
 
@@ -73,7 +73,7 @@ S0 决策关闭
   → [项目所有者授权外部分发]
   → S7-03/04/05 签名公证与干净环境
   → S8 全量 Beta 与 RC
-  → S9 v1.0 发布
+  → S9 公开正式版发布
 ```
 
 S3 的独立模块、S4 的视觉实现和 S6 的测试建设可以在依赖明确时并行，但不能绕过所属阶段门。自动化测试必须随功能建设持续落地，S6 负责完整收口而不是首次补测试。
@@ -116,18 +116,18 @@ S3 的独立模块、S4 的视觉实现和 S6 的测试建设可以在依赖明�
 | S5-04 | 已创建 | `docs/project-management/s5-04-full-function-acceptance.md` 与服务检测产品 E2E/视觉基线 | 九项能力、15 页面、异常恢复及 Profile/设备配置边界双向追踪与完整内部 E2E |
 | S6-01～S6-04 | 已创建 | 失败矩阵、数据生命周期、安全/依赖、长时/缓存与无障碍测试及验收记录 | 固定 fixture、临时数据根与等价 soak 不调用真实付费 Provider；全部入口可由 S6-05 重复执行 |
 | S6-05 | 已创建 | `docs/project-management/s6-05-internal-quality-gate.md` | 完整流水线、依赖审计、显式跳过审计和 CI 追溯均已记录；不提前开始外部 Beta |
-| S7-01 | 已完成 | `packaging/macos/`、`native/macos/tts-helper/`、`scripts/release/` | arm64 个人预览 app/DMG、启动停止、strict codesign 与包内 Node/TTS 验收已通过；安装、升级、回滚和卸载由 S7-02 继续 |
+| S7-01 | 已完成 | `packaging/macos/`、`native/macos/qwen-tts-helper/`、`scripts/release/` | arm64 包装、启动停止、strict codesign 与包内 Node/TTS 验收已通过；安装、升级、回滚和卸载由 S7-02 继续 |
 | S7-02 | 已完成 | `scripts/release/`、`docs/runbooks/install-and-recovery.md`、`s7-02-install-lifecycle-acceptance.md` | arm64 两真实版本完成手动安装、升级、失败回滚、卸载与数据保留验证；不删除数据、备份或 Keychain 凭据 |
 | S7-06 | 已完成 | Provider composition、受控 TTS 媒体、live 配置/诊断测试与 `s7-06-real-provider-acceptance.md` | 当时的 Codex/NetEase/Apple TTS 历史验收已通过；Apple TTS 已被 UX-10 取代，失败保护与 Mock 回归继续有效 |
-| S7-07 | 进行中 | `docs/project-management/s7-07-local-stability-acceptance.md` 与按实际缺陷新增的 regression tests | 连续本机试用、脱敏缺陷登记、修复/保留结论与最终质量门；不包含遥测、外部 Beta 或公开分发 |
+| S7-07 | 已完成 | `docs/project-management/s7-07-local-stability-acceptance.md` 与按实际缺陷新增的 regression tests | 连续本机试用、脱敏缺陷登记、修复/保留结论与最终质量门；不包含遥测、外部 Beta 或公开分发 |
 | S7-08 | 已完成 | `docs/project-management/s7-08-maintenance-review.md`、工具链、包装、文档与代码热点 | 生成物/旧分支收口、事实源对齐、维护性优化、依赖与真实 DMG 验证完成；3 张字体渲染差异经项目所有者接受且不校准历史基线 |
-| S7-09 | 进行中 | `apps/desktop/`、`scripts/release/`、`packaging/macos/`、ADR 0006 与 Electron 专项测试 | Electron 主进程、服务检测/启动/停止、启动前更新、窗口安全策略、Electron arm64 包装与严格包验证；保持 REST/WS/数据库/Provider/AudioEngine/Session/用户数据不变；S7-07 的 7 日稳定性试用仍为关闭门 |
-| AI-01 | 已完成 | `apps/server/src/integrations/deepseek.ts`、DeviceSettings/Keychain、Settings UI、ADR 0007 与专项测试 | 设备级选择 Codex/DeepSeek；DeepSeek 读取 `EffectiveTaste` 生成结构化节目计划和 DJ 串讲；无自动 fallback；真实 API smoke 留待受控本机手动执行 |
+| S7-09 | 已完成 | `apps/desktop/`、`scripts/release/`、`packaging/macos/`、ADR 0006 与 Electron 专项测试 | Electron 主进程、服务检测/启动/停止、启动前更新、窗口安全策略、Electron arm64 包装与严格包验证；保持 REST/WS/数据库/Provider/AudioEngine/Session/用户数据不变 |
+| AI-01 | 已完成 | `apps/server/src/integrations/deepseek.ts`、DeviceSettings/Keychain、Settings UI、ADR 0007 与专项测试 | 设备级选择 Codex/DeepSeek；受控本机 DeepSeek Flash 完整节目与 Qwen DJ 语音已验收；无自动 fallback |
 | S7-03 | 计划 | `.github/workflows/release.yml` | 签名、公证、校验和和发布证据；秘密只进入受控 CI Secret |
 | S7-04 | 计划 | `docs/runbooks/`、`CHANGELOG.md`、`SECURITY.md`、`PRIVACY.md`、`THIRD_PARTY_NOTICES.md` | 安装、诊断、恢复、发布和热修复手册，以及对外发布所需说明；`LICENSE` 由授权决策决定是否创建 |
 | S7-05 | 计划 | macOS 发布工程验收记录和候选包校验信息 | 在独立干净 macOS 验收已签名、公证候选包，不开始外部 Beta |
 | S8-01～S8-04 | 计划 | Beta/RC 测试记录、已知问题和发布豁免记录 | 不包含用户密钥、原始日志正文或敏感路径 |
-| S9-01～S9-04 | 计划 | `docs/release-notes/v1.0.0.md`、Go/No-Go 记录、稳定期复盘 | 版本事实与发布证据；构建产物进入忽略的输出目录 |
+| S9-01～S9-04 | 计划 | 对应授权版本的 release notes、Go/No-Go 记录、稳定期复盘 | 版本事实与发布证据；构建产物进入忽略的输出目录 |
 
 ## 6. 主要风险与控制
 
@@ -143,7 +143,7 @@ S3 的独立模块、S4 的视觉实现和 S6 的测试建设可以在依赖明�
 
 ## 7. 发布成功定义
 
-以下条件只在项目所有者后续授权公开下载时适用；当前 Personal Local Preview 不构成 v1.0 公开发布。v1.0 只有在以下条件同时满足时才可发布：
+以下条件只在项目所有者后续授权公开下载时适用；当前 `v1.0.0` 本机正式版不构成公开发布。届时选定的实际版本只有在以下条件同时满足时才可发布：
 
 - PRD 九项能力、关键异常分支和 15 个页面状态全部验收。
 - 适用的 typecheck、lint、format、unit、integration、component、E2E、build、安全和视觉检查通过。

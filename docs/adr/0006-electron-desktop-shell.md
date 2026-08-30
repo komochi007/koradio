@@ -57,7 +57,7 @@ S7-09 要求把桌面外壳迁移到 Electron，同时保持 REST、WebSocket、
 - 收益：单一桌面入口和窗口，保持同源 REST/WS/Session/静态路由；可在主进程统一服务归属、导航白名单、CSP 和权限策略。
 - 代价：包体增大，需维护 Electron Framework/Helpers、ad-hoc entitlements 和 pnpm deploy 符号链接布局。
 - 风险：Electron 版本升级、签名、动态库加载和 bundled runtime 需要独立包验证。
-- 验证结果：S7-09 已完成 arm64 真实打包、strict codesign、Electron smoke、Node/Python/Qwen/Server 资源检查；7 日稳定性试用仍未完成。
+- 验证结果：S7-09 已完成 arm64 真实打包、strict codesign、Electron smoke、Node/Python/Qwen/Server 资源检查；S7-07 七日稳定性试用于 2026-08-30 完成。
 
 ## 5. 裁决
 
@@ -99,7 +99,7 @@ S7-09 要求把桌面外壳迁移到 Electron，同时保持 REST、WebSocket、
 | macOS 包装 | 已切换到 Electron Packager，保留 Node/Server/Web/Qwen/Updater/metadata 资源 | `scripts/release/build-macos.mjs` |
 | 包验证 | arm64 包已通过 strict codesign、Electron Framework/Helpers、metadata、图标、Node 24.18.0、Python 3.12.13、Qwen 导入、Renderer bootstrap/health smoke | `scripts/release/verify-macos-package.mjs` |
 | 生命周期 | 已兼容 Native 与 Electron smoke JSON 结果，并覆盖升级/回滚/降级拒绝/数据保留路径 | `scripts/release/verify-macos-lifecycle.mjs` |
-| 稳定性试用 | 进行中；需要 7 个自然日、10 次启动/退出、20 次真实节目生成、8 小时播放且无 Blocker/Critical | S7-07 |
+| 稳定性试用 | 已完成；达到 7 个自然日、10 次启动/退出、至少 20 次真实节目生成、8 小时播放且无 Blocker/Critical | S7-07 |
 
 ## 8. 权威文档同步
 
@@ -112,7 +112,7 @@ S7-09 要求把桌面外壳迁移到 Electron，同时保持 REST、WebSocket、
 | `README.md` / `context.md` | 已更新当前事实、状态和下一起点 |
 | `docs/project-management/roadmap.md` / `tasks.md` | 已登记 S7-09 与当前验收门 |
 
-## 9. 后续任务
+## 9. 后续边界
 
-- 完成 S7-07 稳定性试用并记录 Electron 首版结果。
+- `v1.0.0` 作为项目所有者本机正式版，后续优化按版本管理规范迭代。
 - 外部分发前重新执行 S7-03～S7-05 的 Developer ID、公证、Gatekeeper 和独立干净环境验收。

@@ -1,6 +1,6 @@
 # Koradio System Architecture
 
-> Status: Target Architecture · S1/S2 foundations, S3 backend loop, S4 P0 frontend and S5 full-function product implemented · S7-09 Electron shell implementation in progress
+> Status: Current architecture · S1–S6 and S7-01/02/06/07/08/09 implemented and accepted · v1.0.0 local stable
 > Scope: Local-first Web/PWA MVP  
 > Audience: AI Coding Agents, maintainers, system architects  
 > Sources: `docs/prd.md`, `docs/user-flow.md`, `design/design.md`

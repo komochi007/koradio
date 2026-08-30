@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/komochi007/koradio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/komochi007/koradio/actions/workflows/ci.yml)
 
-> Status: **S1–S6 stage gates complete · S7-01/02/06/08 complete · S7-09 Electron shell migration in progress · UX-11/12/15/16/17/18/19/20/21 experience optimizations accepted · DeepSeek planner integration implemented, real API smoke deferred · S7-07 stability trial in progress · external distribution deferred · production defaults to Live mode**
+> Status: **Koradio v1.0.0 local stable · S1–S6 and S7-01/02/06/07/08/09 complete · UX-01–31 accepted · controlled DeepSeek Flash + Qwen generation accepted · external distribution deferred · production defaults to Live mode**
 > Audience: AI Coding Agents、开发者、维护者  
 > Runtime: 当前仓库已有可安装、可开发启动、可生产构建的 Web/Local Service，以及路由、TanStack Query、短期内存 Session、事件重连、VDA-17 离线只读入口、Profile/Onboarding、可写 Settings、Profile 级持久 DJ 对话与意图分流、单曲与 3～5 首策展推荐卡片、8～12 首节目生成、临时 DJ 点播队列、双声道 Radio 播放、按需 Qwen 朗读、多标签租约、全屏 Detail 歌词/DJ 串讲跟随、七类反馈 UI、Library 搜索/试听/候选池/歌单导入、Taste Blueprint 重塑/反馈学习/人工编辑、Programs 历史/详情/重播/复用/收藏和仅静态 App Shell 的 Service Worker 缓存；Electron 主进程与 Production Server 默认使用真实 Provider，Development、Test、CI 与 `start:mock` 使用确定性 Mock Provider
 
@@ -50,7 +50,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] 从当前基线到 macOS v1.0 的项目路线图、任务登记和发布门已建立
 - [x] 工具链与质量基线已由 [ADR 0001](docs/adr/0001-toolchain-and-quality.md) 冻结；运行版本、workspace、strict TypeScript、完整根命令族与 GitHub Actions CI 已实装并由真实 run 验证
 - [x] Development 双进程、Production 同源静态托管、loopback 端口、精确 Origin、短期内存 Session、REST Bearer 与 WebSocket 首消息认证已实装；非法 Origin、过期/URL/持久化 token 和未认证连接均有负向验证
-- [x] macOS Native launcher + 外部浏览器 PWA 的历史包装已由 S7-01/S7-02 记录；[ADR 0006](docs/adr/0006-electron-desktop-shell.md) 已裁决由 Electron 主进程与现有 Web Renderer 替代，S7-09 正在完成迁移
+- [x] macOS Native launcher + 外部浏览器 PWA 的历史包装已由 S7-01/S7-02 记录；[ADR 0006](docs/adr/0006-electron-desktop-shell.md) 裁决的 Electron 主进程与现有 Web Renderer 迁移已由 S7-09 完成
 - [x] Provider 可行性已由 [ADR 0004](docs/adr/0004-provider-feasibility.md) 关闭；其中 Apple TTS 仅为 S7-06 历史验收事实，已由 [ADR 0005](docs/adr/0005-qwen3-local-tts.md) 与 UX-10 的 bundled Qwen3-TTS helper 取代。DeepSeek 可切换规划 Provider 的边界由 [ADR 0007](docs/adr/0007-deepseek-planner-provider.md) 固定；Production Server 与 Electron 主进程默认 Live
 - [x] pnpm TypeScript monorepo 的四个目标边界、运行版本、单一锁文件和最小源码入口已创建
 - [x] React/Vite App Shell 已实现：五个一级 route、TanStack Query、短期内存 Session、事件重连、错误边界、VDA-17 离线异常页、只读 Settings 和仅静态壳的 PWA 缓存已验证；Profile/Onboarding、可写 Settings、Profile 级 DJ transcript、闲聊/澄清/单曲/3～5 首推荐/节目分流、单曲与推荐立即/下一首临时点播（含空节目手动下一首与无成功红字）、对话清空、按需朗读、旧节目生成中继续播放、双声道 overlay/ducking、多标签租约、全屏 Detail 平滑歌词/DJ 串讲跟随、七类反馈 UI、Settings/Library/Taste 的可关闭短时操作反馈、Library 搜索/试听/候选池/歌单导入、Taste Blueprint 显式重塑/学习基线后的自动投影/人工规则/有效结果查看与编辑，以及 Programs 分页历史/详情/串讲重播/场景复用/收藏已接入
@@ -74,7 +74,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] UX-31 前端视觉与交互优化已验收：Daily Mix `PLAY ALL` 使用黑色圆形与居中白色三角图标，顶部声场重绘为 72 条确定性 SVG 细线组成的三组交错低频曲面；宽窄窗口使用分级透明遮罩自然弥散，路径在窗口变化时保持稳定。声场只做克制的透明度呼吸，椭圆径向弧光以 `9.6s` 匀速扫过三层连续曲面柔光，不重复叠加细线，兼顾可见度、右半段亮度与无闪烁稳定性；Reduce Motion 下停止动效。Programs 统一使用 `24px` 区块间距和 `16px` 卡片间距，Daily 小卡片提供手型指针；Radio 进度条在悬停或键盘聚焦时平滑增高并显示绿色圆形拖动控件。macOS `0.0.249` 已通过包装验证与项目所有者验收。
 - [x] Mock Provider 后端闭环已验收：Radio 闲聊不触发节目，歧义追问，单曲卡片、3～5 首推荐卡片和 8～12 首节目分别执行；空库探索、两轮补选、近 10 期去重、同艺人与点名覆盖、中文歌词硬约束、MusicBrainz/Wikimedia 引用、搜索/音频失败、Codex 错误/非法计划、TTS 阻断、歌词降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
-- [x] Codex、DeepSeek、NetEase 与 TTS Provider adapters：Codex、NetEase、DeepSeek 和 Qwen TTS 的协议边界、Keychain、重试、响应校验与 Mock fixtures 已实现；真实 DeepSeek API smoke 仍需手动凭据，Production Server 与 Electron 主进程默认 Live，Development、Test 和 CI 默认 Mock
+- [x] Codex、DeepSeek、NetEase 与 TTS Provider adapters：Codex、NetEase、DeepSeek 和 Qwen TTS 的协议边界、Keychain、重试、响应校验与 Mock fixtures 已实现；DeepSeek Flash 完整节目与 Qwen DJ 语音已在受控本机完成一次真实生成，该证据不承诺第三方服务永久可用；Production Server 与 Electron 主进程默认 Live，Development、Test 和 CI 默认 Mock
 - [x] Unit、contract、integration、component、E2E、视觉、无障碍与 coverage 测试入口已建立；S1 skeleton contract、REST/WS integration 和三浏览器连接 E2E 已覆盖
 - [x] S5 全量功能阶段门已通过：[S5-04 验收记录](docs/project-management/s5-04-full-function-acceptance.md) 将九项能力、15 个页面、异常恢复及 Profile/设备配置边界追踪到真实产品、contracts 与完整内部 E2E
 - [x] S6-01 跨层失败矩阵已通过：[S6-01 验收记录](docs/project-management/s6-01-failure-matrix-acceptance.md) 覆盖生成、播放、反馈和事件重连故障并保护旧节目
@@ -84,10 +84,10 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] S6-05 内部全质量门已通过：[S6-05 质量门记录](docs/project-management/s6-05-internal-quality-gate.md) 记录冻结环境下的完整质量流水线、依赖审计、三浏览器 E2E、视觉门、显式跳过复核与 CI 追溯
 - [x] S7-01 受控本机 macOS 包装已通过：[S7-01 验收记录](docs/project-management/s7-01-macos-packaging-acceptance.md) 记录原 Native arm64 app/DMG、Node 24.18.0、TTS helper、启动生命周期与 strict codesign 验证
 - [x] S7-02 受控本机安装生命周期已通过：[S7-02 验收记录](docs/project-management/s7-02-install-lifecycle-acceptance.md) 记录 arm64 两版本安装、升级、失败回滚、卸载、数据保留与端口残留验证
-- [ ] S7-09 Electron 桌面外壳迁移进行中：主进程、服务生命周期、安全导航、启动前更新、Electron arm64 包装与包验证已接入；7 日稳定性试用仍是最终关闭门
-- [ ] S7-07 正在把本机入口收敛为唯一 `/Applications/Koradio.app`：每次从 Launchpad 打开先联网确认可信 `origin/main`，必要时本机构建、验证并原位替换；任何更新失败都不打开旧版；Electron 窗口不再依赖浏览器 PWA shim
+- [x] S7-09 Electron 桌面外壳迁移已完成：主进程、服务生命周期、安全导航、启动前更新、Electron arm64 包装、包验证和最终验收均已关闭；见 [S7-09 最终验收](docs/project-management/s7-09-electron-shell-acceptance.md)
+- [x] S7-07 本机稳定性试用与缺陷收口已完成：满足连续 7 个自然日、10 次正常启动并退出、至少 20 次真实节目生成和累计至少 8 小时播放；固定 `/Applications/Koradio.app` 是唯一入口
 - [x] S7-09 Electron UI 紧凑窗口基础优化已验收：窗口策略限制为最小 `430 × 652px`；Radio 外层禁止滚动，队列、DJ 对话和 Library 本地音乐列表在卡片内独立滚动且隐藏滚动条；品牌与内容区左对齐并避让 macOS 原生按钮；验收记录见 [S7-09 Electron UI 优化验收](docs/project-management/s7-09-electron-ui-optimization-acceptance.md)
-- [x] S7-09-004 歌词、封面与启动体验优化已验收：Detail Sheet 紧凑布局、歌词累计高亮、NetEase 封面 HTTPS 规范化、图片失败占位、启动状态窗口和最小窗口档案卡片对齐均已完成；S7-07 稳定性试用仍按原计划进行
+- [x] S7-09-004 歌词、封面与启动体验优化已验收：Detail Sheet 紧凑布局、歌词累计高亮、NetEase 封面 HTTPS 规范化、图片失败占位、启动状态窗口和最小窗口档案卡片对齐均已完成
 - [x] UX-15/16 Detail、Taste 与反馈层级优化已验收：最窄 Detail 文本、波形与对话头像对齐已修复；Taste 宽窗口统计对齐、普通 Toast 顶部中央定位与常规对话框居中样式已统一，Detail Sheet 保持沉浸式例外
 - [x] S7-06 个人本机真实 Provider 闭环已通过：[S7-06 验收记录](docs/project-management/s7-06-real-provider-acceptance.md) 保留当时 Codex/NetEase/Apple TTS 历史证据；Apple TTS 已被 UX-10 的 Qwen3-TTS 实现取代
 - [x] Workspace frozen install 与最小 typecheck 已创建并验证
@@ -229,7 +229,7 @@ Fastify Local Service
 | Runtime validation | Zod 4.4.3 | v1 public REST/WS contracts 与 Codex/DeepSeek/NetEase/TTS Provider 边界 schema 已验证 |
 | Database | Node 24 `node:sqlite` / SQLite 3.53.2 | 平台、Profiles、Library、Feedback/Taste、Programs/Playback 与生成 Job schema 已实现并验证 |
 | ORM / migrations | Drizzle ORM + Drizzle Kit 1.0.0-rc.4 | Runtime migration flow 与七个版本化 schema migrations 已验证 |
-| Secrets | macOS Keychain via `/usr/bin/security` interactive stdin | Platform adapter、真实 round-trip 与 DeepSeek API key 业务接入已验证；真实 DeepSeek API smoke 待手动执行 |
+| Secrets | macOS Keychain via `/usr/bin/security` interactive stdin | Platform adapter、真实 round-trip 与 DeepSeek API key 业务接入已验证；受控 DeepSeek Flash/Qwen 完整生成已验收 |
 | AI orchestration | Local Codex process + DeepSeek Chat Completions | Codex/DeepSeek Adapter、持久化 generation runner、恢复 Snapshot、设备级切换与显式 live composition 已验证；Production 默认 Live，Development/Test/CI 默认 Mock |
 | Music provider | Backend TypeScript NetEase `linuxapi` Adapter；no official CLI or .NET runtime | Adapter implemented and controlled smoke verified for Personal Local Preview |
 | Voice provider | Qwen3-TTS 8-bit via bundled Python/MLX helper；Serena / Ryan | 固定模型清单、首次下载、持久化 helper、受控同源媒体与 arm64 本机合成已验证；Production 默认 Live，Development/Test/CI 默认 Mock |
@@ -250,7 +250,7 @@ Fastify Local Service
 由 [ADR 0003](docs/adr/0003-macos-packaging.md) 决定，S7-01～S7-02 已实现受控本机 arm64 验收：
 
 - 当前目标为 macOS 15+ Apple Silicon、Electron 主进程 + 现有 Web Renderer + bundled Node Local Service + bundled Python/MLX TTS runtime；Qwen 模型不进入 DMG，由用户首次下载。Native launcher 文件仍保留为 legacy，不进入生产构建。
-- Personal Local Preview 目标入口固定为 `/Applications/Koradio.app`：Launchpad 只保留品牌圆角图标，每次正常打开先联网确认可信 `origin/main`，新提交经本机构建和包验证后原位替换，再在 Electron 窗口加载 `http://127.0.0.1:<port>/radio`；失败不启动旧版。
+- 本机正式版入口固定为 `/Applications/Koradio.app`：Launchpad 只保留品牌圆角图标，每次正常打开先联网确认可信 `origin/main`，新提交经本机构建和包验证后原位替换，再在 Electron 窗口加载 `http://127.0.0.1:<port>/radio`；失败不启动旧版。
 - 当前只允许项目所有者从可信源码在受控本机构建并个人使用，不提供公开下载。
 - Developer ID 签名、公证、ticket staple、Gatekeeper 和独立干净环境仍未验证；这些是未来任何外部分发的硬门，不阻塞当前本地开发。
 
@@ -275,6 +275,7 @@ Koradio/
 │       └── ci.yml
 ├── .env.example
 ├── .nvmrc
+├── VERSION
 ├── package.json
 ├── pnpm-workspace.yaml
 ├── pnpm-lock.yaml
@@ -292,6 +293,9 @@ Koradio/
 ├── architecture.md
 ├── design/assets/reports/vda-11-light-management-qa.md
 ├── apps/
+│   ├── desktop/
+│   │   ├── src/
+│   │   └── package.json
 │   ├── web/
 │   │   ├── public/
 │   │   │   ├── manifest.webmanifest
@@ -338,6 +342,12 @@ Koradio/
 │       ├── migrations/
 │       ├── package.json
 │       └── tsconfig.json
+├── native/macos/qwen-tts-helper/
+├── packaging/macos/
+├── scripts/
+│   ├── quality/
+│   ├── release/
+│   └── security/
 ├── packages/
 │   ├── contracts/
 │   │   ├── src/
@@ -368,6 +378,7 @@ Koradio/
 │   └── project-management/
 │       ├── README.md
 │       ├── roadmap.md
+│       ├── version-management.md
 │       ├── s3-07-mock-backend-acceptance.md
 │       ├── s4-06-p0-acceptance.md
 │       ├── tasks.md
@@ -515,7 +526,7 @@ pnpm verify:package:macos <path-to-Koradio.app>
 - 已有 macOS Keychain Secret Store、受控 File Store 和结构化脱敏 logger；DeviceSettings 只持久化非敏感配置，TTS Adapter 只向受控 File Store 写入已校验音频。
 - 已有 Profiles、Library、Feedback、Taste、Programs 与 Playback application/persistence/public API、持久节目生成 Job、有序事件、Provider orchestration、MusicProvider Port、确定性 Mock、真实 Programs/Library 反馈目标校验和可重建 projection；Mock Provider 后端闭环已通过固定 fixture 验收。
 - 已有完整 v1 wire contracts；health/session/events、Profiles、Library、Feedback、Taste、Programs 历史/详情、Playback snapshot/checkpoint、DeviceSettings、ProfilePreferences 和数据目录迁移已有 route/use case。
-- 已有 Codex、DeepSeek、NetEase 与 TTS Adapter、Qwen Python/MLX helper 及确定性 Mock；Production composition 默认 `live`，Development、Test 和 CI 默认 `mock`，也可由 `KORADIO_PROVIDER_MODE` 显式覆盖；Qwen 8-bit 本机完整句子合成与受控 TTS 音频已验收，DeepSeek 真实 API smoke 仍需手动执行。
+- 已有 Codex、DeepSeek、NetEase 与 TTS Adapter、Qwen Python/MLX helper 及确定性 Mock；Production composition 默认 `live`，Development、Test 和 CI 默认 `mock`，也可由 `KORADIO_PROVIDER_MODE` 显式覆盖；Qwen 8-bit 本机完整句子合成以及 DeepSeek Flash 完整节目 + Qwen DJ 语音受控真实生成均已验收，第三方服务长期可用性不由该证据保证。
 - App Shell 提供五个一级 route、TanStack Query health snapshot、内存 Session、WebSocket 事件重连、完全离线异常页和只读 Settings；在线模式已提供 Profile 创建/编辑/选择、受控头像上传、可写 Settings、主题/DJ 偏好、四服务检测、安全数据目录迁移、Radio 空态/生成态/播放态、节目 generation command、Snapshot/有序事件恢复、原子节目替换、喜欢/不喜欢/跳过/节目收藏反馈、Library 搜索/试听/候选池/分页/缓存与网易云歌单导入、按 Profile 隔离的 Taste 蓝图/学习基线/投影/人工规则/有效结果查看、显式蓝图重塑与只写 overrides 的人工编辑，以及 Programs 分页历史、详情、Provider source identity 恢复、可用串讲重播、历史文字兼容、场景草稿复用和收藏/撤销。
 - Session 只保护本地 HTTP 边界，不代表云账号或 Profile 身份；浏览器不会从 LocalStorage、SessionStorage、IndexedDB 或 Cookie 恢复 token。
 
@@ -584,7 +595,7 @@ pnpm verify:package:macos <path-to-Koradio.app>
 
 ## 9. 下一实现起点
 
-S1 工程脚手架、S2 平台阶段门、S3 后端阶段门、S4 P0 阶段门、S5 全量功能阶段门和 S6 集成、质量与安全阶段门均已关闭；S7-01、S7-02 与 S7-06 已完成 Native arm64 个人预览包装、安装生命周期和真实 Provider 播放闭环，S7-09 正在迁移 Electron 外壳。当前 Personal Local Preview 路径以 Electron 包为目标，不以 `S7-03` 为当前阻塞：
+S1～S6 阶段门以及 S7-01/02/06/07/08/09 均已关闭，当前 `v1.0.0` 是项目所有者本机正式版。后续优化或迭代先按[版本管理规范](docs/project-management/version-management.md)判断 patch/minor/major；外部分发仍不以 `S7-03` 为当前阻塞：
 
 - 继续使用受控本机的现有 Web Renderer、bundled Local Service、Qwen helper 与 Electron ad-hoc 签名产物；不创建公开下载入口、不开始外部分发。
 - 常规开发、自动测试和 CI 继续默认 Mock；Production Server 与 Electron 主进程默认 Live，也可用 `KORADIO_PROVIDER_MODE` 显式覆盖。

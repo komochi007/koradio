@@ -1,7 +1,7 @@
-# Koradio macOS v1.0 发布检查清单
+# Koradio macOS 外部发布检查清单
 
 > Status: Release gate template · 尚未进入发布阶段
-> Applies to: External Beta、Release Candidate、v1.0、Hotfix
+> Applies to: External Beta、Release Candidate、公开正式版、Hotfix
 > Task dependencies: S7-05 → S8-01～S8-04 → S9-01～S9-04
 > Current channel: Personal Local Preview；不公开下载、不向外部用户分发
 
@@ -11,14 +11,14 @@
 |---|---|---|---|
 | 发布 External Beta | `S5-04`、`S6-05`、`S7-05` 全部 `已完成` | 第 2 节 | 禁止分发，返回未完成任务 |
 | 冻结 RC | `S8-01`～`S8-03` 全部 `已完成` | 第 3 节 | 禁止冻结，继续缺陷和回归闭环 |
-| v1.0 Go/No-Go | `S8-04` 为 `已完成` | 第 4 节 | 结论必须为 No-Go |
+| 公开正式版 Go/No-Go | `S8-04` 为 `已完成` | 第 4 节 | 结论必须为 No-Go |
 | 公开发布 | Go/No-Go 明确为 Go | 第 5 节 | 禁止上传或公开下载入口 |
 | 回滚 | 第 6 节任一阻断条件发生 | 第 6 节 | 暂停分发并执行回滚流程 |
 | 退出稳定期 | `S9-03` 完成且无未处理 Blocker/Critical | 第 7 节 | 保持稳定期开放 |
 
 本文件是二值发布证据清单，因此保留复选框；可领取、可更新状态的开发任务只存在于 [tasks.md](tasks.md) 的表格中。AI 不得把本清单中的复选项复制成第二套任务状态。
 
-当前 Personal Local Preview 不执行本清单，也不构成 External Beta、RC 或 v1.0 发布。只有项目所有者后续明确授权外部测试或公开下载，才允许进入本清单；届时 Developer ID 签名、公证、Gatekeeper、独立干净环境和其他硬门不得因前期个人使用而豁免。
+当前 `v1.0.0` 是项目所有者本机正式版，不执行本清单，也不构成 External Beta、RC 或公开发布。只有项目所有者后续明确授权外部测试或公开下载，才允许进入本清单；届时 Developer ID 签名、公证、Gatekeeper、独立干净环境和其他硬门不得因前期个人使用而豁免。
 
 ## 1. 使用规则
 
@@ -52,7 +52,7 @@ Go/No-Go 时间：
 - [ ] S5-04 全量功能验收为 `已完成`，PRD 六项 P0 和三项 P1 均有实现证据。
 - [ ] 15 个页面/状态由真实产品数据和行为承载，不依赖静态设计 fixture 伪装功能。
 - [ ] 首次启动、档案创建、核心配置、生成、播放、反馈、Library、Taste、Programs 均可完成。
-- [ ] Apple 系统 TTS helper、匹配标准语音缺失或合成失败时仍能生成文字 DJ 和可播放歌曲。
+- [ ] bundled Python/MLX Qwen3-TTS helper、模型缺失或合成失败时仍能按产品规则保留文字 DJ、旧节目与可播放歌曲。
 - [ ] 完全离线时只显示只读 Settings、启动说明、脱敏状态和重试，所有写操作禁用。
 
 ### 内部质量与安全
@@ -98,13 +98,13 @@ Go/No-Go 时间：
 
 - [ ] 全新安装和至少一个旧 Beta 升级到 RC 均通过。
 - [ ] 升级后 Profile、Program、Feedback、TasteOverrides、Preferences 和 checkpoint 可读取。
-- [ ] 首次配置、Codex/网易云 Provider 与 Apple 系统 TTS 能力检查行为正确，TTS 可选边界未改变。
+- [ ] 首次配置、Codex/DeepSeek、网易云 Provider 与 Qwen3-TTS 能力检查行为正确，TTS 可选边界未改变。
 - [ ] 场景生成期间旧节目继续播放，失败保持旧节目，成功后原子切换。
 - [ ] 长时播放、暂停、seek、切歌、Detail Sheet、歌词/串讲跟随和媒体失败恢复通过。
 - [ ] Library 搜索/导入、Taste 编辑、Programs 历史/复用/收藏通过。
 - [ ] 多标签接管、Profile 切换、完全离线和数据迁移回滚通过。
 
-## 4. v1.0 Go/No-Go
+## 4. 公开正式版 Go/No-Go
 
 ### 产品与质量签署
 
