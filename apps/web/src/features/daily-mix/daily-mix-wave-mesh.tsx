@@ -200,10 +200,15 @@ export function DailyMixWaveMesh({
         </linearGradient>
         <linearGradient id={`${maskId}-glint`} x1="0" x2="1" y1="0" y2="0">
           <stop offset="0" stopColor="black" />
-          <stop offset="0.2" stopColor="black" />
-          <stop offset="0.46" stopColor="white" stopOpacity="0.72" />
-          <stop offset="0.54" stopColor="white" stopOpacity="0.72" />
-          <stop offset="0.8" stopColor="black" />
+          <stop offset="0.12" stopColor="white" stopOpacity="0.01" />
+          <stop offset="0.26" stopColor="white" stopOpacity="0.06" />
+          <stop offset="0.38" stopColor="white" stopOpacity="0.22" />
+          <stop offset="0.47" stopColor="white" stopOpacity="0.5" />
+          <stop offset="0.5" stopColor="white" stopOpacity="0.68" />
+          <stop offset="0.53" stopColor="white" stopOpacity="0.5" />
+          <stop offset="0.62" stopColor="white" stopOpacity="0.22" />
+          <stop offset="0.74" stopColor="white" stopOpacity="0.06" />
+          <stop offset="0.88" stopColor="white" stopOpacity="0.01" />
           <stop offset="1" stopColor="black" />
         </linearGradient>
         <mask id={`${maskId}-horizontal-mask`} maskUnits="userSpaceOnUse">
@@ -216,15 +221,15 @@ export function DailyMixWaveMesh({
           id={`${maskId}-glint-mask`}
           height={meshHeight}
           maskUnits="userSpaceOnUse"
-          width={meshWidth + 560}
-          x="-280"
+          width={meshWidth + 840}
+          x="-420"
         >
           <rect
             className="daily-mix-soundfield__glint-window"
             fill={`url(#${maskId}-glint)`}
             height={meshHeight}
-            width="280"
-            x="-280"
+            width="420"
+            x="-420"
           />
         </mask>
       </defs>

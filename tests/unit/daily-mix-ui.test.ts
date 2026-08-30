@@ -60,7 +60,11 @@ describe("UX-30 Daily Mix UI regressions", () => {
     expect(dailyMixStyles).not.toContain("transform-box: fill-box");
     expect(dailyMixWaveMesh).toContain('className="daily-mix-soundfield__glint-window"');
     expect(dailyMixStyles).toContain("daily-mix-soundfield-breathe 12s");
-    expect(dailyMixStyles).toContain("daily-mix-soundfield-glint 14s");
+    expect(dailyMixStyles).toContain("daily-mix-soundfield-glint 11.5s");
+    expect(dailyMixStyles).toContain("transform: translateX(1020px);");
+    expect(dailyMixWaveMesh).toContain('width="420"');
+    expect(dailyMixWaveMesh).toContain('offset="0.5" stopColor="white" stopOpacity="0.68"');
+    expect(dailyMixWaveMesh).not.toContain('stopOpacity="0.72"');
     expect(dailyMixStyles).toContain(".daily-mix-soundfield__glint-window,");
     expect(dailyMixWaveMesh).not.toContain("requestAnimationFrame");
     expect(dailyMixStyles).toContain(".daily-mix-play-all__icon {");

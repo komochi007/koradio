@@ -104,7 +104,7 @@
 }
 
 .daily-mix-soundfield__glint-window {
-  animation: daily-mix-soundfield-glint 14s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation: daily-mix-soundfield-glint 11.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 .daily-mix-hero__copy {
@@ -522,7 +522,7 @@
     transform: translateX(0);
   }
   to {
-    transform: translateX(880px);
+    transform: translateX(1020px);
   }
 }
 
