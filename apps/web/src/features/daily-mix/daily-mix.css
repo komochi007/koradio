@@ -63,8 +63,7 @@
     #000 100%
   );
   pointer-events: none;
-  transform-origin: center;
-  will-change: transform, opacity;
+  will-change: opacity;
   -webkit-mask-image: linear-gradient(
     90deg,
     transparent 0%,
@@ -101,6 +100,10 @@
 
 .daily-mix-soundfield__glint {
   pointer-events: none;
+}
+
+.daily-mix-soundfield__glint-surface {
+  stroke: none;
 }
 
 .daily-mix-soundfield__glint-window {
@@ -499,12 +502,10 @@
 
 @keyframes daily-mix-soundfield-breathe {
   from {
-    opacity: 0.94;
-    transform: translate3d(0, -1px, 0) scaleY(0.992);
+    opacity: 0.96;
   }
   to {
     opacity: 1;
-    transform: translate3d(-2px, 1px, 0) scaleY(1.008);
   }
 }
 

@@ -260,14 +260,13 @@ export function DailyMixWaveMesh({
             </g>
           ))}
           <g className="daily-mix-soundfield__glint" mask={`url(#${maskId}-glint-mask)`}>
-            {paths.map(({ depth, path }, index) => (
+            {surfaces.map((surface, index) => (
               <path
-                className="daily-mix-soundfield__line"
-                d={path}
-                key={`glint-${String(index)}`}
-                opacity={(1 - Math.abs(depth) * 0.3) * 0.32}
-                stroke="#f3f5f6"
-                strokeWidth={lineWidth}
+                className="daily-mix-soundfield__glint-surface"
+                d={surface}
+                fill="#f3f5f6"
+                key={`glint-surface-${String(index)}`}
+                opacity={index === 1 ? 0.16 : 0.12}
               />
             ))}
           </g>

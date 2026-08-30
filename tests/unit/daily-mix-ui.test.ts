@@ -53,6 +53,7 @@ describe("UX-30 Daily Mix UI regressions", () => {
     expect(dailyMixStyles).toContain("width: 112%;");
     expect(dailyMixStyles).toContain("height: 100%;");
     expect(dailyMixStyles).toContain("contain: paint;");
+    expect(dailyMixStyles).toContain("will-change: opacity;");
     expect(dailyMixStyles).toContain("rgb(0 0 0 / 3%) 10%");
     expect(dailyMixStyles).toContain("rgb(0 0 0 / 2%) 14%");
     expect(dailyMixStyles).toContain("vector-effect: non-scaling-stroke;");
@@ -65,6 +66,9 @@ describe("UX-30 Daily Mix UI regressions", () => {
     expect(dailyMixStyles).toContain("opacity: 0.82;");
     expect(dailyMixStyles).toContain("cx: 511px;");
     expect(dailyMixStyles).not.toContain("transform: translateX(960px);");
+    expect(dailyMixStyles).not.toContain("scaleY(0.992)");
+    expect(dailyMixStyles).not.toContain("scaleY(1.008)");
+    expect(dailyMixStyles).not.toContain("translate3d(-2px");
     expect(dailyMixWaveMesh).toContain("<radialGradient");
     expect(dailyMixWaveMesh).toContain('rx="180"');
     expect(dailyMixWaveMesh).toContain('ry="92"');
@@ -73,6 +77,9 @@ describe("UX-30 Daily Mix UI regressions", () => {
       '<rect\n            className="daily-mix-soundfield__glint-window"',
     );
     expect(dailyMixWaveMesh).not.toContain('stopOpacity="0.72"');
+    expect(dailyMixWaveMesh).toContain('className="daily-mix-soundfield__glint-surface"');
+    expect(dailyMixWaveMesh).toContain("surfaces.map((surface, index)");
+    expect(dailyMixWaveMesh).not.toContain("paths.map(({ depth, path }, index)");
     expect(dailyMixStyles).toContain(".daily-mix-soundfield__glint-window,");
     expect(dailyMixWaveMesh).not.toContain("requestAnimationFrame");
     expect(dailyMixStyles).toContain(".daily-mix-play-all__icon {");
