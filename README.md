@@ -71,7 +71,7 @@ Koradio 是一个面向单台设备的私人 AI 音乐电台。
 - [x] UX-28 P0 节目听感、纯音乐与探索范围优化已验收：结构化意图新增节奏显著度、注意力等级、风格排除项与探索倾向；柔和/舒缓等抽象需求在 Planner 中成为候选约束，Taste 退回特征级探索指导；纯音乐正式器乐候选不再被通用替代版本过滤误杀；第 4～10 期同曲和高频艺人优先避重、候选不足才回退复用。
 - [x] UX-29 纯音乐候选补足已验收：纯音乐不再依赖曲名器乐标记，Planner 可选择无实质歌词的正式器乐；默认只保留小比例高置信库内器乐保底，库外候选不可播时会继续预检专项器乐回退池，不以翻唱、Karaoke、Type Beat、AI 或伴奏补位。
 - [x] UX-30 Daily Mix 每日推荐已验收：每个 Profile 每个自然日后台原子生成 20 首真实可播的探索型纯歌单（约 10% 库内、90% 库外），失败不展示旧列表；Daily/Radio 独立 checkpoint 和 `PLAY NEXT` 返回原来源，Radio 日历入口、Daily 卡片、Queue 来源胶囊、Detail 与 Programs `DAILY PROGRAM` 历史均已完成本机功能与视觉验收。
-- [x] UX-31 前端视觉与交互优化已验收：Daily Mix `PLAY ALL` 使用黑色圆形与居中白色三角图标，顶部声场重绘为 72 条确定性 SVG 细线组成的三组交错低频曲面；宽窄窗口使用分级透明遮罩自然弥散，路径在窗口变化时保持稳定，并以 10.8～14 秒周期呈现克制的呼吸与宽幅渐变弧光，Reduce Motion 下停止动效。Programs 统一使用 `24px` 区块间距和 `16px` 卡片间距，Daily 小卡片提供手型指针；Radio 进度条在悬停或键盘聚焦时平滑增高并显示绿色圆形拖动控件。macOS `0.0.242` 已通过包装验证与项目所有者验收。
+- [x] UX-31 前端视觉与交互优化已验收：Daily Mix `PLAY ALL` 使用黑色圆形与居中白色三角图标，顶部声场重绘为 72 条确定性 SVG 细线组成的三组交错低频曲面；宽窄窗口使用分级透明遮罩自然弥散，路径在窗口变化时保持稳定。声场只做克制的透明度呼吸，椭圆径向弧光以 `9.6s` 匀速扫过三层连续曲面柔光，不重复叠加细线，兼顾可见度、右半段亮度与无闪烁稳定性；Reduce Motion 下停止动效。Programs 统一使用 `24px` 区块间距和 `16px` 卡片间距，Daily 小卡片提供手型指针；Radio 进度条在悬停或键盘聚焦时平滑增高并显示绿色圆形拖动控件。macOS `0.0.249` 已通过包装验证与项目所有者验收。
 - [x] Mock Provider 后端闭环已验收：Radio 闲聊不触发节目，歧义追问，单曲卡片、3～5 首推荐卡片和 8～12 首节目分别执行；空库探索、两轮补选、近 10 期去重、同艺人与点名覆盖、中文歌词硬约束、MusicBrainz/Wikimedia 引用、搜索/音频失败、Codex 错误/非法计划、TTS 阻断、歌词降级和提交事务回滚均有固定 fixture 与数据库快照断言
 - [x] 数据目录迁移底座已实现：幂等异步 job、阶段事件、空且可写目标校验、暂停/checkpoint Port、持久备份、SHA-256 复制校验、原子 bootstrap 指针、进程内重启和失败回滚均已验证；旧目录与备份不自动删除
 - [x] Codex、DeepSeek、NetEase 与 TTS Provider adapters：Codex、NetEase、DeepSeek 和 Qwen TTS 的协议边界、Keychain、重试、响应校验与 Mock fixtures 已实现；真实 DeepSeek API smoke 仍需手动凭据，Production Server 与 Electron 主进程默认 Live，Development、Test 和 CI 默认 Mock
